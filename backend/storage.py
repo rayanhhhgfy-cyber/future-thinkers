@@ -4,7 +4,7 @@ import uuid
 from gridfs.errors import NoFile
 from motor.motor_asyncio import AsyncIOMotorGridFSBucket
 
-from db import db
+from db import get_db
 
 MAX_SIZE = 50 * 1024 * 1024
 MIME_EXT = {
@@ -12,7 +12,8 @@ MIME_EXT = {
     "image/jpg": "jpg", "image/webp": "webp", "video/mp4": "mp4",
 }
 APP_NAME = "future-thinkers"
-_bucket = AsyncIOMotorGridFSBucket(db)
+def _bucket():
+    return AsyncIOMotorGridFSBucket(get_db())
 
 
 async def save_file(data: bytes, filename: str, content_type: str, user_id: str, folder: str = "uploads") -> dict:
@@ -20,7 +21,7 @@ async def save_file(data: bytes, filename: str, content_type: str, user_id: str,
         raise ValueError("File exceeds the 50MB limit")
     ext = MIME_EXT.get(content_type, filename.rsplit(".", 1)[-1] if "." in filename else "bin")
     path = f"{APP_NAME}/{folder}/{user_id}/{uuid.uuid4().hex}.{ext}"
-    await _bucket.upload_from_stream(
+    await _bucket().upload_from_stream(
         path,
         BytesIO(data),
         metadata={
@@ -40,7 +41,7 @@ async def save_file(data: bytes, filename: str, content_type: str, user_id: str,
 
 async def read_file(path: str):
     try:
-        file = await _bucket.open_download_stream_by_name(path)
+        file = await _bucket().open_download_stream_by_name(path)
     except NoFile as exc:
         raise FileNotFoundError(path) from exc
     content_type = (file.metadata or {}).get("content_type", "application/octet-stream")

@@ -3,9 +3,40 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from bson import ObjectId
 from datetime import datetime, timezone
 
-mongo_url = os.environ["MONGO_URL"]
-client = AsyncIOMotorClient(mongo_url)
-db = client[os.environ["DB_NAME"]]
+_client = None
+_db = None
+
+
+def init_db():
+    global _client, _db
+    if _client is None:
+        _client = AsyncIOMotorClient(os.environ["MONGO_URL"])
+        _db = _client[os.environ["DB_NAME"]]
+    return _db
+
+
+def get_db():
+    if _db is None:
+        raise RuntimeError("Database has not been initialized")
+    return _db
+
+
+class _DatabaseProxy:
+    def __getattr__(self, name):
+        return getattr(get_db(), name)
+
+
+class _ClientProxy:
+    def close(self):
+        global _client, _db
+        if _client is not None:
+            _client.close()
+            _client = None
+            _db = None
+
+
+db = _DatabaseProxy()
+client = _ClientProxy()
 
 
 def now_iso() -> str:

@@ -10,7 +10,7 @@ from fastapi.responses import JSONResponse
 from fastapi.requests import Request
 from starlette.middleware.cors import CORSMiddleware
 
-from db import db, client  # noqa
+from db import client, init_db
 from seed import seed_all
 
 from routes.auth_routes import router as auth_router
@@ -120,6 +120,7 @@ app.add_middleware(
 
 @app.on_event("startup")
 async def on_startup():
+    init_db()
     await seed_all()
     logger.info("Seed complete")
 
