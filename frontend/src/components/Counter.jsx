@@ -7,6 +7,10 @@ export function Counter({ value = 0, duration = 1400, className = "" }) {
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
+    if (typeof IntersectionObserver === "undefined") {
+      setN(value);
+      return;
+    }
     const obs = new IntersectionObserver((entries) => {
       if (entries[0].isIntersecting && !started.current) {
         started.current = true;
