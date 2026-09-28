@@ -5,7 +5,7 @@
 ## Architecture
 - **Frontend:** React 19 + React Router + TailwindCSS + shadcn/ui + Recharts + chess.js (Arabic RTL).
 - **Backend:** FastAPI (modular routers) + MongoDB (motor). JWT auth + RBAC permissions.
-- **Storage:** Emergent Object Storage abstraction (`storage.py`) with optional Telegram mirroring; DB is source of truth.
+- **Storage:** MongoDB GridFS for uploaded files; database stores application data and file content.
 
 ### Backend modules (`backend/routes/`)
 auth, geo (Kingdom→Governorate→Directorate→School), books (+reader/reviews/approval),
@@ -22,14 +22,15 @@ Services run via supervisor (backend :8001, frontend :3000). Data auto-seeds on 
 
 ## Environment variables (backend/.env)
 See `.env.example`. Never commit real secrets.
-MONGO_URL, DB_NAME, JWT_SECRET, ADMIN_EMAIL, ADMIN_PASSWORD, EMERGENT_LLM_KEY, TELEGRAM_BOT_TOKEN, TELEGRAM_GROUP_ID.
+MONGO_URL, DB_NAME, JWT_SECRET, ADMIN_EMAIL, ADMIN_PASSWORD.
 
 ## Deployment
 - Deploy the repository as one Vercel project with the Root Directory set to the repository root and Services enabled for the project. `vercel.json` defines a React frontend service and a FastAPI backend service, then routes `/api/*` to FastAPI and all other paths to React.
 - Add `MONGO_URL`, `DB_NAME` (`future_thinkers`), `JWT_SECRET`, and `ADMIN_PASSWORD` in the Vercel project's Environment Variables. Services share project environment variables. Set strong, unique secrets. `ADMIN_EMAIL` is optional and defaults to `admin@futurethinkers.jo`. The backend service installs its production packages from `backend/vercel-requirements.txt`.
 - The frontend uses same-origin `/api` requests; leave `REACT_APP_BACKEND_URL` unset. Verify the API at `https://YOUR-PROJECT.vercel.app/api/health` and then test login and data-backed pages.
-- The backend uses MongoDB through Motor; a Turso/libSQL URL cannot be used as `MONGO_URL` without migrating the database and API code. Revoke any database token pasted into chat and store credentials only in Vercel Environment Variables.
-- Vercel Functions do not provide durable local file storage, and this app's WebSocket routes are not supported by the serverless deployment. Uploaded files need object storage; live updates rely on the app's polling fallback.
+- The backend uses MongoDB through Motor and stores uploads in MongoDB GridFS. A Turso/libSQL URL cannot be used as `MONGO_URL` without migrating the database and API code. Revoke any database token or password pasted into chat and store credentials only in Vercel Environment Variables.
+- Files previously stored in Emergent Object Storage are not copied automatically; re-upload them or migrate them into MongoDB GridFS.
+- This uses Vercel Services with a FastAPI backend; WebSocket routes are not supported by the serverless deployment, so live updates rely on the app's polling fallback.
 
 ## Roles & Permissions
 student, teacher, school_admin, directorate_admin, moderator, admin, super_admin — granular permissions enforced server-side via `require_permission`.

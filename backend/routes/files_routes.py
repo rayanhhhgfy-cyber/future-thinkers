@@ -7,7 +7,7 @@ router = APIRouter(prefix="/api/files")
 @router.get("/{path:path}")
 async def download_file(path: str):
     try:
-        data, content_type = read_file(path)
+        data, content_type = await read_file(path)
     except Exception:
         raise HTTPException(status_code=404, detail="الملف غير موجود")
     return Response(content=data, media_type=content_type,

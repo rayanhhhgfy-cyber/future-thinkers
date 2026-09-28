@@ -12,7 +12,6 @@ from starlette.middleware.cors import CORSMiddleware
 
 from db import db, client  # noqa
 from seed import seed_all
-from storage import init_storage
 
 from routes.auth_routes import router as auth_router
 from routes.geo_routes import router as geo_router
@@ -121,11 +120,6 @@ app.add_middleware(
 
 @app.on_event("startup")
 async def on_startup():
-    try:
-        init_storage()
-        logger.info("Object storage initialized")
-    except Exception as e:
-        logger.error(f"Storage init failed: {e}")
     await seed_all()
     logger.info("Seed complete")
 
