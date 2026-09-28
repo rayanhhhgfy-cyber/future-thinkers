@@ -1,6 +1,6 @@
 import React, { useEffect } from "react";
 import "@/App.css";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Link } from "react-router-dom";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "@/context/AuthContext";
 import { Protected } from "@/components/Layout";
@@ -24,6 +24,21 @@ import Leaderboard from "@/pages/Leaderboard";
 import Profile from "@/pages/Profile";
 import News from "@/pages/News";
 import Admin from "@/pages/Admin";
+
+function NotFound() {
+  return (
+    <main className="min-h-screen grid place-items-center bg-slate-50 px-4 text-center" dir="rtl">
+      <div>
+        <p className="text-sm font-semibold text-emerald-700">404</p>
+        <h1 className="mt-2 text-2xl font-bold text-slate-900">الصفحة غير موجودة</h1>
+        <p className="mt-2 text-slate-600">الرابط الذي فتحته غير متاح.</p>
+        <Link to="/" className="mt-6 inline-flex rounded-lg bg-emerald-700 px-5 py-2.5 font-medium text-white hover:bg-emerald-800">
+          العودة إلى الصفحة الرئيسية
+        </Link>
+      </div>
+    </main>
+  );
+}
 
 function App() {
   useEffect(() => {
@@ -53,6 +68,7 @@ function App() {
           <Route path="/profile/:id" element={<Profile />} />
           <Route path="/dashboard" element={<Protected><Dashboard /></Protected>} />
           <Route path="/admin/*" element={<Protected staff><Admin /></Protected>} />
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
       <Toaster position="top-center" richColors />
