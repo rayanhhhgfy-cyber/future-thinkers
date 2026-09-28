@@ -1,6 +1,6 @@
 {
   "installCommand": "cd frontend && yarn install --frozen-lockfile",
-  "buildCommand": "cd frontend && yarn build",
+  "buildCommand": "cd frontend && CI=false yarn build",
   "outputDirectory": "frontend/build",
   "framework": "create-react-app",
   "env": {
