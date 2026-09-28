@@ -90,7 +90,7 @@ module.exports = {
             },
             'h2, h3, h4': {
               color: theme('colors.slate.900'),
-              fontFamily: theme('fontFamily.head').join(', '),
+              fontFamily: theme('fontFamily.head', ['ui-sans-serif', 'system-ui']).join(', '),
               fontWeight: '700',
             },
             strong: {
