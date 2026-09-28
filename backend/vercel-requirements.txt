@@ -9,3 +9,4 @@ python-bidi==0.6.11
 python-dotenv==1.2.3
 python-multipart==0.0.32
 reportlab==5.0.1
+requests==2.34.2
