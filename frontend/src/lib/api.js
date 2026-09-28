@@ -11,6 +11,14 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+api.interceptors.response.use((response) => {
+  const contentType = response.headers?.["content-type"] || "";
+  if (contentType.includes("text/html")) {
+    return Promise.reject(new Error("تعذر الوصول إلى واجهة المنصة. تحقق من مسارات API."));
+  }
+  return response;
+});
+
 export function apiErr(e, fallback = "حدث خطأ ما، حاول مرة أخرى") {
   const d = e?.response?.data?.detail;
   if (d == null) return e?.message || fallback;

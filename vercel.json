@@ -1,20 +1,27 @@
 {
-  "installCommand": "cd frontend && yarn install --frozen-lockfile",
-  "buildCommand": "cd frontend && CI=false yarn build",
-  "outputDirectory": "frontend/build",
-  "framework": "create-react-app",
-  "env": {
-    "CI": "false"
-  },
-  "functions": {
-    "api/**/*.py": {
-      "includeFiles": "backend/assets/**"
+  "services": {
+    "frontend": {
+      "root": "frontend",
+      "framework": "create-react-app",
+      "installCommand": "yarn install --frozen-lockfile",
+      "buildCommand": "CI=false yarn build",
+      "outputDirectory": "build"
+    },
+    "backend": {
+      "root": "backend",
+      "framework": "fastapi",
+      "entrypoint": "server:app",
+      "installCommand": "pip install -r vercel-requirements.txt"
     }
   },
   "rewrites": [
     {
-      "source": "/:path((?!api(?:/|$)|static/).*)",
-      "destination": "/index.html"
+      "source": "/api/(.*)",
+      "destination": { "service": "backend" }
+    },
+    {
+      "source": "/(.*)",
+      "destination": { "service": "frontend" }
     }
   ]
 }
