@@ -22,9 +22,29 @@ export default function Register() {
   const [school, setSchool] = useState("");
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => { api.get("/geo/governorates").then((r) => setGovs(r.data)); }, []);
-  useEffect(() => { if (gov) { api.get("/geo/directorates", { params: { governorate_id: gov } }).then((r) => setDirs(r.data)); setDir(""); setSchools([]); setSchool(""); } }, [gov]);
-  useEffect(() => { if (dir) { api.get("/geo/schools", { params: { directorate_id: dir } }).then((r) => setSchools(r.data)); setSchool(""); } }, [dir]);
+  useEffect(() => {
+    api.get("/geo/governorates")
+      .then(({ data }) => setGovs(Array.isArray(data) ? data : []))
+      .catch(() => setGovs([]));
+  }, []);
+  useEffect(() => {
+    if (gov) {
+      api.get("/geo/directorates", { params: { governorate_id: gov } })
+        .then(({ data }) => setDirs(Array.isArray(data) ? data : []))
+        .catch(() => setDirs([]));
+      setDir("");
+      setSchools([]);
+      setSchool("");
+    }
+  }, [gov]);
+  useEffect(() => {
+    if (dir) {
+      api.get("/geo/schools", { params: { directorate_id: dir } })
+        .then(({ data }) => setSchools(Array.isArray(data) ? data : []))
+        .catch(() => setSchools([]));
+      setSchool("");
+    }
+  }, [dir]);
 
   const set = (k) => (v) => setForm((f) => ({ ...f, [k]: v }));
 
