@@ -1,14 +1,19 @@
 {
-  "installCommand": "cd frontend && yarn install",
+  "installCommand": "cd frontend && yarn install --frozen-lockfile",
   "buildCommand": "cd frontend && yarn build",
   "outputDirectory": "frontend/build",
   "framework": "create-react-app",
   "env": {
     "CI": "false"
   },
+  "functions": {
+    "api/**/*.py": {
+      "includeFiles": "backend/assets/**"
+    }
+  },
   "rewrites": [
     {
-      "source": "/(.*)",
+      "source": "/((?!api(?:/|$)|static/).*)",
       "destination": "/index.html"
     }
   ]

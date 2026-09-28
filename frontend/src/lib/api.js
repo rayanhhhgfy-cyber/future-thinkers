@@ -22,7 +22,7 @@ export function apiErr(e, fallback = "حدث خطأ ما، حاول مرة أخ�
 export const fileUrl = (path) => (path?.startsWith("http") ? path : `${API}/files/${path}`);
 
 export const wsUrl = (path) => {
-  const base = process.env.REACT_APP_BACKEND_URL.replace(/^http/, "ws");
+  const base = (BACKEND_URL || window.location.origin).replace(/^http/, "ws");
   const token = localStorage.getItem("ft_token") || "";
   return `${base}${path}${path.includes("?") ? "&" : "?"}token=${token}`;
 };
