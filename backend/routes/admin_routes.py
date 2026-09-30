@@ -3,7 +3,7 @@ from pydantic import BaseModel
 from db import db, ser, sers, oid, now_iso
 from auth import (get_current_user, require_permission, require_role, ALL_PERMISSIONS,
                   ROLES, ROLE_LABELS, ROLE_PERMISSIONS)
-from services import audit_log, broadcast_notification, create_notification
+from services import audit_log, broadcast_notification, create_notification, deliver_notification
 
 router = APIRouter(prefix="/api/admin")
 
@@ -267,6 +267,13 @@ class NotifySendBody(BaseModel):
     link: str = "/dashboard"
     scope: str = "all"  # all | school | directorate
     scope_id: str | None = None
+    channel: str = "both"  # push | inapp | both
+
+
+def _check_channel(channel: str) -> str:
+    if channel not in ("push", "inapp", "both"):
+        raise HTTPException(400, "قناة الإرسال غير صالحة")
+    return channel
 
 
 def _audience_query(scope: str, scope_id: str | None, user: dict) -> dict:
@@ -286,18 +293,23 @@ async def notify_send(body: NotifySendBody, request: Request,
                       user: dict = Depends(require_permission(NOTIFY_PERM))):
     if not body.title.strip():
         raise HTTPException(400, "العنوان مطلوب")
+    channel = _check_channel(body.channel)
     q = _audience_query(body.scope, body.scope_id, user)
     users = await db.users.find(q, {"_id": 1}).to_list(20000)
     ids = [str(u["_id"]) for u in users]
-    await broadcast_notification(ids, "announcement", body.title.strip(), body.body, body.link or "/dashboard")
+    counts = await deliver_notification(
+        ids, "announcement", body.title.strip(), body.body,
+        body.link or "/dashboard", channel)
     camp = {"title": body.title.strip(), "body": body.body, "link": body.link or "/dashboard",
-            "scope": body.scope, "scope_id": body.scope_id,
+            "scope": body.scope, "scope_id": body.scope_id, "channel": channel,
             "status": "sent", "sent_at": now_iso(), "recipient_count": len(ids),
+            "inapp_count": counts["inapp"], "push_count": counts["push"],
             "created_by": user["id"], "created_at": now_iso()}
     await db.notification_campaigns.insert_one(camp)
     await audit_log(user, "notify.send", "notification", None,
-                    {"count": len(ids), "scope": body.scope}, request)
-    return {"ok": True, "sent": len(ids)}
+                    {"count": len(ids), "scope": body.scope, "channel": channel}, request)
+    return {"ok": True, "sent": len(ids), "inapp": counts["inapp"],
+            "push": counts["push"], "channel": channel}
 
 
 class NotifyScheduleBody(NotifySendBody):
@@ -319,15 +331,60 @@ async def notify_schedule(body: NotifyScheduleBody, request: Request,
         raise HTTPException(400, "صيغة التاريخ غير صالحة")
     if dt <= datetime.now(timezone.utc):
         raise HTTPException(400, "موعد الإرسال يجب أن يكون في المستقبل")
+    channel = _check_channel(body.channel)
     q = _audience_query(body.scope, body.scope_id, user)
     camp = {"title": body.title.strip(), "body": body.body, "link": body.link or "/dashboard",
             "audience_query": q, "scope": body.scope, "scope_id": body.scope_id,
+            "channel": channel,
             "status": "scheduled", "send_at": dt.isoformat(),
             "created_by": user["id"], "created_at": now_iso()}
     r = await db.notification_campaigns.insert_one(camp)
     await audit_log(user, "notify.schedule", "notification", str(r.inserted_id),
-                    {"send_at": camp["send_at"], "scope": body.scope}, request)
+                    {"send_at": camp["send_at"], "scope": body.scope, "channel": channel}, request)
     return {"ok": True, "id": str(r.inserted_id)}
+
+
+@router.post("/notify/campaigns/{cid}/send-now")
+async def campaign_send_now(cid: str, request: Request,
+                            user: dict = Depends(require_permission(NOTIFY_PERM))):
+    """Immediately dispatch a scheduled campaign (also rescues overdue ones)."""
+    from services import dispatch_due_campaigns
+    doc = await db.notification_campaigns.find_one({"_id": oid(cid)})
+    if not doc or doc.get("status") != "scheduled":
+        raise HTTPException(400, "الحملة غير موجودة أو ليست مجدولة")
+    # mark it due right now so the dispatcher picks it up
+    await db.notification_campaigns.update_one(
+        {"_id": doc["_id"]}, {"$set": {"send_at": now_iso()}})
+    n = await dispatch_due_campaigns()
+    if n == 0:
+        # fall back: dispatch this campaign directly
+        claimed = await db.notification_campaigns.update_one(
+            {"_id": doc["_id"], "status": "scheduled"},
+            {"$set": {"status": "sending"}})
+        if claimed.modified_count:
+            q = doc.get("audience_query") or {"status": {"$ne": "banned"}}
+            users = await db.users.find(q, {"_id": 1}).to_list(20000)
+            ids = [str(u["_id"]) for u in users]
+            counts = await deliver_notification(
+                ids, "announcement", doc["title"], doc.get("body", ""),
+                doc.get("link") or "/dashboard", doc.get("channel") or "both")
+            await db.notification_campaigns.update_one(
+                {"_id": doc["_id"]},
+                {"$set": {"status": "sent", "sent_at": now_iso(),
+                          "recipient_count": len(ids),
+                          "inapp_count": counts["inapp"],
+                          "push_count": counts["push"]}})
+            n = 1
+    await audit_log(user, "notify.send_now", "notification", cid, None, request)
+    return {"ok": True, "dispatched": n}
+
+
+@router.get("/notify/stats")
+async def notify_stats(user: dict = Depends(require_permission(NOTIFY_PERM))):
+    """Small numbers the admin UI needs: push-subscribed devices, users."""
+    devices = await db.push_subscriptions.count_documents({})
+    users = await db.users.count_documents({"status": {"$ne": "banned"}})
+    return {"push_devices": devices, "users": users}
 
 
 @router.get("/notify/campaigns")

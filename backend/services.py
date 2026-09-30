@@ -133,25 +133,28 @@ def _do_webpush(subscription_info, data, private_key, subject):
 
 
 async def send_push_to_user(user_id: str, title: str, body: str = "", link: str = None):
-    """Send a Web Push message to all of the user's subscribed devices."""
+    """Send a Web Push message to all of the user's subscribed devices.
+    Returns the number of devices the push was delivered to."""
     cfg = _vapid_cfg()
     if not cfg["public"] or not cfg["private"]:
-        return
+        return 0
     subs = await db.push_subscriptions.find({"user_id": user_id}).to_list(20)
     if not subs:
-        return
+        return 0
     payload = json.dumps({
         "title": title, "body": body or "",
         "link": link or "/dashboard",
         "icon": "/icons/icon-192.png", "badge": "/icons/icon-192.png",
         "tag": f"ft-{user_id}",
     })
+    delivered = 0
     for s in subs:
         sub = s.get("subscription") or {}
         if not sub.get("endpoint"):
             continue
         try:
             await asyncio.to_thread(_do_webpush, sub, payload, cfg["private"], cfg["subject"])
+            delivered += 1
         except Exception as e:
             # drop dead subscriptions (410 Gone / 404 Not Found)
             msg = str(e)
@@ -160,21 +163,40 @@ async def send_push_to_user(user_id: str, title: str, body: str = "", link: str 
                     await db.push_subscriptions.delete_one({"_id": s["_id"]})
                 except Exception:
                     pass
+    return delivered
+
+
+async def deliver_notification(user_ids, type_, title, body="", link=None, channel="both"):
+    """Deliver a notification through the chosen channel(s).
+
+    channel: "push" (phone system push only), "inapp" (in-app alert only),
+             "both" (default).
+    Returns {"inapp": n, "push": m} delivery counts.
+    """
+    if channel not in ("push", "inapp", "both"):
+        channel = "both"
+    if not user_ids:
+        return {"inapp": 0, "push": 0}
+    inapp = 0
+    if channel in ("inapp", "both"):
+        docs = [{
+            "user_id": uid, "type": type_, "title": title, "body": body,
+            "link": link, "read": False, "created_at": now_iso(),
+        } for uid in user_ids]
+        await db.notifications.insert_many(docs)
+        inapp = len(docs)
+    push = 0
+    if channel in ("push", "both"):
+        for uid in user_ids:
+            try:
+                push += await send_push_to_user(uid, title, body, link)
+            except Exception:
+                pass
+    return {"inapp": inapp, "push": push}
 
 
 async def broadcast_notification(user_ids, type_, title, body="", link=None):
-    if not user_ids:
-        return
-    docs = [{
-        "user_id": uid, "type": type_, "title": title, "body": body,
-        "link": link, "read": False, "created_at": now_iso(),
-    } for uid in user_ids]
-    await db.notifications.insert_many(docs)
-    for uid in user_ids:
-        try:
-            await send_push_to_user(uid, title, body, link)
-        except Exception:
-            pass
+    await deliver_notification(user_ids, type_, title, body, link, channel="both")
 
 
 async def dispatch_due_campaigns():
@@ -195,12 +217,15 @@ async def dispatch_due_campaigns():
             q = c.get("audience_query") or {"status": {"$ne": "banned"}}
             users = await db.users.find(q, {"_id": 1}).to_list(20000)
             ids = [str(u["_id"]) for u in users]
-            await broadcast_notification(
-                ids, "announcement", c["title"], c.get("body", ""), c.get("link") or "/dashboard")
+            counts = await deliver_notification(
+                ids, "announcement", c["title"], c.get("body", ""),
+                c.get("link") or "/dashboard", c.get("channel") or "both")
             await db.notification_campaigns.update_one(
                 {"_id": c["_id"]},
                 {"$set": {"status": "sent", "sent_at": now_iso(),
-                          "recipient_count": len(ids)}})
+                          "recipient_count": len(ids),
+                          "inapp_count": counts["inapp"],
+                          "push_count": counts["push"]}})
             sent += 1
         except Exception:
             try:
