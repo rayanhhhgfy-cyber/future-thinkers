@@ -15,9 +15,13 @@ async def governorates():
 
 
 @router.get("/directorates")
-async def directorates(governorate_id: str | None = None):
-    q = {"governorate_id": governorate_id} if governorate_id else {}
-    docs = await db.directorates.find(q).sort("name", 1).to_list(200)
+async def directorates(governorate_id: str | None = None, q: str | None = None, limit: int = 200):
+    query = {}
+    if governorate_id:
+        query["governorate_id"] = governorate_id
+    if q:
+        query["name"] = {"$regex": q, "$options": "i"}
+    docs = await db.directorates.find(query).sort("name", 1).to_list(limit)
     return sers(docs)
 
 

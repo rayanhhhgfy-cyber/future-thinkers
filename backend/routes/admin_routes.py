@@ -387,6 +387,16 @@ async def notify_stats(user: dict = Depends(require_permission(NOTIFY_PERM))):
     return {"push_devices": devices, "users": users}
 
 
+@router.get("/notify/audience-count")
+async def audience_count(scope: str = Query("all"),
+                        scope_id: str | None = Query(None),
+                        user: dict = Depends(require_permission(NOTIFY_PERM))):
+    """Live recipient count preview for the notify composer audience picker."""
+    q = _audience_query(scope, scope_id, user)
+    count = await db.users.count_documents(q)
+    return {"count": count, "scope": scope, "scope_id": scope_id}
+
+
 @router.get("/notify/campaigns")
 async def list_campaigns(user: dict = Depends(require_permission(NOTIFY_PERM))):
     # Flush anything due right now so the admin always sees fresh state.

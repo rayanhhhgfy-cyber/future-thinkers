@@ -6,10 +6,120 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Send, Clock, Trash2, Pencil, Plus, BellRing, XCircle, CheckCircle2, Smartphone, Bell, Layers } from "lucide-react";
+import { Send, Clock, Trash2, Pencil, Plus, BellRing, XCircle, CheckCircle2, Smartphone, Bell, Layers, ChevronsUpDown, Check, Users, X } from "lucide-react";
 
 const inputCls = "w-full text-base"; // text-base prevents iOS auto-zoom on focus
+
+// Where a tapped notification can take the user — picked from a dropdown,
+// never typed by hand.
+const LINK_DESTINATIONS = [
+  { path: "/", label: "الصفحة الرئيسية" },
+  { path: "/dashboard", label: "لوحة التحكم" },
+  { path: "/studio", label: "الاستوديو" },
+  { path: "/library", label: "المكتبة" },
+  { path: "/upload-book", label: "رفع كتاب" },
+  { path: "/events", label: "الفعاليات" },
+  { path: "/competitions", label: "المسابقات" },
+  { path: "/leaderboard", label: "المتصدرون" },
+  { path: "/news", label: "الأخبار" },
+  { path: "/clubs", label: "الأندية" },
+  { path: "/settings", label: "الإعدادات" },
+];
+
+function LinkSelect({ value, onChange }) {
+  const [forceCustom, setForceCustom] = useState(false);
+  const isKnown = LINK_DESTINATIONS.some((d) => d.path === value);
+  const custom = forceCustom || !isKnown;
+  const selValue = custom ? "__custom" : (value || "/dashboard");
+  return (
+    <div className="space-y-2">
+      <Select
+        value={selValue}
+        onValueChange={(v) => {
+          if (v === "__custom") setForceCustom(true);
+          else { setForceCustom(false); onChange(v); }
+        }}
+      >
+        <SelectTrigger className="text-base"><SelectValue placeholder="اختر الوجهة" /></SelectTrigger>
+        <SelectContent>
+          {LINK_DESTINATIONS.map((d) => (
+            <SelectItem key={d.path} value={d.path}>
+              {d.label} <span className="text-slate-400 text-xs" dir="ltr">{d.path}</span>
+            </SelectItem>
+          ))}
+          <SelectItem value="__custom">✏️ رابط مخصص…</SelectItem>
+        </SelectContent>
+      </Select>
+      {custom && (
+        <Input className={inputCls} value={value || ""} onChange={(e) => onChange(e.target.value)}
+          placeholder="/مسار-داخلي أو https://…" dir="ltr" />
+      )}
+    </div>
+  );
+}
+
+// Searchable dropdown for schools / directorates (server-side search).
+function EntityPicker({ endpoint, selectedId, selectedName, onPick, onClear, placeholder }) {
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState("");
+  const [items, setItems] = useState([]);
+  const [searching, setSearching] = useState(false);
+
+  useEffect(() => {
+    setSearching(true);
+    const t = setTimeout(async () => {
+      try {
+        const { data } = await api.get(endpoint, { params: { q: q.trim() || undefined, limit: 20 } });
+        setItems(Array.isArray(data) ? data : (data.items || data.docs || []));
+      } catch { setItems([]); }
+      finally { setSearching(false); }
+    }, 300);
+    return () => clearTimeout(t);
+  }, [q, endpoint]);
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button variant="outline" type="button"
+          className="w-full justify-between text-base min-h-[48px] font-normal">
+          <span className="truncate">
+            {selectedName || <span className="text-slate-400">{placeholder}</span>}
+          </span>
+          <span className="flex items-center gap-1 shrink-0">
+            {selectedName && (
+              <span role="button" tabIndex={0} aria-label="مسح الاختيار"
+                className="p-1.5 -m-1.5 text-slate-400 hover:text-red-500"
+                onClick={(e) => { e.stopPropagation(); onClear(); }}>
+                <X className="w-4 h-4" />
+              </span>
+            )}
+            <ChevronsUpDown className="w-4 h-4 text-slate-400" />
+          </span>
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[300px] p-0" align="start">
+        <Command shouldFilter={false}>
+          <CommandInput placeholder="ابحث بالاسم…" value={q} onValueChange={setQ} className="text-base" />
+          <CommandList>
+            <CommandEmpty>{searching ? "جارٍ البحث…" : "لا توجد نتائج مطابقة"}</CommandEmpty>
+            <CommandGroup>
+              {items.map((item) => (
+                <CommandItem key={item.id} value={item.id} onSelect={() => { onPick(item.id, item.name); setOpen(false); }}
+                  className="text-sm cursor-pointer min-h-[44px]">
+                  <Check className={`w-4 h-4 ml-2 shrink-0 text-emerald-600 ${item.id === selectedId ? "opacity-100" : "opacity-0"}`} />
+                  <span className="truncate">{item.name}</span>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 const CHANNELS = [
   { k: "both", label: "الاثنان معاً", icon: Layers, desc: "دفع للهاتف + تنبيه داخل التطبيق" },
@@ -41,6 +151,8 @@ export default function NotifyPanel() {
   const [link, setLink] = useState("/dashboard");
   const [scope, setScope] = useState("all");
   const [scopeId, setScopeId] = useState("");
+  const [scopeName, setScopeName] = useState("");
+  const [audCount, setAudCount] = useState(null);
   const [channel, setChannel] = useState("both");
   const [scheduleMode, setScheduleMode] = useState(false);
   const [sendAt, setSendAt] = useState("");
@@ -70,6 +182,20 @@ export default function NotifyPanel() {
   };
 
   useEffect(() => { load(); }, []);
+
+  // Live recipient-count preview when a specific school/directorate is picked.
+  useEffect(() => {
+    if (scope === "all" || !scopeId) { setAudCount(null); return; }
+    const t = setTimeout(async () => {
+      try {
+        const { data } = await api.get("/admin/notify/audience-count", { params: { scope, scope_id: scopeId } });
+        setAudCount(data.count);
+      } catch { setAudCount(null); }
+    }, 400);
+    return () => clearTimeout(t);
+  }, [scope, scopeId]);
+
+  const changeScope = (v) => { setScope(v); setScopeId(""); setScopeName(""); setAudCount(null); };
 
   const applyPreset = (p) => {
     setTitle(p.title || "");
@@ -237,20 +363,40 @@ export default function NotifyPanel() {
           </div>
 
           <div className="grid sm:grid-cols-3 gap-4">
-            <div><Label>الرابط عند الضغط</Label><Input className={inputCls} value={link} onChange={(e) => setLink(e.target.value)} placeholder="/dashboard" dir="ltr" /></div>
+            <div><Label>الرابط عند الضغط</Label><div className="mt-1.5"><LinkSelect value={link} onChange={setLink} /></div></div>
             <div>
               <Label>الجمهور</Label>
-              <Select value={scope} onValueChange={setScope}>
-                <SelectTrigger className="text-base"><SelectValue /></SelectTrigger>
+              <Select value={scope} onValueChange={changeScope}>
+                <SelectTrigger className="text-base mt-1.5"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">الجميع</SelectItem>
-                  <SelectItem value="school">مدرسة (معرّف)</SelectItem>
-                  <SelectItem value="directorate">مديرية (معرّف)</SelectItem>
+                  <SelectItem value="school">🏫 مدرسة محددة</SelectItem>
+                  <SelectItem value="directorate">🗺️ مديرية محددة</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             {scope !== "all" && (
-              <div><Label>معرّف {scope === "school" ? "المدرسة" : "المديرية"}</Label><Input className={inputCls} value={scopeId} onChange={(e) => setScopeId(e.target.value)} placeholder="اختياري" dir="ltr" /></div>
+              <div>
+                <Label>{scope === "school" ? "اختر المدرسة" : "اختر المديرية"}</Label>
+                <div className="mt-1.5">
+                  <EntityPicker
+                    key={scope}
+                    endpoint={scope === "school" ? "/geo/schools" : "/geo/directorates"}
+                    selectedId={scopeId}
+                    selectedName={scopeName}
+                    onPick={(id, name) => { setScopeId(id); setScopeName(name); }}
+                    onClear={() => { setScopeId(""); setScopeName(""); }}
+                    placeholder={scope === "school" ? "ابحث عن مدرسة…" : "ابحث عن مديرية…"}
+                  />
+                </div>
+                {scopeId && audCount !== null && (
+                  <p className="text-xs text-emerald-700 mt-1.5 flex items-center gap-1.5 bg-emerald-50 border border-emerald-100 rounded-lg px-2 py-1.5">
+                    <Users className="w-3.5 h-3.5 shrink-0" />
+                    سيصل الإشعار إلى <b>{audCount}</b> مستخدم
+                    {scopeName ? <span className="text-emerald-600 truncate">({scopeName})</span> : null}
+                  </p>
+                )}
+              </div>
             )}
           </div>
 
@@ -375,7 +521,7 @@ export default function NotifyPanel() {
             <div><Label>اسم القالب *</Label><Input className={inputCls} value={pName} onChange={(e) => setPName(e.target.value)} placeholder="مثال: 📚 كتاب جديد" /></div>
             <div><Label>عنوان الإشعار *</Label><Input className={inputCls} value={pTitle} onChange={(e) => setPTitle(e.target.value)} /></div>
             <div><Label>النص</Label><Textarea className={inputCls} rows={3} value={pBody} onChange={(e) => setPBody(e.target.value)} /></div>
-            <div><Label>الرابط</Label><Input className={inputCls} value={pLink} onChange={(e) => setPLink(e.target.value)} dir="ltr" /></div>
+            <div><Label>الرابط</Label><div className="mt-1.5"><LinkSelect value={pLink} onChange={setPLink} /></div></div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDlg(null)} className="min-h-[44px]">إلغاء</Button>
