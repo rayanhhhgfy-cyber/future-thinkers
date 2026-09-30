@@ -32,12 +32,25 @@ export default function Landing() {
     { label: "مباريات الشطرنج", value: stats.chess_games, icon: Crown },
   ] : [];
 
-  const formatText = (text) => {
-    if (!text) return null;
-    return text.split('\n\n').map((paragraph, i) => (
-      <p key={i} className="text-slate-600 leading-relaxed mb-4 last:mb-0">{paragraph}</p>
-    ));
-  };
+  const aboutText = cms?.about || `نحن مجموعة ونخبة من طلبة المدارس المبدعين والرياديين والمفكرين نقدياً، والباحثين عن الخير والحقيقة والجمال لتطوير مجتمعنا ووطننا وأمتنا والإنسانية جمعاء.
+
+وذلك من خلال التشبيك مع شباب المدارس الأخرى على مستوى مديرية قصبة إربد الأولى ومدارس المملكة الأردنية الهاشمية للقيام بنشاطات فكرية وثقافية تخدم رؤية وزارة التربية والتعليم، وتسعى لإنشاء جيلٍ منتمٍ لوطنه وقيادته، يسعى لخدمة وطنه ومجتمعه وأمته تربوياً وعلمياً وثقافياً وإنسانياً.
+
+وذلك تحقيقاً لرؤى جلالة الملك عبدالله الثاني بن الحسين حفظه الله ورعاه، وولي عهده الأمين الأمير الحسين بن عبدالله الثاني وفقه الله.`;
+
+  const visionText = cms?.vision || "يسعى نادي مفكري المستقبل لتكون المنصة الأولى محلياً على مستوى المملكة الأردنية الهاشمية وعربياً وعالمياً خلال الخمس سنوات القادمة، لتصبح جسراً ثقافياً وإنسانياً وثيقاً للتواصل والتعارف وتبادل الخبرات والتجارب الذاتية والتشبيك والدعم بين الطلبة، ونقل خبراتهم وثقافتهم لبعضهم البعض عبر الحوار والتواصل والفعاليات. ونسعى لتخريج مفكرين رياديين ومبدعين مميزين عربياً وعالمياً كسفراء لوطنهم الأردن، والمتابعة مع الطلبة من خلال منتدى ثقافي يجمعهم في الجامعات أيضاً ليبقوا سفراء للنادي وينقلوا تجربتهم لطلبة المدارس اللاحقين من بعدهم.";
+
+  const missionText = cms?.mission || "تهدف رسالتنا في نادي مفكري المستقبل إلى بناء ثقافة جيلٍ كامل من الأجيال الصاعدة، متسلحة بالوعي والمعرفة والإيمان والمهارات الحياتية والناعمة والتفكير الناقد، بقيم وطنية أصيلة، وتطوير جميع الأدوات المهارية التي تصنع منه جيلاً مبدعاً ومتميزاً من خلال أنشطتنا ومنصتنا الرقمية.";
+
+  const defaultGoals = [
+    "تشبيك الطلبة بين بعضهم البعض وتعزيز مهارات الحوار والتواصل.",
+    "تعزيز قيمة الكتاب والمعرفة والعلم في حياتهم.",
+    "تطوير المهارات الداعمة والشخصية ليكونوا مستعدين لسوق العمل.",
+    "تشبيك طرق التواصل من خلال التبادل الثقافي بين الدول والقارات ونقل التجربة العربية والأردنية للعالم.",
+    "تأسيس مجموعة من المشاريع والأندية الريادية والمبادرات ضمن مظلة نادي مفكري المستقبل والعمل عليها بشكل دائم وفعال.",
+    "تعزيز قيم الريادة والابتكار والإبداع والرقمنة والذكاء الاصطناعي من خلال منصة نادي مفكري المستقبل والموقع الإلكتروني.",
+  ];
+  const goalsList = (cms?.goals && cms.goals.length > 0) ? cms.goals : defaultGoals;
 
   return (
     <Layout>
@@ -80,19 +93,19 @@ export default function Landing() {
       </section>
 
       {/* About Us */}
-      {cms?.about && (
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 bg-white">
-          <div className="bg-gradient-to-r from-emerald-50 to-blue-50 rounded-3xl p-8 lg:p-12 border border-emerald-100">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-12 h-12 rounded-2xl bg-emerald-100 grid place-items-center"><Users2 className="w-6 h-6 text-emerald-600" /></div>
-              <h2 className="font-head text-3xl lg:text-4xl font-extrabold text-slate-900">من نحن</h2>
-            </div>
-            <div className="text-slate-700 leading-relaxed text-base font-body max-w-none">
-              {formatText(cms.about)}
-            </div>
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 bg-white">
+        <div className="bg-gradient-to-r from-emerald-50 to-blue-50 rounded-3xl p-8 lg:p-12 border border-emerald-100">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-100 grid place-items-center"><Users2 className="w-6 h-6 text-emerald-600" /></div>
+            <h2 className="font-head text-3xl lg:text-4xl font-extrabold text-slate-900">من نحن</h2>
           </div>
-        </section>
-      )}
+          <div className="text-slate-700 leading-relaxed text-base font-body max-w-none">
+            {aboutText.split('\n\n').map((paragraph, i) => (
+              <p key={i} className="text-slate-600 leading-relaxed mb-4 last:mb-0">{paragraph}</p>
+            ))}
+          </div>
+        </div>
+      </section>
 
       {/* Vision / Mission / Goals */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
@@ -100,28 +113,24 @@ export default function Landing() {
           <div className="bg-white rounded-3xl p-8 ft-shadow border border-slate-100 hover-lift">
             <div className="w-12 h-12 rounded-2xl bg-emerald-50 grid place-items-center mb-4"><Flag className="w-6 h-6 text-emerald-600" /></div>
             <h2 className="font-head text-2xl font-bold text-slate-900">رؤيتنا</h2>
-            <p className="mt-3 text-slate-600 leading-relaxed">{cms?.vision || "أن نبني جيلاً أردنياً قارئاً ومفكراً ومبدعاً، يصنع المعرفة ويقود المستقبل."}</p>
+            <p className="mt-3 text-slate-600 leading-relaxed">{visionText}</p>
           </div>
           <div className="bg-white rounded-3xl p-8 ft-shadow border border-slate-100 hover-lift">
             <div className="w-12 h-12 rounded-2xl bg-emerald-50 grid place-items-center mb-4"><Target className="w-6 h-6 text-emerald-600" /></div>
             <h2 className="font-head text-2xl font-bold text-slate-900">رسالتنا</h2>
-            <p className="mt-3 text-slate-600 leading-relaxed">{cms?.mission || "بناء مجتمع طلابي معرفي وطني يتيح القراءة والحوار والتعلّم والمنافسة والإبداع."}</p>
+            <p className="mt-3 text-slate-600 leading-relaxed">{missionText}</p>
           </div>
         </div>
         
-        {cms?.goals && cms.goals.length > 0 && (
-          <>
-            <h2 className="font-head text-2xl font-bold text-slate-900 mb-5">أهدافنا</h2>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {(cms.goals || []).map((g, i) => (
-                <div key={i} className="flex items-start gap-3 bg-white rounded-2xl p-5 border border-slate-100 ft-shadow hover-lift">
-                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 text-white grid place-items-center text-sm font-bold shrink-0">{i + 1}</div>
-                  <p className="text-slate-700 text-sm leading-relaxed">{g}</p>
-                </div>
-              ))}
+        <h2 className="font-head text-2xl font-bold text-slate-900 mb-5">أهدافنا</h2>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {goalsList.map((g, i) => (
+            <div key={i} className="flex items-start gap-3 bg-white rounded-2xl p-5 border border-slate-100 ft-shadow hover-lift">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 text-white grid place-items-center text-sm font-bold shrink-0">{i + 1}</div>
+              <p className="text-slate-700 text-sm leading-relaxed">{g}</p>
             </div>
-          </>
-        )}
+          ))}
+        </div>
       </section>
 
       {/* Activities / Projects */}
