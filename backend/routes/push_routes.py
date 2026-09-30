@@ -82,4 +82,25 @@ async def push_test(user: dict = Depends(get_current_user)):
                 error = f"{type(e).__name__}: {str(e)[:300]}"
     return {"ok": delivered > 0, "devices": n,
             "vapid_public": has_public, "vapid_private": has_private,
-            "delivered": delivered, "error": error}
+            "delivered": delivered, "error": error,
+            "lib_versions": _lib_versions()}
+
+
+def _lib_versions():
+    out = {}
+    for mod in ("pywebpush", "cryptography", "http_ece"):
+        try:
+            m = __import__(mod)
+            out[mod] = getattr(m, "__version__", "?")
+        except Exception as e:
+            out[mod] = f"missing: {e}"
+    try:
+        import importlib.metadata as md
+        for pkg in ("pywebpush", "cryptography", "http-ece"):
+            try:
+                out[pkg + ":dist"] = md.version(pkg)
+            except Exception:
+                pass
+    except Exception:
+        pass
+    return out

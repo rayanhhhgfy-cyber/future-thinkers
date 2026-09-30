@@ -70,6 +70,7 @@ export default function Settings() {
         if (!data.vapid_private) parts.push("المفتاح الخاص مفقود");
         if (data.devices === 0) parts.push("لا أجهزة مسجلة");
         if (data.error) parts.push(data.error);
+        if (data.lib_versions) parts.push("مكتبات: " + JSON.stringify(data.lib_versions));
         toast.error("فشل اختبار الدفع: " + (parts.join(" • ") || "سبب غير معروف"));
       }
     } catch (e) {
