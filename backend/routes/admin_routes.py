@@ -348,35 +348,35 @@ async def notify_schedule(body: NotifyScheduleBody, request: Request,
 async def campaign_send_now(cid: str, request: Request,
                             user: dict = Depends(require_permission(NOTIFY_PERM))):
     """Immediately dispatch a scheduled campaign (also rescues overdue ones)."""
-    from services import dispatch_due_campaigns
     doc = await db.notification_campaigns.find_one({"_id": oid(cid)})
-    if not doc or doc.get("status") != "scheduled":
-        raise HTTPException(400, "الحملة غير موجودة أو ليست مجدولة")
-    # mark it due right now so the dispatcher picks it up
-    await db.notification_campaigns.update_one(
-        {"_id": doc["_id"]}, {"$set": {"send_at": now_iso()}})
-    n = await dispatch_due_campaigns()
-    if n == 0:
-        # fall back: dispatch this campaign directly
-        claimed = await db.notification_campaigns.update_one(
-            {"_id": doc["_id"], "status": "scheduled"},
-            {"$set": {"status": "sending"}})
-        if claimed.modified_count:
-            q = doc.get("audience_query") or {"status": {"$ne": "banned"}}
-            users = await db.users.find(q, {"_id": 1}).to_list(20000)
-            ids = [str(u["_id"]) for u in users]
-            counts = await deliver_notification(
-                ids, "announcement", doc["title"], doc.get("body", ""),
-                doc.get("link") or "/dashboard", doc.get("channel") or "both")
-            await db.notification_campaigns.update_one(
-                {"_id": doc["_id"]},
-                {"$set": {"status": "sent", "sent_at": now_iso(),
-                          "recipient_count": len(ids),
-                          "inapp_count": counts["inapp"],
-                          "push_count": counts["push"]}})
-            n = 1
+    if not doc:
+        raise HTTPException(404, "الحملة غير موجودة")
+    if doc.get("status") != "scheduled":
+        raise HTTPException(400, f"الحملة ليست مجدولة (الحالة: {doc.get('status')})")
+    claimed = await db.notification_campaigns.update_one(
+        {"_id": doc["_id"], "status": "scheduled"},
+        {"$set": {"status": "sending"}})
+    if claimed.modified_count == 0:
+        raise HTTPException(409, "الحملة قيد الإرسال بالفعل")
+    try:
+        q = doc.get("audience_query") or {"status": {"$ne": "banned"}}
+        users = await db.users.find(q, {"_id": 1}).to_list(20000)
+        ids = [str(u["_id"]) for u in users]
+        counts = await deliver_notification(
+            ids, "announcement", doc["title"], doc.get("body", ""),
+            doc.get("link") or "/dashboard", doc.get("channel") or "both")
+        await db.notification_campaigns.update_one(
+            {"_id": doc["_id"]},
+            {"$set": {"status": "sent", "sent_at": now_iso(),
+                      "recipient_count": len(ids),
+                      "inapp_count": counts["inapp"],
+                      "push_count": counts["push"]}})
+    except Exception as e:
+        await db.notification_campaigns.update_one(
+            {"_id": doc["_id"]}, {"$set": {"status": "scheduled"}})
+        raise HTTPException(500, f"فشل الإرسال: {type(e).__name__}: {str(e)[:200]}")
     await audit_log(user, "notify.send_now", "notification", cid, None, request)
-    return {"ok": True, "dispatched": n}
+    return {"ok": True, "dispatched": 1, "inapp": counts["inapp"], "push": counts["push"]}
 
 
 @router.get("/notify/stats")
@@ -389,6 +389,12 @@ async def notify_stats(user: dict = Depends(require_permission(NOTIFY_PERM))):
 
 @router.get("/notify/campaigns")
 async def list_campaigns(user: dict = Depends(require_permission(NOTIFY_PERM))):
+    # Flush anything due right now so the admin always sees fresh state.
+    from services import dispatch_due_campaigns
+    try:
+        await dispatch_due_campaigns()
+    except Exception:
+        pass
     docs = await db.notification_campaigns.find({}).sort("created_at", -1).to_list(50)
     return {"items": sers(docs)}
 

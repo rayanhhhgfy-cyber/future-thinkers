@@ -95,6 +95,9 @@ h1, h2, h3, h4, .font-head { font-family: 'Readex Pro', sans-serif; }
 
 /* Toast notifications: keep clear of the iPhone notch/status bar (viewport-fit=cover).
    Sonner's top container gets the safe-area offset so success/error popups are visible. */
+/* iOS safe-area for Sonner toasts: the toasts are absolutely positioned
+   inside a fixed container, so the CONTAINER itself must sit below the
+   notch/status bar (padding on the container does not move them). */
 [data-sonner-toaster][data-y-position="top"] {
-  padding-top: calc(env(safe-area-inset-top, 0px) + 10px) !important;
+  top: calc(env(safe-area-inset-top, 0px) + 12px) !important;
 }

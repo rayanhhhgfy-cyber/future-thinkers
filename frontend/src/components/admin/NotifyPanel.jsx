@@ -24,6 +24,16 @@ export default function NotifyPanel() {
   const [stats, setStats] = useState({ push_devices: 0, users: 0 });
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [lastError, setLastError] = useState(null);
+
+  // Show the error both as a toast AND as a persistent inline banner,
+  // so it stays readable on mobile even if a toast is missed.
+  const fail = (e, fallback) => {
+    const msg = apiErr(e, fallback);
+    const code = e?.response?.status;
+    setLastError(code ? `خطأ ${code}: ${msg}` : msg);
+    toast.error(msg);
+  };
 
   // compose form
   const [title, setTitle] = useState("");
@@ -53,7 +63,7 @@ export default function NotifyPanel() {
       setCampaigns(ca.data.items || []);
       setStats({ push_devices: st.data.push_devices || 0, users: st.data.users || 0 });
     } catch (e) {
-      toast.error(apiErr(e, "تعذر تحميل البيانات"));
+      fail(e, "تعذر تحميل البيانات");
     } finally {
       setLoading(false);
     }
@@ -81,23 +91,23 @@ export default function NotifyPanel() {
     try {
       if (dlg.mode === "new") {
         await api.post("/admin/notify/presets", { name: pName.trim(), title: pTitle.trim(), body: pBody, link: pLink || "/dashboard" });
-        toast.success("تم إنشاء القالب");
+        setLastError(null); toast.success("تم إنشاء القالب");
       } else {
         await api.put(`/admin/notify/presets/${dlg.preset.id}`, { name: pName.trim(), title: pTitle.trim(), body: pBody, link: pLink || "/dashboard" });
-        toast.success("تم حفظ القالب");
+        setLastError(null); toast.success("تم حفظ القالب");
       }
       setDlg(null);
       load();
-    } catch (e) { toast.error(apiErr(e, "تعذر حفظ القالب")); }
+    } catch (e) { fail(e, "تعذر حفظ القالب"); }
   };
 
   const deletePreset = async (p) => {
     if (!window.confirm(`حذف القالب "${p.name}"؟`)) return;
     try {
       await api.delete(`/admin/notify/presets/${p.id}`);
-      toast.success("تم حذف القالب");
+      setLastError(null); toast.success("تم حذف القالب");
       load();
-    } catch (e) { toast.error(apiErr(e, "تعذر الحذف")); }
+    } catch (e) { fail(e, "تعذر الحذف"); }
   };
 
   const payload = () => ({
@@ -124,7 +134,7 @@ export default function NotifyPanel() {
       toast.success(resultMsg(data));
       setTitle(""); setBody("");
       load();
-    } catch (e) { toast.error(apiErr(e, "تعذر الإرسال")); }
+    } catch (e) { fail(e, "تعذر الإرسال"); }
     finally { setSending(false); }
   };
 
@@ -139,7 +149,7 @@ export default function NotifyPanel() {
       toast.success(`تمت جدولة الإشعار (${channelLabel(channel)}) ⏰`);
       setTitle(""); setBody(""); setSendAt(""); setScheduleMode(false);
       load();
-    } catch (e) { toast.error(apiErr(e, "تعذر الجدولة")); }
+    } catch (e) { fail(e, "تعذر الجدولة"); }
     finally { setSending(false); }
   };
 
@@ -147,9 +157,9 @@ export default function NotifyPanel() {
     if (!window.confirm("إلغاء هذا الإشعار المجدول؟")) return;
     try {
       await api.delete(`/admin/notify/campaigns/${c.id}`);
-      toast.success("تم الإلغاء");
+      setLastError(null); toast.success("تم الإلغاء");
       load();
-    } catch (e) { toast.error(apiErr(e, "تعذر الإلغاء")); }
+    } catch (e) { fail(e, "تعذر الإلغاء"); }
   };
 
   const sendScheduledNow = async (c) => {
@@ -157,9 +167,10 @@ export default function NotifyPanel() {
     setSending(true);
     try {
       const { data } = await api.post(`/admin/notify/campaigns/${c.id}/send-now`);
-      toast.success(data.dispatched ? "تم إرسال الإشعار المجدول 🎉" : "تعذر الإرسال");
+      setLastError(null);
+      toast.success(`تم إرسال الإشعار المجدول (${data.inapp ?? 0} داخل التطبيق • ${data.push ?? 0} دفع للهاتف) 🎉`);
       load();
-    } catch (e) { toast.error(apiErr(e, "تعذر الإرسال")); }
+    } catch (e) { fail(e, "تعذر الإرسال"); }
     finally { setSending(false); }
   };
 
@@ -172,6 +183,12 @@ export default function NotifyPanel() {
 
   return (
     <div dir="rtl" className="space-y-6">
+      {lastError && (
+        <div className="bg-red-50 border border-red-200 text-red-800 rounded-2xl p-4 text-sm flex items-start justify-between gap-3">
+          <span className="font-bold">⚠️ {lastError}</span>
+          <button onClick={() => setLastError(null)} className="text-red-400 font-bold shrink-0 min-w-[44px] min-h-[44px]">✕</button>
+        </div>
+      )}
       {/* compose */}
       <section className="bg-white rounded-2xl p-5 border border-slate-100 ft-shadow">
         <h3 className="font-head font-bold text-lg flex items-center gap-2 mb-1">
