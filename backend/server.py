@@ -120,9 +120,15 @@ app.add_middleware(
 
 @app.on_event("startup")
 async def on_startup():
-    init_db()
-    await seed_all()
-    logger.info("Seed complete")
+    try:
+        init_db()
+        await seed_all()
+        logger.info("Seed complete")
+    except Exception:
+        # A DB/seed failure at startup must never take the whole API down:
+        # request handlers (re)initialize the DB lazily via get_db(), and the
+        # global error handler reports the real problem per request.
+        logger.exception("Startup DB init/seed failed; continuing without it")
 
 
 @app.on_event("shutdown")

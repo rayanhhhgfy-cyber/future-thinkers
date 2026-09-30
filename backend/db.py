@@ -7,17 +7,35 @@ _client = None
 _db = None
 
 
+def _required_env(name: str) -> str:
+    value = os.environ.get(name)
+    if not value:
+        raise RuntimeError(
+            f"Missing required environment variable {name!r}. "
+            "Set it in the Vercel project settings (Environment Variables) and redeploy."
+        )
+    return value
+
+
 def init_db():
+    """Create the Motor client lazily (must run inside the app's event loop).
+
+    Safe to call multiple times; only the first call creates the client.
+    Raises a clear RuntimeError (instead of a bare KeyError) when the
+    required environment variables are missing.
+    """
     global _client, _db
     if _client is None:
-        _client = AsyncIOMotorClient(os.environ["MONGO_URL"])
-        _db = _client[os.environ["DB_NAME"]]
+        _client = AsyncIOMotorClient(_required_env("MONGO_URL"))
+        _db = _client[_required_env("DB_NAME")]
     return _db
 
 
 def get_db():
+    # Lazily (re)initialize so request handlers keep working even when the
+    # startup lifespan event did not run or failed in the serverless runtime.
     if _db is None:
-        raise RuntimeError("Database has not been initialized")
+        init_db()
     return _db
 
 
