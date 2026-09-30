@@ -52,7 +52,7 @@ export function Navbar() {
   }, [user]);
 
   return (
-    <header className="sticky top-0 z-50 glass border-b border-slate-200/70">
+    <header className="sticky top-0 z-50 glass border-b border-slate-200/70 pt-[env(safe-area-inset-top)]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-3">
         <div className="flex items-center gap-6">
           <Link to="/" data-testid="nav-home-link"><Logo /></Link>
