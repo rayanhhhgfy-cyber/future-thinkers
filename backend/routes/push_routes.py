@@ -54,11 +54,11 @@ async def push_status(user: dict = Depends(get_current_user)):
 @router.post("/test")
 async def push_test(user: dict = Depends(get_current_user)):
     """Send a test push to the current user's devices and report diagnostics."""
-    import os
-    from services import send_push_to_user
+    import os, json, asyncio
     has_public = bool(os.environ.get("VAPID_PUBLIC_KEY"))
     has_private = bool(os.environ.get("VAPID_PRIVATE_KEY"))
-    n = await db.push_subscriptions.count_documents({"user_id": user["id"]})
+    subs = await db.push_subscriptions.find({"user_id": user["id"]}).to_list(20)
+    n = len(subs)
     delivered = 0
     error = None
     if n == 0:
@@ -66,12 +66,20 @@ async def push_test(user: dict = Depends(get_current_user)):
     elif not (has_public and has_private):
         error = "مفاتيح VAPID غير مكتملة على الخادم"
     else:
-        try:
-            delivered = await send_push_to_user(
-                user["id"], "اختبار الإشعارات 🔔",
-                "إذا وصلك هذا فإشعارات الهاتف تعمل!", "/dashboard")
-        except Exception as e:
-            error = f"{type(e).__name__}: {str(e)[:200]}"
+        from services import _vapid_cfg, _do_webpush
+        cfg = _vapid_cfg()
+        payload = {"title": "اختبار الإشعارات 🔔",
+                   "body": "إذا وصلك هذا فإشعارات الهاتف تعمل!",
+                   "link": "/dashboard"}
+        for sub in subs:
+            try:
+                await asyncio.to_thread(
+                    _do_webpush, sub.get("subscription") or {},
+                    payload, cfg["private"], cfg["subject"])
+                delivered += 1
+            except Exception as e:
+                # surface the real failure reason for diagnostics
+                error = f"{type(e).__name__}: {str(e)[:300]}"
     return {"ok": delivered > 0, "devices": n,
             "vapid_public": has_public, "vapid_private": has_private,
             "delivered": delivered, "error": error}
