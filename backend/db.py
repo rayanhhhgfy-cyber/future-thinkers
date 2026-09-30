@@ -26,7 +26,12 @@ def init_db():
     """
     global _client, _db
     if _client is None:
-        _client = AsyncIOMotorClient(_required_env("MONGO_URL"))
+        _client = AsyncIOMotorClient(
+            _required_env("MONGO_URL"),
+            # Fail fast in serverless: don't hang 30s when the DB is unreachable.
+            serverSelectionTimeoutMS=5000,
+            connectTimeoutMS=5000,
+        )
         _db = _client[_required_env("DB_NAME")]
     return _db
 

@@ -4,13 +4,14 @@ ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / ".env")
 
 import os
+import asyncio
 import logging
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
 from fastapi.requests import Request
 from starlette.middleware.cors import CORSMiddleware
 
-from db import client, init_db
+from db import client, init_db, get_db
 from seed import seed_all
 
 from routes.auth_routes import router as auth_router
@@ -93,7 +94,13 @@ async def root():
 
 @app.get("/api/health")
 async def health():
-    return {"status": "healthy"}
+    """Liveness + DB reachability. Returns db:'up' only when MongoDB answers a ping."""
+    try:
+        await asyncio.wait_for(get_db().client.admin.command("ping"), timeout=8)
+        return {"status": "healthy", "db": "up"}
+    except Exception as e:
+        logger.warning(f"DB health check failed: {type(e).__name__}: {e}")
+        return {"status": "degraded", "db": "down"}
 
 
 @app.exception_handler(Exception)
