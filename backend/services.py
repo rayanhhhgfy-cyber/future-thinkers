@@ -185,6 +185,14 @@ async def deliver_notification(user_ids, type_, title, body="", link=None, chann
         } for uid in user_ids]
         await db.notifications.insert_many(docs)
         inapp = len(docs)
+        # real-time bell update, same as create_notification
+        try:
+            from ws import hub
+            for uid in user_ids:
+                await hub.notify_user(uid, {"kind": "notification", "title": title,
+                                            "body": body, "link": link})
+        except Exception:
+            pass
     push = 0
     if channel in ("push", "both"):
         for uid in user_ids:
