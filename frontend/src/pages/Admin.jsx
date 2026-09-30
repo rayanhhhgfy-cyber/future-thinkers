@@ -11,11 +11,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import NotifyPanel from "@/components/admin/NotifyPanel";
 import { toast } from "sonner";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
-import { LayoutDashboard, ShieldCheck, Users, BookOpen, Calendar, Trophy, Newspaper, Settings, ScrollText, Plus, Check, X, Megaphone } from "lucide-react";
+import { LayoutDashboard, ShieldCheck, Users, BookOpen, Calendar, Trophy, Newspaper, Settings, ScrollText, Plus, Check, X, Megaphone, PenLine, Medal } from "lucide-react";
 
 const NAV = [
   { k: "overview", l: "نظرة عامة", icon: LayoutDashboard, perm: "analytics.view" },
   { k: "moderation", l: "مراجعة المحتوى", icon: ShieldCheck, perm: "book.approve" },
+  { k: "studio", l: "مراجعة الاستوديو", icon: PenLine, perm: "studio.review" },
+  { k: "badges", l: "شارات المهارات", icon: Medal, perm: "badge.award" },
   { k: "users", l: "المستخدمون", icon: Users, perm: "user.view" },
   { k: "notify", l: "الإشعارات", icon: Megaphone, perm: "notification.broadcast" },
   { k: "content", l: "الفعاليات والمسابقات", icon: Calendar, perm: "event.create" },
@@ -47,6 +49,8 @@ export default function Admin() {
           <div className="min-w-0">
             {tab === "overview" && <Overview />}
             {tab === "moderation" && <Moderation />}
+            {tab === "studio" && <StudioPanel />}
+            {tab === "badges" && <BadgesPanel />}
             {tab === "users" && <UsersPanel />}
             {tab === "notify" && <NotifyPanel />}
             {tab === "content" && <ContentPanel />}
@@ -344,3 +348,122 @@ const Section = ({ title, children }) => (
   </div>
 );
 const Empty = ({ t }) => <div className="text-center py-6 text-slate-400 text-sm">{t}</div>;
+
+function StudioPanel() {
+  const [queue, setQueue] = useState(null);
+  const [note, setNote] = useState({});
+  const [expanded, setExpanded] = useState(null);
+  const load = async () => { const { data } = await api.get("/studio/queue"); setQueue(data); };
+  useEffect(() => { load(); }, []);
+  const review = async (id, action) => {
+    try {
+      await api.post(`/studio/works/${id}/${action}`, { note: note[id] || "" });
+      toast.success(action === "approve" ? "تم النشر 🎉" : "تم الرفض مع الملاحظة");
+      setNote({ ...note, [id]: "" }); load();
+    } catch (e) { toast.error(apiErr(e)); }
+  };
+  if (!queue) return <PageLoader />;
+  return (
+    <div className="space-y-4">
+      {queue.length === 0 && <Empty t="لا أعمال بانتظار المراجعة 🎉" />}
+      {queue.map((w) => (
+        <div key={w.id} className="bg-white rounded-2xl p-5 border border-slate-100 ft-shadow">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+            <div>
+              <div className="font-bold text-slate-900">{w.title}</div>
+              <div className="text-xs text-slate-400 mt-0.5">{w.author_name} · {w.type_label}</div>
+            </div>
+            <button onClick={() => setExpanded(expanded === w.id ? null : w.id)} className="text-sm text-violet-600 font-medium">
+              {expanded === w.id ? "إخفاء النص" : "قراءة النص"}
+            </button>
+          </div>
+          {expanded === w.id && <div className="whitespace-pre-wrap text-sm text-slate-600 leading-loose bg-slate-50 rounded-xl p-4 mb-3 max-h-64 overflow-y-auto">{w.content}</div>}
+          <Input value={note[w.id] || ""} onChange={(e) => setNote({ ...note, [w.id]: e.target.value })} placeholder="ملاحظة للكاتب (تظهر عند الرفض، اختيارية عند القبول)..." className="rounded-xl mb-3" />
+          <div className="flex gap-2">
+            <Button size="sm" onClick={() => review(w.id, "approve")} className="rounded-xl bg-emerald-600 hover:bg-emerald-700"><Check className="w-4 h-4 ml-1" /> نشر</Button>
+            <Button size="sm" variant="outline" onClick={() => review(w.id, "reject")} className="rounded-xl text-rose-600 border-rose-200"><X className="w-4 h-4 ml-1" /> رفض</Button>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function BadgesPanel() {
+  const { hasPerm } = useAuth();
+  const [defs, setDefs] = useState([]);
+  const [q, setQ] = useState("");
+  const [users, setUsers] = useState([]);
+  const [selUser, setSelUser] = useState(null);
+  const [selBadge, setSelBadge] = useState("");
+  const [form, setForm] = useState({ key: "", name: "", description: "", criteria: "", icon: "Award", color: "#059669" });
+  const load = async () => { const { data } = await api.get("/badges"); setDefs(data); };
+  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    if (!q.trim()) { setUsers([]); return; }
+    const t = setTimeout(async () => {
+      try { const { data } = await api.get("/admin/users", { params: { q } }); setUsers(data.items || []); } catch {}
+    }, 300);
+    return () => clearTimeout(t);
+  }, [q]);
+  const award = async () => {
+    if (!selUser || !selBadge) return toast.error("اختر المستخدم والشارة");
+    try { await api.post("/badges/award", { user_id: selUser.id, badge_key: selBadge }); toast.success(`مُنحت شارة ${defs.find((d) => d.key === selBadge)?.name} لـ ${selUser.name} 🏅`); setSelUser(null); setQ(""); }
+    catch (e) { toast.error(apiErr(e)); }
+  };
+  const create = async () => {
+    if (!form.key.trim() || !form.name.trim()) return toast.error("المفتاح والاسم مطلوبان");
+    try { await api.post("/badges", form); toast.success("أُضيفت الشارة"); setForm({ key: "", name: "", description: "", criteria: "", icon: "Award", color: "#059669" }); load(); }
+    catch (e) { toast.error(apiErr(e)); }
+  };
+  return (
+    <div className="space-y-6">
+      <Section title="منح شارة لطالب">
+        <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="ابحث عن طالب بالاسم أو البريد..." className="rounded-xl" />
+        {users.length > 0 && !selUser && (
+          <div className="border border-slate-100 rounded-xl divide-y max-h-44 overflow-y-auto">
+            {users.slice(0, 6).map((u) => (
+              <button key={u.id} onClick={() => setSelUser(u)} className="w-full text-right px-3 py-2 hover:bg-slate-50 text-sm">
+                <span className="font-medium">{u.name}</span> <span className="text-slate-400 text-xs">{u.email}</span>
+              </button>
+            ))}
+          </div>
+        )}
+        {selUser && <div className="flex items-center gap-2 text-sm bg-emerald-50 rounded-xl px-3 py-2"><Check className="w-4 h-4 text-emerald-600" />{selUser.name}<button onClick={() => setSelUser(null)} className="mr-auto text-slate-400"><X className="w-4 h-4" /></button></div>}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          {defs.map((d) => (
+            <button key={d.key} onClick={() => setSelBadge(d.key)} className={`p-3 rounded-xl border text-sm transition-colors ${selBadge === d.key ? "border-amber-500 bg-amber-50" : "border-slate-200"}`}>
+              <div className="font-bold">{d.name}</div>
+            </button>
+          ))}
+        </div>
+        <Button onClick={award} className="rounded-xl bg-amber-600 hover:bg-amber-700"><Medal className="w-4 h-4 ml-1" /> منح الشارة</Button>
+      </Section>
+
+      {hasPerm("badge.manage") && (
+        <Section title="تعريف شارة جديدة">
+          <div className="grid sm:grid-cols-2 gap-3">
+            <div><Label>المفتاح (إنجليزي)</Label><Input value={form.key} onChange={(e) => setForm({ ...form, key: e.target.value.replace(/\s/g, "_") })} placeholder="leadership" className="rounded-xl mt-1" dir="ltr" /></div>
+            <div><Label>الاسم</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="قائد ملهم" className="rounded-xl mt-1" /></div>
+            <div className="sm:col-span-2"><Label>الوصف</Label><Input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="rounded-xl mt-1" /></div>
+            <div className="sm:col-span-2"><Label>معايير الحصول عليها</Label><Input value={form.criteria} onChange={(e) => setForm({ ...form, criteria: e.target.value })} className="rounded-xl mt-1" /></div>
+            <div><Label>اللون</Label><Input type="color" value={form.color} onChange={(e) => setForm({ ...form, color: e.target.value })} className="rounded-xl mt-1 h-10" /></div>
+            <div><Label>الأيقونة (lucide)</Label><Input value={form.icon} onChange={(e) => setForm({ ...form, icon: e.target.value })} placeholder="Award" className="rounded-xl mt-1" dir="ltr" /></div>
+          </div>
+          <Button onClick={create} className="rounded-xl"><Plus className="w-4 h-4 ml-1" /> إضافة الشارة</Button>
+        </Section>
+      )}
+
+      <Section title={`الشارات المعرفة (${defs.length})`}>
+        <div className="grid sm:grid-cols-2 gap-2">
+          {defs.map((d) => (
+            <div key={d.key} className="flex items-start gap-3 p-3 rounded-xl border border-slate-100">
+              <div className="w-10 h-10 rounded-xl grid place-items-center text-white shrink-0" style={{ background: d.color }}><Medal className="w-5 h-5" /></div>
+              <div className="text-sm"><div className="font-bold text-slate-800">{d.name}</div><div className="text-xs text-slate-400">{d.criteria || d.description}</div></div>
+            </div>
+          ))}
+        </div>
+      </Section>
+    </div>
+  );
+}

@@ -15,6 +15,7 @@ import { GlobalSearch } from "@/components/GlobalSearch";
 const LINKS = [
   { to: "/library", label: "المكتبة" },
   { to: "/clubs", label: "الأندية" },
+  { to: "/studio", label: "الاستوديو" },
   { to: "/events", label: "الفعاليات" },
   { to: "/competitions", label: "المسابقات" },
   { to: "/leaderboard", label: "الصدارة" },

@@ -26,6 +26,7 @@ import Leaderboard from "@/pages/Leaderboard";
 import Profile from "@/pages/Profile";
 import Settings from "@/pages/Settings";
 import News from "@/pages/News";
+import Studio from "@/pages/Studio";
 import Admin from "@/pages/Admin";
 
 function NotFound() {
@@ -68,6 +69,7 @@ function App() {
           <Route path="/competitions/:id" element={<CompetitionDetail />} />
           <Route path="/leaderboard" element={<Leaderboard />} />
           <Route path="/news" element={<News />} />
+          <Route path="/studio" element={<Studio />} />
           <Route path="/profile/:id" element={<Profile />} />
           <Route path="/settings" element={<Protected><Settings /></Protected>} />
           <Route path="/dashboard" element={<Protected><Dashboard /></Protected>} />

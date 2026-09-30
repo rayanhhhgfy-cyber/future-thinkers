@@ -3,12 +3,13 @@ import { useParams } from "react-router-dom";
 import { Layout, PageLoader } from "@/components/Layout";
 import api from "@/lib/api";
 import * as Icons from "lucide-react";
-import { Trophy, Flame, BookOpen, Crown, MessageSquare, School, MapPin, Award, Sparkles } from "lucide-react";
+import { Trophy, Flame, BookOpen, Crown, MessageSquare, School, MapPin, Award, Sparkles, Medal } from "lucide-react";
 
 export default function Profile() {
   const { id } = useParams();
   const [p, setP] = useState(null);
-  useEffect(() => { setP(null); api.get(`/users/${id}/profile`).then((r) => setP(r.data)); }, [id]);
+  const [skillBadges, setSkillBadges] = useState([]);
+  useEffect(() => { setP(null); api.get(`/users/${id}/profile`).then((r) => setP(r.data)); api.get(`/badges/user/${id}`).then((r) => setSkillBadges(r.data)).catch(() => {}); }, [id]);
   if (!p) return <Layout><PageLoader /></Layout>;
 
   const stats = [
@@ -49,6 +50,21 @@ export default function Profile() {
             </div>
           ))}
         </div>
+
+        <h2 className="font-head font-bold text-xl mb-4 flex items-center gap-2"><Medal className="w-5 h-5 text-amber-600" /> شارات المهارات ({skillBadges.length})</h2>
+        {skillBadges.length === 0 ? <p className="text-slate-400 text-sm mb-8">لا شارات مهارات بعد — تُمنح من المشرفين للتميز في الخطابة والكتابة والقيادة وغيرها</p> : (
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-8">
+            {skillBadges.map((b) => {
+              const Icon = Icons[b.icon] || Icons.Medal;
+              return (
+                <div key={b.key} className="flex items-center gap-3 bg-gradient-to-l from-amber-50 to-white rounded-2xl p-4 border border-amber-100 ft-shadow">
+                  <div className="w-12 h-12 rounded-2xl text-white grid place-items-center shrink-0" style={{ background: b.color }}><Icon className="w-6 h-6" /></div>
+                  <div><div className="font-bold text-slate-800 text-sm">{b.name}</div><div className="text-xs text-slate-400">{b.criteria || b.description}</div></div>
+                </div>
+              );
+            })}
+          </div>
+        )}
 
         <h2 className="font-head font-bold text-xl mb-4 flex items-center gap-2"><Award className="w-5 h-5 text-emerald-600" /> الإنجازات ({p.achievements.length})</h2>
         {p.achievements.length === 0 ? <p className="text-slate-400 text-sm">لا إنجازات بعد</p> : (
