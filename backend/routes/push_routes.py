@@ -79,7 +79,11 @@ async def push_test(user: dict = Depends(get_current_user)):
                 delivered += 1
             except Exception as e:
                 # surface the real failure reason for diagnostics
-                error = f"{type(e).__name__}: {str(e)[:300]}"
+                import traceback
+                tb = traceback.format_exc()
+                # keep only the last 8 frames to stay concise
+                lines = tb.strip().splitlines()
+                error = f"{type(e).__name__}: {str(e)[:200]} | TB: {' <- '.join(lines[-8:])}"[:900]
     return {"ok": delivered > 0, "devices": n,
             "vapid_public": has_public, "vapid_private": has_private,
             "delivered": delivered, "error": error,
