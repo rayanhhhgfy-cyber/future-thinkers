@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route, Link } from "react-router-dom";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "@/context/AuthContext";
 import { Protected } from "@/components/Layout";
+import InstallPWA from "@/components/InstallPWA";
 
 import Landing from "@/pages/Landing";
 import Login from "@/pages/Login";
@@ -70,6 +71,7 @@ function App() {
           <Route path="/admin/*" element={<Protected staff><Admin /></Protected>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
+        <InstallPWA />
       </BrowserRouter>
       <Toaster position="top-center" richColors />
     </AuthProvider>

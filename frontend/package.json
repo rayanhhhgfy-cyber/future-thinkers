@@ -63,6 +63,7 @@
   },
   "scripts": {
     "start": "craco start",
+    "prebuild": "node scripts/gen-icons.js",
     "build": "craco build",
     "test": "craco test"
   },

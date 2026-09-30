@@ -21,8 +21,9 @@ export function AuthProvider({ children }) {
   }, []);
 
   useEffect(() => {
-    if (localStorage.getItem("ft_token")) refresh();
-    else { setUser(false); setReady(true); }
+    // Always try to restore the session: the httpOnly auth cookies survive
+    // even if localStorage was cleared, keeping the user logged in.
+    refresh();
   }, [refresh]);
 
   const login = async (email, password) => {
