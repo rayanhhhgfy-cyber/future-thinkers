@@ -6,9 +6,29 @@ import { Button } from "@/components/ui/button";
 import api from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import * as Icons from "lucide-react";
-import { BookOpen, Crown, MessagesSquare, Users, GraduationCap, Building2, Calendar, ArrowLeft, Sparkles, Target, Flag, Trophy, Rocket, Mic, Users2 } from "lucide-react";
+import { BookOpen, Crown, MessagesSquare, Users, GraduationCap, Building2, Calendar, ArrowLeft, Sparkles, Target, Flag, Trophy, Rocket, Mic, Users2, ChevronDown } from "lucide-react";
 
 const CLUB_ICON = (name) => Icons[name] || Icons.Circle;
+
+const CLAMP_CLASSES = { 2: "line-clamp-2", 3: "line-clamp-3", 4: "line-clamp-4" };
+
+// Collapsible "read more" wrapper: shows a preview, expands to full text on arrow tap.
+// Nothing is excluded — all content stays, just collapsed by default.
+function ReadMore({ children, lines = 3 }) {
+  const [expanded, setExpanded] = useState(false);
+  return (
+    <div>
+      <div className={expanded ? "" : (CLAMP_CLASSES[lines] || "line-clamp-3")}>{children}</div>
+      <button
+        onClick={() => setExpanded((v) => !v)}
+        className="mt-3 inline-flex items-center gap-1.5 text-emerald-600 hover:text-emerald-800 text-sm font-bold transition-colors"
+      >
+        {expanded ? "عرض أقل" : "اقرأ المزيد"}
+        <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${expanded ? "rotate-180" : ""}`} />
+      </button>
+    </div>
+  );
+}
 
 export default function Landing() {
   const nav = useNavigate();
@@ -16,6 +36,7 @@ export default function Landing() {
   const [stats, setStats] = useState(null);
   const [clubs, setClubs] = useState([]);
   const [cms, setCms] = useState(null);
+  const [goalsExpanded, setGoalsExpanded] = useState(false);
 
   useEffect(() => {
     api.get("/stats/public").then((r) => setStats(r.data)).catch(() => {});
@@ -100,9 +121,11 @@ export default function Landing() {
             <h2 className="font-head text-3xl lg:text-4xl font-extrabold text-slate-900">من نحن</h2>
           </div>
           <div className="text-slate-700 leading-relaxed text-base font-body max-w-none">
-            {aboutText.split('\n\n').map((paragraph, i) => (
-              <p key={i} className="text-slate-600 leading-relaxed mb-4 last:mb-0">{paragraph}</p>
-            ))}
+            <ReadMore lines={3}>
+              {aboutText.split('\n\n').map((paragraph, i) => (
+                <p key={i} className="text-slate-600 leading-relaxed mb-4 last:mb-0">{paragraph}</p>
+              ))}
+            </ReadMore>
           </div>
         </div>
       </section>
@@ -113,24 +136,35 @@ export default function Landing() {
           <div className="bg-white rounded-3xl p-8 ft-shadow border border-slate-100 hover-lift">
             <div className="w-12 h-12 rounded-2xl bg-emerald-50 grid place-items-center mb-4"><Flag className="w-6 h-6 text-emerald-600" /></div>
             <h2 className="font-head text-2xl font-bold text-slate-900">رؤيتنا</h2>
-            <p className="mt-3 text-slate-600 leading-relaxed">{visionText}</p>
+            <div className="mt-3"><ReadMore lines={3}><p className="text-slate-600 leading-relaxed">{visionText}</p></ReadMore></div>
           </div>
           <div className="bg-white rounded-3xl p-8 ft-shadow border border-slate-100 hover-lift">
             <div className="w-12 h-12 rounded-2xl bg-emerald-50 grid place-items-center mb-4"><Target className="w-6 h-6 text-emerald-600" /></div>
             <h2 className="font-head text-2xl font-bold text-slate-900">رسالتنا</h2>
-            <p className="mt-3 text-slate-600 leading-relaxed">{missionText}</p>
+            <div className="mt-3"><ReadMore lines={3}><p className="text-slate-600 leading-relaxed">{missionText}</p></ReadMore></div>
           </div>
         </div>
         
         <h2 className="font-head text-2xl font-bold text-slate-900 mb-5">أهدافنا</h2>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {goalsList.map((g, i) => (
+          {(goalsExpanded ? goalsList : goalsList.slice(0, 3)).map((g, i) => (
             <div key={i} className="flex items-start gap-3 bg-white rounded-2xl p-5 border border-slate-100 ft-shadow hover-lift">
               <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 text-white grid place-items-center text-sm font-bold shrink-0">{i + 1}</div>
               <p className="text-slate-700 text-sm leading-relaxed">{g}</p>
             </div>
           ))}
         </div>
+        {goalsList.length > 3 && (
+          <div className="text-center mt-6">
+            <button
+              onClick={() => setGoalsExpanded((v) => !v)}
+              className="inline-flex items-center gap-1.5 text-emerald-600 hover:text-emerald-800 text-sm font-bold transition-colors bg-white border border-emerald-200 hover:border-emerald-300 rounded-2xl px-5 py-2.5 ft-shadow"
+            >
+              {goalsExpanded ? "عرض أقل" : `عرض جميع الأهداف (${goalsList.length})`}
+              <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${goalsExpanded ? "rotate-180" : ""}`} />
+            </button>
+          </div>
+        )}
       </section>
 
       {/* Activities / Projects */}
