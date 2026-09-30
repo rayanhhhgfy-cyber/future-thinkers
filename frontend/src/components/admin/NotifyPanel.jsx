@@ -50,7 +50,7 @@ export default function NotifyPanel() {
 
   useEffect(() => { load(); }, []);
 
-  const usePreset = (p) => {
+  const applyPreset = (p) => {
     setTitle(p.title || "");
     setBody(p.body || "");
     setLink(p.link || "/dashboard");
@@ -152,7 +152,7 @@ export default function NotifyPanel() {
             <Label>استخدم قالباً جاهزاً</Label>
             <div className="flex flex-wrap gap-2 mt-2">
               {presets.map((p) => (
-                <button key={p.id} onClick={() => usePreset(p)}
+                <button key={p.id} onClick={() => applyPreset(p)}
                   className="px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700 text-xs font-bold hover:bg-emerald-100">
                   {p.name}
                 </button>
@@ -247,7 +247,7 @@ export default function NotifyPanel() {
                 <div className="text-xs text-slate-500 truncate">{p.title}</div>
               </div>
               <div className="flex gap-1 shrink-0">
-                <Button variant="ghost" size="sm" onClick={() => usePreset(p)}>استخدام</Button>
+                <Button variant="ghost" size="sm" onClick={() => applyPreset(p)}>استخدام</Button>
                 <Button variant="ghost" size="sm" onClick={() => openPresetDlg("edit", p)}><Pencil className="w-4 h-4" /></Button>
                 <Button variant="ghost" size="sm" onClick={() => deletePreset(p)} className="text-red-600"><Trash2 className="w-4 h-4" /></Button>
               </div>
