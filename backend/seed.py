@@ -91,11 +91,24 @@ ACHIEVEMENTS = [
     {"key": "xp_2000", "title": "جامع الخبرة", "description": "جمعت 2000 نقطة خبرة", "metric": "xp", "threshold": 2000, "badge": "خبير", "icon": "Sparkles"},
 ]
 
+# شارات المهارات — اعتمادات مصغّرة يمنحها المشرفون يدوياً
+SKILL_BADGES = [
+    {"key": "public_speaker", "name": "خطيب مفوّه", "description": "مهارة الخطابة والإلقاء أمام الجمهور", "criteria": "إلقاء مميز في فعالية أو مسابقة خطابية", "icon": "Mic", "color": "#DC2626", "order": 1},
+    {"key": "creative_writer", "name": "كاتب مبدع", "description": "مهارة الكتابة الإبداعية والأدبية", "criteria": "نشر 3 أعمال أدبية مميزة في الاستوديو", "icon": "PenLine", "color": "#7C3AED", "order": 2},
+    {"key": "rising_writer", "name": "كاتب صاعد", "description": "أول عمل منشور في استوديو النشر", "criteria": "نشر أول عمل في الاستوديو (تُمنح تلقائياً)", "icon": "Feather", "color": "#059669", "order": 3},
+    {"key": "leader", "name": "قائد ملهم", "description": "مهارات القيادة وإدارة الفرق", "criteria": "قيادة فريق أو مبادرة طلابية بنجاح", "icon": "Flag", "color": "#D97706", "order": 4},
+    {"key": "critical_thinker", "name": "مفكر ناقد", "description": "التفكير الناقد والتحليل العميق", "criteria": "مشاركات تحليلية مميزة في الحوارات والمناظرات", "icon": "Brain", "color": "#2563EB", "order": 5},
+    {"key": "innovator", "name": "مبتكر", "description": "الابتكار والحلول الإبداعية", "criteria": "مشروع أو فكرة مبتكرة ضمن مبادرات النادي", "icon": "Lightbulb", "color": "#EA580C", "order": 6},
+    {"key": "volunteer", "name": "متطوع معطاء", "description": "العمل التطوعي وخدمة المجتمع", "criteria": "مشاركة فعالة في أنشطة تطوعية", "icon": "HeartHandshake", "color": "#E11D48", "order": 7},
+    {"key": "tech_pioneer", "name": "رائد تقني", "description": "المهارات الرقمية والذكاء الاصطناعي", "criteria": "مشروع برمجي أو استخدام مميز للذكاء الاصطناعي", "icon": "Cpu", "color": "#0891B2", "order": 8},
+]
+
 POINTS_CONFIG = {
     "read_book": 50, "review_book": 20, "create_discussion": 15,
     "reply_discussion": 8, "receive_like": 3, "join_event": 25,
     "win_chess": 30, "play_chess": 10, "daily_checkin": 5,
     "join_competition": 20, "win_competition": 100, "upload_book_approved": 40,
+    "work_published": 60,
 }
 
 _COVERS = [
@@ -158,6 +171,10 @@ async def seed_all():
     # achievements
     for a in ACHIEVEMENTS:
         await db.achievements.update_one({"key": a["key"]}, {"$set": a}, upsert=True)
+
+    # skill badges
+    for b in SKILL_BADGES:
+        await db.skill_badges.update_one({"key": b["key"]}, {"$set": b}, upsert=True)
 
     # points config (CMS-editable)
     await db.settings.update_one({"key": "points_config"},

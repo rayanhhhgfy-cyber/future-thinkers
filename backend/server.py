@@ -30,6 +30,9 @@ from routes.coding_routes import router as coding_router
 from routes.showcase_routes import router as showcase_router
 from routes.cert_routes import router as cert_router
 from routes.push_routes import router as push_router
+from routes.studio_routes import router as studio_router
+from routes.badges_routes import router as badges_router
+from routes.widgets_routes import router as widgets_router
 from ws import hub
 import jwt
 from bson import ObjectId
@@ -44,7 +47,7 @@ app = FastAPI(title="منصة مفكري المستقبل API", version="1.0.0")
 for r in (auth_router, geo_router, books_router, files_router, community_router,
           chess_router, events_router, leaderboard_router, social_router,
           content_router, admin_router, coding_router, showcase_router, cert_router,
-          push_router):
+          push_router, studio_router, badges_router, widgets_router):
     app.include_router(r)
 
 

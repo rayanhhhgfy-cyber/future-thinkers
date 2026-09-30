@@ -38,6 +38,8 @@ ALL_PERMISSIONS = [
     "content.moderate", "report.manage",
     "news.manage", "activity.approve",
     "points.manage", "achievement.manage",
+    "studio.review",
+    "badge.award", "badge.manage",
     "notification.broadcast",
     "cms.manage", "analytics.view", "audit.view",
     "club.manage",
@@ -48,7 +50,8 @@ _TEACHER = _STUDENT | {"discussion.moderate", "event.create"}
 _SCHOOL_ADMIN = _TEACHER | {"school.view", "student.view", "event.create", "activity.approve", "notification.broadcast"}
 _DIR_ADMIN = _SCHOOL_ADMIN | {"directorate.view", "school.view", "analytics.view"}
 _MODERATOR = {"content.moderate", "report.manage", "book.approve", "book.reject",
-              "discussion.moderate", "activity.approve", "news.manage"}
+              "discussion.moderate", "activity.approve", "news.manage",
+              "studio.review", "badge.award"}
 
 ROLE_PERMISSIONS = {
     "student": _STUDENT,
