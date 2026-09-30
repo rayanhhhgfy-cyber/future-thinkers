@@ -49,3 +49,29 @@ async def unsubscribe(body: SubBody, user: dict = Depends(get_current_user)):
 async def push_status(user: dict = Depends(get_current_user)):
     n = await db.push_subscriptions.count_documents({"user_id": user["id"]})
     return {"enabled": n > 0, "devices": n}
+
+
+@router.post("/test")
+async def push_test(user: dict = Depends(get_current_user)):
+    """Send a test push to the current user's devices and report diagnostics."""
+    import os
+    from services import send_push_to_user
+    has_public = bool(os.environ.get("VAPID_PUBLIC_KEY"))
+    has_private = bool(os.environ.get("VAPID_PRIVATE_KEY"))
+    n = await db.push_subscriptions.count_documents({"user_id": user["id"]})
+    delivered = 0
+    error = None
+    if n == 0:
+        error = "لا يوجد اشتراك دفع مسجل لهذا المستخدم"
+    elif not (has_public and has_private):
+        error = "مفاتيح VAPID غير مكتملة على الخادم"
+    else:
+        try:
+            delivered = await send_push_to_user(
+                user["id"], "اختبار الإشعارات 🔔",
+                "إذا وصلك هذا فإشعارات الهاتف تعمل!", "/dashboard")
+        except Exception as e:
+            error = f"{type(e).__name__}: {str(e)[:200]}"
+    return {"ok": delivered > 0, "devices": n,
+            "vapid_public": has_public, "vapid_private": has_private,
+            "delivered": delivered, "error": error}

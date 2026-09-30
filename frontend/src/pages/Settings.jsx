@@ -58,6 +58,27 @@ export default function Settings() {
     }
   };
 
+  const testPush = async () => {
+    setPushBusy(true);
+    try {
+      const { data } = await api.post("/push/test");
+      if (data.ok) {
+        toast.success("وصلك إشعار الاختبار؟ إذاً الدفع يعمل 🎉");
+      } else {
+        const parts = [];
+        if (!data.vapid_public) parts.push("المفتاح العام مفقود");
+        if (!data.vapid_private) parts.push("المفتاح الخاص مفقود");
+        if (data.devices === 0) parts.push("لا أجهزة مسجلة");
+        if (data.error) parts.push(data.error);
+        toast.error("فشل اختبار الدفع: " + (parts.join(" • ") || "سبب غير معروف"));
+      }
+    } catch (e) {
+      toast.error(apiErr(e, "تعذر اختبار الدفع"));
+    } finally {
+      setPushBusy(false);
+    }
+  };
+
   const inputCls = "w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100";
 
   return (
@@ -102,6 +123,15 @@ export default function Settings() {
           <p className="text-[11px] text-slate-400 mt-3">
             ملاحظة: على iPhone تعمل إشعارات الهاتف فقط إذا ثبّت التطبيق على الشاشة الرئيسية عبر زر التثبيت أسفل الصفحة.
           </p>
+          {pushOn && (
+            <button
+              onClick={testPush}
+              disabled={pushBusy}
+              className="mt-4 min-h-[44px] px-5 rounded-xl bg-emerald-600 text-white text-sm font-bold disabled:opacity-40"
+            >
+              {pushBusy ? "جارٍ الاختبار…" : "🔔 إرسال إشعار اختبار لهذا الجهاز"}
+            </button>
+          )}
         </section>
 
         <section className="bg-white rounded-2xl p-6 border border-slate-100 ft-shadow">
