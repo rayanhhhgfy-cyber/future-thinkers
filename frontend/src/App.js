@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "@/context/AuthContext";
 import { Protected } from "@/components/Layout";
 import InstallPWA from "@/components/InstallPWA";
+import PushBanner from "@/components/PushBanner";
 
 import Landing from "@/pages/Landing";
 import Login from "@/pages/Login";
@@ -74,6 +75,7 @@ function App() {
           <Route path="*" element={<NotFound />} />
         </Routes>
         <InstallPWA />
+        <PushBanner />
       </BrowserRouter>
       <Toaster position="top-center" richColors />
     </AuthProvider>

@@ -2,7 +2,7 @@
    - Static assets (JS/CSS/images/fonts): cache-first, so the app shell loads instantly.
    - Navigations: network-first with cached-app-shell fallback for offline.
    - /api/* and websockets: never cached, always network. */
-const VERSION = "ft-v1";
+const VERSION = "ft-v2";
 const STATIC_CACHE = `ft-static-${VERSION}`;
 const SHELL_CACHE = `ft-shell-${VERSION}`;
 
@@ -64,4 +64,44 @@ self.addEventListener("fetch", (event) => {
       })()
     );
   }
+});
+
+// ---- Web Push: show the notification on the phone ----
+self.addEventListener("push", (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch {
+    data = { title: "مفكرو المستقبل", body: event.data ? event.data.text() : "" };
+  }
+  const title = data.title || "مفكرو المستقبل";
+  const options = {
+    body: data.body || "",
+    icon: data.icon || "/icons/icon-192.png",
+    badge: data.badge || "/icons/icon-192.png",
+    tag: data.tag || "ft-push",
+    renotify: true,
+    dir: "rtl",
+    lang: "ar",
+    data: { link: data.link || "/dashboard" },
+  };
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const link = (event.notification.data && event.notification.data.link) || "/dashboard";
+  const url = new URL(link, self.location.origin).href;
+  event.waitUntil(
+    (async () => {
+      const wins = await clients.matchAll({ type: "window", includeUncontrolled: true });
+      for (const w of wins) {
+        if (w.url === url) return w.focus();
+      }
+      for (const w of wins) {
+        if (new URL(w.url).origin === self.location.origin) return w.navigate(url).then((c) => c && c.focus());
+      }
+      return clients.openWindow(url);
+    })()
+  );
 });

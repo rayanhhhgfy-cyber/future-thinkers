@@ -1,5 +1,9 @@
 """Shared domain services: gamification (XP/levels/badges/achievements),
 notifications, and audit logging. All persist to MongoDB (source of truth)."""
+import asyncio
+import json
+import os
+
 from bson import ObjectId
 from db import db, now_iso
 
@@ -106,6 +110,56 @@ async def create_notification(user_id: str, type_: str, title: str, body: str = 
         await hub.notify_user(user_id, {"kind": "notification", "title": title, "body": body, "link": link})
     except Exception:
         pass
+    # best-effort phone push; never breaks the request
+    try:
+        await send_push_to_user(user_id, title, body, link)
+    except Exception:
+        pass
+
+
+def _vapid_cfg():
+    return {
+        "public": os.environ.get("VAPID_PUBLIC_KEY", ""),
+        "private": os.environ.get("VAPID_PRIVATE_KEY", ""),
+        "subject": os.environ.get("VAPID_SUBJECT", "mailto:admin@futurethinkers.jo"),
+    }
+
+
+def _do_webpush(subscription_info, data, private_key, subject):
+    from pywebpush import webpush
+    webpush(subscription_info=subscription_info, data=data,
+            vapid_private_key=private_key,
+            vapid_claims={"sub": subject})
+
+
+async def send_push_to_user(user_id: str, title: str, body: str = "", link: str = None):
+    """Send a Web Push message to all of the user's subscribed devices."""
+    cfg = _vapid_cfg()
+    if not cfg["public"] or not cfg["private"]:
+        return
+    subs = await db.push_subscriptions.find({"user_id": user_id}).to_list(20)
+    if not subs:
+        return
+    payload = json.dumps({
+        "title": title, "body": body or "",
+        "link": link or "/dashboard",
+        "icon": "/icons/icon-192.png", "badge": "/icons/icon-192.png",
+        "tag": f"ft-{user_id}",
+    })
+    for s in subs:
+        sub = s.get("subscription") or {}
+        if not sub.get("endpoint"):
+            continue
+        try:
+            await asyncio.to_thread(_do_webpush, sub, payload, cfg["private"], cfg["subject"])
+        except Exception as e:
+            # drop dead subscriptions (410 Gone / 404 Not Found)
+            msg = str(e)
+            if "410" in msg or "404" in msg:
+                try:
+                    await db.push_subscriptions.delete_one({"_id": s["_id"]})
+                except Exception:
+                    pass
 
 
 async def broadcast_notification(user_ids, type_, title, body="", link=None):
@@ -116,6 +170,11 @@ async def broadcast_notification(user_ids, type_, title, body="", link=None):
         "link": link, "read": False, "created_at": now_iso(),
     } for uid in user_ids]
     await db.notifications.insert_many(docs)
+    for uid in user_ids:
+        try:
+            await send_push_to_user(uid, title, body, link)
+        except Exception:
+            pass
 
 
 async def audit_log(user, action: str, entity: str, entity_id: str = None, meta: dict = None, request=None):

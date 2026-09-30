@@ -1,9 +1,10 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Layout } from "@/components/Layout";
 import { useAuth } from "@/context/AuthContext";
 import api, { apiErr } from "@/lib/api";
 import { toast } from "sonner";
-import { KeyRound, Eye, EyeOff, Settings as SettingsIcon } from "lucide-react";
+import { KeyRound, Eye, EyeOff, Settings as SettingsIcon, BellRing } from "lucide-react";
+import { isPushSupported, pushPermission, enablePush, disablePush, backendPushEnabled } from "@/lib/push";
 
 export default function Settings() {
   const { user } = useAuth();
@@ -12,6 +13,15 @@ export default function Settings() {
   const [confirm, setConfirm] = useState("");
   const [show, setShow] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [pushOn, setPushOn] = useState(null); // null = loading
+  const [pushBusy, setPushBusy] = useState(false);
+  const pushSupported = isPushSupported();
+  const pushDenied = pushSupported && pushPermission() === "denied";
+
+  useEffect(() => {
+    if (!pushSupported) { setPushOn(false); return; }
+    backendPushEnabled().then(setPushOn);
+  }, []);
 
   const submit = async (e) => {
     e.preventDefault();
@@ -29,6 +39,25 @@ export default function Settings() {
     }
   };
 
+  const togglePush = async () => {
+    setPushBusy(true);
+    try {
+      if (pushOn) {
+        await disablePush();
+        setPushOn(false);
+        toast.success("تم إيقاف إشعارات الهاتف على هذا الجهاز");
+      } else {
+        await enablePush();
+        setPushOn(true);
+        toast.success("تم تفعيل إشعارات الهاتف 🎉");
+      }
+    } catch (e) {
+      toast.error(e.message || "تعذر تغيير إعداد الإشعارات");
+    } finally {
+      setPushBusy(false);
+    }
+  };
+
   const inputCls = "w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100";
 
   return (
@@ -37,6 +66,43 @@ export default function Settings() {
         <h1 className="font-head text-2xl font-extrabold text-slate-900 flex items-center gap-2 mb-6">
           <SettingsIcon className="w-6 h-6 text-emerald-600" /> إعدادات الحساب
         </h1>
+
+        <section className="bg-white rounded-2xl p-6 border border-slate-100 ft-shadow mb-6">
+          <h2 className="font-head font-bold text-lg flex items-center gap-2 mb-1">
+            <BellRing className="w-5 h-5 text-emerald-600" /> إشعارات الهاتف
+          </h2>
+          <p className="text-xs text-slate-500 mb-4">
+            استلم تنبيهات المنصة على هاتفك حتى لو كان التطبيق مغلقاً.
+            {!pushSupported
+              ? " (غير مدعومة على هذا المتصفح)"
+              : pushDenied
+                ? " (تم رفض الإذن من إعدادات المتصفح — فعّله من هناك أولاً)"
+                : ""}
+          </p>
+          <button
+            onClick={togglePush}
+            disabled={pushBusy || !pushSupported || pushDenied || pushOn === null}
+            data-testid="push-toggle-btn"
+            className={`relative w-14 h-8 rounded-full transition-colors shrink-0 disabled:opacity-40 ${
+              pushOn ? "bg-emerald-500" : "bg-slate-300"
+            }`}
+            role="switch"
+            aria-checked={!!pushOn}
+            aria-label="إشعارات الهاتف"
+          >
+            <span
+              className={`absolute top-1 w-6 h-6 rounded-full bg-white shadow transition-all ${
+                pushOn ? "left-1" : "right-1"
+              }`}
+            />
+          </button>
+          <span className="mr-3 text-sm text-slate-600">
+            {pushOn === null ? "جارٍ التحميل…" : pushOn ? "مفعّلة على هذا الجهاز" : "متوقفة"}
+          </span>
+          <p className="text-[11px] text-slate-400 mt-3">
+            ملاحظة: على iPhone تعمل إشعارات الهاتف فقط إذا ثبّت التطبيق على الشاشة الرئيسية عبر زر التثبيت أسفل الصفحة.
+          </p>
+        </section>
 
         <section className="bg-white rounded-2xl p-6 border border-slate-100 ft-shadow">
           <h2 className="font-head font-bold text-lg flex items-center gap-2 mb-1">
