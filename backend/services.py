@@ -127,6 +127,8 @@ def _vapid_cfg():
 
 def _do_webpush(subscription_info, data, private_key, subject):
     from pywebpush import webpush
+    if isinstance(data, dict):
+        data = json.dumps(data, ensure_ascii=False)
     webpush(subscription_info=subscription_info, data=data,
             vapid_private_key=private_key,
             vapid_claims={"sub": subject})
