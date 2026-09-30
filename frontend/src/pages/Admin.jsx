@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { Layout, PageLoader, EmptyState } from "@/components/Layout";
 import api, { apiErr } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
@@ -11,13 +12,15 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import NotifyPanel from "@/components/admin/NotifyPanel";
 import { toast } from "sonner";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
-import { LayoutDashboard, ShieldCheck, Users, BookOpen, Calendar, Trophy, Newspaper, Settings, ScrollText, Plus, Check, X, Megaphone, PenLine, Medal } from "lucide-react";
+import { LayoutDashboard, ShieldCheck, Users, BookOpen, Calendar, Trophy, Newspaper, Settings, ScrollText, Plus, Check, X, Megaphone, PenLine, Medal, Award, Upload, Trash2, Search } from "lucide-react";
 
 const NAV = [
   { k: "overview", l: "نظرة عامة", icon: LayoutDashboard, perm: "analytics.view" },
   { k: "moderation", l: "مراجعة المحتوى", icon: ShieldCheck, perm: "book.approve" },
   { k: "studio", l: "مراجعة الاستوديو", icon: PenLine, perm: "studio.review" },
+  { k: "books", l: "الكتب", icon: BookOpen, perm: "book.delete" },
   { k: "badges", l: "شارات المهارات", icon: Medal, perm: "badge.award" },
+  { k: "certificates", l: "الشهادات", icon: Award, perm: "certificate.manage" },
   { k: "users", l: "المستخدمون", icon: Users, perm: "user.view" },
   { k: "notify", l: "الإشعارات", icon: Megaphone, perm: "notification.broadcast" },
   { k: "content", l: "الفعاليات والمسابقات", icon: Calendar, perm: "event.create" },
@@ -29,8 +32,20 @@ const COLORS = ["#2563EB", "#059669", "#D97706", "#7C3AED", "#0891B2", "#E11D48"
 
 export default function Admin() {
   const { hasPerm } = useAuth();
+  const nav = useNavigate();
+  const params = useParams();
   const tabs = NAV.filter((n) => hasPerm(n.perm));
-  const [tab, setTab] = useState(tabs[0]?.k || "overview");
+  const urlTab = (params["*"] || "").split("/")[0];
+  const validUrlTab = tabs.some((t) => t.k === urlTab) ? urlTab : null;
+  const [tab, setTab] = useState(validUrlTab || tabs[0]?.k || "overview");
+
+  // deep-link support: /admin/studio opens the studio review tab (used by notifications)
+  useEffect(() => {
+    if (validUrlTab && validUrlTab !== tab) setTab(validUrlTab);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [validUrlTab]);
+
+  const goTab = (k) => { setTab(k); nav(`/admin/${k}`, { replace: true }); };
 
   return (
     <Layout noFooter>
@@ -40,23 +55,27 @@ export default function Admin() {
           <aside className="lg:sticky lg:top-20 self-start min-w-0">
             <div className="flex lg:flex-col gap-1 overflow-x-auto bg-white rounded-2xl p-2 border border-slate-100 ft-shadow">
               {tabs.map((n) => (
-                <button key={n.k} data-testid={`admin-tab-${n.k}`} onClick={() => setTab(n.k)} className={`flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition-colors ${tab === n.k ? "bg-emerald-600 text-white" : "text-slate-600 hover:bg-slate-100"}`}>
+                <button key={n.k} data-testid={`admin-tab-${n.k}`} onClick={() => goTab(n.k)} className={`flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition-colors ${tab === n.k ? "bg-emerald-600 text-white" : "text-slate-600 hover:bg-slate-100"}`}>
                   <n.icon className="w-4 h-4" />{n.l}
                 </button>
               ))}
             </div>
           </aside>
-          <div className="min-w-0">
+          <div className="min-w-0" key={tab}>
+            <div className="animate-fade-in">
             {tab === "overview" && <Overview />}
             {tab === "moderation" && <Moderation />}
             {tab === "studio" && <StudioPanel />}
+            {tab === "books" && <BooksPanel />}
             {tab === "badges" && <BadgesPanel />}
+            {tab === "certificates" && <CertificatesPanel />}
             {tab === "users" && <UsersPanel />}
             {tab === "notify" && <NotifyPanel />}
             {tab === "content" && <ContentPanel />}
             {tab === "news" && <NewsPanel />}
             {tab === "points" && <PointsPanel />}
             {tab === "audit" && <AuditPanel />}
+            </div>
           </div>
         </div>
       </div>
@@ -463,6 +482,272 @@ function BadgesPanel() {
             </div>
           ))}
         </div>
+      </Section>
+    </div>
+  );
+}
+
+function BooksPanel() {
+  const [books, setBooks] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [q, setQ] = useState("");
+  const [status, setStatus] = useState("all");
+  const [uploading, setUploading] = useState(false);
+  const [form, setForm] = useState({ title: "", author: "", category: "general", description: "" });
+  const [pdf, setPdf] = useState(null);
+  const [cover, setCover] = useState(null);
+
+  const load = async () => {
+    try {
+      const { data } = await api.get("/books", { params: { q: q || undefined, status, limit: 100 } });
+      setBooks(data.items || []); setTotal(data.total || 0);
+    } catch { setBooks([]); }
+  };
+  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    const t = setTimeout(load, 400);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [q, status]);
+
+  const upload = async (e) => {
+    e.preventDefault();
+    if (!form.title.trim() || !form.author.trim()) return toast.error("العنوان والمؤلف مطلوبان");
+    if (!pdf) return toast.error("اختر ملف PDF");
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("title", form.title); fd.append("author", form.author);
+      fd.append("category", form.category); fd.append("description", form.description);
+      fd.append("pdf", pdf);
+      if (cover) fd.append("cover", cover);
+      const { data } = await api.post("/books", fd, { headers: { "Content-Type": "multipart/form-data" } });
+      toast.success(data.status === "approved" ? "تم رفع الكتاب ونشره مباشرة 📚" : "تم رفع الكتاب");
+      setForm({ title: "", author: "", category: "general", description: "" });
+      setPdf(null); setCover(null);
+      load();
+    } catch (err) { toast.error(apiErr(err)); } finally { setUploading(false); }
+  };
+
+  const del = async (b) => {
+    if (!window.confirm(`حذف "${b.title}" نهائياً؟`)) return;
+    try { await api.delete(`/books/${b.id}`); toast.success("تم حذف الكتاب"); load(); }
+    catch (e) { toast.error(apiErr(e)); }
+  };
+
+  const statusLabel = { approved: "معتمد", pending: "معلّق", rejected: "مرفوض" };
+
+  return (
+    <div className="space-y-6">
+      <Section title="رفع كتاب جديد">
+        <form onSubmit={upload} className="grid sm:grid-cols-2 gap-3">
+          <div><Label>العنوان *</Label><Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="rounded-xl mt-1" /></div>
+          <div><Label>المؤلف *</Label><Input value={form.author} onChange={(e) => setForm({ ...form, author: e.target.value })} className="rounded-xl mt-1" /></div>
+          <div>
+            <Label>التصنيف</Label>
+            <Select value={form.category} onValueChange={(v) => setForm({ ...form, category: v })}>
+              <SelectTrigger className="rounded-xl mt-1"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="general">عام</SelectItem><SelectItem value="novels">روايات</SelectItem>
+                <SelectItem value="culture">ثقافة</SelectItem><SelectItem value="science">علوم</SelectItem>
+                <SelectItem value="selfdev">تطوير ذات</SelectItem><SelectItem value="kids">أطفال</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div><Label>ملف PDF *</Label><Input type="file" accept="application/pdf" onChange={(e) => setPdf(e.target.files?.[0] || null)} className="rounded-xl mt-1" /></div>
+          <div><Label>صورة الغلاف</Label><Input type="file" accept="image/*" onChange={(e) => setCover(e.target.files?.[0] || null)} className="rounded-xl mt-1" /></div>
+          <div className="sm:col-span-2"><Label>الوصف</Label><Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="rounded-xl mt-1" rows={2} /></div>
+          <div className="sm:col-span-2">
+            <Button type="submit" disabled={uploading} className="rounded-xl bg-emerald-600 hover:bg-emerald-700">
+              <Upload className="w-4 h-4 ml-1" /> {uploading ? "جارٍ الرفع..." : "رفع الكتاب"}
+            </Button>
+          </div>
+        </form>
+      </Section>
+
+      <Section title={`كل الكتب (${total})`}>
+        <div className="flex flex-col sm:flex-row gap-2 mb-3">
+          <div className="relative flex-1">
+            <Search className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="بحث بالعنوان أو المؤلف..." className="rounded-xl pr-9" />
+          </div>
+          <Select value={status} onValueChange={setStatus}>
+            <SelectTrigger className="rounded-xl sm:w-40"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">الكل</SelectItem><SelectItem value="approved">معتمدة</SelectItem>
+              <SelectItem value="pending">معلّقة</SelectItem><SelectItem value="rejected">مرفوضة</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        {books.length === 0 ? <Empty t="لا كتب" /> : (
+          <div className="space-y-2 max-h-[480px] overflow-y-auto">
+            {books.map((b) => (
+              <div key={b.id} className="flex items-center justify-between gap-3 p-3 bg-white rounded-xl border border-slate-100">
+                <div className="min-w-0">
+                  <div className="font-semibold text-slate-800 truncate">{b.title}</div>
+                  <div className="text-xs text-slate-400">{b.author} · {statusLabel[b.status] || b.status} · {b.uploader_name || ""}</div>
+                </div>
+                <Button size="sm" variant="outline" onClick={() => del(b)} className="rounded-lg text-rose-600 border-rose-200 shrink-0">
+                  <Trash2 className="w-4 h-4 ml-1" /> حذف
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+      </Section>
+    </div>
+  );
+}
+
+const CERT_TEXT_FIELDS = [
+  { k: "org_name", l: "اسم المنصة (أعلى الشهادة)" },
+  { k: "country_line", l: "السطر الثاني (الدولة)" },
+  { k: "main_title", l: "العنوان الرئيسي" },
+  { k: "award_label", l: "عبارة المنح" },
+  { k: "footer_right", l: "تذييل الشهادة" },
+];
+const CERT_COLOR_FIELDS = [
+  { k: "color_primary", l: "اللون الرئيسي" },
+  { k: "color_dark", l: "اللون الداكن" },
+  { k: "color_muted", l: "اللون الباهت" },
+  { k: "bg_color", l: "لون الخلفية" },
+];
+
+function CertificatesPanel() {
+  const [tpl, setTpl] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [q, setQ] = useState("");
+  const [users, setUsers] = useState([]);
+  const [selUser, setSelUser] = useState(null);
+  const [awardForm, setAwardForm] = useState({ title_line: "", subtitle: "", meta: "" });
+  const [awarded, setAwarded] = useState([]);
+
+  const load = async () => {
+    try {
+      const [{ data: t }, { data: a }] = await Promise.all([
+        api.get("/certificates/admin/template"),
+        api.get("/certificates/admin/awarded"),
+      ]);
+      setTpl(t); setAwarded(a);
+    } catch (e) { toast.error(apiErr(e)); }
+  };
+  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    if (!q.trim()) { setUsers([]); return; }
+    const t = setTimeout(async () => {
+      try { const { data } = await api.get("/admin/users", { params: { q } }); setUsers(data.items || []); } catch {}
+    }, 300);
+    return () => clearTimeout(t);
+  }, [q]);
+
+  const saveTpl = async () => {
+    setSaving(true);
+    try { const { data } = await api.put("/certificates/admin/template", tpl); setTpl(data); toast.success("حُفظ قالب الشهادة 🎨"); }
+    catch (e) { toast.error(apiErr(e)); } finally { setSaving(false); }
+  };
+
+  const award = async () => {
+    if (!selUser) return toast.error("اختر المستخدم");
+    if (!awardForm.title_line.trim()) return toast.error("اكتب سبب الشهادة");
+    try {
+      await api.post("/certificates/admin/award", {
+        user_id: selUser.id,
+        title_line: awardForm.title_line,
+        subtitle: awardForm.subtitle,
+        meta_lines: awardForm.meta.split("\n").map((s) => s.trim()).filter(Boolean),
+      });
+      toast.success(`مُنحت الشهادة لـ ${selUser.name} 🏅`);
+      setSelUser(null); setQ(""); setAwardForm({ title_line: "", subtitle: "", meta: "" });
+      load();
+    } catch (e) { toast.error(apiErr(e)); }
+  };
+
+  const del = async (c) => {
+    if (!window.confirm(`حذف شهادة "${c.title_line}" لـ ${c.user_name}؟`)) return;
+    try { await api.delete(`/certificates/admin/awarded/${c.id}`); toast.success("حُذفت الشهادة"); load(); }
+    catch (e) { toast.error(apiErr(e)); }
+  };
+
+  if (!tpl) return <Empty t="جارٍ التحميل..." />;
+
+  return (
+    <div className="space-y-6">
+      <Section title="تخصيص قالب الشهادة">
+        <div className="grid lg:grid-cols-2 gap-6">
+          <div className="space-y-3">
+            {CERT_TEXT_FIELDS.map((f) => (
+              <div key={f.k}><Label>{f.l}</Label>
+                <Input value={tpl[f.k] || ""} onChange={(e) => setTpl({ ...tpl, [f.k]: e.target.value })} className="rounded-xl mt-1" />
+              </div>
+            ))}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {CERT_COLOR_FIELDS.map((f) => (
+                <div key={f.k}><Label>{f.l}</Label>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Input type="color" value={tpl[f.k] || "#000000"} onChange={(e) => setTpl({ ...tpl, [f.k]: e.target.value })} className="rounded-xl h-10 w-14 p-1" />
+                    <span className="text-xs text-slate-400" dir="ltr">{tpl[f.k]}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <Button onClick={saveTpl} disabled={saving} className="rounded-xl bg-emerald-600 hover:bg-emerald-700">
+              <Check className="w-4 h-4 ml-1" /> {saving ? "جارٍ الحفظ..." : "حفظ القالب"}
+            </Button>
+          </div>
+          {/* live preview */}
+          <div>
+            <Label>معاينة حية</Label>
+            <div className="mt-1 rounded-2xl border-8 p-6 text-center relative overflow-hidden" style={{ borderColor: tpl.color_primary, background: tpl.bg_color }}>
+              <div className="absolute inset-2 border rounded-xl pointer-events-none" style={{ borderColor: tpl.color_dark }} />
+              <div className="font-bold text-lg" style={{ color: tpl.color_primary }}>{tpl.org_name}</div>
+              <div className="text-xs" style={{ color: tpl.color_muted }}>{tpl.country_line}</div>
+              <div className="font-extrabold text-3xl my-4" style={{ color: tpl.color_dark }}>{tpl.main_title}</div>
+              <div className="text-sm" style={{ color: tpl.color_muted }}>{tpl.award_label}</div>
+              <div className="font-bold text-2xl my-2" style={{ color: tpl.color_primary }}>اسم الطالب</div>
+              <div className="text-xs mt-4 flex justify-between" style={{ color: tpl.color_muted }}>
+                <span>{new Date().toISOString().slice(0, 10)}</span><span>{tpl.footer_right}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Section>
+
+      <Section title="منح شهادة لمستخدم">
+        <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="ابحث عن مستخدم بالاسم أو البريد..." className="rounded-xl" />
+        {users.length > 0 && !selUser && (
+          <div className="border border-slate-100 rounded-xl divide-y max-h-44 overflow-y-auto">
+            {users.slice(0, 6).map((u) => (
+              <button key={u.id} onClick={() => setSelUser(u)} className="w-full text-right px-3 py-2 hover:bg-slate-50 text-sm">
+                <span className="font-medium">{u.name}</span> <span className="text-slate-400 text-xs">{u.email}</span>
+              </button>
+            ))}
+          </div>
+        )}
+        {selUser && <div className="flex items-center gap-2 text-sm bg-emerald-50 rounded-xl px-3 py-2"><Check className="w-4 h-4 text-emerald-600" />{selUser.name}<button onClick={() => setSelUser(null)} className="mr-auto text-slate-400"><X className="w-4 h-4" /></button></div>}
+        <div className="grid sm:grid-cols-2 gap-3">
+          <div><Label>سبب الشهادة *</Label><Input value={awardForm.title_line} onChange={(e) => setAwardForm({ ...awardForm, title_line: e.target.value })} placeholder="مثال: لتفوقه في مسابقة القراءة" className="rounded-xl mt-1" /></div>
+          <div><Label>سطر إضافي (اختياري)</Label><Input value={awardForm.subtitle} onChange={(e) => setAwardForm({ ...awardForm, subtitle: e.target.value })} placeholder="مثال: المركز الأول" className="rounded-xl mt-1" /></div>
+          <div className="sm:col-span-2"><Label>تفاصيل (سطر لكل سطر)</Label><Textarea value={awardForm.meta} onChange={(e) => setAwardForm({ ...awardForm, meta: e.target.value })} placeholder={"مثال:\nالنتيجة: 95%\nبتاريخ 2026-09-30"} className="rounded-xl mt-1" rows={3} /></div>
+        </div>
+        <Button onClick={award} className="rounded-xl bg-amber-600 hover:bg-amber-700"><Award className="w-4 h-4 ml-1" /> منح الشهادة</Button>
+      </Section>
+
+      <Section title={`الشهادات الممنوحة (${awarded.length})`}>
+        {awarded.length === 0 ? <Empty t="لا شهادات ممنوحة بعد" /> : (
+          <div className="space-y-2 max-h-[420px] overflow-y-auto">
+            {awarded.map((c) => (
+              <div key={c.id} className="flex items-center justify-between gap-3 p-3 bg-white rounded-xl border border-slate-100">
+                <div className="min-w-0">
+                  <div className="font-semibold text-slate-800 truncate">{c.user_name}</div>
+                  <div className="text-xs text-slate-400 truncate">{c.title_line}{c.subtitle ? ` · ${c.subtitle}` : ""} · {String(c.created_at || "").slice(0, 10)}</div>
+                </div>
+                <Button size="sm" variant="outline" onClick={() => del(c)} className="rounded-lg text-rose-600 border-rose-200 shrink-0">
+                  <Trash2 className="w-4 h-4 ml-1" /> حذف
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
       </Section>
     </div>
   );

@@ -2,15 +2,29 @@ import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { Layout, PageLoader } from "@/components/Layout";
 import api from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
 import * as Icons from "lucide-react";
-import { Trophy, Flame, BookOpen, Crown, MessageSquare, School, MapPin, Award, Sparkles, Medal } from "lucide-react";
+import { Trophy, Flame, BookOpen, Crown, MessageSquare, School, MapPin, Award, Sparkles, Medal, Download } from "lucide-react";
 
 export default function Profile() {
   const { id } = useParams();
+  const { user } = useAuth();
   const [p, setP] = useState(null);
   const [skillBadges, setSkillBadges] = useState([]);
-  useEffect(() => { setP(null); api.get(`/users/${id}/profile`).then((r) => setP(r.data)); api.get(`/badges/user/${id}`).then((r) => setSkillBadges(r.data)).catch(() => {}); }, [id]);
+  const [certs, setCerts] = useState([]);
+  useEffect(() => { setP(null); api.get(`/users/${id}/profile`).then((r) => setP(r.data)); api.get(`/badges/user/${id}`).then((r) => setSkillBadges(r.data)).catch(() => {}); api.get(`/certificates/user/${id}`).then((r) => setCerts(r.data)).catch(() => setCerts([])); }, [id]);
   if (!p) return <Layout><PageLoader /></Layout>;
+  const isMine = user?.id === id;
+
+  const downloadCert = async (certId) => {
+    try {
+      const { data } = await api.get(`/certificates/${certId}/pdf`, { responseType: "blob" });
+      const url = URL.createObjectURL(new Blob([data], { type: "application/pdf" }));
+      const a = document.createElement("a");
+      a.href = url; a.download = `certificate-${certId}.pdf`; a.click();
+      URL.revokeObjectURL(url);
+    } catch {}
+  };
 
   const stats = [
     { icon: Trophy, label: "الترتيب الوطني", value: `#${p.national_rank}`, color: "#D97706" },
@@ -63,6 +77,28 @@ export default function Profile() {
                 </div>
               );
             })}
+          </div>
+        )}
+
+        <h2 className="font-head font-bold text-xl mb-4 flex items-center gap-2"><Award className="w-5 h-5 text-emerald-600" /> الشهادات ({certs.length})</h2>
+        {certs.length === 0 ? (
+          <p className="text-slate-400 text-sm mb-8">لا شهادات بعد — تُمنح من لوحة الإدارة للتميز والمشاركة 🏅</p>
+        ) : (
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-8">
+            {certs.map((c) => (
+              <div key={c.id} className="flex items-center gap-3 bg-gradient-to-l from-emerald-50 to-white rounded-2xl p-4 border border-emerald-100 ft-shadow">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white grid place-items-center shrink-0"><Award className="w-6 h-6" /></div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-bold text-slate-800 text-sm truncate">{c.title_line}</div>
+                  <div className="text-xs text-slate-400">{c.subtitle ? `${c.subtitle} · ` : ""}{String(c.created_at || "").slice(0, 10)}</div>
+                </div>
+                {isMine && (
+                  <button onClick={() => downloadCert(c.id)} className="pressable shrink-0 w-9 h-9 rounded-xl bg-emerald-600 text-white grid place-items-center" aria-label="تحميل الشهادة PDF">
+                    <Download className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+            ))}
           </div>
         )}
 
