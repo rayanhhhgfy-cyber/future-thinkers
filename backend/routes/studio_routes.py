@@ -133,7 +133,7 @@ async def submit_work(work_id: str, request: Request, user: dict = Depends(get_c
     mods = await db.users.find({"role": {"$in": ["moderator", "admin", "super_admin"]}}).to_list(100)
     for m in mods:
         await create_notification(str(m["_id"]), "moderation", "عمل جديد بانتظار المراجعة ✍️",
-                                  f"{w['title']} — {w['author_name']}", "/admin")
+                                  f"{w['title']} — {w['author_name']}", "/admin/studio")
     return {"status": "pending"}
 
 

@@ -85,7 +85,7 @@ async def register_event(eid: str, user: dict = Depends(get_current_user)):
         await bump_stat(user["id"], "events", 1)
         s = await db.settings.find_one({"key": "points_config"})
         await award_xp(user["id"], (s or {}).get("value", {}).get("join_event", 25), "التسجيل في فعالية", eid)
-    await create_notification(user["id"], "event", "تم تسجيلك في الفعالية" + (" (قائمة انتظار)" if waitlist else " ✅"), e["title"])
+    await create_notification(user["id"], "event", "تم تسجيلك في الفعالية" + (" (قائمة انتظار)" if waitlist else " ✅"), e["title"], f"/events/{eid}")
     return {"registered": True, "waitlist": waitlist, "qr_code": qr}
 
 
@@ -217,7 +217,7 @@ async def submit_competition(cid: str, body: SubmitBody, user: dict = Depends(ge
                   "answers": body.answers, "submitted_at": now_iso(), "status": "completed"}})
     xp = 20 + correct * 5
     await award_xp(user["id"], xp, "إكمال مسابقة", cid)
-    await create_notification(user["id"], "competition", "نتيجة المسابقة", f"{c['title']}: {score}% ({correct}/{total})")
+    await create_notification(user["id"], "competition", "نتيجة المسابقة", f"{c['title']}: {score}% ({correct}/{total})", f"/competitions/{cid}")
     return {"score": score, "correct": correct, "total": total}
 
 

@@ -82,7 +82,7 @@ async def act_change_request(req_id: str, action: str,
             "governorate_id": school["governorate_id"], "governorate_name": school["governorate_name"],
         }})
         await create_notification(req["user_id"], "system", "تمت الموافقة على تغيير المدرسة",
-                                  f"تم نقلك إلى {req['to_school_name']}")
+                                  f"تم نقلك إلى {req['to_school_name']}", "/settings")
     else:
         await create_notification(req["user_id"], "system", "تم رفض طلب تغيير المدرسة", "")
     await db.school_change_requests.update_one({"_id": ObjectId(req_id)},

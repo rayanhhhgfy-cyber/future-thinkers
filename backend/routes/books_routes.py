@@ -36,9 +36,9 @@ async def list_books(request: Request, category: str | None = None, q: str | Non
     user = await get_optional_user(request)
     query = {}
     can_moderate = user and "book.approve" in effective_permissions(user)
-    if status and can_moderate:
+    if status and can_moderate and status != "all":
         query["status"] = status
-    else:
+    elif not (status == "all" and can_moderate):
         query["status"] = "approved"
     if category:
         query["category"] = category
@@ -119,6 +119,8 @@ async def upload_book(request: Request, title: str = Form(...), author: str = Fo
         if cover.content_type in ("image/png", "image/jpeg", "image/webp"):
             cmeta = await save_file(cbytes, cover.filename, cover.content_type, user["id"], "covers")
             cover_path = cmeta["storage_path"]
+    # staff uploads skip the review queue
+    auto_approved = "book.approve" in effective_permissions(user)
     doc = {
         "title": title, "author": author, "description": description, "category": category,
         "language": language, "pages": pages, "year": year, "publisher": publisher, "age": age,
@@ -126,16 +128,36 @@ async def upload_book(request: Request, title: str = Form(...), author: str = Fo
         "cover_url": cover_url, "cover_path": cover_path,
         "storage_path": pdf_meta["storage_path"], "external_pdf_url": None,
         "telegram_file_id": pdf_meta.get("telegram_file_id"),
-        "status": "pending", "uploaded_by": user["id"], "uploader_name": user["name"],
+        "status": "approved" if auto_approved else "pending",
+        "uploaded_by": user["id"], "uploader_name": user["name"],
         "views": 0, "downloads": 0, "favorites_count": 0, "rating_avg": 0, "rating_count": 0,
         "created_at": now_iso(),
     }
     res = await db.books.insert_one(doc)
     await audit_log(user, "book_upload", "book", str(res.inserted_id), {"title": title}, request)
+    if auto_approved:
+        return {"id": str(res.inserted_id), "status": "approved"}
     mods = await db.users.find({"role": {"$in": ["moderator", "admin", "super_admin"]}}).to_list(100)
     for m in mods:
         await create_notification(str(m["_id"]), "moderation", "كتاب جديد بانتظار المراجعة", title, "/admin/moderation")
     return {"id": str(res.inserted_id), "status": "pending"}
+
+
+@router.delete("/{book_id}")
+async def delete_book(book_id: str, request: Request, user: dict = Depends(require_permission("book.delete"))):
+    b = await db.books.find_one({"_id": oid(book_id)})
+    if not b:
+        raise HTTPException(status_code=404, detail="الكتاب غير موجود")
+    await db.books.delete_one({"_id": b["_id"]})
+    # best-effort cleanup of stored files
+    try:
+        from storage import delete_file
+        await delete_file(b.get("storage_path"))
+        await delete_file(b.get("cover_path"))
+    except Exception:
+        pass
+    await audit_log(user, "book_delete", "book", book_id, {"title": b.get("title")}, request)
+    return {"status": "deleted"}
 
 
 @router.post("/{book_id}/approve")
@@ -161,7 +183,7 @@ async def reject_book(book_id: str, body: RejectBody, user: dict = Depends(requi
     if not b:
         raise HTTPException(status_code=404, detail="الكتاب غير موجود")
     await db.books.update_one({"_id": b["_id"]}, {"$set": {"status": "rejected", "reject_reason": body.reason, "reviewed_by": user["id"]}})
-    await create_notification(b["uploaded_by"], "book", "تم رفض كتابك", body.reason or b["title"])
+    await create_notification(b["uploaded_by"], "book", "تم رفض كتابك", body.reason or b["title"], "/upload-book")
     await audit_log(user, "book_reject", "book", book_id, {"reason": body.reason})
     return {"status": "rejected"}
 

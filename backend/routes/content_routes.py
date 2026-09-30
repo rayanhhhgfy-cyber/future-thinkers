@@ -79,7 +79,7 @@ async def moderate_activity(aid: str, action: str, user: dict = Depends(require_
         raise HTTPException(status_code=404, detail="غير موجود")
     await db.activities.update_one({"_id": a["_id"]}, {"$set": {"status": "approved" if action == "approve" else "rejected", "reviewed_by": user["id"]}})
     await create_notification(a["author_id"], "activity", "تحديث حالة نشاطك",
-                              "تمت الموافقة على نشاطك" if action == "approve" else "تم رفض نشاطك")
+                              "تمت الموافقة على نشاطك" if action == "approve" else "تم رفض نشاطك", "/dashboard")
     await audit_log(user, f"activity_{action}", "activity", aid)
     return {"status": action}
 
