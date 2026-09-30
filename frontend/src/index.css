@@ -92,3 +92,9 @@ h1, h2, h3, h4, .font-head { font-family: 'Readex Pro', sans-serif; }
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 8px; }
 ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+/* Toast notifications: keep clear of the iPhone notch/status bar (viewport-fit=cover).
+   Sonner's top container gets the safe-area offset so success/error popups are visible. */
+[data-sonner-toaster][data-y-position="top"] {
+  padding-top: calc(env(safe-area-inset-top, 0px) + 10px) !important;
+}
