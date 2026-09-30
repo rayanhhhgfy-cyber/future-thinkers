@@ -177,6 +177,40 @@ async def broadcast_notification(user_ids, type_, title, body="", link=None):
             pass
 
 
+async def dispatch_due_campaigns():
+    """Send all scheduled notification campaigns whose time has come.
+    Safe to call from cron, middleware, or anywhere: claims each campaign
+    atomically so concurrent instances never double-send."""
+    due = await db.notification_campaigns.find(
+        {"status": "scheduled", "send_at": {"$lte": now_iso()}}
+    ).to_list(20)
+    sent = 0
+    for c in due:
+        claimed = await db.notification_campaigns.update_one(
+            {"_id": c["_id"], "status": "scheduled"},
+            {"$set": {"status": "sending"}})
+        if claimed.modified_count == 0:
+            continue
+        try:
+            q = c.get("audience_query") or {"status": {"$ne": "banned"}}
+            users = await db.users.find(q, {"_id": 1}).to_list(20000)
+            ids = [str(u["_id"]) for u in users]
+            await broadcast_notification(
+                ids, "announcement", c["title"], c.get("body", ""), c.get("link") or "/dashboard")
+            await db.notification_campaigns.update_one(
+                {"_id": c["_id"]},
+                {"$set": {"status": "sent", "sent_at": now_iso(),
+                          "recipient_count": len(ids)}})
+            sent += 1
+        except Exception:
+            try:
+                await db.notification_campaigns.update_one(
+                    {"_id": c["_id"]}, {"$set": {"status": "scheduled"}})
+            except Exception:
+                pass
+    return sent
+
+
 async def audit_log(user, action: str, entity: str, entity_id: str = None, meta: dict = None, request=None):
     ip = None
     ua = None

@@ -1,4 +1,10 @@
 {
+  "crons": [
+    {
+      "path": "/api/cron/dispatch-scheduled",
+      "schedule": "*/5 * * * *"
+    }
+  ],
   "services": {
     "frontend": {
       "root": "frontend",

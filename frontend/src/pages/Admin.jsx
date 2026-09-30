@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import NotifyPanel from "@/components/admin/NotifyPanel";
 import { toast } from "sonner";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { LayoutDashboard, ShieldCheck, Users, BookOpen, Calendar, Trophy, Newspaper, Settings, ScrollText, Plus, Check, X, Megaphone } from "lucide-react";
@@ -16,6 +17,7 @@ const NAV = [
   { k: "overview", l: "نظرة عامة", icon: LayoutDashboard, perm: "analytics.view" },
   { k: "moderation", l: "مراجعة المحتوى", icon: ShieldCheck, perm: "book.approve" },
   { k: "users", l: "المستخدمون", icon: Users, perm: "user.view" },
+  { k: "notify", l: "الإشعارات", icon: Megaphone, perm: "notification.broadcast" },
   { k: "content", l: "الفعاليات والمسابقات", icon: Calendar, perm: "event.create" },
   { k: "news", l: "الأخبار", icon: Newspaper, perm: "news.manage" },
   { k: "points", l: "نظام النقاط", icon: Settings, perm: "points.manage" },
@@ -46,6 +48,7 @@ export default function Admin() {
             {tab === "overview" && <Overview />}
             {tab === "moderation" && <Moderation />}
             {tab === "users" && <UsersPanel />}
+            {tab === "notify" && <NotifyPanel />}
             {tab === "content" && <ContentPanel />}
             {tab === "news" && <NewsPanel />}
             {tab === "points" && <PointsPanel />}

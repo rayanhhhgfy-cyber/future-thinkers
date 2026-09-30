@@ -191,3 +191,156 @@ async def scope_summary(user: dict = Depends(require_role("school_admin", "direc
         return {"level": "directorate", "name": user.get("directorate_name"),
                 "students": await db.users.count_documents(q), "schools": schools}
     return {"level": "national", "name": "المملكة", "students": await db.users.count_documents({"role": "student"})}
+
+
+# ================= Notification center =================
+NOTIFY_PERM = "notification.broadcast"
+
+DEFAULT_PRESETS = [
+    {"name": "📚 كتاب جديد", "title": "📚 كتاب جديد في المكتبة",
+     "body": "تمت إضافة كتاب جديد إلى مكتبة المنصة — تصفحه الآن!",
+     "link": "/books"},
+    {"name": "📅 فعالية قادمة", "title": "📅 فعالية قادمة",
+     "body": "لا تفوّت فعاليتنا القادمة — سجّل الآن!",
+     "link": "/events"},
+    {"name": "🏆 مسابقة جديدة", "title": "🏆 مسابقة جديدة",
+     "body": "انطلقت مسابقة جديدة بجوائز قيّمة — شارك الآن!",
+     "link": "/competitions"},
+    {"name": "🔧 صيانة مجدولة", "title": "🔧 صيانة مجدولة",
+     "body": "ستكون المنصة في وضع الصيانة لفترة قصيرة. شكراً لتفهمكم.",
+     "link": "/dashboard"},
+    {"name": "⭐ إعلان عام", "title": "📢 إعلان من الإدارة",
+     "body": "", "link": "/dashboard"},
+]
+
+
+class PresetBody(BaseModel):
+    name: str
+    title: str
+    body: str = ""
+    link: str = "/dashboard"
+
+
+async def _seed_presets():
+    if await db.notification_presets.count_documents({}) == 0:
+        await db.notification_presets.insert_many([
+            {**p, "builtin": True, "created_at": now_iso()} for p in DEFAULT_PRESETS
+        ])
+
+
+@router.get("/notify/presets")
+async def list_presets(user: dict = Depends(require_permission(NOTIFY_PERM))):
+    await _seed_presets()
+    docs = await db.notification_presets.find({}).sort("created_at", 1).to_list(100)
+    return {"items": sers(docs)}
+
+
+@router.post("/notify/presets")
+async def create_preset(body: PresetBody, request: Request,
+                        user: dict = Depends(require_permission(NOTIFY_PERM))):
+    doc = {**body.model_dump(), "builtin": False, "created_at": now_iso()}
+    r = await db.notification_presets.insert_one(doc)
+    await audit_log(user, "preset.create", "notification_preset", str(r.inserted_id), None, request)
+    return {"ok": True, "id": str(r.inserted_id)}
+
+
+@router.put("/notify/presets/{pid}")
+async def update_preset(pid: str, body: PresetBody, request: Request,
+                        user: dict = Depends(require_permission(NOTIFY_PERM))):
+    await db.notification_presets.update_one(
+        {"_id": oid(pid)}, {"$set": {**body.model_dump(), "updated_at": now_iso()}})
+    await audit_log(user, "preset.update", "notification_preset", pid, None, request)
+    return {"ok": True}
+
+
+@router.delete("/notify/presets/{pid}")
+async def delete_preset(pid: str, request: Request,
+                        user: dict = Depends(require_permission(NOTIFY_PERM))):
+    await db.notification_presets.delete_one({"_id": oid(pid)})
+    await audit_log(user, "preset.delete", "notification_preset", pid, None, request)
+    return {"ok": True}
+
+
+class NotifySendBody(BaseModel):
+    title: str
+    body: str = ""
+    link: str = "/dashboard"
+    scope: str = "all"  # all | school | directorate
+    scope_id: str | None = None
+
+
+def _audience_query(scope: str, scope_id: str | None, user: dict) -> dict:
+    q: dict = {"status": {"$ne": "banned"}}
+    sid = scope_id or (user.get("school_id") if user.get("role") == "school_admin" else None)
+    if scope == "school" and sid:
+        q["school_id"] = sid
+    elif scope == "directorate" and (scope_id or user.get("directorate_id")):
+        q["directorate_id"] = scope_id or user.get("directorate_id")
+    elif user["role"] == "school_admin" and user.get("school_id"):
+        q["school_id"] = user["school_id"]
+    return q
+
+
+@router.post("/notify/send")
+async def notify_send(body: NotifySendBody, request: Request,
+                      user: dict = Depends(require_permission(NOTIFY_PERM))):
+    if not body.title.strip():
+        raise HTTPException(400, "العنوان مطلوب")
+    q = _audience_query(body.scope, body.scope_id, user)
+    users = await db.users.find(q, {"_id": 1}).to_list(20000)
+    ids = [str(u["_id"]) for u in users]
+    await broadcast_notification(ids, "announcement", body.title.strip(), body.body, body.link or "/dashboard")
+    camp = {"title": body.title.strip(), "body": body.body, "link": body.link or "/dashboard",
+            "scope": body.scope, "scope_id": body.scope_id,
+            "status": "sent", "sent_at": now_iso(), "recipient_count": len(ids),
+            "created_by": user["id"], "created_at": now_iso()}
+    await db.notification_campaigns.insert_one(camp)
+    await audit_log(user, "notify.send", "notification", None,
+                    {"count": len(ids), "scope": body.scope}, request)
+    return {"ok": True, "sent": len(ids)}
+
+
+class NotifyScheduleBody(NotifySendBody):
+    send_at: str  # ISO datetime (UTC)
+
+
+@router.post("/notify/schedule")
+async def notify_schedule(body: NotifyScheduleBody, request: Request,
+                          user: dict = Depends(require_permission(NOTIFY_PERM))):
+    from datetime import datetime, timezone
+    if not body.title.strip():
+        raise HTTPException(400, "العنوان مطلوب")
+    try:
+        dt = datetime.fromisoformat(body.send_at.replace("Z", "+00:00"))
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        dt = dt.astimezone(timezone.utc)
+    except Exception:
+        raise HTTPException(400, "صيغة التاريخ غير صالحة")
+    if dt <= datetime.now(timezone.utc):
+        raise HTTPException(400, "موعد الإرسال يجب أن يكون في المستقبل")
+    q = _audience_query(body.scope, body.scope_id, user)
+    camp = {"title": body.title.strip(), "body": body.body, "link": body.link or "/dashboard",
+            "audience_query": q, "scope": body.scope, "scope_id": body.scope_id,
+            "status": "scheduled", "send_at": dt.isoformat(),
+            "created_by": user["id"], "created_at": now_iso()}
+    r = await db.notification_campaigns.insert_one(camp)
+    await audit_log(user, "notify.schedule", "notification", str(r.inserted_id),
+                    {"send_at": camp["send_at"], "scope": body.scope}, request)
+    return {"ok": True, "id": str(r.inserted_id)}
+
+
+@router.get("/notify/campaigns")
+async def list_campaigns(user: dict = Depends(require_permission(NOTIFY_PERM))):
+    docs = await db.notification_campaigns.find({}).sort("created_at", -1).to_list(50)
+    return {"items": sers(docs)}
+
+
+@router.delete("/notify/campaigns/{cid}")
+async def cancel_campaign(cid: str, request: Request,
+                          user: dict = Depends(require_permission(NOTIFY_PERM))):
+    r = await db.notification_campaigns.delete_one({"_id": oid(cid), "status": "scheduled"})
+    if r.deleted_count:
+        await audit_log(user, "notify.cancel", "notification", cid, None, request)
+        return {"ok": True}
+    raise HTTPException(400, "لا يمكن إلغاء هذه الحملة")

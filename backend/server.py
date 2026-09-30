@@ -6,10 +6,11 @@ load_dotenv(ROOT_DIR / ".env")
 import os
 import asyncio
 import logging
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
 from fastapi.responses import JSONResponse
 from fastapi.requests import Request
 from starlette.middleware.cors import CORSMiddleware
+import time
 
 from db import client, init_db, get_db
 from seed import seed_all
@@ -45,6 +46,36 @@ for r in (auth_router, geo_router, books_router, files_router, community_router,
           content_router, admin_router, coding_router, showcase_router, cert_router,
           push_router):
     app.include_router(r)
+
+
+@app.get("/api/cron/dispatch-scheduled")
+async def cron_dispatch_scheduled(request: Request):
+    """Vercel Cron (every 5 min) or external cron hits this to flush due campaigns."""
+    secret = os.environ.get("CRON_SECRET", "")
+    is_vercel_cron = request.headers.get("x-vercel-cron") == "1"
+    if not is_vercel_cron and (not secret or request.query_params.get("secret") != secret):
+        raise HTTPException(403, "forbidden")
+    from services import dispatch_due_campaigns
+    n = await dispatch_due_campaigns()
+    return {"ok": True, "dispatched": n}
+
+
+_last_opportunistic_dispatch = 0.0
+
+
+@app.middleware("http")
+async def opportunistic_dispatch_middleware(request: Request, call_next):
+    """Safety net: if cron misses, any API traffic flushes due campaigns (throttled)."""
+    global _last_opportunistic_dispatch
+    try:
+        now = time.time()
+        if request.url.path.startswith("/api/") and now - _last_opportunistic_dispatch > 120:
+            _last_opportunistic_dispatch = now
+            from services import dispatch_due_campaigns
+            await dispatch_due_campaigns()
+    except Exception:
+        pass
+    return await call_next(request)
 
 
 async def _ws_user(websocket, token):

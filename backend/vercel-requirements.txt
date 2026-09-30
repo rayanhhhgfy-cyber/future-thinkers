@@ -10,3 +10,5 @@ python-dotenv==1.2.3
 python-multipart==0.0.32
 reportlab==5.0.1
 websockets==16.1.1
+pywebpush==1.14.0
+
