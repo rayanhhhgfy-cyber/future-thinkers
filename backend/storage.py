@@ -46,3 +46,15 @@ async def read_file(path: str):
         raise FileNotFoundError(path) from exc
     content_type = (file.metadata or {}).get("content_type", "application/octet-stream")
     return await file.read(), content_type
+
+
+async def delete_file(path: str) -> bool:
+    """Best-effort GridFS delete by stored path. Returns True if a file was removed."""
+    if not path:
+        return False
+    try:
+        grid_out = await _bucket().open_download_stream_by_name(path)
+        await _bucket().delete(grid_out._id)
+        return True
+    except Exception:
+        return False

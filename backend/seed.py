@@ -150,6 +150,53 @@ SAMPLE_BOOKS = [
 ]
 
 
+async def _dedupe_geo():
+    """One-time cleanup: early seeds could race on concurrent cold starts and insert
+    duplicate governorates/directorates/schools (each governorate showing twice in
+    the signup dropdown). Collapse duplicates by name, re-pointing children and
+    users to the surviving (earliest) record."""
+    # governorates
+    keep = {}
+    async for g in db.governorates.find({}).sort("created_at", 1):
+        gid = str(g["_id"])
+        if g["name"] in keep:
+            kgid = keep[g["name"]]
+            await db.directorates.update_many({"governorate_id": gid}, {"$set": {"governorate_id": kgid}})
+            await db.schools.update_many({"governorate_id": gid}, {"$set": {"governorate_id": kgid}})
+            await db.users.update_many({"governorate_id": gid}, {"$set": {"governorate_id": kgid, "governorate_name": g["name"]}})
+            await db.governorates.delete_one({"_id": g["_id"]})
+        else:
+            keep[g["name"]] = gid
+    # directorates
+    keep_d = {}
+    async for d in db.directorates.find({}).sort("created_at", 1):
+        did = str(d["_id"])
+        key = (d.get("governorate_id"), d["name"])
+        if key in keep_d:
+            kd = keep_d[key]
+            await db.schools.update_many({"directorate_id": did}, {"$set": {
+                "directorate_id": str(kd["_id"]), "directorate_name": kd["name"]}})
+            await db.users.update_many({"directorate_id": did}, {"$set": {
+                "directorate_id": str(kd["_id"]), "directorate_name": kd["name"]}})
+            await db.directorates.delete_one({"_id": d["_id"]})
+        else:
+            keep_d[key] = d
+    # schools
+    keep_s = {}
+    async for s in db.schools.find({}).sort("created_at", 1):
+        sid = str(s["_id"])
+        key = (s.get("directorate_id"), s["name"])
+        if key in keep_s:
+            ks = keep_s[key]
+            await db.users.update_many({"school_id": sid}, {"$set": {
+                "school_id": str(ks["_id"]), "school_name": ks["name"],
+                "directorate_id": ks["directorate_id"], "directorate_name": ks["directorate_name"],
+                "governorate_id": ks["governorate_id"], "governorate_name": ks["governorate_name"]}})
+            await db.schools.delete_one({"_id": s["_id"]})
+        else:
+            keep_s[key] = s
+
+
 async def seed_all():
     # indexes
     await db.users.create_index("email", unique=True)
@@ -218,22 +265,37 @@ async def seed_all():
             ]
         }}}, upsert=True)
 
-    # national hierarchy
-    if await db.governorates.count_documents({}) == 0:
-        for gname in GOVERNORATES:
-            gov = await db.governorates.insert_one({"name": gname, "created_at": now_iso()})
-            gid = str(gov.inserted_id)
-            for dname in DIRECTORATES.get(gname, [f"مديرية {gname}"]):
-                d = await db.directorates.insert_one(
-                    {"name": dname, "governorate_id": gid, "governorate_name": gname, "created_at": now_iso()})
-                did = str(d.inserted_id)
-                for i, sname in enumerate(SCHOOL_NAMES[:4]):
-                    await db.schools.insert_one({
-                        "name": f"{sname} - {dname.replace('مديرية ', '')}",
+    # national hierarchy — dedupe FIRST (existing duplicate rows would make
+    # unique-index creation fail), then unique indexes, then idempotent
+    # name-keyed upserts (a plain count-check races under concurrent cold
+    # starts and inserts every governorate twice)
+    await _dedupe_geo()
+    await db.governorates.create_index("name", unique=True)
+    await db.directorates.create_index([("governorate_id", 1), ("name", 1)], unique=True)
+    await db.schools.create_index([("directorate_id", 1), ("name", 1)], unique=True)
+    for gname in GOVERNORATES:
+        g = await db.governorates.find_one_and_update(
+            {"name": gname},
+            {"$setOnInsert": {"name": gname, "created_at": now_iso()}},
+            upsert=True, return_document=True)
+        gid = str(g["_id"])
+        for dname in DIRECTORATES.get(gname, [f"مديرية {gname}"]):
+            d = await db.directorates.find_one_and_update(
+                {"governorate_id": gid, "name": dname},
+                {"$setOnInsert": {"name": dname, "governorate_id": gid,
+                                  "governorate_name": gname, "created_at": now_iso()}},
+                upsert=True, return_document=True)
+            did = str(d["_id"])
+            for sname in SCHOOL_NAMES[:4]:
+                s_full = f"{sname} - {dname.replace('مديرية ', '')}"
+                await db.schools.update_one(
+                    {"directorate_id": did, "name": s_full},
+                    {"$setOnInsert": {
+                        "name": s_full,
                         "directorate_id": did, "directorate_name": dname,
                         "governorate_id": gid, "governorate_name": gname,
-                        "students_count": 0, "created_at": now_iso(),
-                    })
+                        "students_count": 0, "created_at": now_iso()}},
+                    upsert=True)
 
     # admin / owner account
     # NOTE: the env values are the source of truth. On every deploy the

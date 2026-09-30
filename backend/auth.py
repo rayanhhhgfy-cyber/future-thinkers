@@ -40,6 +40,7 @@ ALL_PERMISSIONS = [
     "points.manage", "achievement.manage",
     "studio.review",
     "badge.award", "badge.manage",
+    "certificate.manage",
     "notification.broadcast",
     "cms.manage", "analytics.view", "audit.view",
     "club.manage",
