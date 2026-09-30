@@ -23,6 +23,7 @@ import Competitions from "@/pages/Competitions";
 import CompetitionDetail from "@/pages/CompetitionDetail";
 import Leaderboard from "@/pages/Leaderboard";
 import Profile from "@/pages/Profile";
+import Settings from "@/pages/Settings";
 import News from "@/pages/News";
 import Admin from "@/pages/Admin";
 
@@ -67,6 +68,7 @@ function App() {
           <Route path="/leaderboard" element={<Leaderboard />} />
           <Route path="/news" element={<News />} />
           <Route path="/profile/:id" element={<Profile />} />
+          <Route path="/settings" element={<Protected><Settings /></Protected>} />
           <Route path="/dashboard" element={<Protected><Dashboard /></Protected>} />
           <Route path="/admin/*" element={<Protected staff><Admin /></Protected>} />
           <Route path="*" element={<NotFound />} />

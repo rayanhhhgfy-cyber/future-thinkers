@@ -219,9 +219,15 @@ async def seed_all():
                     })
 
     # admin / owner account
+    # NOTE: the env values are the source of truth. On every deploy the
+    # seeded admin is synced to ADMIN_EMAIL/ADMIN_PASSWORD, so change the
+    # admin password via the Vercel env vars, not only inside the app.
     admin_email = os.environ.get("ADMIN_EMAIL", "admin@futurethinkers.jo")
     admin_password = os.environ.get("ADMIN_PASSWORD", "Admin@12345")
     existing = await db.users.find_one({"email": admin_email})
+    if not existing:
+        # the admin may have been seeded earlier under a different email
+        existing = await db.users.find_one({"role": "super_admin"})
     if not existing:
         await db.users.insert_one({
             "name": "مسؤول المنصة", "email": admin_email,
@@ -230,6 +236,13 @@ async def seed_all():
             "extra_permissions": [], "badges": [], "achievements": [], "stats": {},
             "streak": 0, "chess_rating": 1200, "created_at": now_iso(),
         })
+    else:
+        await db.users.update_one(
+            {"_id": existing["_id"]},
+            {"$set": {"email": admin_email,
+                      "password_hash": hash_password(admin_password),
+                      "role": "super_admin", "status": "active"}},
+        )
 
     # coding problems (نادي البرمجة)
     if await db.coding_problems.count_documents({}) == 0:

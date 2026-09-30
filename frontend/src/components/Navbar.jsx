@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { Bell, Search, Menu, X, LogOut, User, LayoutDashboard, Shield } from "lucide-react";
+import { Bell, Search, Menu, X, LogOut, User, LayoutDashboard, Shield, Settings } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
@@ -95,6 +95,7 @@ export function Navbar() {
                   <DropdownMenuSeparator />
                   <DropdownMenuItem data-testid="menu-dashboard" onClick={() => nav("/dashboard")}><LayoutDashboard className="w-4 h-4 ml-2" />لوحتي</DropdownMenuItem>
                   <DropdownMenuItem data-testid="menu-profile" onClick={() => nav(`/profile/${user.id}`)}><User className="w-4 h-4 ml-2" />ملفي الشخصي</DropdownMenuItem>
+                  <DropdownMenuItem data-testid="menu-settings" onClick={() => nav("/settings")}><Settings className="w-4 h-4 ml-2" />إعدادات الحساب</DropdownMenuItem>
                   {isStaff && <DropdownMenuItem data-testid="menu-admin" onClick={() => nav("/admin")}><Shield className="w-4 h-4 ml-2" />لوحة الإدارة</DropdownMenuItem>}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem data-testid="menu-logout" onClick={async () => { await logout(); nav("/"); }} className="text-rose-600"><LogOut className="w-4 h-4 ml-2" />تسجيل الخروج</DropdownMenuItem>
