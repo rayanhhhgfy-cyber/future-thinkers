@@ -82,6 +82,52 @@ h1, h2, h3, h4, .font-head { font-family: 'Readex Pro', sans-serif; }
 @keyframes ft-float { 0%,100%{ transform: translateY(0);} 50%{ transform: translateY(-10px);} }
 .animate-float { animation: ft-float 6s ease-in-out infinite; }
 
+@keyframes ft-fade-in { from { opacity: 0; } to { opacity: 1; } }
+.animate-fade-in { animation: ft-fade-in .4s ease both; }
+
+@keyframes ft-scale-in { from { opacity: 0; transform: scale(.94); } to { opacity: 1; transform: scale(1); } }
+.animate-scale-in { animation: ft-scale-in .35s cubic-bezier(.22,1,.36,1) both; }
+
+@keyframes ft-slide-in-right { from { opacity: 0; transform: translateX(-24px); } to { opacity: 1; transform: none; } }
+.animate-slide-in-right { animation: ft-slide-in-right .45s cubic-bezier(.22,1,.36,1) both; }
+
+@keyframes ft-shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+.animate-shimmer {
+  background: linear-gradient(110deg, #e2e8f0 8%, #f1f5f9 18%, #e2e8f0 33%);
+  background-size: 200% 100%;
+  animation: ft-shimmer 1.6s linear infinite;
+}
+
+@keyframes ft-pulse-soft { 0%,100% { opacity: 1; } 50% { opacity: .55; } }
+.animate-pulse-soft { animation: ft-pulse-soft 2.4s ease-in-out infinite; }
+
+@keyframes ft-wiggle { 0%,100% { transform: rotate(0deg); } 25% { transform: rotate(6deg); } 75% { transform: rotate(-6deg); } }
+.animate-wiggle { animation: ft-wiggle .5s ease-in-out; }
+
+/* press feedback for buttons/links without touching their styles */
+.pressable { transition: transform .15s ease; -webkit-tap-highlight-color: transparent; }
+.pressable:active { transform: scale(.96); }
+
+/* card hover polish */
+.lift { transition: transform .3s cubic-bezier(.22,1,.36,1), box-shadow .3s ease; }
+.lift:hover { transform: translateY(-5px); box-shadow: 0 22px 44px -18px rgba(15,23,42,.25); }
+
+/* gradient text shimmer for hero accents */
+@keyframes ft-gradient-pan { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+.animate-gradient-text {
+  background-size: 200% auto;
+  animation: ft-gradient-pan 5s ease infinite;
+}
+
+/* stagger delays for CSS-only lists */
+.d-1 { animation-delay: .06s; } .d-2 { animation-delay: .12s; } .d-3 { animation-delay: .18s; }
+.d-4 { animation-delay: .24s; } .d-5 { animation-delay: .3s; } .d-6 { animation-delay: .36s; }
+
+/* respect users who prefer reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}
+
 ::selection { background: #059669; color: #fff; }
 
 .grain::before {

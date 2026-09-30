@@ -22,15 +22,26 @@ export default function Register() {
   const [school, setSchool] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // defensive dedupe by name: guards against any duplicate rows that may linger in the DB
+  const dedupeByName = (arr) => {
+    const seen = new Set();
+    return (Array.isArray(arr) ? arr : []).filter((x) => {
+      const n = String(x?.name || "").trim();
+      if (!n || seen.has(n)) return false;
+      seen.add(n);
+      return true;
+    });
+  };
+
   useEffect(() => {
     api.get("/geo/governorates")
-      .then(({ data }) => setGovs(Array.isArray(data) ? data : []))
+      .then(({ data }) => setGovs(dedupeByName(data)))
       .catch(() => setGovs([]));
   }, []);
   useEffect(() => {
     if (gov) {
       api.get("/geo/directorates", { params: { governorate_id: gov } })
-        .then(({ data }) => setDirs(Array.isArray(data) ? data : []))
+        .then(({ data }) => setDirs(dedupeByName(data)))
         .catch(() => setDirs([]));
       setDir("");
       setSchools([]);

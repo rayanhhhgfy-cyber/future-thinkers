@@ -30,47 +30,5 @@
   "scope": "/",
   "short_name": "مفكرو المستقبل",
   "start_url": "/",
-  "theme_color": "#064e3b",
-  "shortcuts": [
-    {
-      "name": "لوحتي",
-      "url": "/dashboard",
-      "icons": [
-        {
-          "src": "/icons/icon-192.png",
-          "sizes": "192x192"
-        }
-      ]
-    },
-    {
-      "name": "استوديو النشر",
-      "url": "/studio",
-      "icons": [
-        {
-          "src": "/icons/icon-192.png",
-          "sizes": "192x192"
-        }
-      ]
-    },
-    {
-      "name": "المكتبة",
-      "url": "/library",
-      "icons": [
-        {
-          "src": "/icons/icon-192.png",
-          "sizes": "192x192"
-        }
-      ]
-    },
-    {
-      "name": "الفعاليات",
-      "url": "/events",
-      "icons": [
-        {
-          "src": "/icons/icon-192.png",
-          "sizes": "192x192"
-        }
-      ]
-    }
-  ]
+  "theme_color": "#064e3b"
 }

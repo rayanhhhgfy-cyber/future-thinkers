@@ -46,11 +46,20 @@ export function Navbar() {
     try {
       ws = new WebSocket(wsUrl("/api/ws/notifications"));
       ws.onmessage = (ev) => {
-        try { const d = JSON.parse(ev.data); if (d.kind === "notification") { setUnread((n) => n + 1); toast(d.title, { description: d.body }); } } catch {}
+        try {
+          const d = JSON.parse(ev.data);
+          if (d.kind === "notification") {
+            setUnread((n) => n + 1);
+            toast(d.title, {
+              description: d.body,
+              ...(d.link ? { action: { label: "عرض", onClick: () => nav(d.link) } } : {}),
+            });
+          }
+        } catch {}
       };
     } catch {}
     return () => { try { ws && ws.close(); } catch {} };
-  }, [user]);
+  }, [user, nav]);
 
   return (
     <header className="sticky top-0 z-50 glass border-b border-slate-200/70 pt-[env(safe-area-inset-top)]">
