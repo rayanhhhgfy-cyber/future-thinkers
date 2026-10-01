@@ -70,17 +70,21 @@ def _with_retries(fn, tries=3, label="telegram call"):
 
 
 def _send_part(args) -> dict:
-    """Send one part. args = (index, total, part_bytes, filename)."""
+    """Send one part. args = (index, total, part_bytes, filename, tag)."""
     def _do():
         return _send_part_once(*args)
     return _with_retries(_do, label=f"Telegram sendDocument part {args[0] + 1}/{args[1]}")
 
 
-def _send_part_once(index, total, part_bytes, filename) -> dict:
+def _send_part_once(index, total, part_bytes, filename, tag=None) -> dict:
     token = _token()
     chat_id = _chat_id()
     boundary = uuid.uuid4().hex
-    caption = f"{filename or 'book.pdf'} — جزء {index + 1}/{total}" if total > 1 else (filename or "book.pdf")
+    tag_suffix = f" · {tag}" if tag else ""
+    if total > 1:
+        caption = f"📚 {filename or 'book.pdf'}{tag_suffix} — جزء {index + 1}/{total}"
+    else:
+        caption = f"📚 {filename or 'book.pdf'}{tag_suffix}"
     body = b"".join([
         f"--{boundary}\r\nContent-Disposition: form-data; name=\"chat_id\"\r\n\r\n{chat_id}\r\n".encode(),
         f"--{boundary}\r\nContent-Disposition: form-data; name=\"caption\"\r\n\r\n{caption}\r\n".encode(),
@@ -106,9 +110,11 @@ def _send_part_once(index, total, part_bytes, filename) -> dict:
     return {"file_id": doc["file_id"], "message_id": out["result"]["message_id"]}
 
 
-def send_pdf_to_telegram(pdf_bytes: bytes, filename: str) -> dict:
+def send_pdf_to_telegram(pdf_bytes: bytes, filename: str, tag: str | None = None) -> dict:
     """Upload a PDF of any size to the storage channel.
 
+    `tag` is a unique per-book identifier embedded in every part's caption so
+    channel messages can always be traced back to exactly one book.
     Returns {"file_ids": [...], "message_ids": [...]} in part order.
     Parts are uploaded in parallel (4 workers) to keep big files fast.
     """
@@ -117,7 +123,7 @@ def send_pdf_to_telegram(pdf_bytes: bytes, filename: str) -> dict:
     total = max(1, (len(pdf_bytes) + TG_PART_BYTES - 1) // TG_PART_BYTES)
     parts = [pdf_bytes[i * TG_PART_BYTES:(i + 1) * TG_PART_BYTES] for i in range(total)]
     with ThreadPoolExecutor(max_workers=min(_SEND_WORKERS, total)) as pool:
-        results = list(pool.map(_send_part, [(i, total, p, filename) for i, p in enumerate(parts)]))
+        results = list(pool.map(_send_part, [(i, total, p, filename, tag) for i, p in enumerate(parts)]))
     return {
         "file_ids": [r["file_id"] for r in results],
         "message_ids": [r["message_id"] for r in results],
@@ -187,7 +193,8 @@ def delete_telegram_message(message_id) -> bool:
         return False
 
 
-async def save_pdf(data: bytes, filename: str, content_type: str, user_id: str) -> dict:
+async def save_pdf(data: bytes, filename: str, content_type: str, user_id: str,
+                 tag: str | None = None) -> dict:
     """Store a book PDF on Telegram (any size). GridFS is only the fallback
     when Telegram isn't configured or the upload fails.
 
@@ -199,7 +206,7 @@ async def save_pdf(data: bytes, filename: str, content_type: str, user_id: str) 
     meta = None
     if content_type == "application/pdf" and telegram_configured():
         try:
-            tg = send_pdf_to_telegram(data, filename)
+            tg = send_pdf_to_telegram(data, filename, tag=tag)
             meta = {
                 "storage_path": None,
                 "telegram_file_ids": tg["file_ids"],

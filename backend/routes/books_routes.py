@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends, Query, UploadFile, File, Form, Request, Response
 from pydantic import BaseModel, Field
+import uuid
 from bson import ObjectId
 from db import db, ser, sers, oid, now_iso
 from auth import get_current_user, get_optional_user, require_permission, effective_permissions
@@ -26,6 +27,10 @@ def _book_out(b, user_id=None):
         d["pdf_url"] = f"/api/books/{d.get('id')}/pdf"
     elif b.get("storage_path"):
         d["pdf_url"] = f"/api/files/{b['storage_path']}"
+    # covers are stored in GridFS; expose the storage path so the frontend's
+    # fileUrl() helper can build the download URL (cover_url was never set).
+    if not d.get("cover_url") and b.get("cover_path"):
+        d["cover_url"] = b["cover_path"]
     return d
 
 
@@ -144,8 +149,10 @@ async def _create_book_from_pdf(user: dict, meta: dict, pdf_bytes: bytes, pdf_fi
     """
     if len(pdf_bytes) > MAX_SIZE:
         raise HTTPException(status_code=400, detail="حجم الملف يتجاوز الحد المسموح (100MB)")
-    # Telegram first (<=20MB), GridFS fallback — see telegram_storage.save_pdf
-    pdf_meta = await save_pdf(pdf_bytes, pdf_filename, "application/pdf", user["id"])
+    # Unique per-book tag so every Telegram channel message is traceable to
+    # exactly one book (even if two books share a filename).
+    tg_tag = f"bk-{uuid.uuid4().hex[:10]}"
+    pdf_meta = await save_pdf(pdf_bytes, pdf_filename, "application/pdf", user["id"], tag=tg_tag)
     cover_path = None
     cover_url = None
     if cover_bytes and cover_ct in ("image/png", "image/jpeg", "image/webp"):
@@ -161,6 +168,7 @@ async def _create_book_from_pdf(user: dict, meta: dict, pdf_bytes: bytes, pdf_fi
         "tags": [t.strip() for t in (meta.get("tags") or "").split(",") if t.strip()] or [meta.get("category", "general")],
         "cover_url": cover_url, "cover_path": cover_path,
         "storage_path": pdf_meta["storage_path"], "external_pdf_url": None,
+        "telegram_tag": tg_tag,
         "telegram_file_ids": pdf_meta.get("telegram_file_ids"),
         "telegram_message_ids": pdf_meta.get("telegram_message_ids"),
         "telegram_file_id": pdf_meta.get("telegram_file_id"),
@@ -252,10 +260,14 @@ async def edit_book(book_id: str, request: Request,
             raise HTTPException(status_code=400, detail="حجم الملف يتجاوز الحد المسموح (100MB)")
         if pdf.content_type != "application/pdf":
             raise HTTPException(status_code=400, detail="يجب أن يكون الملف بصيغة PDF")
-        pdf_meta = await save_pdf(pdf_bytes, pdf.filename, "application/pdf", user["id"])
+        new_tg_tag = f"bk-{uuid.uuid4().hex[:10]}"
+        pdf_meta = await save_pdf(pdf_bytes, pdf.filename, "application/pdf", user["id"],
+                                  tag=new_tg_tag)
         old = b.get("storage_path")
         old_tg_msgs = b.get("telegram_message_ids") or b.get("telegram_message_id")
         updates["storage_path"] = pdf_meta["storage_path"]
+        # keep the tag only when the new PDF actually landed on Telegram
+        updates["telegram_tag"] = new_tg_tag if pdf_meta.get("telegram_file_ids") else None
         updates["telegram_file_ids"] = pdf_meta.get("telegram_file_ids")
         updates["telegram_message_ids"] = pdf_meta.get("telegram_message_ids")
         updates["telegram_file_id"] = pdf_meta.get("telegram_file_id")
