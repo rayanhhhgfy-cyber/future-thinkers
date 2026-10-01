@@ -108,7 +108,8 @@ POINTS_CONFIG = {
     "reply_discussion": 8, "receive_like": 3, "join_event": 25,
     "win_chess": 30, "play_chess": 10, "daily_checkin": 5,
     "join_competition": 20, "win_competition": 100, "upload_book_approved": 40,
-    "work_published": 60,
+    "work_published": 60, "studio_review": 10, "venture_publish": 20,
+    "venture_vote_received": 3, "venture_complete_owner": 30, "venture_complete_member": 15,
 }
 
 _COVERS = [
