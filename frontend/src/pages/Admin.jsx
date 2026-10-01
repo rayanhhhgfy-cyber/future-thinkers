@@ -11,9 +11,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import NotifyPanel from "@/components/admin/NotifyPanel";
 import UsersPanel from "@/components/admin/UsersPanel";
+import ClubsPanel from "@/components/admin/ClubsPanel";
 import { toast } from "sonner";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
-import { LayoutDashboard, ShieldCheck, Users, BookOpen, Calendar, Trophy, Newspaper, Settings, ScrollText, Plus, Check, X, Megaphone, PenLine, Medal, Award, Upload, Trash2, Search, MessageSquare, Activity, Smartphone, UserPlus, FileCheck, Rocket, Zap, ArrowLeft } from "lucide-react";
+import { LayoutDashboard, ShieldCheck, Users, BookOpen, Calendar, Trophy, Newspaper, Settings, ScrollText, Plus, Check, X, Megaphone, PenLine, Medal, Award, Upload, Trash2, Search, MessageSquare, MessagesSquare, Activity, Smartphone, UserPlus, FileCheck, Rocket, Zap, ArrowLeft, Star, Heart, ThumbsUp, Flag, CalendarCheck, Crown } from "lucide-react";
 import { timeAgo } from "@/components/NotificationsPanel";
 import { motion } from "framer-motion";
 import { FadeUp, Stagger, Item } from "@/components/anim";
@@ -29,6 +30,7 @@ const NAV = [
   { k: "notify", l: "الإشعارات", icon: Megaphone, perm: "notification.broadcast" },
   { k: "content", l: "الفعاليات والمسابقات", icon: Calendar, perm: "event.create" },
   { k: "news", l: "الأخبار", icon: Newspaper, perm: "news.manage" },
+  { k: "clubs", l: "الأندية", icon: Users, perm: ["club.create", "club.edit", "club.delete", "club.manage"] },
   { k: "points", l: "نظام النقاط", icon: Settings, perm: "points.manage" },
   { k: "audit", l: "سجل العمليات", icon: ScrollText, perm: "audit.view" },
 ];
@@ -77,6 +79,7 @@ export default function Admin() {
             {tab === "notify" && <NotifyPanel />}
             {tab === "content" && <ContentPanel />}
             {tab === "news" && <NewsPanel />}
+            {tab === "clubs" && <ClubsPanel />}
             {tab === "points" && <PointsPanel />}
             {tab === "audit" && <AuditPanel />}
             </div>
@@ -347,10 +350,176 @@ function Moderation() {
 function ContentPanel() {
   return (
     <div className="space-y-6">
+      <EventsManager />
       <EventForm />
+      <CompetitionsManager />
       <CompetitionForm />
       <BroadcastForm />
     </div>
+  );
+}
+
+function EventsManager() {
+  const { hasPerm } = useAuth();
+  const canEdit = hasPerm("event.edit");
+  const canDelete = hasPerm("event.delete");
+  const [events, setEvents] = useState(null);
+  const [editing, setEditing] = useState(null);
+  const [f, setF] = useState({});
+  const [saving, setSaving] = useState(false);
+  const load = async () => {
+    try { const { data } = await api.get("/events", { params: { limit: 60 } }); setEvents(data.items || []); }
+    catch { setEvents([]); }
+  };
+  useEffect(() => { load(); }, []);
+  const openEdit = (e) => {
+    setEditing(e);
+    setF({ title: e.title || "", description: e.description || "", date: e.date || "", time: e.time || "", location: e.location || "", mode: e.mode || "online", scope: e.scope || "national", capacity: e.capacity || 100 });
+  };
+  const save = async () => {
+    if (!f.title.trim()) return toast.error("العنوان مطلوب");
+    setSaving(true);
+    try { await api.patch(`/events/${editing.id}`, { ...f, capacity: Number(f.capacity) || 0 }); toast.success("تم حفظ التعديلات ✅"); setEditing(null); load(); }
+    catch (e) { toast.error(apiErr(e)); } finally { setSaving(false); }
+  };
+  const del = async (e) => {
+    if (!window.confirm(`حذف فعالية "${e.title}" نهائياً؟ سيتم إلغاء تسجيلات المشاركين.`)) return;
+    try { await api.delete(`/events/${e.id}`); toast.success("تم حذف الفعالية"); load(); }
+    catch (e2) { toast.error(apiErr(e2)); }
+  };
+  if (!events) return <PageLoader />;
+  const set = (k) => (v) => setF((x) => ({ ...x, [k]: v }));
+  return (
+    <Section title={`الفعاليات (${events.length})`}>
+      {events.length === 0 ? <Empty t="لا فعاليات بعد" /> : (
+        <Stagger className="space-y-2 max-h-[420px] overflow-y-auto pl-1">
+          {events.map((e) => (
+            <Item key={e.id} className="flex flex-col sm:flex-row sm:items-center gap-3 p-3.5 bg-white rounded-2xl border border-slate-100">
+              <div className="flex items-center gap-3 min-w-0 flex-1">
+                <div className="w-11 h-11 rounded-xl bg-violet-100 grid place-items-center shrink-0"><Calendar className="w-5 h-5 text-violet-600" /></div>
+                <div className="min-w-0">
+                  <div className="font-bold text-slate-800 truncate">{e.title}</div>
+                  <div className="text-xs text-slate-400 mt-0.5">{e.date || ""}{e.time ? ` · ${e.time}` : ""}{e.location ? ` · ${e.location}` : ""}{e.registered_count ? ` · ${e.registered_count} مشارك` : ""}</div>
+                </div>
+              </div>
+              <div className="flex gap-2 shrink-0">
+                {canEdit && <Button size="sm" variant="outline" onClick={() => openEdit(e)} className="rounded-xl flex-1 sm:flex-none h-10"><PenLine className="w-4 h-4 ml-1" /> تعديل</Button>}
+                {canDelete && <Button size="sm" variant="outline" onClick={() => del(e)} className="rounded-xl flex-1 sm:flex-none h-10 text-rose-600 border-rose-200"><Trash2 className="w-4 h-4 ml-1" /> حذف</Button>}
+              </div>
+            </Item>
+          ))}
+        </Stagger>
+      )}
+      <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
+        <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>تعديل الفعالية</DialogTitle></DialogHeader>
+          <div className="grid sm:grid-cols-2 gap-3">
+            <div className="sm:col-span-2"><Label>العنوان</Label><Input value={f.title || ""} onChange={(e) => set("title")(e.target.value)} className="rounded-xl mt-1" /></div>
+            <div><Label>التاريخ</Label><Input type="date" value={f.date || ""} onChange={(e) => set("date")(e.target.value)} className="rounded-xl mt-1" /></div>
+            <div><Label>الوقت</Label><Input value={f.time || ""} onChange={(e) => set("time")(e.target.value)} className="rounded-xl mt-1" /></div>
+            <div><Label>المكان</Label><Input value={f.location || ""} onChange={(e) => set("location")(e.target.value)} className="rounded-xl mt-1" /></div>
+            <div><Label>السعة</Label><Input type="number" min="0" value={f.capacity ?? ""} onChange={(e) => set("capacity")(e.target.value)} className="rounded-xl mt-1" /></div>
+            <div>
+              <Label>النمط</Label>
+              <Select value={f.mode || "online"} onValueChange={set("mode")}><SelectTrigger className="rounded-xl mt-1"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="online">عن بُعد</SelectItem><SelectItem value="onsite">حضوري</SelectItem></SelectContent></Select>
+            </div>
+            <div>
+              <Label>النطاق</Label>
+              <Select value={f.scope || "national"} onValueChange={set("scope")}><SelectTrigger className="rounded-xl mt-1"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="national">وطنية</SelectItem><SelectItem value="directorate">مديرية</SelectItem><SelectItem value="school">مدرسة</SelectItem></SelectContent></Select>
+            </div>
+            <div className="sm:col-span-2"><Label>الوصف</Label><Textarea value={f.description || ""} onChange={(e) => set("description")(e.target.value)} className="rounded-xl mt-1" rows={3} /></div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setEditing(null)} className="rounded-xl">إلغاء</Button>
+            <Button onClick={save} disabled={saving} className="rounded-xl bg-emerald-600 hover:bg-emerald-700">{saving ? "جارٍ الحفظ..." : "حفظ التعديلات"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </Section>
+  );
+}
+
+function CompetitionsManager() {
+  const { hasPerm } = useAuth();
+  const canEdit = hasPerm("competition.edit");
+  const canDelete = hasPerm("competition.delete");
+  const [comps, setComps] = useState(null);
+  const [editing, setEditing] = useState(null);
+  const [f, setF] = useState({});
+  const [saving, setSaving] = useState(false);
+  const load = async () => {
+    try { const { data } = await api.get("/competitions", { params: { limit: 60 } }); setComps(data.items || []); }
+    catch { setComps([]); }
+  };
+  useEffect(() => { load(); }, []);
+  const openEdit = (c) => {
+    setEditing(c);
+    // NOTE: question editing is intentionally out of scope here — edit the metadata only.
+    setF({ title: c.title || "", description: c.description || "", type: c.type || "quiz", start_at: (c.start_at || "").slice(0, 16), end_at: (c.end_at || "").slice(0, 16), duration_minutes: c.duration_minutes || 30 });
+  };
+  const save = async () => {
+    if (!f.title.trim()) return toast.error("العنوان مطلوب");
+    setSaving(true);
+    try {
+      await api.patch(`/competitions/${editing.id}`, {
+        title: f.title, description: f.description, type: f.type,
+        start_at: f.start_at ? new Date(f.start_at).toISOString() : undefined,
+        end_at: f.end_at ? new Date(f.end_at).toISOString() : undefined,
+        duration_minutes: Number(f.duration_minutes) || 30,
+      });
+      toast.success("تم حفظ التعديلات ✅"); setEditing(null); load();
+    } catch (e) { toast.error(apiErr(e)); } finally { setSaving(false); }
+  };
+  const del = async (c) => {
+    if (!window.confirm(`حذف مسابقة "${c.title}" نهائياً؟ سيتم حذف المشاركات والنتائج المرتبطة.`)) return;
+    try { await api.delete(`/competitions/${c.id}`); toast.success("تم حذف المسابقة"); load(); }
+    catch (e) { toast.error(apiErr(e)); }
+  };
+  if (!comps) return <PageLoader />;
+  const set = (k) => (v) => setF((x) => ({ ...x, [k]: v }));
+  return (
+    <Section title={`المسابقات (${comps.length})`}>
+      {comps.length === 0 ? <Empty t="لا مسابقات بعد" /> : (
+        <Stagger className="space-y-2 max-h-[420px] overflow-y-auto pl-1">
+          {comps.map((c) => (
+            <Item key={c.id} className="flex flex-col sm:flex-row sm:items-center gap-3 p-3.5 bg-white rounded-2xl border border-slate-100">
+              <div className="flex items-center gap-3 min-w-0 flex-1">
+                <div className="w-11 h-11 rounded-xl bg-amber-100 grid place-items-center shrink-0"><Trophy className="w-5 h-5 text-amber-600" /></div>
+                <div className="min-w-0">
+                  <div className="font-bold text-slate-800 truncate">{c.title}</div>
+                  <div className="text-xs text-slate-400 mt-0.5">{c.type || ""}{c.start_at ? ` · تبدأ ${String(c.start_at).slice(0, 10)}` : ""}</div>
+                </div>
+              </div>
+              <div className="flex gap-2 shrink-0">
+                {canEdit && <Button size="sm" variant="outline" onClick={() => openEdit(c)} className="rounded-xl flex-1 sm:flex-none h-10"><PenLine className="w-4 h-4 ml-1" /> تعديل</Button>}
+                {canDelete && <Button size="sm" variant="outline" onClick={() => del(c)} className="rounded-xl flex-1 sm:flex-none h-10 text-rose-600 border-rose-200"><Trash2 className="w-4 h-4 ml-1" /> حذف</Button>}
+              </div>
+            </Item>
+          ))}
+        </Stagger>
+      )}
+      <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
+        <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>تعديل المسابقة</DialogTitle></DialogHeader>
+          <div className="grid sm:grid-cols-2 gap-3">
+            <div className="sm:col-span-2"><Label>العنوان</Label><Input value={f.title || ""} onChange={(e) => set("title")(e.target.value)} className="rounded-xl mt-1" /></div>
+            <div>
+              <Label>النوع</Label>
+              <Select value={f.type || "quiz"} onValueChange={set("type")}><SelectTrigger className="rounded-xl mt-1"><SelectValue /></SelectTrigger><SelectContent>{["quiz", "science", "reading", "programming", "writing", "debate"].map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent></Select>
+            </div>
+            <div><Label>المدة (دقائق)</Label><Input type="number" min="1" value={f.duration_minutes ?? ""} onChange={(e) => set("duration_minutes")(e.target.value)} className="rounded-xl mt-1" /></div>
+            <div><Label>تبدأ</Label><Input type="datetime-local" value={f.start_at || ""} onChange={(e) => set("start_at")(e.target.value)} className="rounded-xl mt-1" /></div>
+            <div><Label>تنتهي</Label><Input type="datetime-local" value={f.end_at || ""} onChange={(e) => set("end_at")(e.target.value)} className="rounded-xl mt-1" /></div>
+            <div className="sm:col-span-2"><Label>الوصف</Label><Textarea value={f.description || ""} onChange={(e) => set("description")(e.target.value)} className="rounded-xl mt-1" rows={3} /></div>
+            <p className="sm:col-span-2 text-xs text-slate-400">ملاحظة: تعديل الأسئلة يتم عند إنشاء مسابقة جديدة — هنا تُعدَّل البيانات الأساسية فقط.</p>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setEditing(null)} className="rounded-xl">إلغاء</Button>
+            <Button onClick={save} disabled={saving} className="rounded-xl bg-emerald-600 hover:bg-emerald-700">{saving ? "جارٍ الحفظ..." : "حفظ التعديلات"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </Section>
   );
 }
 
@@ -425,53 +594,323 @@ function BroadcastForm() {
 
 function NewsPanel() {
   const [f, setF] = useState({ title: "", body: "", category: "منصة", cover_url: "" });
-  const submit = async () => { try { await api.post("/news", f); toast.success("تم نشر الخبر"); setF({ title: "", body: "", category: "منصة", cover_url: "" }); } catch (e) { toast.error(apiErr(e)); } };
+  const [refreshKey, setRefreshKey] = useState(0);
+  const submit = async () => { try { await api.post("/news", f); toast.success("تم نشر الخبر"); setF({ title: "", body: "", category: "منصة", cover_url: "" }); setRefreshKey((k) => k + 1); } catch (e) { toast.error(apiErr(e)); } };
   return (
-    <Section title="نشر خبر">
-      <Input data-testid="news-title" placeholder="عنوان الخبر" value={f.title} onChange={(e) => setF((x) => ({ ...x, title: e.target.value }))} className="rounded-xl mb-2" />
-      <Input placeholder="رابط صورة (اختياري)" value={f.cover_url} onChange={(e) => setF((x) => ({ ...x, cover_url: e.target.value }))} className="rounded-xl mb-2" />
-      <Textarea placeholder="نص الخبر" value={f.body} onChange={(e) => setF((x) => ({ ...x, body: e.target.value }))} className="rounded-xl min-h-[140px]" />
-      <Button data-testid="publish-news-btn" onClick={submit} className="mt-3 rounded-xl bg-emerald-600 hover:bg-emerald-700"><Plus className="w-4 h-4 ml-1" />نشر</Button>
+    <div className="space-y-6">
+      <NewsManager refreshKey={refreshKey} onChanged={() => setRefreshKey((k) => k + 1)} />
+      <Section title="نشر خبر">
+        <Input data-testid="news-title" placeholder="عنوان الخبر" value={f.title} onChange={(e) => setF((x) => ({ ...x, title: e.target.value }))} className="rounded-xl mb-2" />
+        <Input placeholder="رابط صورة (اختياري)" value={f.cover_url} onChange={(e) => setF((x) => ({ ...x, cover_url: e.target.value }))} className="rounded-xl mb-2" />
+        <Textarea placeholder="نص الخبر" value={f.body} onChange={(e) => setF((x) => ({ ...x, body: e.target.value }))} className="rounded-xl min-h-[140px]" />
+        <Button data-testid="publish-news-btn" onClick={submit} className="mt-3 rounded-xl bg-emerald-600 hover:bg-emerald-700"><Plus className="w-4 h-4 ml-1" />نشر</Button>
+      </Section>
+    </div>
+  );
+}
+
+function NewsManager({ refreshKey, onChanged }) {
+  const { hasPerm } = useAuth();
+  const canEdit = hasPerm("news.edit");
+  const canDelete = hasPerm("news.delete");
+  const [items, setItems] = useState(null);
+  const [editing, setEditing] = useState(null);
+  const [f, setF] = useState({});
+  const [saving, setSaving] = useState(false);
+  const load = async () => {
+    try { const { data } = await api.get("/news", { params: { limit: 40 } }); setItems(data.items || []); }
+    catch { setItems([]); }
+  };
+  useEffect(() => { load(); }, [refreshKey]);
+  const openEdit = (n) => { setEditing(n); setF({ title: n.title || "", body: n.body || "", category: n.category || "منصة", cover_url: n.cover_url || "" }); };
+  const save = async () => {
+    if (!f.title.trim() || !f.body.trim()) return toast.error("العنوان والنص مطلوبان");
+    setSaving(true);
+    try { await api.patch(`/news/${editing.id}`, f); toast.success("تم حفظ التعديلات ✅"); setEditing(null); onChanged(); }
+    catch (e) { toast.error(apiErr(e)); } finally { setSaving(false); }
+  };
+  const del = async (n) => {
+    if (!window.confirm(`حذف خبر "${n.title}" نهائياً؟`)) return;
+    try { await api.delete(`/news/${n.id}`); toast.success("تم حذف الخبر"); onChanged(); }
+    catch (e) { toast.error(apiErr(e)); }
+  };
+  if (!items) return <PageLoader />;
+  const set = (k) => (v) => setF((x) => ({ ...x, [k]: v }));
+  return (
+    <Section title={`الأخبار المنشورة (${items.length})`}>
+      {items.length === 0 ? <Empty t="لا أخبار بعد" /> : (
+        <Stagger className="grid sm:grid-cols-2 gap-3 max-h-[520px] overflow-y-auto pl-1">
+          {items.map((n) => (
+            <Item key={n.id} className="bg-white rounded-2xl border border-slate-100 overflow-hidden flex flex-col hover-lift">
+              {n.cover_url ? (
+                <img src={n.cover_url} alt={n.title} className="h-32 w-full object-cover" />
+              ) : (
+                <div className="h-20 w-full bg-gradient-to-l from-sky-100 to-indigo-50 grid place-items-center">
+                  <Newspaper className="w-8 h-8 text-sky-300" />
+                </div>
+              )}
+              <div className="p-4 flex flex-col gap-2 flex-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-sky-50 text-sky-700">{n.category || "منصة"}</span>
+                  <span className="text-[11px] text-slate-400">{String(n.created_at || "").slice(0, 10)}</span>
+                </div>
+                <div className="font-bold text-slate-800 leading-snug line-clamp-2">{n.title}</div>
+                <div className="text-xs text-slate-500 line-clamp-2 leading-relaxed">{n.body}</div>
+                <div className="flex gap-2 mt-auto pt-2">
+                  {canEdit && <Button size="sm" variant="outline" onClick={() => openEdit(n)} className="rounded-xl flex-1 h-10"><PenLine className="w-4 h-4 ml-1" /> تعديل</Button>}
+                  {canDelete && <Button size="sm" variant="outline" onClick={() => del(n)} className="rounded-xl flex-1 h-10 text-rose-600 border-rose-200"><Trash2 className="w-4 h-4 ml-1" /> حذف</Button>}
+                </div>
+              </div>
+            </Item>
+          ))}
+        </Stagger>
+      )}
+      <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
+        <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>تعديل الخبر</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div><Label>العنوان</Label><Input value={f.title || ""} onChange={(e) => set("title")(e.target.value)} className="rounded-xl mt-1" /></div>
+            <div><Label>التصنيف</Label><Input value={f.category || ""} onChange={(e) => set("category")(e.target.value)} className="rounded-xl mt-1" /></div>
+            <div><Label>رابط الصورة</Label><Input value={f.cover_url || ""} onChange={(e) => set("cover_url")(e.target.value)} className="rounded-xl mt-1" dir="ltr" /></div>
+            <div><Label>نص الخبر</Label><Textarea value={f.body || ""} onChange={(e) => set("body")(e.target.value)} className="rounded-xl mt-1 min-h-[140px]" /></div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setEditing(null)} className="rounded-xl">إلغاء</Button>
+            <Button onClick={save} disabled={saving} className="rounded-xl bg-emerald-600 hover:bg-emerald-700">{saving ? "جارٍ الحفظ..." : "حفظ التعديلات"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Section>
   );
 }
 
+const POINTS_META = {
+  read_book: { l: "قراءة كتاب", icon: BookOpen, c: "#2563EB" },
+  review_book: { l: "تقييم كتاب", icon: Star, c: "#D97706" },
+  create_discussion: { l: "إنشاء نقاش", icon: MessageSquare, c: "#7C3AED" },
+  reply_discussion: { l: "رد على نقاش", icon: MessagesSquare, c: "#0891B2" },
+  receive_like: { l: "استلام إعجاب", icon: Heart, c: "#E11D48" },
+  join_event: { l: "حضور فعالية", icon: CalendarCheck, c: "#059669" },
+  win_chess: { l: "فوز بالشطرنج", icon: Trophy, c: "#D97706" },
+  play_chess: { l: "لعب الشطرنج", icon: Crown, c: "#7C3AED" },
+  daily_checkin: { l: "حضور يومي", icon: Zap, c: "#059669" },
+  join_competition: { l: "دخول مسابقة", icon: Medal, c: "#0891B2" },
+  win_competition: { l: "فوز بمسابقة", icon: Award, c: "#D97706" },
+  upload_book_approved: { l: "قبول كتاب مرفوع", icon: Upload, c: "#2563EB" },
+  work_published: { l: "نشر عمل في الاستوديو", icon: PenLine, c: "#7C3AED" },
+  studio_review: { l: "مراجعة عمل أدبي", icon: Star, c: "#D97706" },
+  venture_publish: { l: "نشر مشروع", icon: Rocket, c: "#E11D48" },
+  venture_vote_received: { l: "تصويت لمشروعك", icon: ThumbsUp, c: "#059669" },
+  venture_complete_owner: { l: "إتمام مشروع (مالك)", icon: Flag, c: "#2563EB" },
+  venture_complete_member: { l: "إتمام مشروع (عضو)", icon: Users, c: "#0891B2" },
+};
+
 function PointsPanel() {
   const [cfg, setCfg] = useState(null);
+  const [saving, setSaving] = useState(false);
   useEffect(() => { api.get("/admin/points-config").then((r) => setCfg(r.data)); }, []);
-  const LABELS = { read_book: "قراءة كتاب", review_book: "تقييم كتاب", create_discussion: "إنشاء نقاش", reply_discussion: "رد على نقاش", receive_like: "استلام إعجاب", join_event: "حضور فعالية", win_chess: "فوز بالشطرنج", play_chess: "لعب الشطرنج", daily_checkin: "حضور يومي", join_competition: "دخول مسابقة", win_competition: "فوز بمسابقة", upload_book_approved: "قبول كتاب مرفوع" };
-  const save = async () => { await api.put("/admin/points-config", cfg); toast.success("تم حفظ إعدادات النقاط"); };
+  const save = async () => {
+    setSaving(true);
+    try { await api.put("/admin/points-config", cfg); toast.success("تم حفظ إعدادات النقاط ✅"); }
+    catch (e) { toast.error(apiErr(e)); } finally { setSaving(false); }
+  };
   if (!cfg) return <PageLoader />;
+  const keys = Object.keys(cfg);
   return (
-    <Section title="نظام النقاط (قابل للتعديل)">
-      <div className="grid sm:grid-cols-2 gap-3">
-        {Object.entries(cfg).map(([k, v]) => (
-          <div key={k} className="flex items-center justify-between gap-3 bg-slate-50 rounded-xl p-3">
-            <span className="text-sm text-slate-700">{LABELS[k] || k}</span>
-            <Input data-testid={`points-${k}`} type="number" value={v} onChange={(e) => setCfg((c) => ({ ...c, [k]: Number(e.target.value) }))} className="w-24 rounded-lg h-9 bg-white" />
+    <div className="space-y-6">
+      <Section title="قيم النقاط لكل نشاط">
+        <Stagger className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+          {keys.map((k) => {
+            const m = POINTS_META[k] || { l: k, icon: Zap, c: "#64748B" };
+            const Icon = m.icon;
+            return (
+              <Item key={k} className="flex items-center gap-3 bg-gradient-to-l from-slate-50 to-white rounded-2xl border border-slate-100 p-3.5 hover-lift">
+                <div className="w-11 h-11 rounded-xl grid place-items-center text-white shrink-0" style={{ background: m.c }}>
+                  <Icon className="w-5 h-5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-bold text-slate-700 truncate">{m.l}</div>
+                  <div className="text-[11px] text-slate-400" dir="ltr">{k}</div>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <Input data-testid={`points-${k}`} type="number" value={cfg[k]} onChange={(e) => setCfg((c) => ({ ...c, [k]: Number(e.target.value) }))} className="w-20 rounded-xl h-10 bg-white text-center font-bold" dir="ltr" />
+                  <span className="text-xs text-slate-400">نقطة</span>
+                </div>
+              </Item>
+            );
+          })}
+        </Stagger>
+        <Button data-testid="save-points-btn" onClick={save} disabled={saving} className="mt-4 rounded-xl bg-blue-600 hover:bg-blue-700">
+          <Check className="w-4 h-4 ml-1" /> {saving ? "جارٍ الحفظ..." : "حفظ التغييرات"}
+        </Button>
+      </Section>
+      <AdjustXp />
+    </div>
+  );
+}
+
+function AdjustXp() {
+  const [q, setQ] = useState("");
+  const [users, setUsers] = useState([]);
+  const [sel, setSel] = useState(null);
+  const [amount, setAmount] = useState("");
+  const [reason, setReason] = useState("");
+  const [saving, setSaving] = useState(false);
+  useEffect(() => {
+    if (!q.trim()) { setUsers([]); return; }
+    const t = setTimeout(async () => {
+      try { const { data } = await api.get("/admin/users", { params: { q } }); setUsers(data.items || []); } catch {}
+    }, 300);
+    return () => clearTimeout(t);
+  }, [q]);
+  const submit = async () => {
+    if (!sel) return toast.error("اختر المستخدم أولاً");
+    const n = Number(amount);
+    if (!n) return toast.error("أدخل عدد النقاط (موجب للإضافة وسالب للخصم)");
+    setSaving(true);
+    try {
+      await api.post(`/admin/users/${sel.id}/adjust-xp`, { amount: n, reason: reason.trim() || "تعديل إداري" });
+      toast.success(`تم ${n > 0 ? "إضافة" : "خصم"} ${Math.abs(n)} نقطة ${n > 0 ? "إلى" : "من"} ${sel.name} ✅`);
+      setSel(null); setQ(""); setAmount(""); setReason("");
+    } catch (e) { toast.error(apiErr(e)); } finally { setSaving(false); }
+  };
+  return (
+    <Section title="تعديل نقاط مستخدم">
+      <div className="max-w-xl space-y-3">
+        <div className="relative">
+          <Search className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="ابحث بالاسم أو البريد..." className="rounded-xl pr-9" />
+        </div>
+        {users.length > 0 && !sel && (
+          <div className="border border-slate-100 rounded-xl divide-y max-h-44 overflow-y-auto bg-white">
+            {users.slice(0, 6).map((u) => (
+              <button key={u.id} onClick={() => setSel(u)} className="w-full text-right px-3 py-2.5 hover:bg-slate-50 text-sm flex items-center justify-between gap-2">
+                <span><span className="font-medium">{u.name}</span> <span className="text-slate-400 text-xs">{u.email}</span></span>
+                <span className="text-xs text-amber-600 font-medium shrink-0">{u.xp ?? 0} نقطة</span>
+              </button>
+            ))}
           </div>
-        ))}
+        )}
+        {sel && (
+          <div className="flex items-center gap-2 text-sm bg-emerald-50 rounded-xl px-3 py-2.5">
+            <Check className="w-4 h-4 text-emerald-600" />{sel.name}
+            <span className="text-xs text-slate-400">({sel.xp ?? 0} نقطة حالياً)</span>
+            <button onClick={() => setSel(null)} className="mr-auto text-slate-400"><X className="w-4 h-4" /></button>
+          </div>
+        )}
+        <div className="grid grid-cols-2 gap-3">
+          <div><Label>عدد النقاط <span className="text-slate-400 font-normal">(+ إضافة / − خصم)</span></Label>
+            <Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="مثال: 50 أو -20" className="rounded-xl mt-1 text-center font-bold" dir="ltr" /></div>
+          <div><Label>السبب</Label>
+            <Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="مثال: فوز بتحدي القراءة" className="rounded-xl mt-1" /></div>
+        </div>
+        <Button onClick={submit} disabled={saving} className="rounded-xl bg-amber-600 hover:bg-amber-700">
+          <Zap className="w-4 h-4 ml-1" /> {saving ? "جارٍ التنفيذ..." : "تنفيذ التعديل"}
+        </Button>
       </div>
-      <Button data-testid="save-points-btn" onClick={save} className="mt-4 rounded-xl bg-blue-600 hover:bg-blue-700">حفظ التغييرات</Button>
     </Section>
   );
+}
+
+const AUDIT_ACTION_STYLE = [
+  { match: ["delete", "reject", "remove"], bg: "bg-rose-50 text-rose-700 border-rose-100", dot: "bg-rose-500" },
+  { match: ["create", "approve", "award", "send", "publish", "adjust"], bg: "bg-emerald-50 text-emerald-700 border-emerald-100", dot: "bg-emerald-500" },
+  { match: ["update", "edit", "change", "patch"], bg: "bg-blue-50 text-blue-700 border-blue-100", dot: "bg-blue-500" },
+  { match: ["login"], bg: "bg-slate-100 text-slate-600 border-slate-200", dot: "bg-slate-400" },
+];
+const AUDIT_ENTITY_LABEL = {
+  user: "مستخدم", book: "كتاب", news: "خبر", event: "فعالية", competition: "مسابقة",
+  club: "نادٍ", notification: "إشعار", campaign: "حملة", badge: "شارة", certificate: "شهادة",
+  points: "نقاط", xp: "نقاط", studio: "استوديو", work: "عمل أدبي", venture: "مشروع",
+  discussion: "نقاش", report: "بلاغ", auth: "دخول",
+};
+function auditStyle(action = "") {
+  const a = action.toLowerCase();
+  for (const s of AUDIT_ACTION_STYLE) if (s.match.some((m) => a.includes(m))) return s;
+  return { bg: "bg-violet-50 text-violet-700 border-violet-100", dot: "bg-violet-500" };
 }
 
 function AuditPanel() {
   const [data, setData] = useState(null);
-  useEffect(() => { api.get("/admin/audit-logs").then((r) => setData(r.data)); }, []);
+  const [page, setPage] = useState(1);
+  const [q, setQ] = useState("");
+  const [entity, setEntity] = useState("all");
+  const [expanded, setExpanded] = useState(null);
+  const LIMIT = 25;
+  const load = async (p = 1) => {
+    setData(null);
+    try { const { data } = await api.get("/admin/audit-logs", { params: { page: p, limit: LIMIT } }); setData(data); }
+    catch { setData({ items: [], total: 0, page: p }); }
+  };
+  useEffect(() => { load(page); }, [page]);
   if (!data) return <PageLoader />;
+  const entities = [...new Set(data.items.map((l) => l.entity).filter(Boolean))];
+  const ql = q.trim().toLowerCase();
+  const items = data.items.filter((l) => {
+    if (entity !== "all" && l.entity !== entity) return false;
+    if (!ql) return true;
+    return [l.user_email, l.action, l.entity, l.entity_id].some((v) => String(v || "").toLowerCase().includes(ql));
+  });
+  const totalPages = Math.max(1, Math.ceil((data.total || 0) / LIMIT));
   return (
-    <div className="bg-white rounded-2xl border border-slate-100 ft-shadow overflow-x-auto">
-      {data.items.map((l) => (
-        <div key={l.id} className="px-4 py-2.5 border-b border-slate-50 last:border-0 text-sm flex items-center gap-3 flex-wrap min-w-0">
-          <span className="font-mono text-xs px-2 py-0.5 rounded bg-slate-100 text-slate-600">{l.action}</span>
-          <span className="text-slate-700">{l.user_email || "—"}</span>
-          <span className="text-slate-400 text-xs">{l.entity} {l.entity_id ? `#${String(l.entity_id).slice(-6)}` : ""}</span>
-          <span className="text-slate-300 text-xs mr-auto" dir="ltr">{new Date(l.created_at).toLocaleString("en-GB")}</span>
+    <div className="space-y-4">
+      <div className="bg-white rounded-2xl border border-slate-100 ft-shadow p-4">
+        <div className="flex flex-col sm:flex-row gap-2">
+          <div className="relative flex-1">
+            <Search className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="بحث بالبريد أو الإجراء أو الكيان..." className="rounded-xl pr-9" />
+          </div>
+          <Select value={entity} onValueChange={setEntity}>
+            <SelectTrigger className="rounded-xl sm:w-44"><SelectValue placeholder="كل الكيانات" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">كل الكيانات</SelectItem>
+              {entities.map((e) => <SelectItem key={e} value={e}>{AUDIT_ENTITY_LABEL[e] || e}</SelectItem>)}
+            </SelectContent>
+          </Select>
         </div>
-      ))}
-      {data.items.length === 0 && <Empty t="لا سجلات بعد" />}
+      </div>
+
+      {items.length === 0 ? (
+        <div className="bg-white rounded-2xl border border-slate-100 ft-shadow"><Empty t="لا سجلات مطابقة" /></div>
+      ) : (
+        <Stagger className="relative space-y-3 before:absolute before:right-[27px] before:top-4 before:bottom-4 before:w-px before:bg-slate-200">
+          {items.map((l) => {
+            const s = auditStyle(l.action);
+            const open = expanded === l.id;
+            const meta = l.meta && typeof l.meta === "object" ? Object.entries(l.meta) : [];
+            return (
+              <Item key={l.id} className="relative pr-14">
+                <span className={`absolute right-[21px] top-5 w-3.5 h-3.5 rounded-full ${s.dot} ring-4 ring-white`} />
+                <button onClick={() => setExpanded(open ? null : l.id)} className="w-full text-right bg-white rounded-2xl border border-slate-100 ft-shadow p-4 hover-lift">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className={`text-xs font-bold px-2.5 py-1 rounded-full border ${s.bg}`}>{ACT_LABELS[l.action] || l.action}</span>
+                    {l.entity && <span className="text-[11px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">{AUDIT_ENTITY_LABEL[l.entity] || l.entity}</span>}
+                    <span className="text-xs text-slate-400 mr-auto">{timeAgo(l.created_at)}</span>
+                  </div>
+                  <div className="text-sm text-slate-600 mt-2 truncate">{l.user_email || "النظام"}</div>
+                  {open && (
+                    <div className="mt-3 pt-3 border-t border-slate-100 text-xs text-slate-500 space-y-1.5" dir="ltr" style={{ textAlign: "right" }}>
+                      {l.entity_id && <div>entity_id: <span className="font-mono">{String(l.entity_id)}</span></div>}
+                      {meta.length > 0 ? meta.map(([k, v]) => (
+                        <div key={k}>{k}: <span className="font-mono text-slate-700">{typeof v === "object" ? JSON.stringify(v) : String(v)}</span></div>
+                      )) : <div className="text-slate-400">لا تفاصيل إضافية</div>}
+                      {l.ip && <div>ip: <span className="font-mono">{l.ip}</span></div>}
+                    </div>
+                  )}
+                </button>
+              </Item>
+            );
+          })}
+        </Stagger>
+      )}
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-2">
+          <Button size="sm" variant="outline" disabled={page <= 1} onClick={() => setPage((p) => p - 1)} className="rounded-xl">السابق</Button>
+          <span className="text-sm text-slate-500">صفحة {page} من {totalPages}</span>
+          <Button size="sm" variant="outline" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)} className="rounded-xl">التالي</Button>
+        </div>
+      )}
     </div>
   );
 }
@@ -605,6 +1044,7 @@ function BadgesPanel() {
 
 function BooksPanel() {
   const { hasPerm } = useAuth();
+  const nav = useNavigate();
   const [books, setBooks] = useState([]);
   const [total, setTotal] = useState(0);
   const [q, setQ] = useState("");
@@ -618,8 +1058,6 @@ function BooksPanel() {
   const [editPdf, setEditPdf] = useState(null);
   const [editCover, setEditCover] = useState(null);
   const [savingEdit, setSavingEdit] = useState(false);
-  const [revBook, setRevBook] = useState(null);
-  const [reviews, setReviews] = useState([]);
 
   const load = async () => {
     try {
@@ -690,22 +1128,8 @@ function BooksPanel() {
     } catch (err) { toast.error(apiErr(err)); } finally { setSavingEdit(false); }
   };
 
-  const openReviews = async (b) => {
-    setRevBook(b); setReviews([]);
-    try { const { data } = await api.get(`/books/${b.id}/reviews`); setReviews(data || []); }
-    catch { setReviews([]); }
-  };
-
-  const delReview = async (r) => {
-    if (!window.confirm(`حذف مراجعة "${r.user_name || "مستخدم"}"؟`)) return;
-    try {
-      await api.delete(`/books/${revBook.id}/reviews/${r.id}`);
-      toast.success("تم حذف المراجعة");
-      setReviews(reviews.filter((x) => x.id !== r.id));
-    } catch (e) { toast.error(apiErr(e)); }
-  };
-
   const statusLabel = { approved: "معتمد", pending: "معلّق", rejected: "مرفوض" };
+  const statusColor = { approved: "bg-emerald-50 text-emerald-700", pending: "bg-amber-50 text-amber-700", rejected: "bg-rose-50 text-rose-700" };
 
   return (
     <div className="space-y-6">
@@ -750,33 +1174,53 @@ function BooksPanel() {
           </Select>
         </div>
         {books.length === 0 ? <Empty t="لا كتب" /> : (
-          <div className="space-y-2 max-h-[480px] overflow-y-auto">
+          <Stagger className="space-y-3 max-h-[560px] overflow-y-auto pl-1">
             {books.map((b) => (
-              <div key={b.id} className="flex items-center justify-between gap-3 p-3 bg-white rounded-xl border border-slate-100">
-                <div className="min-w-0">
-                  <div className="font-semibold text-slate-800 truncate">{b.title}</div>
-                  <div className="text-xs text-slate-400">{b.author} · {statusLabel[b.status] || b.status} · {b.uploader_name || ""}</div>
+              <Item key={b.id} className="bg-white rounded-2xl border border-slate-100 p-3 sm:p-4 hover-lift">
+                <div className="flex gap-3">
+                  {b.cover_url ? (
+                    <img src={b.cover_url} alt={b.title} className="w-14 h-20 sm:w-16 sm:h-24 object-cover rounded-xl shrink-0" />
+                  ) : (
+                    <div className="w-14 h-20 sm:w-16 sm:h-24 rounded-xl bg-gradient-to-br from-emerald-100 to-teal-50 grid place-items-center shrink-0">
+                      <BookOpen className="w-6 h-6 text-emerald-500" />
+                    </div>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className="font-bold text-slate-800 truncate">{b.title}</div>
+                      <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${statusColor[b.status] || "bg-slate-100 text-slate-600"}`}>
+                        {statusLabel[b.status] || b.status}
+                      </span>
+                    </div>
+                    <div className="text-xs text-slate-400 mt-1 truncate">{b.author}{b.uploader_name ? ` · رفع: ${b.uploader_name}` : ""}</div>
+                    {(b.rating_avg > 0 || b.views > 0) && (
+                      <div className="text-xs text-slate-400 mt-1 flex items-center gap-3">
+                        {b.rating_avg > 0 && <span className="text-amber-500 font-medium">★ {Number(b.rating_avg).toFixed(1)} <span className="text-slate-400">({b.rating_count || 0})</span></span>}
+                        {b.views > 0 && <span>{b.views} مشاهدة</span>}
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <div className="flex items-center gap-1 shrink-0">
+                <div className="grid grid-cols-3 gap-2 mt-3">
                   {hasPerm("book.edit") && (
                     <>
-                      <Button size="sm" variant="outline" onClick={() => openEdit(b)} className="rounded-lg">
+                      <Button size="sm" variant="outline" onClick={() => openEdit(b)} className="rounded-xl h-10 text-xs sm:text-sm">
                         <PenLine className="w-4 h-4 ml-1" /> تعديل
                       </Button>
-                      <Button size="sm" variant="outline" onClick={() => openReviews(b)} className="rounded-lg">
+                      <Button size="sm" variant="outline" onClick={() => nav(`/admin/books/${b.id}/reviews`)} className="rounded-xl h-10 text-xs sm:text-sm">
                         <MessageSquare className="w-4 h-4 ml-1" /> المراجعات
                       </Button>
                     </>
                   )}
                   {hasPerm("book.delete") && (
-                    <Button size="sm" variant="outline" onClick={() => del(b)} className="rounded-lg text-rose-600 border-rose-200">
+                    <Button size="sm" variant="outline" onClick={() => del(b)} className={`rounded-xl h-10 text-xs sm:text-sm text-rose-600 border-rose-200 ${hasPerm("book.edit") ? "" : "col-span-3"}`}>
                       <Trash2 className="w-4 h-4 ml-1" /> حذف
                     </Button>
                   )}
                 </div>
-              </div>
+              </Item>
             ))}
-          </div>
+          </Stagger>
         )}
       </Section>
 
@@ -816,29 +1260,6 @@ function BooksPanel() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={!!revBook} onOpenChange={(o) => !o && setRevBook(null)}>
-        <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>مراجعات: {revBook?.title}</DialogTitle></DialogHeader>
-          {reviews.length === 0 ? <Empty t="لا مراجعات بعد" /> : (
-            <div className="space-y-2">
-              {reviews.map((r) => (
-                <div key={r.id} className="p-3 bg-white rounded-xl border border-slate-100">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="font-semibold text-sm text-slate-700">{r.user_name || "مستخدم"}</div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-amber-500 text-sm">{"★".repeat(r.rating || 0)}</span>
-                      <Button size="sm" variant="outline" onClick={() => delReview(r)} className="rounded-lg text-rose-600 border-rose-200">
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </div>
-                  {r.text && <div className="text-sm text-slate-500 mt-1">{r.text}</div>}
-                </div>
-              ))}
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
