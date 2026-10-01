@@ -1,7 +1,7 @@
 """Web Push subscription management (VAPID)."""
 import os
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from db import db, now_iso
@@ -49,6 +49,37 @@ async def unsubscribe(body: SubBody, user: dict = Depends(get_current_user)):
 async def push_status(user: dict = Depends(get_current_user)):
     n = await db.push_subscriptions.count_documents({"user_id": user["id"]})
     return {"enabled": n > 0, "devices": n}
+
+
+class PendingSubBody(BaseModel):
+    token: str
+    subscription: dict
+
+
+@router.post("/subscribe-pending")
+async def subscribe_pending(body: PendingSubBody):
+    """Register this device for the approval push of a not-yet-approved teacher.
+
+    Authenticated by the single-purpose token issued at teacher registration —
+    no login session needed (pending teachers cannot log in yet). The token is
+    cleared on approval/rejection, so it cannot be reused afterwards.
+    """
+    sub = body.subscription or {}
+    endpoint = sub.get("endpoint") or ""
+    if not endpoint or not isinstance(sub.get("keys"), dict):
+        raise HTTPException(status_code=400, detail="اشتراك غير صالح")
+    user = await db.users.find_one({"pending_push_token": body.token})
+    if not user or user.get("role") != "teacher" or user.get("status") != "pending_approval":
+        raise HTTPException(status_code=403, detail="رمز غير صالح أو انتهت صلاحيته")
+    uid = str(user["_id"])
+    await db.push_subscriptions.update_one(
+        {"user_id": uid, "endpoint": endpoint},
+        {"$set": {"user_id": uid, "endpoint": endpoint,
+                  "subscription": sub, "updated_at": now_iso()},
+         "$setOnInsert": {"created_at": now_iso()}},
+        upsert=True,
+    )
+    return {"ok": True}
 
 
 @router.post("/test")

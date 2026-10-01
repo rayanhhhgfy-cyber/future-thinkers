@@ -104,7 +104,13 @@ async def register(body: RegisterBody, request: Request, response: Response):
     await audit_log({"id": uid, "email": email}, "register", "user", uid, request=request)
     if body.role == "teacher":
         # No session yet — the account activates only after admin approval.
+        # Issue a single-purpose token so this device can subscribe for a
+        # phone push the moment the account gets approved.
+        push_token = secrets.token_urlsafe(32)
+        await db.users.update_one({"_id": res.inserted_id},
+                                  {"$set": {"pending_push_token": push_token}})
         return {"pending_approval": True,
+                "push_token": push_token,
                 "message": "تم استلام طلب إنشاء حسابك كمعلم بنجاح. سيتم مراجعته من قبل الإدارة وسيصلك إشعار عند الموافقة."}
     access, refresh = create_access_token(uid, email), create_refresh_token(uid)
     _set_cookies(response, access, refresh)

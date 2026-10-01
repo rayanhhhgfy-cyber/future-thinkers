@@ -31,12 +31,8 @@ async function getReadyRegistration() {
   return reg;
 }
 
-/** Subscribe this device for phone push notifications. Must be called from a user gesture. */
-export async function enablePush() {
-  if (!isPushSupported()) throw new Error("غير مدعوم على هذا المتصفح");
-  const perm = await Notification.requestPermission();
-  if (perm !== "granted") throw new Error("تم رفض إذن الإشعارات");
-
+/** Get the existing push subscription or create a new one. Must be called from a user gesture. */
+async function getOrCreateSubscription() {
   const { data } = await api.get("/push/vapid-public-key");
   if (!data.publicKey) throw new Error("مفتاح الإشعارات غير مُعد على الخادم");
 
@@ -48,7 +44,32 @@ export async function enablePush() {
       applicationServerKey: urlBase64ToUint8Array(data.publicKey),
     });
   }
+  return sub;
+}
+
+/** Subscribe this device for phone push notifications. Must be called from a user gesture. */
+export async function enablePush() {
+  if (!isPushSupported()) throw new Error("غير مدعوم على هذا المتصفح");
+  const perm = await Notification.requestPermission();
+  if (perm !== "granted") throw new Error("تم رفض إذن الإشعارات");
+
+  const sub = await getOrCreateSubscription();
   await api.post("/push/subscribe", { subscription: sub.toJSON() });
+  return true;
+}
+
+/**
+ * Subscribe this device for the teacher-approval push before the account is
+ * approved. No login session needed — authorized by the single-purpose token
+ * issued at teacher registration.
+ */
+export async function enablePendingPush(token) {
+  if (!isPushSupported()) throw new Error("غير مدعوم على هذا المتصفح");
+  const perm = await Notification.requestPermission();
+  if (perm !== "granted") throw new Error("تم رفض إذن الإشعارات");
+
+  const sub = await getOrCreateSubscription();
+  await api.post("/push/subscribe-pending", { token, subscription: sub.toJSON() });
   return true;
 }
 

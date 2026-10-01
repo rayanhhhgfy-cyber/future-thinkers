@@ -66,7 +66,16 @@ export default function Register() {
     try {
       const res = await register({ ...form, school_id: school || null });
       if (res && res.pending_approval) {
-        toast.success("تم استلام طلبك بنجاح! حسابك كمعلم قيد مراجعة الإدارة — يمكنك متابعة حالة طلبك من صفحة تسجيل الدخول.", { duration: 8000 });
+        // Remember the one-time push token so this device can be notified
+        // the moment the account is approved (the teacher can't log in yet).
+        try {
+          localStorage.setItem("ft_teacher_pending", JSON.stringify({
+            email: form.email.trim().toLowerCase(),
+            push_token: res.push_token || null,
+            push_enabled: false,
+          }));
+        } catch {}
+        toast.success("تم استلام طلبك بنجاح! حسابك كمعلم قيد مراجعة الإدارة — يمكنك متابعة حالة طلبك وتفعيل إشعار الموافقة على هاتفك من صفحة تسجيل الدخول.", { duration: 8000 });
         nav("/login");
       } else {
         toast.success("تم إنشاء حسابك بنجاح!");

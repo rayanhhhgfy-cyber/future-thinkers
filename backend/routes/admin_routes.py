@@ -4,7 +4,7 @@ from db import db, ser, sers, oid, now_iso
 from auth import (get_current_user, require_permission, require_role, ALL_PERMISSIONS,
                   ROLES, ROLE_LABELS, ROLE_PERMISSIONS, PERMISSION_GROUPS, PERMISSION_LABELS,
                   effective_permissions, hash_password)
-from services import audit_log, broadcast_notification, create_notification, deliver_notification
+from services import audit_log, broadcast_notification, create_notification, deliver_notification, send_push_to_user
 
 router = APIRouter(prefix="/api/admin")
 
@@ -228,13 +228,21 @@ async def approve_teacher(uid: str, request: Request,
         raise HTTPException(status_code=404, detail="لا يوجد طلب معلق لهذا الحساب")
     await db.users.update_one({"_id": target["_id"]},
                               {"$set": {"status": "active", "approval_notice": True},
-                               "$unset": {"rejection_reason": ""}})
+                               "$unset": {"rejection_reason": "", "pending_push_token": ""}})
     await create_notification(
         uid, "account",
         "تمت الموافقة على حسابك 🎉",
         "أهلاً بك في منصة مفكري المستقبل! تم تفعيل حسابك كمعلم، يمكنك الآن تسجيل الدخول.",
         "/dashboard",
     )
+    # Phone push for teachers who enabled the approval alert while pending.
+    # (No-op when they never subscribed — send_push_to_user returns 0 then.)
+    try:
+        await send_push_to_user(uid, "تمت الموافقة على حسابك 🎉",
+                                "تم تفعيل حسابك كمعلم — سجل الدخول الآن للبدء.",
+                                "/login")
+    except Exception:
+        pass
     await audit_log(user, "teacher_approve", "user", uid, None, request)
     return {"ok": True}
 
@@ -251,7 +259,8 @@ async def reject_teacher(uid: str, body: RejectTeacherBody, request: Request,
         raise HTTPException(status_code=404, detail="لا يوجد طلب معلق لهذا الحساب")
     reason = body.reason.strip() or "لم يتم قبول طلب إنشاء الحساب"
     await db.users.update_one({"_id": target["_id"]},
-                              {"$set": {"status": "rejected", "rejection_reason": reason}})
+                              {"$set": {"status": "rejected", "rejection_reason": reason},
+                               "$unset": {"pending_push_token": ""}})
     # The denial message is shown to them on their next login attempt.
     await audit_log(user, "teacher_reject", "user", uid, {"reason": reason}, request)
     return {"ok": True}

@@ -7,7 +7,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Loader2, ChevronDown } from "lucide-react";
+import { Loader2, ChevronDown, BellRing } from "lucide-react";
+import { enablePendingPush, isPushSupported } from "@/lib/push";
+
+function readPendingTeacher() {
+  try { return JSON.parse(localStorage.getItem("ft_teacher_pending") || "null"); }
+  catch { return null; }
+}
 
 const STATUS_STYLES = {
   pending: "text-amber-700 bg-amber-50 border-amber-200",
@@ -23,10 +29,12 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   // Teacher application status checker
-  const [showStatus, setShowStatus] = useState(false);
-  const [statusEmail, setStatusEmail] = useState("");
+  const [pendingInfo, setPendingInfo] = useState(readPendingTeacher);
+  const [showStatus, setShowStatus] = useState(() => !!readPendingTeacher());
+  const [statusEmail, setStatusEmail] = useState(() => readPendingTeacher()?.email || "");
   const [statusResult, setStatusResult] = useState(null);
   const [statusLoading, setStatusLoading] = useState(false);
+  const [pushBusy, setPushBusy] = useState(false);
 
   const submit = async (e) => {
     e.preventDefault();
@@ -51,9 +59,33 @@ export default function Login() {
     try {
       const { data } = await api.get("/auth/teacher-application-status", { params: { email: statusEmail.trim() } });
       setStatusResult(data);
+      if (data.status === "approved" || data.status === "rejected") {
+        // Application resolved — drop the stored pending token.
+        try { localStorage.removeItem("ft_teacher_pending"); } catch {}
+        setPendingInfo(null);
+      }
     } catch {
       setStatusResult({ status: "none", message: "تعذر التحقق الآن، حاول لاحقاً" });
     } finally { setStatusLoading(false); }
+  };
+
+  const canOfferApprovalPush =
+    statusResult?.status === "pending" &&
+    pendingInfo?.push_token &&
+    !pendingInfo?.push_enabled &&
+    pendingInfo?.email === statusEmail.trim().toLowerCase();
+
+  const enableApprovalPush = async () => {
+    setPushBusy(true);
+    try {
+      await enablePendingPush(pendingInfo.push_token);
+      const updated = { ...pendingInfo, push_enabled: true };
+      try { localStorage.setItem("ft_teacher_pending", JSON.stringify(updated)); } catch {}
+      setPendingInfo(updated);
+      toast.success("تم! سيصلك إشعار على هاتفك فور الموافقة على حسابك 🔔");
+    } catch (err) {
+      toast.error(err?.message || "تعذر تفعيل الإشعارات");
+    } finally { setPushBusy(false); }
   };
 
   return (
@@ -112,9 +144,32 @@ export default function Login() {
                   </Button>
                 </div>
                 {statusResult && (
-                  <p className={`mt-3 text-sm rounded-xl border px-3 py-2 ${STATUS_STYLES[statusResult.status] || STATUS_STYLES.none}`}>
-                    {statusResult.message}
-                  </p>
+                  <>
+                    <p className={`mt-3 text-sm rounded-xl border px-3 py-2 ${STATUS_STYLES[statusResult.status] || STATUS_STYLES.none}`}>
+                      {statusResult.message}
+                    </p>
+                    {canOfferApprovalPush && (
+                      <div className="mt-3 rounded-xl border border-blue-200 bg-blue-50 p-3">
+                        <Button
+                          type="button"
+                          onClick={enableApprovalPush}
+                          disabled={pushBusy || !isPushSupported()}
+                          className="w-full rounded-xl h-11"
+                        >
+                          {pushBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : (<><BellRing className="w-4 h-4 ml-2" /> أخبرني فور الموافقة (إشعار هاتف)</>)}
+                        </Button>
+                        <p className="mt-2 text-[11px] text-slate-500 leading-relaxed">
+                          سيصلك إشعار على هذا الجهاز لحظة اعتماد حسابك — حتى قبل تسجيل الدخول.
+                          على الآيفون يجب تثبيت التطبيق على الشاشة الرئيسية أولاً.
+                        </p>
+                      </div>
+                    )}
+                    {statusResult?.status === "pending" && pendingInfo?.push_enabled && (
+                      <p className="mt-3 text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2">
+                        🔔 إشعار الموافقة مفعّل على هذا الجهاز — سيصلك فور اعتماد حسابك.
+                      </p>
+                    )}
+                  </>
                 )}
               </div>
             )}
