@@ -64,9 +64,14 @@ export default function Register() {
     if (form.role === "student" && !school) { toast.error("يرجى اختيار المدرسة"); return; }
     setLoading(true);
     try {
-      await register({ ...form, school_id: school || null });
-      toast.success("تم إنشاء حسابك بنجاح!");
-      nav("/dashboard");
+      const res = await register({ ...form, school_id: school || null });
+      if (res && res.pending_approval) {
+        toast.success("تم استلام طلبك بنجاح! ستراجع الإدارة حسابك كمعلم وسيصلك إشعار عند الموافقة.");
+        nav("/login");
+      } else {
+        toast.success("تم إنشاء حسابك بنجاح!");
+        nav("/dashboard");
+      }
     } catch (err) { toast.error(apiErr(err)); } finally { setLoading(false); }
   };
 
@@ -101,6 +106,11 @@ export default function Register() {
                   <SelectItem value="teacher">معلم</SelectItem>
                 </SelectContent>
               </Select>
+              {form.role === "teacher" && (
+                <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 mt-2">
+                  حسابات المعلمين تحتاج موافقة الإدارة قبل التفعيل — سيصلك إشعار عند الموافقة.
+                </p>
+              )}
             </div>
 
             <div className="grid grid-cols-1 gap-3">

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import api, { apiErr } from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -129,6 +130,8 @@ const CHANNELS = [
 const channelLabel = (k) => (CHANNELS.find((c) => c.k === k) || CHANNELS[0]).label;
 
 export default function NotifyPanel() {
+  const { hasPerm } = useAuth();
+  const canDeleteHistory = hasPerm("notification.delete");
   const [presets, setPresets] = useState([]);
   const [campaigns, setCampaigns] = useState([]);
   const [stats, setStats] = useState({ push_devices: 0, users: 0 });
@@ -286,6 +289,15 @@ export default function NotifyPanel() {
       setLastError(null); toast.success("تم الإلغاء");
       load();
     } catch (e) { fail(e, "تعذر الإلغاء"); }
+  };
+
+  const deleteFromHistory = async (c) => {
+    if (!window.confirm(`حذف «${c.title}» من سجل الإشعارات نهائياً؟`)) return;
+    try {
+      await api.delete(`/admin/notify/campaigns/${c.id}`);
+      setLastError(null); toast.success("تم الحذف من السجل");
+      load();
+    } catch (e) { fail(e, "تعذر الحذف"); }
   };
 
   const sendScheduledNow = async (c) => {
@@ -498,7 +510,16 @@ export default function NotifyPanel() {
           <div className="space-y-2 max-h-96 overflow-y-auto">
             {sent.map((c) => (
               <div key={c.id} className="p-3 rounded-xl bg-slate-50 border border-slate-100">
-                <div className="font-bold text-sm text-slate-900">{c.title}</div>
+                <div className="flex items-start gap-2">
+                  <div className="font-bold text-sm text-slate-900 flex-1">{c.title}</div>
+                  {canDeleteHistory && (
+                    <Button variant="ghost" size="sm" title="حذف من السجل"
+                            onClick={() => deleteFromHistory(c)}
+                            className="text-rose-400 hover:text-rose-600 shrink-0 min-h-[32px] px-2">
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  )}
+                </div>
                 {c.body && <div className="text-xs text-slate-600 mt-0.5 line-clamp-2">{c.body}</div>}
                 <div className="text-[11px] text-slate-400 mt-1">
                   {c.recipient_count ?? "—"} مستلم
