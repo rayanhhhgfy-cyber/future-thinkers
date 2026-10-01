@@ -109,37 +109,42 @@ export function PlayerBar({ name, rating, active, you, caps = [], matAhead = 0, 
     <motion.div
       animate={active ? { scale: [1, 1.012, 1] } : { scale: 1 }}
       transition={active ? { duration: 2.2, repeat: Infinity } : {}}
-      className={`w-full max-w-[620px] mx-auto rounded-3xl px-4 py-3 border backdrop-blur-xl transition-all
+      className={`w-full max-w-[620px] mx-auto rounded-3xl p-[1.5px] transition-all duration-300
         ${active
-          ? "bg-emerald-500/[0.12] border-emerald-400/40 shadow-[0_0_36px_-6px_rgba(16,185,129,0.45)]"
-          : "bg-white/[0.05] border-white/10 shadow-[0_10px_30px_-15px_rgba(0,0,0,0.7)]"}`}>
+          ? "bg-gradient-to-l from-emerald-400/70 via-emerald-400/20 to-emerald-400/70 shadow-[0_0_40px_-6px_rgba(16,185,129,0.55)]"
+          : "bg-gradient-to-l from-white/15 via-white/5 to-white/15 shadow-[0_12px_32px_-16px_rgba(0,0,0,0.8)]"}`}>
+      <div className={`rounded-3xl px-4 py-3 backdrop-blur-xl ${active ? "bg-[#0d1f16]/90" : "bg-slate-900/70"}`}>
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
-          <div className={`relative w-11 h-11 rounded-2xl grid place-items-center font-extrabold text-lg shrink-0 shadow-lg
-            ${you ? "bg-gradient-to-br from-amber-300 to-orange-500 text-slate-950" : "bg-gradient-to-br from-slate-500 to-slate-800 text-white"}`}>
+          <div className={`relative w-11 h-11 rounded-2xl grid place-items-center font-extrabold text-lg shrink-0
+            ${you
+              ? "bg-gradient-to-br from-amber-200 via-amber-400 to-orange-600 text-slate-950 shadow-[0_6px_20px_-4px_rgba(245,158,11,0.6)]"
+              : "bg-gradient-to-br from-slate-400 via-slate-600 to-slate-900 text-white shadow-[0_6px_20px_-4px_rgba(0,0,0,0.7)]"}
+            ring-1 ring-white/25`}>
             {name.trim()[0]}
-            {active && <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-emerald-400 border-2 border-slate-900 animate-pulse" />}
+            {active && <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-emerald-400 border-2 border-slate-900 animate-pulse shadow-[0_0_10px_rgba(52,211,153,0.9)]" />}
           </div>
           <div className="min-w-0">
-            <div className="font-bold text-sm flex items-center gap-2 truncate">
+            <div className="font-bold text-sm flex items-center gap-2 truncate text-white">
               <span className="truncate">{name}</span>
               {active && <ThinkingDots />}
             </div>
-            <div className="text-xs text-slate-400 mt-0.5 flex items-center gap-2">
-              {rating != null && <span className="px-1.5 py-0.5 rounded-md bg-white/10 font-mono">{rating}</span>}
-              {matAhead > 0 && <span className="text-emerald-300 font-bold">+{matAhead}</span>}
+            <div className="text-xs text-slate-400 mt-1 flex items-center gap-2">
+              {rating != null && <span className="px-2 py-0.5 rounded-lg bg-white/10 font-mono font-bold text-slate-200 ring-1 ring-white/10">{rating}</span>}
+              {matAhead > 0 && <span className="text-emerald-300 font-extrabold">+{matAhead}</span>}
             </div>
           </div>
         </div>
         {caps.length > 0 && (
-          <div className="flex items-center shrink-0" dir="ltr" title="قطع مأسورة">
+          <div className="flex items-center shrink-0 bg-black/25 rounded-full pl-3 pr-2 py-1 ring-1 ring-white/10" dir="ltr" title="قطع مأسورة">
             {caps.slice(0, 10).map((t, i) => (
               <img key={i} src={pieceSrc(t, color === "w" ? "b" : "w")} alt=""
-                className="w-6 h-6 -ml-2.5 first:ml-0 drop-shadow-[0_2px_2px_rgba(0,0,0,0.5)]" draggable={false} />
+                className="w-6 h-6 -ml-2.5 first:ml-0 drop-shadow-[0_2px_3px_rgba(0,0,0,0.6)]" draggable={false} />
             ))}
-            {caps.length > 10 && <span className="text-[10px] text-slate-400 ml-1">+{caps.length - 10}</span>}
+            {caps.length > 10 && <span className="text-[10px] text-slate-400 ml-1 font-bold">+{caps.length - 10}</span>}
           </div>
         )}
+      </div>
       </div>
     </motion.div>
   );

@@ -138,9 +138,13 @@ export default function ChessGame() {
     <Layout noFooter>
       <div className="min-h-[calc(100vh-64px)] text-white relative overflow-hidden" dir="rtl"
         style={{ background: "radial-gradient(1200px 600px at 50% -10%, #1b2b4a 0%, #0b1120 55%, #070b14 100%)" }}>
-        <div className="pointer-events-none absolute inset-0">
-          <div className="absolute -top-40 right-1/4 w-[28rem] h-[28rem] bg-amber-500/[0.07] rounded-full blur-3xl" />
-          <div className="absolute -bottom-40 left-1/4 w-[28rem] h-[28rem] bg-emerald-500/[0.07] rounded-full blur-3xl" />
+        <div className="pointer-events-none absolute inset-0 overflow-hidden">
+          <motion.div animate={{ x: [0, 40, 0], y: [0, -30, 0] }} transition={{ duration: 22, repeat: Infinity, ease: "easeInOut" }}
+            className="absolute -top-40 right-1/4 w-[28rem] h-[28rem] bg-amber-500/[0.08] rounded-full blur-3xl" />
+          <motion.div animate={{ x: [0, -35, 0], y: [0, 25, 0] }} transition={{ duration: 26, repeat: Infinity, ease: "easeInOut" }}
+            className="absolute -bottom-40 left-1/4 w-[28rem] h-[28rem] bg-emerald-500/[0.08] rounded-full blur-3xl" />
+          <motion.div animate={{ x: [0, 25, 0], y: [0, 35, 0] }} transition={{ duration: 30, repeat: Infinity, ease: "easeInOut" }}
+            className="absolute top-1/3 left-1/2 w-[22rem] h-[22rem] bg-indigo-500/[0.05] rounded-full blur-3xl" />
         </div>
 
         <div className="relative max-w-6xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
@@ -173,8 +177,11 @@ export default function ChessGame() {
             </motion.div>
 
             <motion.div initial={{ opacity: 0, x: -24 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.6, delay: 0.15, ease: EASE }} className="space-y-4 min-w-0">
-              <div className="rounded-3xl p-5 border border-white/10 bg-white/[0.05] backdrop-blur-xl shadow-[0_20px_50px_-20px_rgba(0,0,0,0.6)]">
-                <h3 className="font-head font-bold flex items-center gap-2 mb-3 text-amber-300"><Crown className="w-5 h-5" /> حالة المباراة</h3>
+              <div className="rounded-3xl p-4 sm:p-5 border border-white/10 bg-white/[0.05] backdrop-blur-xl shadow-[0_20px_50px_-20px_rgba(0,0,0,0.6)]">
+                <h3 className="font-head font-bold flex items-center gap-2 mb-3 text-amber-300">
+                  <span className="w-8 h-8 rounded-xl grid place-items-center bg-gradient-to-br from-amber-300 to-orange-500 shadow-[0_6px_16px_-4px_rgba(245,158,11,0.6)]"><Crown className="w-4 h-4 text-slate-950" /></span>
+                  حالة المباراة
+                </h3>
                 {finished ? (
                   <div className="text-center py-2">
                     <div className="text-xl font-extrabold">{game.result === "draw" ? "تعادل 🤝" : iWon ? "فزت! 🏆" : "خسرت المباراة"}</div>
@@ -185,8 +192,14 @@ export default function ChessGame() {
                     <AnimatePresence mode="wait">
                       <motion.div key={myTurn ? "you" : "wait"}
                         initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
-                        className={`text-sm px-3 py-2.5 rounded-2xl font-medium ${myTurn ? "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30" : "bg-white/5 text-slate-400 border border-white/10"}`}>
-                        {myTurn ? "دورك الآن — حرّك قطعة" : `بانتظار ${opponent}…`}
+                        className={`relative overflow-hidden text-sm px-3 py-2.5 rounded-2xl font-medium ${myTurn ? "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30" : "bg-white/5 text-slate-400 border border-white/10"}`}>
+                        {myTurn && (
+                          <motion.span className="absolute inset-0 pointer-events-none"
+                            animate={{ x: ["-130%", "130%"] }}
+                            transition={{ duration: 2.8, repeat: Infinity, ease: "easeInOut", repeatDelay: 1.4 }}
+                            style={{ background: "linear-gradient(100deg, transparent 25%, rgba(255,255,255,0.16) 50%, transparent 75%)" }} />
+                        )}
+                        <span className="relative">{myTurn ? "دورك الآن — حرّك قطعة" : `بانتظار ${opponent}…`}</span>
                       </motion.div>
                     </AnimatePresence>
                     {inCheck && <div className="text-sm text-red-400 mt-2 font-bold animate-pulse">كش! الملك تحت التهديد 👑</div>}
@@ -197,9 +210,9 @@ export default function ChessGame() {
                 )}
               </div>
 
-              <div className="rounded-3xl p-5 border border-white/10 bg-white/[0.05] backdrop-blur-xl shadow-[0_20px_50px_-20px_rgba(0,0,0,0.6)]">
+              <div className="rounded-3xl p-4 sm:p-5 border border-white/10 bg-white/[0.05] backdrop-blur-xl shadow-[0_20px_50px_-20px_rgba(0,0,0,0.6)]">
                 <h4 className="font-semibold text-sm mb-3 text-slate-300">النقلات ({(game.moves || []).length})</h4>
-                <div ref={movesRef} className="max-h-48 lg:max-h-64 overflow-y-auto pr-1" dir="ltr">
+                <div ref={movesRef} className="max-h-40 sm:max-h-48 lg:max-h-64 overflow-y-auto pr-1" dir="ltr">
                   {movePairs.length === 0 ? (
                     <div className="text-sm text-slate-500 text-center py-4">لا نقلات بعد — ابدأ اللعب!</div>
                   ) : (
@@ -207,8 +220,8 @@ export default function ChessGame() {
                       {movePairs.map((pair, i) => (
                         <React.Fragment key={i}>
                           <span className="text-slate-500">{i + 1}.</span>
-                          <span className="text-slate-200">{pair[0]?.san}</span>
-                          <span className="text-slate-200">{pair[1]?.san || ""}</span>
+                          <MoveCell san={pair[0]?.san} last={i * 2 === (game.moves || []).length - 1} />
+                          <MoveCell san={pair[1]?.san} last={i * 2 + 1 === (game.moves || []).length - 1} />
                         </React.Fragment>
                       ))}
                     </div>
@@ -249,5 +262,14 @@ export default function ChessGame() {
         </AnimatePresence>
       </div>
     </Layout>
+  );
+}
+
+function MoveCell({ san, last }) {
+  if (!san) return <span />;
+  return (
+    <span className={`px-1.5 py-0.5 -mx-1.5 rounded-lg w-fit ${last ? "bg-amber-400/25 text-amber-200 font-bold shadow-[0_0_12px_rgba(251,191,36,0.25)]" : "text-slate-200"}`}>
+      {san}
+    </span>
   );
 }

@@ -113,9 +113,13 @@ export default function ChessPractice() {
     <Layout noFooter>
       <div className="min-h-[calc(100vh-64px)] text-white relative overflow-hidden" dir="rtl"
         style={{ background: "radial-gradient(1200px 600px at 50% -10%, #1b2b4a 0%, #0b1120 55%, #070b14 100%)" }}>
-        <div className="pointer-events-none absolute inset-0">
-          <div className="absolute -top-40 right-1/4 w-[28rem] h-[28rem] bg-amber-500/[0.07] rounded-full blur-3xl" />
-          <div className="absolute -bottom-40 left-1/4 w-[28rem] h-[28rem] bg-emerald-500/[0.07] rounded-full blur-3xl" />
+        <div className="pointer-events-none absolute inset-0 overflow-hidden">
+          <motion.div animate={{ x: [0, 40, 0], y: [0, -30, 0] }} transition={{ duration: 22, repeat: Infinity, ease: "easeInOut" }}
+            className="absolute -top-40 right-1/4 w-[28rem] h-[28rem] bg-amber-500/[0.08] rounded-full blur-3xl" />
+          <motion.div animate={{ x: [0, -35, 0], y: [0, 25, 0] }} transition={{ duration: 26, repeat: Infinity, ease: "easeInOut" }}
+            className="absolute -bottom-40 left-1/4 w-[28rem] h-[28rem] bg-emerald-500/[0.08] rounded-full blur-3xl" />
+          <motion.div animate={{ x: [0, 25, 0], y: [0, 35, 0] }} transition={{ duration: 30, repeat: Infinity, ease: "easeInOut" }}
+            className="absolute top-1/3 left-1/2 w-[22rem] h-[22rem] bg-indigo-500/[0.05] rounded-full blur-3xl" />
         </div>
 
         <div className="relative max-w-6xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
@@ -155,26 +159,35 @@ export default function ChessPractice() {
             </motion.div>
 
             <motion.div initial={{ opacity: 0, x: -24 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.6, delay: 0.15, ease: EASE }} className="space-y-4 min-w-0">
-              <div className="rounded-3xl p-5 border border-white/10 bg-white/[0.05] backdrop-blur-xl shadow-[0_20px_50px_-20px_rgba(0,0,0,0.6)]">
-                <h3 className="font-head font-bold flex items-center gap-2 mb-3 text-amber-300"><User className="w-5 h-5" /> تدريب فردي</h3>
+              <div className="rounded-3xl p-4 sm:p-5 border border-white/10 bg-white/[0.05] backdrop-blur-xl shadow-[0_20px_50px_-20px_rgba(0,0,0,0.6)]">
+                <h3 className="font-head font-bold flex items-center gap-2 mb-3 text-amber-300">
+                  <span className="w-8 h-8 rounded-xl grid place-items-center bg-gradient-to-br from-amber-300 to-orange-500 shadow-[0_6px_16px_-4px_rgba(245,158,11,0.6)]"><User className="w-4 h-4 text-slate-950" /></span>
+                  تدريب فردي
+                </h3>
                 <AnimatePresence mode="wait">
                   <motion.div key={over ? "over" : turn}
                     initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
-                    className={`text-sm px-3 py-2.5 rounded-2xl font-medium border ${over
+                    className={`relative overflow-hidden text-sm px-3 py-2.5 rounded-2xl font-medium border ${over
                       ? "bg-amber-500/15 text-amber-200 border-amber-500/30"
                       : turn === "w"
                         ? "bg-white/10 text-white border-white/20"
                         : "bg-slate-500/15 text-slate-200 border-slate-500/30"}`}>
-                    {over ? resultText : turn === "w" ? "دور الأبيض — حرّك أي قطعة بيضاء" : "دور الأسود — حرّك أي قطعة سوداء"}
+                    {!over && (
+                      <motion.span className="absolute inset-0 pointer-events-none"
+                        animate={{ x: ["-130%", "130%"] }}
+                        transition={{ duration: 3, repeat: Infinity, ease: "easeInOut", repeatDelay: 1.6 }}
+                        style={{ background: "linear-gradient(100deg, transparent 25%, rgba(255,255,255,0.12) 50%, transparent 75%)" }} />
+                    )}
+                    <span className="relative">{over ? resultText : turn === "w" ? "دور الأبيض — حرّك أي قطعة بيضاء" : "دور الأسود — حرّك أي قطعة سوداء"}</span>
                   </motion.div>
                 </AnimatePresence>
                 {inCheck && !over && <div className="text-sm text-red-400 mt-2 font-bold animate-pulse">كش! 👑</div>}
                 <p className="text-xs text-slate-500 mt-3 leading-relaxed">العب باللونين بحرية — مثالي لتجربة الافتتاحيات والتكتيكات بدون خصم.</p>
               </div>
 
-              <div className="rounded-3xl p-5 border border-white/10 bg-white/[0.05] backdrop-blur-xl shadow-[0_20px_50px_-20px_rgba(0,0,0,0.6)]">
+              <div className="rounded-3xl p-4 sm:p-5 border border-white/10 bg-white/[0.05] backdrop-blur-xl shadow-[0_20px_50px_-20px_rgba(0,0,0,0.6)]">
                 <h4 className="font-semibold text-sm mb-3 text-slate-300">النقلات ({history.length})</h4>
-                <div ref={movesRef} className="max-h-48 lg:max-h-64 overflow-y-auto pr-1" dir="ltr">
+                <div ref={movesRef} className="max-h-40 sm:max-h-48 lg:max-h-64 overflow-y-auto pr-1" dir="ltr">
                   {movePairs.length === 0 ? (
                     <div className="text-sm text-slate-500 text-center py-4">لا نقلات بعد — ابدأ اللعب!</div>
                   ) : (
@@ -182,8 +195,8 @@ export default function ChessPractice() {
                       {movePairs.map((pair, i) => (
                         <React.Fragment key={i}>
                           <span className="text-slate-500">{i + 1}.</span>
-                          <span className="text-slate-200">{pair[0]?.san}</span>
-                          <span className="text-slate-200">{pair[1]?.san || ""}</span>
+                          <MoveCell san={pair[0]?.san} last={i * 2 === history.length - 1} />
+                          <MoveCell san={pair[1]?.san} last={i * 2 + 1 === history.length - 1} />
                         </React.Fragment>
                       ))}
                     </div>
@@ -217,5 +230,14 @@ export default function ChessPractice() {
         </AnimatePresence>
       </div>
     </Layout>
+  );
+}
+
+function MoveCell({ san, last }) {
+  if (!san) return <span />;
+  return (
+    <span className={`px-1.5 py-0.5 -mx-1.5 rounded-lg w-fit ${last ? "bg-amber-400/25 text-amber-200 font-bold shadow-[0_0_12px_rgba(251,191,36,0.25)]" : "text-slate-200"}`}>
+      {san}
+    </span>
   );
 }

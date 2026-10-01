@@ -37,24 +37,35 @@ export default function ChessBoardView({
     <div>
       {showToolbar && (
         <div className="flex items-center justify-center gap-2 mb-3">
-          <div className="flex items-center gap-1.5 bg-white/5 border border-white/10 rounded-full px-2.5 py-1.5">
+          <div className="flex items-center gap-1.5 bg-white/[0.06] border border-white/10 rounded-full px-3 py-2 backdrop-blur-xl shadow-[0_8px_24px_-10px_rgba(0,0,0,0.7)]">
             {Object.values(THEMES).map((t) => (
               <button key={t.id} title={t.label} onClick={() => setTheme(t.id)}
-                className={`w-6 h-6 rounded-full ring-2 ring-offset-2 ring-offset-transparent transition-all ${themeId === t.id ? "ring-amber-300 scale-110" : "ring-transparent hover:scale-105"}`}
+                className={`w-6 h-6 rounded-full transition-all duration-200 ${themeId === t.id ? "ring-2 ring-amber-300 ring-offset-2 ring-offset-slate-900 scale-110" : "ring-1 ring-white/20 hover:scale-110"}`}
                 style={{ background: `linear-gradient(135deg, ${t.light} 50%, ${t.dark} 50%)` }} />
             ))}
           </div>
           <button title="قلب الرقعة" onClick={() => setFlipped((f) => !f)}
-            className="w-9 h-9 grid place-items-center rounded-full bg-white/5 border border-white/10 text-slate-300 hover:text-white hover:bg-white/10 transition-colors">
+            className="w-10 h-10 grid place-items-center rounded-full bg-white/[0.06] border border-white/10 backdrop-blur-xl text-slate-300 hover:text-white hover:bg-white/[0.12] hover:rotate-180 transition-all duration-300 shadow-[0_8px_24px_-10px_rgba(0,0,0,0.7)]">
             <Repeat className="w-4 h-4" />
           </button>
         </div>
       )}
 
-      <div className="w-full max-w-[620px] mx-auto rounded-[26px] p-2 sm:p-2.5 shadow-[0_35px_80px_-20px_rgba(0,0,0,0.85),0_0_60px_-20px_rgba(245,158,11,0.25)]"
-        style={{ background: "linear-gradient(145deg, #5a4128 0%, #33241a 35%, #1d130c 70%, #3d2c1c 100%)" }}>
-        <div className="rounded-[20px] p-[3px]" style={{ background: "linear-gradient(145deg, rgba(252,211,77,0.5), rgba(252,211,77,0.06) 40%, rgba(252,211,77,0.06) 60%, rgba(252,211,77,0.4))" }}>
-          <div className="relative aspect-square w-full rounded-[17px] overflow-hidden select-none" dir="ltr">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.97 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+        className="w-full max-w-[620px] lg:max-w-[min(620px,calc(100dvh-400px))] mx-auto rounded-[28px] p-2 sm:p-3"
+        style={{
+          background: `
+            repeating-linear-gradient(93deg, rgba(255,255,255,0.025) 0 3px, transparent 3px 9px),
+            repeating-linear-gradient(88deg, rgba(0,0,0,0.10) 0 2px, transparent 2px 14px),
+            linear-gradient(145deg, #6b4c2e 0%, #3a2a1c 30%, #241811 55%, #120c07 80%, #4a3524 100%)`,
+          boxShadow: "0 40px 90px -20px rgba(0,0,0,0.9), 0 0 70px -20px rgba(245,158,11,0.28), inset 0 2px 3px rgba(255,235,200,0.18), inset 0 -3px 6px rgba(0,0,0,0.5)",
+        }}>
+        <div className="rounded-[20px] p-[3px]" style={{ background: "linear-gradient(145deg, rgba(252,211,77,0.55), rgba(252,211,77,0.05) 35%, rgba(252,211,77,0.05) 65%, rgba(252,211,77,0.45))" }}>
+          <div className="relative aspect-square w-full rounded-[17px] overflow-hidden select-none" dir="ltr"
+            style={{ boxShadow: "inset 0 0 40px rgba(0,0,0,0.28)" }}>
             {/* squares */}
             <div className="absolute inset-0 grid grid-cols-8 grid-rows-8">
               {ranks.r.map((rank) => ranks.f.map((file) => {
@@ -69,38 +80,56 @@ export default function ChessBoardView({
                 const showRank = file === ranks.f[0];
                 return (
                   <button key={square} data-testid={`sq-${square}`} onClick={() => onSquareClick(square)}
-                    className="relative"
+                    className="relative group"
                     style={{
                       background: isKingCheck
-                        ? "radial-gradient(circle, #ef4444 30%, #b91c1c 75%)"
+                        ? "radial-gradient(circle at 50% 45%, #f87171 25%, #dc2626 60%, #991b1b 100%)"
                         : isSel
                           ? `linear-gradient(135deg, ${theme.selA}, ${theme.selB})`
                           : isLast
-                            ? (darkSq ? theme.lastDark : theme.lastLight)
+                            ? `linear-gradient(135deg, ${theme.lastLight}, ${theme.lastDark})`
                             : (darkSq ? theme.dark : theme.light),
-                      boxShadow: isSel ? "inset 0 0 0 3px rgba(255,255,255,0.55), inset 0 0 18px rgba(0,0,0,0.25)" : undefined,
-                    }}>
+                      boxShadow: isSel
+                        ? "inset 0 0 0 3px rgba(255,255,255,0.6), inset 0 0 22px rgba(0,0,0,0.3)"
+                        : "inset 0 0 0 0 transparent",
+                      transition: "filter 120ms ease",
+                    }}
+                    onMouseEnter={(e) => { if (!isSel && !isKingCheck) e.currentTarget.style.filter = "brightness(1.07)"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.filter = ""; }}>
                     {showRank && (
-                      <span className="absolute top-[3%] left-[6%] text-[clamp(8px,1.6vw,11px)] font-extrabold leading-none"
-                        style={{ color: isKingCheck ? "#fff" : darkSq ? theme.coordOnDark : theme.coordOnLight }}>{rank}</span>
+                      <span className="absolute top-[4%] left-[7%] font-black leading-none tracking-wide"
+                        style={{
+                          fontSize: "clamp(8px,1.7vw,12px)",
+                          color: isKingCheck ? "#fff" : darkSq ? theme.coordOnDark : theme.coordOnLight,
+                          textShadow: darkSq ? "0 1px 2px rgba(0,0,0,0.4)" : "0 1px 1px rgba(255,255,255,0.5)",
+                        }}>{rank}</span>
                     )}
                     {showFile && (
-                      <span className="absolute bottom-[3%] right-[6%] text-[clamp(8px,1.6vw,11px)] font-extrabold leading-none"
-                        style={{ color: isKingCheck ? "#fff" : darkSq ? theme.coordOnDark : theme.coordOnLight }}>{file}</span>
+                      <span className="absolute bottom-[4%] right-[7%] font-black leading-none tracking-wide"
+                        style={{
+                          fontSize: "clamp(8px,1.7vw,12px)",
+                          color: isKingCheck ? "#fff" : darkSq ? theme.coordOnDark : theme.coordOnLight,
+                          textShadow: darkSq ? "0 1px 2px rgba(0,0,0,0.4)" : "0 1px 1px rgba(255,255,255,0.5)",
+                        }}>{file}</span>
                     )}
                     {isLegal && !hasPiece && (
                       <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 500, damping: 22 }}
                         className="absolute inset-0 m-auto rounded-full"
-                        style={{ width: "26%", height: "26%", background: theme.dot, boxShadow: `0 0 0 2px ${theme.dot}` }} />
+                        style={{
+                          width: "30%", height: "30%",
+                          background: `radial-gradient(circle, ${theme.dot} 55%, transparent 72%)`,
+                          boxShadow: `0 0 12px ${theme.dot}`,
+                        }} />
                     )}
                     {isLegal && hasPiece && (
-                      <span className="absolute inset-[4%] rounded-full pointer-events-none"
-                        style={{ border: `clamp(3px,0.7vw,5px) solid ${theme.cap}` }} />
+                      <motion.span initial={{ opacity: 0, scale: 1.15 }} animate={{ opacity: 1, scale: 1 }}
+                        className="absolute inset-[3%] rounded-full pointer-events-none"
+                        style={{ border: `clamp(3px,0.8vw,6px) solid ${theme.cap}`, boxShadow: `0 0 14px ${theme.cap}, inset 0 0 14px ${theme.cap}` }} />
                     )}
                     {isKingCheck && (
-                      <motion.span animate={{ opacity: [0.35, 0.75, 0.35] }} transition={{ duration: 1.1, repeat: Infinity }}
+                      <motion.span animate={{ opacity: [0.3, 0.7, 0.3] }} transition={{ duration: 1.1, repeat: Infinity }}
                         className="absolute inset-0 pointer-events-none"
-                        style={{ background: "radial-gradient(circle, rgba(255,255,255,0.35) 0%, transparent 65%)" }} />
+                        style={{ background: "radial-gradient(circle, rgba(255,255,255,0.4) 0%, transparent 65%)" }} />
                     )}
                   </button>
                 );
@@ -124,7 +153,11 @@ export default function ChessBoardView({
                       src={pieceSrc(p.type, p.color)}
                       alt="" draggable={false}
                       className="w-full h-full"
-                      style={{ filter: p.color === "w" ? "drop-shadow(0 3px 3px rgba(0,0,0,0.5))" : "drop-shadow(0 3px 4px rgba(0,0,0,0.55))" }} />
+                      style={{
+                        filter: p.color === "w"
+                          ? "drop-shadow(0 5px 5px rgba(0,0,0,0.45)) drop-shadow(0 1px 1px rgba(0,0,0,0.4))"
+                          : "drop-shadow(0 6px 6px rgba(0,0,0,0.55)) drop-shadow(0 1px 2px rgba(0,0,0,0.5))",
+                      }} />
                   </motion.div>
                 );
               })}
@@ -133,17 +166,18 @@ export default function ChessBoardView({
             <AnimatePresence>
               {promo && (
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                  className="absolute inset-0 z-30 grid place-items-center bg-slate-950/70 backdrop-blur-[2px]">
+                  className="absolute inset-0 z-30 grid place-items-center bg-slate-950/70 backdrop-blur-[3px]">
                   <motion.div initial={{ scale: 0.8, y: 16 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, opacity: 0 }}
                     transition={{ type: "spring", stiffness: 320, damping: 24 }}
-                    className="bg-slate-900/95 border border-amber-300/25 rounded-3xl p-5 sm:p-6 shadow-2xl">
+                    className="bg-slate-900/95 border border-amber-300/25 rounded-3xl p-5 sm:p-6 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.9)]">
                     <div className="text-center font-head font-bold mb-4 text-amber-200">اختر القطعة 👑</div>
                     <div className="flex gap-2 sm:gap-3" dir="ltr">
-                      {["q", "r", "b", "n"].map((t) => (
-                        <motion.button key={t} whileHover={{ scale: 1.12, y: -4 }} whileTap={{ scale: 0.94 }}
+                      {["q", "r", "b", "n"].map((t, i) => (
+                        <motion.button key={t} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 * i }}
+                          whileHover={{ scale: 1.12, y: -4 }} whileTap={{ scale: 0.94 }}
                           onClick={() => onPromote(t)}
-                          className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl grid place-items-center bg-gradient-to-b from-white/15 to-white/5 border border-white/15 hover:border-amber-300/60 hover:shadow-[0_0_24px_rgba(252,211,77,0.35)] transition-shadow">
-                          <img src={pieceSrc(t, promo.color)} alt={t} draggable={false} className="w-12 h-12 sm:w-14 sm:h-14" />
+                          className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl grid place-items-center bg-gradient-to-b from-white/15 to-white/5 border border-white/15 hover:border-amber-300/60 hover:shadow-[0_0_28px_rgba(252,211,77,0.4)] transition-shadow">
+                          <img src={pieceSrc(t, promo.color)} alt={t} draggable={false} className="w-12 h-12 sm:w-14 sm:h-14 drop-shadow-[0_4px_6px_rgba(0,0,0,0.5)]" />
                         </motion.button>
                       ))}
                     </div>
@@ -155,7 +189,7 @@ export default function ChessBoardView({
             </AnimatePresence>
           </div>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }
