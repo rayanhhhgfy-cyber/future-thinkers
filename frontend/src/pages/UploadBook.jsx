@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Loader2, Upload, FileText, Image } from "lucide-react";
+import { startChunkedUpload, uploadChunks, completeChunkedUpload, fileToBase64, CHUNK_THRESHOLD, MAX_PDF_SIZE } from "@/lib/chunkedUpload";
 
 export default function UploadBook() {
   const nav = useNavigate();
@@ -17,6 +18,7 @@ export default function UploadBook() {
   const [pdf, setPdf] = useState(null);
   const [cover, setCover] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [progress, setProgress] = useState(0);
 
   useEffect(() => { api.get("/books/categories").then((r) => setCats(r.data)); }, []);
   const set = (k) => (v) => setForm((f) => ({ ...f, [k]: v }));
@@ -24,16 +26,36 @@ export default function UploadBook() {
   const submit = async (e) => {
     e.preventDefault();
     if (!pdf) return toast.error("يرجى اختيار ملف PDF");
-    const fd = new FormData();
-    Object.entries(form).forEach(([k, v]) => fd.append(k, v));
-    fd.append("pdf", pdf);
-    if (cover) fd.append("cover", cover);
+    if (pdf.size > MAX_PDF_SIZE) return toast.error("حجم ملف الـ PDF يتجاوز الحد الأقصى 100MB");
     setLoading(true);
+    setProgress(0);
     try {
-      await api.post("/books", fd, { headers: { "Content-Type": "multipart/form-data" } });
+      if (pdf.size > CHUNK_THRESHOLD) {
+        // ملفات كبيرة: رفع مجزأ قابل للاستئناف (حتى 100MB)
+        const { upload_id, chunk_size, total_parts } = await startChunkedUpload(pdf);
+        await uploadChunks(pdf, upload_id, chunk_size, total_parts, (done, total) =>
+          setProgress(Math.round((done / total) * 100)));
+        let cover_b64 = null, cover_ct = null;
+        if (cover) {
+          const c = await fileToBase64(cover);
+          cover_b64 = c.b64; cover_ct = c.type;
+        }
+        await completeChunkedUpload(upload_id, "book_create", {
+          title: form.title, author: form.author, description: form.description,
+          category: form.category, language: form.language, pages: form.pages,
+          year: form.year, publisher: form.publisher, age: form.age, tags: form.tags,
+          cover_b64, cover_ct,
+        });
+      } else {
+        const fd = new FormData();
+        Object.entries(form).forEach(([k, v]) => fd.append(k, v));
+        fd.append("pdf", pdf);
+        if (cover) fd.append("cover", cover);
+        await api.post("/books", fd);
+      }
       toast.success("تم رفع الكتاب! سيُراجع من قبل الإدارة قبل النشر.");
       nav("/library");
-    } catch (err) { toast.error(apiErr(err)); } finally { setLoading(false); }
+    } catch (err) { toast.error(apiErr(err)); } finally { setLoading(false); setProgress(0); }
   };
 
   return (
@@ -76,6 +98,14 @@ export default function UploadBook() {
           <Button type="submit" data-testid="submit-book-btn" disabled={loading} className="w-full rounded-xl bg-emerald-600 hover:bg-emerald-700 h-11">
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Upload className="w-4 h-4 ml-1" /> رفع الكتاب</>}
           </Button>
+          {loading && progress > 0 && (
+            <div className="space-y-1.5">
+              <div className="h-2.5 rounded-full bg-slate-100 overflow-hidden">
+                <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${progress}%` }} />
+              </div>
+              <div className="text-xs text-slate-500 text-center">جارٍ رفع الملف… {progress}%</div>
+            </div>
+          )}
         </form>
       </div>
     </Layout>

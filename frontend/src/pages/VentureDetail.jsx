@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { VENTURE_CATEGORIES, VENTURE_STATUSES, STATUS_COLORS } from "./Ventures";
+import BookmarkButton from "@/components/BookmarkButton";
 
 export default function VentureDetail() {
   const { id } = useParams();
@@ -118,6 +119,7 @@ export default function VentureDetail() {
           <div className="flex items-center gap-2 flex-wrap mb-3">
             <Badge variant="outline" className={`${STATUS_COLORS[v.status]} rounded-full bg-white/90`}>{v.status_label}</Badge>
             <Badge variant="secondary" className="rounded-full">{v.category}</Badge>
+            <BookmarkButton kind="venture" refId={v.id} title={v.title} dark />
           </div>
           <h1 className="font-head text-3xl lg:text-4xl font-extrabold leading-snug">{v.title}</h1>
           <p className="text-slate-300 mt-2 text-sm">👤 {v.owner_name}{v.school_name ? ` · 🏫 ${v.school_name}` : ""}</p>

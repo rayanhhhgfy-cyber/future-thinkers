@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { ArrowRight, Heart, Eye, Star, Feather, ScrollText, PenLine, BookOpen, Trash2, Send, Sparkles } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import BookmarkButton from "@/components/BookmarkButton";
 import { FadeUp, Stagger, Item, EASE } from "@/components/anim";
 
 const TYPES = {
@@ -121,6 +122,7 @@ export default function StudioWork() {
                   <Star className="w-3.5 h-3.5 text-amber-300 fill-amber-300" />{work.rating_avg} ({work.rating_count})
                 </span>
               )}
+              <BookmarkButton kind="work" refId={work.id} title={work.title} dark />
             </div>
             <h1 className="font-head text-3xl sm:text-5xl font-extrabold leading-tight mb-4">{work.title}</h1>
             <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-white/85 text-sm">

@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import BookmarkButton from "@/components/BookmarkButton";
 
 export const VENTURE_CATEGORIES = ["الكل", "تقنية وبرمجة", "ريادة أعمال", "علمي", "بيئي", "مجتمعي", "ثقافي وأدبي", "فني وإعلامي", "أخرى"];
 export const VENTURE_STATUSES = [
@@ -123,8 +124,9 @@ export default function Ventures() {
         ) : (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 mt-6">
             {ventures.map((v) => (
-              <div key={v.id} className="group bg-white rounded-2xl p-6 border border-slate-100 ft-shadow hover-lift flex flex-col">
-                <div className="flex items-center gap-2 flex-wrap">
+              <div key={v.id} className="group relative bg-white rounded-2xl p-6 border border-slate-100 ft-shadow hover-lift flex flex-col">
+                <BookmarkButton kind="venture" refId={v.id} title={v.title} className="absolute top-4 left-4 shadow z-10" />
+                <div className="flex items-center gap-2 flex-wrap ml-10">
                   <Badge variant="outline" className={`${STATUS_COLORS[v.status] || ""} rounded-full`}>{v.status_label}</Badge>
                   <Badge variant="secondary" className="rounded-full">{v.category}</Badge>
                   {v.is_owner && <Badge className="rounded-full bg-violet-100 text-violet-700">مشروعك</Badge>}

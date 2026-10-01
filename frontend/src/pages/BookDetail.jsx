@@ -7,8 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Star, Heart, BookOpen, ArrowRight, Eye, Download, Maximize2, X, Check } from "lucide-react";
+import { Star, Heart, BookOpen, ArrowRight, Eye, Download, Maximize2, X, Check, Bookmark, BookmarkCheck } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { useBookmarks } from "@/components/BookmarkButton";
 
 function Reader({ book, onClose, onProgress }) {
   const [percent, setPercent] = useState(book.my_progress || 0);
@@ -41,6 +42,8 @@ export default function BookDetail() {
   const [reading, setReading] = useState(false);
   const [rating, setRating] = useState(0);
   const [reviewText, setReviewText] = useState("");
+  const { map: savedMap, toggle: toggleSaved } = useBookmarks();
+  const isSaved = savedMap.has(`book:${id}`);
 
   const load = async () => {
     const [b, r] = await Promise.all([api.get(`/books/${id}`), api.get(`/books/${id}/reviews`)]);
@@ -78,6 +81,12 @@ export default function BookDetail() {
             <div className="mt-4 space-y-2">
               <Button data-testid="read-book-btn" onClick={() => (user ? setReading(true) : nav("/login"))} className="w-full rounded-xl bg-blue-600 hover:bg-blue-700 h-11"><BookOpen className="w-4 h-4 ml-1" /> {book.my_progress > 0 ? "متابعة القراءة" : "اقرأ الآن"}</Button>
               <Button data-testid="favorite-btn" onClick={toggleFav} variant="outline" className="w-full rounded-xl h-11"><Heart className={`w-4 h-4 ml-1 ${book.is_favorite ? "fill-rose-500 text-rose-500" : ""}`} /> {book.is_favorite ? "في المفضلة" : "أضف للمفضلة"}</Button>
+              {user && (
+                <Button onClick={() => toggleSaved("book", id, book.title)} variant="outline" className="w-full rounded-xl h-11">
+                  {isSaved ? <BookmarkCheck className="w-4 h-4 ml-1 text-amber-500" /> : <Bookmark className="w-4 h-4 ml-1" />}
+                  {isSaved ? "محفوظ في عناصرك" : "احفظ في عناصر محفوظة"}
+                </Button>
+              )}
             </div>
           </div>
 
