@@ -14,10 +14,11 @@ import UsersPanel from "@/components/admin/UsersPanel";
 import ClubsPanel from "@/components/admin/ClubsPanel";
 import { toast } from "sonner";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
-import { LayoutDashboard, ShieldCheck, Users, BookOpen, Calendar, Trophy, Newspaper, Settings, ScrollText, Plus, Check, X, Megaphone, PenLine, Medal, Award, Upload, Trash2, Search, MessageSquare, MessagesSquare, Activity, Smartphone, UserPlus, FileCheck, Rocket, Zap, ArrowLeft, Star, Heart, ThumbsUp, Flag, CalendarCheck, Crown } from "lucide-react";
+import { LayoutDashboard, ShieldCheck, Users, BookOpen, Calendar, Trophy, Newspaper, Settings, ScrollText, Plus, Check, X, Megaphone, PenLine, Medal, Award, Upload, Trash2, Search, MessageSquare, MessagesSquare, Activity, Smartphone, UserPlus, FileCheck, Rocket, Zap, ArrowLeft, Star, Heart, ThumbsUp, Flag, CalendarCheck, Crown, Download, Link2, CalendarDays } from "lucide-react";
 import { timeAgo } from "@/components/NotificationsPanel";
 import { motion } from "framer-motion";
 import { FadeUp, Stagger, Item } from "@/components/anim";
+import { startChunkedUpload, uploadChunks, completeChunkedUpload, fileToBase64, CHUNK_THRESHOLD, MAX_PDF_SIZE } from "@/lib/chunkedUpload";
 
 const NAV = [
   { k: "overview", l: "نظرة عامة", icon: LayoutDashboard, perm: "analytics.view" },
@@ -30,6 +31,9 @@ const NAV = [
   { k: "notify", l: "الإشعارات", icon: Megaphone, perm: "notification.broadcast" },
   { k: "content", l: "الفعاليات والمسابقات", icon: Calendar, perm: "event.create" },
   { k: "news", l: "الأخبار", icon: Newspaper, perm: "news.manage" },
+  { k: "banners", l: "لافتات الإعلانات", icon: Flag, perm: "cms.manage" },
+  { k: "calendar", l: "التقويم", icon: CalendarDays, perm: "analytics.view" },
+  { k: "exports", l: "تصدير البيانات", icon: Download, perm: "user.view" },
   { k: "clubs", l: "الأندية", icon: Users, perm: ["club.create", "club.edit", "club.delete", "club.manage"] },
   { k: "points", l: "نظام النقاط", icon: Settings, perm: "points.manage" },
   { k: "audit", l: "سجل العمليات", icon: ScrollText, perm: "audit.view" },
@@ -79,6 +83,9 @@ export default function Admin() {
             {tab === "notify" && <NotifyPanel />}
             {tab === "content" && <ContentPanel />}
             {tab === "news" && <NewsPanel />}
+            {tab === "banners" && <BannersPanel />}
+            {tab === "calendar" && <CalendarPanel />}
+            {tab === "exports" && <ExportsPanel />}
             {tab === "clubs" && <ClubsPanel />}
             {tab === "points" && <PointsPanel />}
             {tab === "audit" && <AuditPanel />}
@@ -1050,6 +1057,8 @@ function BooksPanel() {
   const [q, setQ] = useState("");
   const [status, setStatus] = useState("all");
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [editProgress, setEditProgress] = useState(0);
   const [form, setForm] = useState({ title: "", author: "", category: "general", description: "" });
   const [pdf, setPdf] = useState(null);
   const [cover, setCover] = useState(null);
@@ -1076,19 +1085,38 @@ function BooksPanel() {
     e.preventDefault();
     if (!form.title.trim() || !form.author.trim()) return toast.error("العنوان والمؤلف مطلوبان");
     if (!pdf) return toast.error("اختر ملف PDF");
+    if (pdf.size > MAX_PDF_SIZE) return toast.error("حجم ملف الـ PDF يتجاوز الحد الأقصى 100MB");
     setUploading(true);
+    setUploadProgress(0);
     try {
-      const fd = new FormData();
-      fd.append("title", form.title); fd.append("author", form.author);
-      fd.append("category", form.category); fd.append("description", form.description);
-      fd.append("pdf", pdf);
-      if (cover) fd.append("cover", cover);
-      const { data } = await api.post("/books", fd, { headers: { "Content-Type": "multipart/form-data" } });
+      let data;
+      if (pdf.size > CHUNK_THRESHOLD) {
+        // ملفات كبيرة: رفع مجزأ قابل للاستئناف (حتى 100MB)
+        const { upload_id, chunk_size, total_parts } = await startChunkedUpload(pdf);
+        await uploadChunks(pdf, upload_id, chunk_size, total_parts, (done, total) =>
+          setUploadProgress(Math.round((done / total) * 100)));
+        let cover_b64 = null, cover_ct = null;
+        if (cover) {
+          const c = await fileToBase64(cover);
+          cover_b64 = c.b64; cover_ct = c.type;
+        }
+        data = await completeChunkedUpload(upload_id, "book_create", {
+          title: form.title, author: form.author, category: form.category,
+          description: form.description, cover_b64, cover_ct,
+        });
+      } else {
+        const fd = new FormData();
+        fd.append("title", form.title); fd.append("author", form.author);
+        fd.append("category", form.category); fd.append("description", form.description);
+        fd.append("pdf", pdf);
+        if (cover) fd.append("cover", cover);
+        ({ data } = await api.post("/books", fd));
+      }
       toast.success(data.status === "approved" ? "تم رفع الكتاب ونشره مباشرة 📚" : "تم رفع الكتاب");
       setForm({ title: "", author: "", category: "general", description: "" });
       setPdf(null); setCover(null);
       load();
-    } catch (err) { toast.error(apiErr(err)); } finally { setUploading(false); }
+    } catch (err) { toast.error(apiErr(err)); } finally { setUploading(false); setUploadProgress(0); }
   };
 
   const del = async (b) => {
@@ -1114,18 +1142,34 @@ function BooksPanel() {
   const saveEdit = async (e) => {
     e.preventDefault();
     if (!editForm.title.trim() || !editForm.author.trim()) return toast.error("العنوان والمؤلف مطلوبان");
+    if (editPdf && editPdf.size > MAX_PDF_SIZE) return toast.error("حجم ملف الـ PDF يتجاوز الحد الأقصى 100MB");
     setSavingEdit(true);
+    setEditProgress(0);
     try {
-      const fd = new FormData();
-      ["title", "author", "category", "description", "language", "publisher", "age", "tags"].forEach((k) => fd.append(k, editForm[k] ?? ""));
-      if (editForm.pages !== "" && editForm.pages != null) fd.append("pages", editForm.pages);
-      if (editForm.year !== "" && editForm.year != null) fd.append("year", editForm.year);
-      if (editPdf) fd.append("pdf", editPdf);
-      if (editCover) fd.append("cover", editCover);
-      await api.patch(`/books/${editing.id}`, fd, { headers: { "Content-Type": "multipart/form-data" } });
+      if (editPdf && editPdf.size > CHUNK_THRESHOLD) {
+        // استبدال ملف PDF كبير: رفع مجزأ ثم حفظ بيانات الكتاب
+        const { upload_id, chunk_size, total_parts } = await startChunkedUpload(editPdf);
+        await uploadChunks(editPdf, upload_id, chunk_size, total_parts, (done, total) =>
+          setEditProgress(Math.round((done / total) * 100)));
+        await completeChunkedUpload(upload_id, "book_replace", { book_id: editing.id });
+        const fd = new FormData();
+        ["title", "author", "category", "description", "language", "publisher", "age", "tags"].forEach((k) => fd.append(k, editForm[k] ?? ""));
+        if (editForm.pages !== "" && editForm.pages != null) fd.append("pages", editForm.pages);
+        if (editForm.year !== "" && editForm.year != null) fd.append("year", editForm.year);
+        if (editCover) fd.append("cover", editCover);
+        await api.patch(`/books/${editing.id}`, fd);
+      } else {
+        const fd = new FormData();
+        ["title", "author", "category", "description", "language", "publisher", "age", "tags"].forEach((k) => fd.append(k, editForm[k] ?? ""));
+        if (editForm.pages !== "" && editForm.pages != null) fd.append("pages", editForm.pages);
+        if (editForm.year !== "" && editForm.year != null) fd.append("year", editForm.year);
+        if (editPdf) fd.append("pdf", editPdf);
+        if (editCover) fd.append("cover", editCover);
+        await api.patch(`/books/${editing.id}`, fd);
+      }
       toast.success("تم حفظ التعديلات ✅");
       setEditing(null); load();
-    } catch (err) { toast.error(apiErr(err)); } finally { setSavingEdit(false); }
+    } catch (err) { toast.error(apiErr(err)); } finally { setSavingEdit(false); setEditProgress(0); }
   };
 
   const statusLabel = { approved: "معتمد", pending: "معلّق", rejected: "مرفوض" };
@@ -1155,6 +1199,14 @@ function BooksPanel() {
             <Button type="submit" disabled={uploading} className="rounded-xl bg-emerald-600 hover:bg-emerald-700">
               <Upload className="w-4 h-4 ml-1" /> {uploading ? "جارٍ الرفع..." : "رفع الكتاب"}
             </Button>
+            {uploading && uploadProgress > 0 && (
+              <div className="space-y-1.5 mt-3">
+                <div className="h-2.5 rounded-full bg-slate-100 overflow-hidden">
+                  <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${uploadProgress}%` }} />
+                </div>
+                <div className="text-xs text-slate-500 text-center">جارٍ رفع الملف… {uploadProgress}%</div>
+              </div>
+            )}
           </div>
         </form>
       </Section>
@@ -1257,6 +1309,14 @@ function BooksPanel() {
               {savingEdit ? "جارٍ الحفظ..." : "حفظ التعديلات"}
             </Button>
           </DialogFooter>
+          {savingEdit && editProgress > 0 && (
+            <div className="space-y-1.5 mt-2">
+              <div className="h-2.5 rounded-full bg-slate-100 overflow-hidden">
+                <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${editProgress}%` }} />
+              </div>
+              <div className="text-xs text-slate-500 text-center">جارٍ رفع الملف… {editProgress}%</div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 
@@ -1414,6 +1474,337 @@ function CertificatesPanel() {
           </div>
         )}
       </Section>
+    </div>
+  );
+}
+
+/* ---------------- Announcement banners manager ---------------- */
+const BG_PRESETS = ["#059669", "#2563EB", "#7C3AED", "#D97706", "#E11D48", "#0891B2", "#0A192F"];
+
+function bannerStatus(b) {
+  if (!b.active) return { l: "معطّل", c: "bg-slate-100 text-slate-500" };
+  const now = new Date();
+  if (b.ends_at && new Date(b.ends_at) < now) return { l: "منتهي", c: "bg-rose-50 text-rose-700" };
+  if (b.starts_at && new Date(b.starts_at) > now) return { l: "مجدول", c: "bg-amber-50 text-amber-700" };
+  return { l: "نشط", c: "bg-emerald-50 text-emerald-700" };
+}
+
+function BannersPanel() {
+  const [banners, setBanners] = useState(null);
+  const [dialog, setDialog] = useState(null); // null | "new" | banner obj
+  const [f, setF] = useState({ text: "", link: "", bg: BG_PRESETS[0], starts_at: "", ends_at: "", active: true });
+  const [saving, setSaving] = useState(false);
+  const load = async () => {
+    try { const { data } = await api.get("/admin/announcements"); setBanners(data.banners || []); }
+    catch { setBanners([]); }
+  };
+  useEffect(() => { load(); }, []);
+  const set = (k) => (v) => setF((x) => ({ ...x, [k]: v }));
+  const openNew = () => { setF({ text: "", link: "", bg: BG_PRESETS[0], starts_at: "", ends_at: "", active: true }); setDialog("new"); };
+  const openEdit = (b) => {
+    setF({
+      text: b.text || "", link: b.link || "", bg: b.bg || BG_PRESETS[0],
+      starts_at: (b.starts_at || "").slice(0, 16), ends_at: (b.ends_at || "").slice(0, 16),
+      active: b.active !== false,
+    });
+    setDialog(b);
+  };
+  const toISO = (v) => (v ? new Date(v).toISOString() : null);
+  const save = async () => {
+    if (!f.text.trim()) return toast.error("نص اللافتة مطلوب");
+    setSaving(true);
+    try {
+      const payload = { text: f.text.trim(), link: f.link.trim() || null, bg: f.bg, starts_at: toISO(f.starts_at), ends_at: toISO(f.ends_at), active: !!f.active };
+      if (dialog === "new") { await api.post("/admin/announcements", payload); toast.success("أُضيفت اللافتة 📢"); }
+      else { await api.patch(`/admin/announcements/${dialog.id}`, payload); toast.success("تم حفظ التعديلات ✅"); }
+      setDialog(null); load();
+    } catch (e) { toast.error(apiErr(e)); } finally { setSaving(false); }
+  };
+  const del = async (b) => {
+    if (!window.confirm("حذف هذه اللافتة نهائياً؟")) return;
+    try { await api.delete(`/admin/announcements/${b.id}`); toast.success("تم حذف اللافتة"); load(); }
+    catch (e) { toast.error(apiErr(e)); }
+  };
+  if (!banners) return <PageLoader />;
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-slate-500">لافتات تظهر أعلى الموقع لجميع الزوار — مثالية للتنبيهات المهمة.</p>
+        <Button onClick={openNew} className="rounded-xl bg-emerald-600 hover:bg-emerald-700"><Plus className="w-4 h-4 ml-1" /> لافتة جديدة</Button>
+      </div>
+      {banners.length === 0 ? (
+        <div className="bg-white rounded-2xl border border-slate-100 ft-shadow"><Empty t="لا لافتات بعد — أنشئ أول لافتة بالأعلى" /></div>
+      ) : (
+        <Stagger className="space-y-3">
+          {banners.map((b) => {
+            const s = bannerStatus(b);
+            return (
+              <Item key={b.id} className="bg-white rounded-2xl border border-slate-100 ft-shadow overflow-hidden">
+                {/* live preview */}
+                <div className="py-2.5 px-4 text-center text-white text-sm font-bold" style={{ background: b.bg || "#059669" }}>
+                  {b.text}
+                </div>
+                <div className="p-4 flex flex-col sm:flex-row sm:items-center gap-3">
+                  <span className={`text-xs font-bold px-2.5 py-1 rounded-full shrink-0 ${s.c}`}>{s.l}</span>
+                  <div className="text-xs text-slate-400 flex-1 min-w-0 space-y-1">
+                    {b.link && <div className="flex items-center gap-1 truncate" dir="ltr"><Link2 className="w-3.5 h-3.5 shrink-0" />{b.link}</div>}
+                    {(b.starts_at || b.ends_at) && (
+                      <div>من {b.starts_at ? String(b.starts_at).slice(0, 16).replace("T", " ") : "—"} إلى {b.ends_at ? String(b.ends_at).slice(0, 16).replace("T", " ") : "—"}</div>
+                    )}
+                    <div>أُنشئت {String(b.created_at || "").slice(0, 10)}</div>
+                  </div>
+                  <div className="flex gap-2 shrink-0">
+                    <Button size="sm" variant="outline" onClick={() => openEdit(b)} className="rounded-xl h-10"><PenLine className="w-4 h-4 ml-1" /> تعديل</Button>
+                    <Button size="sm" variant="outline" onClick={() => del(b)} className="rounded-xl h-10 text-rose-600 border-rose-200"><Trash2 className="w-4 h-4 ml-1" /> حذف</Button>
+                  </div>
+                </div>
+              </Item>
+            );
+          })}
+        </Stagger>
+      )}
+      <Dialog open={!!dialog} onOpenChange={(o) => !o && setDialog(null)}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>{dialog === "new" ? "لافتة إعلان جديدة" : "تعديل اللافتة"}</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            {/* live preview inside dialog */}
+            <div>
+              <Label>معاينة حية</Label>
+              <div className="mt-1.5 py-2.5 px-4 rounded-xl text-center text-white text-sm font-bold" style={{ background: f.bg }}>
+                {f.text.trim() || "نص اللافتة سيظهر هنا…"}
+              </div>
+            </div>
+            <div><Label>النص *</Label><Textarea value={f.text} onChange={(e) => set("text")(e.target.value)} rows={2} className="rounded-xl mt-1" placeholder="مثال: التسجيل في مسابقة القراءة مفتوح الآن! 🎉" /></div>
+            <div><Label>الرابط (اختياري — عند النقر على اللافتة)</Label><Input value={f.link} onChange={(e) => set("link")(e.target.value)} dir="ltr" className="rounded-xl mt-1" placeholder="/competitions" /></div>
+            <div>
+              <Label>لون الخلفية</Label>
+              <div className="flex items-center gap-2 mt-2 flex-wrap">
+                {BG_PRESETS.map((c) => (
+                  <button key={c} type="button" onClick={() => set("bg")(c)}
+                    className={`w-9 h-9 rounded-xl transition-transform ${f.bg === c ? "ring-2 ring-offset-2 ring-slate-900 scale-110" : "hover:scale-105"}`}
+                    style={{ background: c }} aria-label={c} />
+                ))}
+                <input type="color" value={f.bg} onChange={(e) => set("bg")(e.target.value)} className="w-9 h-9 rounded-xl cursor-pointer border border-slate-200" title="لون مخصص" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label>تبدأ (اختياري)</Label><Input type="datetime-local" value={f.starts_at} onChange={(e) => set("starts_at")(e.target.value)} className="rounded-xl mt-1" /></div>
+              <div><Label>تنتهي (اختياري)</Label><Input type="datetime-local" value={f.ends_at} onChange={(e) => set("ends_at")(e.target.value)} className="rounded-xl mt-1" /></div>
+            </div>
+            <label className="flex items-center gap-2.5 text-sm font-medium text-slate-700 cursor-pointer">
+              <button type="button" role="switch" aria-checked={f.active} onClick={() => set("active")(!f.active)}
+                className={`w-11 h-6 rounded-full transition-colors relative ${f.active ? "bg-emerald-500" : "bg-slate-300"}`}>
+                <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all ${f.active ? "right-0.5" : "left-0.5"}`} />
+              </button>
+              لافتة مفعّلة
+            </label>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setDialog(null)} className="rounded-xl">إلغاء</Button>
+            <Button onClick={save} disabled={saving} className="rounded-xl bg-emerald-600 hover:bg-emerald-700">{saving ? "جارٍ الحفظ..." : "حفظ اللافتة"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+/* ---------------- Data export center ---------------- */
+const EXPORT_DEFS = [
+  { k: "users", l: "المستخدمون", d: "الاسم، البريد، الدور، النقاط، المدرسة…", icon: Users, c: "#2563EB", path: "/admin/users",
+    cols: [{ k: "name", l: "الاسم" }, { k: "email", l: "البريد" }, { k: "role", l: "الدور" }, { k: "xp", l: "النقاط" }, { k: "level", l: "المستوى" }, { k: "school_name", l: "المدرسة" }, { k: "governorate", l: "المحافظة" }, { k: "created_at", l: "تاريخ التسجيل" }] },
+  { k: "books", l: "الكتب", d: "العنوان، المؤلف، التصنيف، الحالة…", icon: BookOpen, c: "#D97706", path: "/books",
+    cols: [{ k: "title", l: "العنوان" }, { k: "author", l: "المؤلف" }, { k: "category", l: "التصنيف" }, { k: "status", l: "الحالة" }, { k: "language", l: "اللغة" }, { k: "pages", l: "الصفحات" }, { k: "year", l: "السنة" }, { k: "uploader_name", l: "الرافع" }, { k: "created_at", l: "تاريخ الرفع" }] },
+  { k: "events", l: "الفعاليات", d: "العنوان، التاريخ، المكان، المشاركون…", icon: Calendar, c: "#7C3AED", path: "/events",
+    cols: [{ k: "title", l: "العنوان" }, { k: "date", l: "التاريخ" }, { k: "time", l: "الوقت" }, { k: "location", l: "المكان" }, { k: "mode", l: "النمط" }, { k: "scope", l: "النطاق" }, { k: "capacity", l: "السعة" }, { k: "registered_count", l: "المسجلون" }] },
+  { k: "competitions", l: "المسابقات", d: "العنوان، النوع، البداية، النهاية…", icon: Trophy, c: "#0891B2", path: "/competitions",
+    cols: [{ k: "title", l: "العنوان" }, { k: "type", l: "النوع" }, { k: "start_at", l: "تبدأ" }, { k: "end_at", l: "تنتهي" }, { k: "duration_minutes", l: "المدة (د)" }] },
+  { k: "clubs", l: "الأندية", d: "الاسم، الرابط، الوصف، الأعضاء…", icon: Users, c: "#059669", path: "/clubs",
+    cols: [{ k: "name", l: "الاسم" }, { k: "slug", l: "الرابط" }, { k: "description", l: "الوصف" }, { k: "members_count", l: "الأعضاء" }] },
+];
+
+const fetchAll = async (path) => {
+  const items = [];
+  let page = 1;
+  for (;;) {
+    const { data } = await api.get(path, { params: { page, limit: 500 } });
+    if (Array.isArray(data)) { items.push(...data); break; }
+    const chunk = data.items || [];
+    items.push(...chunk);
+    if (chunk.length < 500 || (data.total && items.length >= data.total)) break;
+    page++;
+    if (page > 40) break;
+  }
+  return items;
+};
+
+const rowsToCSV = (cols, rows) => {
+  const esc = (v) => {
+    if (v === null || v === undefined) return "";
+    const s = Array.isArray(v) ? v.join("؛ ") : (typeof v === "object" ? JSON.stringify(v) : String(v));
+    return `"${s.replace(/"/g, '""')}"`;
+  };
+  const head = cols.map((c) => esc(c.l)).join(",");
+  const body = rows.map((r) => cols.map((c) => esc(r[c.k])).join(","));
+  return "﻿" + [head, ...body].join("\n");
+};
+
+const downloadCSV = (filename, csv) => {
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1500);
+};
+
+function ExportsPanel() {
+  const [busy, setBusy] = useState(null);
+  const run = async (def) => {
+    setBusy(def.k);
+    try {
+      const items = await fetchAll(def.path);
+      if (items.length === 0) return toast.info("لا بيانات للتصدير");
+      downloadCSV(`future-thinkers-${def.k}-${new Date().toISOString().slice(0, 10)}.csv`, rowsToCSV(def.cols, items));
+      toast.success(`تم تنزيل ${items.length} سجلاً ✅`);
+    } catch (e) { toast.error(apiErr(e)); } finally { setBusy(null); }
+  };
+  return (
+    <div className="space-y-6">
+      <p className="text-sm text-slate-500">تصدير فوري لبيانات المنصة بصيغة CSV (متوافقة مع Excel بالعربية) — تُحمَّل مباشرة من جهازك.</p>
+      <Stagger className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+        {EXPORT_DEFS.map((d) => (
+          <Item key={d.k} className="bg-white rounded-2xl p-5 border border-slate-100 ft-shadow hover-lift flex flex-col">
+            <div className="w-12 h-12 rounded-2xl grid place-items-center mb-3" style={{ background: `${d.c}15`, color: d.c }}>
+              <d.icon className="w-6 h-6" />
+            </div>
+            <div className="font-head font-bold text-slate-900">{d.l}</div>
+            <div className="text-xs text-slate-400 mt-1 flex-1">{d.d}</div>
+            <Button onClick={() => run(d)} disabled={!!busy} className="mt-4 rounded-xl w-full h-11" style={{ background: d.c }}>
+              {busy === d.k ? "جارٍ التجهيز…" : <><Download className="w-4 h-4 ml-1" /> تنزيل CSV</>}
+            </Button>
+          </Item>
+        ))}
+      </Stagger>
+    </div>
+  );
+}
+
+/* ---------------- Content calendar ---------------- */
+const AR_MONTHS = ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"];
+const AR_WEEKDAYS = ["السبت", "الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة"];
+const CAL_TYPE_META = {
+  event: { l: "فعالية", c: "#7C3AED", link: (i) => `/events/${i.ref}` },
+  comp: { l: "مسابقة", c: "#D97706", link: (i) => `/competitions/${i.ref}` },
+  news: { l: "خبر", c: "#0891B2", link: () => "/news" },
+};
+
+function CalendarPanel() {
+  const now = new Date();
+  const [ym, setYm] = useState({ y: now.getFullYear(), m: now.getMonth() });
+  const [items, setItems] = useState(null);
+  const [selDay, setSelDay] = useState(null);
+  const nav = useNavigate();
+  useEffect(() => {
+    (async () => {
+      try {
+        const [ev, co, nw] = await Promise.all([
+          api.get("/events", { params: { limit: 1000 } }).catch(() => ({ data: { items: [] } })),
+          api.get("/competitions", { params: { limit: 1000 } }).catch(() => ({ data: { items: [] } })),
+          api.get("/news", { params: { limit: 1000 } }).catch(() => ({ data: { items: [] } })),
+        ]);
+        const norm = [];
+        (ev.data.items || []).forEach((e) => {
+          const d = String(e.date || "").slice(0, 10);
+          if (d) norm.push({ type: "event", date: d, title: e.title, ref: e.id, sub: [e.time, e.location].filter(Boolean).join(" · ") });
+        });
+        (co.data.items || []).forEach((c) => {
+          const d = String(c.start_at || "").slice(0, 10);
+          if (d) norm.push({ type: "comp", date: d, title: c.title, ref: c.id, sub: c.end_at ? `تنتهي ${String(c.end_at).slice(0, 10)}` : "" });
+        });
+        (nw.data.items || []).forEach((n) => {
+          const d = String(n.created_at || "").slice(0, 10);
+          if (d) norm.push({ type: "news", date: d, title: n.title, ref: null, sub: n.category || "" });
+        });
+        setItems(norm);
+      } catch { setItems([]); }
+    })();
+  }, []);
+  const { y, m } = ym;
+  const first = new Date(y, m, 1);
+  const daysInMonth = new Date(y, m + 1, 0).getDate();
+  const offset = (first.getDay() + 1) % 7; // Saturday-first week
+  const byDate = {};
+  (items || []).forEach((i) => { (byDate[i.date] = byDate[i.date] || []).push(i); });
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  const shift = (d) => { const dt = new Date(y, m + d); setYm({ y: dt.getFullYear(), m: dt.getMonth() }); };
+  const selItems = selDay ? byDate[selDay] || [] : [];
+  if (!items) return <PageLoader />;
+  return (
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h3 className="font-head font-bold text-lg">تقويم المحتوى — <span className="text-emerald-700">{AR_MONTHS[m]} {y}</span></h3>
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant="outline" onClick={() => shift(-1)} className="rounded-xl">الشهر السابق</Button>
+          <Button size="sm" variant="outline" onClick={() => { setYm({ y: now.getFullYear(), m: now.getMonth() }); }} className="rounded-xl">اليوم</Button>
+          <Button size="sm" variant="outline" onClick={() => shift(1)} className="rounded-xl">الشهر التالي</Button>
+        </div>
+      </div>
+      <div className="flex items-center gap-4 text-xs text-slate-500">
+        {Object.entries(CAL_TYPE_META).map(([k, v]) => (
+          <span key={k} className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full" style={{ background: v.c }} />{v.l}</span>
+        ))}
+      </div>
+      <div className="bg-white rounded-2xl border border-slate-100 ft-shadow p-3 sm:p-5">
+        <div className="grid grid-cols-7 gap-1 sm:gap-2 mb-2">
+          {AR_WEEKDAYS.map((d) => <div key={d} className="text-center text-[11px] sm:text-xs font-bold text-slate-400 py-1">{d}</div>)}
+        </div>
+        <div className="grid grid-cols-7 gap-1 sm:gap-2">
+          {Array.from({ length: offset }).map((_, i) => <div key={`e${i}`} />)}
+          {Array.from({ length: daysInMonth }).map((_, i) => {
+            const day = i + 1;
+            const ds = `${y}-${String(m + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+            const dayItems = byDate[ds] || [];
+            const isToday = ds === todayStr;
+            return (
+              <button key={day} onClick={() => dayItems.length && setSelDay(ds)}
+                className={`min-h-[52px] sm:min-h-[86px] rounded-xl border p-1 sm:p-1.5 text-right transition-colors flex flex-col ${isToday ? "border-emerald-400 bg-emerald-50/50" : "border-slate-100 bg-slate-50/60 hover:bg-slate-100"} ${dayItems.length ? "cursor-pointer" : "cursor-default"}`}>
+                <span className={`text-xs sm:text-sm font-bold w-6 h-6 grid place-items-center rounded-full ${isToday ? "bg-emerald-600 text-white" : "text-slate-600"}`}>{day}</span>
+                <div className="mt-1 space-y-1 overflow-hidden">
+                  {dayItems.slice(0, 2).map((it, j) => (
+                    <div key={j} className="flex items-center gap-1 text-[10px] sm:text-[11px] leading-tight">
+                      <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: CAL_TYPE_META[it.type].c }} />
+                      <span className="truncate text-slate-600">{it.title}</span>
+                    </div>
+                  ))}
+                  {dayItems.length > 2 && <div className="text-[10px] text-slate-400 font-medium">+{dayItems.length - 2} المزيد</div>}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+      <Dialog open={!!selDay} onOpenChange={(o) => !o && setSelDay(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>محتوى يوم {selDay}</DialogTitle></DialogHeader>
+          <div className="space-y-2 max-h-[60vh] overflow-y-auto">
+            {selItems.map((it, i) => {
+              const meta = CAL_TYPE_META[it.type];
+              return (
+                <button key={i} onClick={() => { setSelDay(null); nav(meta.link(it)); }}
+                  className="w-full text-right flex items-center gap-3 p-3 rounded-xl border border-slate-100 hover:bg-slate-50 transition-colors">
+                  <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: meta.c }} />
+                  <span className="flex-1 min-w-0">
+                    <span className="block font-bold text-sm text-slate-800 truncate">{it.title}</span>
+                    <span className="block text-[11px] text-slate-400">{meta.l}{it.sub ? ` · ${it.sub}` : ""}</span>
+                  </span>
+                  <ArrowLeft className="w-4 h-4 text-slate-300 shrink-0" />
+                </button>
+              );
+            })}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
