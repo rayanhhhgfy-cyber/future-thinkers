@@ -5,7 +5,7 @@ import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { Swords, Crown, Loader2, Check, X, Play } from "lucide-react";
+import { Swords, Crown, Loader2, Check, X, Play, User } from "lucide-react";
 
 export function ChessArena() {
   const { user } = useAuth();
@@ -56,9 +56,14 @@ export function ChessArena() {
               <h3 className="font-head font-bold text-lg flex items-center gap-2"><Swords className="w-5 h-5 text-blue-600" /> مباراة سريعة</h3>
               <p className="text-sm text-slate-500 mt-1">تصنيفك الحالي: <span className="font-bold text-slate-800">{user.chess_rating || 1200}</span> ELO</p>
             </div>
+            <div className="flex gap-2">
             <Button data-testid="quick-match-btn" onClick={quickMatch} disabled={matching} className="rounded-xl bg-blue-600 hover:bg-blue-700 h-11">
               {matching ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Play className="w-4 h-4 ml-1" /> ابحث عن خصم</>}
             </Button>
+            <Button onClick={() => nav("/chess/practice")} variant="outline" className="rounded-xl h-11">
+              <User className="w-4 h-4 ml-1" /> تدريب فردي
+            </Button>
+            </div>
           </div>
         </div>
 

@@ -20,6 +20,7 @@ import Clubs from "@/pages/Clubs";
 import ClubDetail from "@/pages/ClubDetail";
 import DiscussionDetail from "@/pages/DiscussionDetail";
 import ChessGame from "@/pages/ChessGame";
+import ChessPractice from "@/pages/ChessPractice";
 import Events from "@/pages/Events";
 import EventDetail from "@/pages/EventDetail";
 import Competitions from "@/pages/Competitions";
@@ -68,6 +69,7 @@ function AnimatedRoutes() {
       <Route path="/clubs" element={<Clubs />} />
       <Route path="/clubs/:slug" element={<ClubDetail />} />
       <Route path="/discussions/:id" element={<DiscussionDetail />} />
+      <Route path="/chess/practice" element={<Protected><ChessPractice /></Protected>} />
       <Route path="/chess/:id" element={<Protected><ChessGame /></Protected>} />
       <Route path="/events" element={<Events />} />
       <Route path="/events/:id" element={<EventDetail />} />
