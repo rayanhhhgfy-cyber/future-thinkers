@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import NotifyPanel from "@/components/admin/NotifyPanel";
+import UsersPanel from "@/components/admin/UsersPanel";
 import { toast } from "sonner";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { LayoutDashboard, ShieldCheck, Users, BookOpen, Calendar, Trophy, Newspaper, Settings, ScrollText, Plus, Check, X, Megaphone, PenLine, Medal, Award, Upload, Trash2, Search } from "lucide-react";
@@ -182,48 +183,6 @@ function Moderation() {
           </div>
         ))}
       </Section>
-    </div>
-  );
-}
-
-function UsersPanel() {
-  const [data, setData] = useState(null);
-  const [q, setQ] = useState("");
-  const [role, setRole] = useState("");
-  const { hasPerm } = useAuth();
-  const load = async () => { const { data } = await api.get("/admin/users", { params: { q: q || undefined, role: role || undefined } }); setData(data); };
-  useEffect(() => { const t = setTimeout(load, 300); return () => clearTimeout(t); }, [q, role]);
-  const setUserRole = async (id, newRole) => { try { await api.put(`/admin/users/${id}/role`, { role: newRole }); toast.success("تم تحديث الدور"); load(); } catch (e) { toast.error(apiErr(e)); } };
-  const setStatus = async (id, status) => { await api.put(`/admin/users/${id}/status`, { status }); toast.success("تم"); load(); };
-  const ROLES = [["student", "طالب"], ["teacher", "معلم"], ["school_admin", "مدير مدرسة"], ["directorate_admin", "مدير مديرية"], ["moderator", "مشرف"], ["admin", "مسؤول"], ["super_admin", "مسؤول أعلى"]];
-
-  return (
-    <div>
-      <div className="flex gap-3 mb-4">
-        <Input data-testid="user-search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="ابحث بالاسم أو البريد…" className="rounded-xl" />
-        <Select value={role || "all"} onValueChange={(v) => setRole(v === "all" ? "" : v)}>
-          <SelectTrigger className="w-40 rounded-xl"><SelectValue placeholder="كل الأدوار" /></SelectTrigger>
-          <SelectContent><SelectItem value="all">كل الأدوار</SelectItem>{ROLES.map(([v, l]) => <SelectItem key={v} value={v}>{l}</SelectItem>)}</SelectContent>
-        </Select>
-      </div>
-      {!data ? <PageLoader /> : (
-        <div className="bg-white rounded-2xl border border-slate-100 ft-shadow overflow-x-auto">
-          {data.items.map((u) => (
-            <div key={u.id} className="flex items-center gap-3 px-4 py-3 border-b border-slate-50 last:border-0 flex-wrap min-w-0">
-              <div className="flex-1 min-w-[160px]"><div className="font-medium text-slate-800">{u.name}</div><div className="text-xs text-slate-400">{u.email} · {u.school_name || "—"}</div></div>
-              {hasPerm("role.manage") ? (
-                <Select value={u.role} onValueChange={(v) => setUserRole(u.id, v)}>
-                  <SelectTrigger data-testid={`role-select-${u.id}`} className="w-36 h-9 rounded-lg text-xs"><SelectValue /></SelectTrigger>
-                  <SelectContent>{ROLES.map(([v, l]) => <SelectItem key={v} value={v}>{l}</SelectItem>)}</SelectContent>
-                </Select>
-              ) : <span className="text-xs px-2 py-1 rounded bg-slate-100">{u.role}</span>}
-              {hasPerm("user.manage") && (u.status === "banned"
-                ? <Button size="sm" variant="outline" onClick={() => setStatus(u.id, "active")} className="rounded-lg text-emerald-600">تفعيل</Button>
-                : <Button size="sm" variant="outline" data-testid={`ban-${u.id}`} onClick={() => setStatus(u.id, "banned")} className="rounded-lg text-rose-600">حظر</Button>)}
-            </div>
-          ))}
-        </div>
-      )}
     </div>
   );
 }
