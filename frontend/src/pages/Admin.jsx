@@ -13,13 +13,13 @@ import NotifyPanel from "@/components/admin/NotifyPanel";
 import UsersPanel from "@/components/admin/UsersPanel";
 import { toast } from "sonner";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
-import { LayoutDashboard, ShieldCheck, Users, BookOpen, Calendar, Trophy, Newspaper, Settings, ScrollText, Plus, Check, X, Megaphone, PenLine, Medal, Award, Upload, Trash2, Search } from "lucide-react";
+import { LayoutDashboard, ShieldCheck, Users, BookOpen, Calendar, Trophy, Newspaper, Settings, ScrollText, Plus, Check, X, Megaphone, PenLine, Medal, Award, Upload, Trash2, Search, MessageSquare } from "lucide-react";
 
 const NAV = [
   { k: "overview", l: "نظرة عامة", icon: LayoutDashboard, perm: "analytics.view" },
   { k: "moderation", l: "مراجعة المحتوى", icon: ShieldCheck, perm: "book.approve" },
   { k: "studio", l: "مراجعة الاستوديو", icon: PenLine, perm: "studio.review" },
-  { k: "books", l: "الكتب", icon: BookOpen, perm: "book.delete" },
+  { k: "books", l: "الكتب", icon: BookOpen, perm: ["book.edit", "book.delete"] },
   { k: "badges", l: "شارات المهارات", icon: Medal, perm: "badge.award" },
   { k: "certificates", l: "الشهادات", icon: Award, perm: "certificate.manage" },
   { k: "users", l: "المستخدمون", icon: Users, perm: "user.view" },
@@ -35,7 +35,7 @@ export default function Admin() {
   const { hasPerm } = useAuth();
   const nav = useNavigate();
   const params = useParams();
-  const tabs = NAV.filter((n) => hasPerm(n.perm));
+  const tabs = NAV.filter((n) => Array.isArray(n.perm) ? n.perm.some((p) => hasPerm(p)) : hasPerm(n.perm));
   const urlTab = (params["*"] || "").split("/")[0];
   const validUrlTab = tabs.some((t) => t.k === urlTab) ? urlTab : null;
   const [tab, setTab] = useState(validUrlTab || tabs[0]?.k || "overview");
@@ -447,6 +447,7 @@ function BadgesPanel() {
 }
 
 function BooksPanel() {
+  const { hasPerm } = useAuth();
   const [books, setBooks] = useState([]);
   const [total, setTotal] = useState(0);
   const [q, setQ] = useState("");
@@ -455,6 +456,13 @@ function BooksPanel() {
   const [form, setForm] = useState({ title: "", author: "", category: "general", description: "" });
   const [pdf, setPdf] = useState(null);
   const [cover, setCover] = useState(null);
+  const [editing, setEditing] = useState(null);
+  const [editForm, setEditForm] = useState({});
+  const [editPdf, setEditPdf] = useState(null);
+  const [editCover, setEditCover] = useState(null);
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [revBook, setRevBook] = useState(null);
+  const [reviews, setReviews] = useState([]);
 
   const load = async () => {
     try {
@@ -492,6 +500,52 @@ function BooksPanel() {
     if (!window.confirm(`حذف "${b.title}" نهائياً؟`)) return;
     try { await api.delete(`/books/${b.id}`); toast.success("تم حذف الكتاب"); load(); }
     catch (e) { toast.error(apiErr(e)); }
+  };
+
+  const openEdit = async (b) => {
+    try {
+      const { data } = await api.get(`/books/${b.id}`);
+      setEditing(data);
+      setEditForm({
+        title: data.title || "", author: data.author || "", category: data.category || "general",
+        description: data.description || "", language: data.language || "العربية",
+        pages: data.pages || "", year: data.year || "", publisher: data.publisher || "",
+        age: data.age || "عام", tags: (data.tags || []).join(", "),
+      });
+      setEditPdf(null); setEditCover(null);
+    } catch { toast.error("تعذر تحميل بيانات الكتاب"); }
+  };
+
+  const saveEdit = async (e) => {
+    e.preventDefault();
+    if (!editForm.title.trim() || !editForm.author.trim()) return toast.error("العنوان والمؤلف مطلوبان");
+    setSavingEdit(true);
+    try {
+      const fd = new FormData();
+      ["title", "author", "category", "description", "language", "publisher", "age", "tags"].forEach((k) => fd.append(k, editForm[k] ?? ""));
+      if (editForm.pages !== "" && editForm.pages != null) fd.append("pages", editForm.pages);
+      if (editForm.year !== "" && editForm.year != null) fd.append("year", editForm.year);
+      if (editPdf) fd.append("pdf", editPdf);
+      if (editCover) fd.append("cover", editCover);
+      await api.patch(`/books/${editing.id}`, fd, { headers: { "Content-Type": "multipart/form-data" } });
+      toast.success("تم حفظ التعديلات ✅");
+      setEditing(null); load();
+    } catch (err) { toast.error(apiErr(err)); } finally { setSavingEdit(false); }
+  };
+
+  const openReviews = async (b) => {
+    setRevBook(b); setReviews([]);
+    try { const { data } = await api.get(`/books/${b.id}/reviews`); setReviews(data || []); }
+    catch { setReviews([]); }
+  };
+
+  const delReview = async (r) => {
+    if (!window.confirm(`حذف مراجعة "${r.user_name || "مستخدم"}"؟`)) return;
+    try {
+      await api.delete(`/books/${revBook.id}/reviews/${r.id}`);
+      toast.success("تم حذف المراجعة");
+      setReviews(reviews.filter((x) => x.id !== r.id));
+    } catch (e) { toast.error(apiErr(e)); }
   };
 
   const statusLabel = { approved: "معتمد", pending: "معلّق", rejected: "مرفوض" };
@@ -546,14 +600,88 @@ function BooksPanel() {
                   <div className="font-semibold text-slate-800 truncate">{b.title}</div>
                   <div className="text-xs text-slate-400">{b.author} · {statusLabel[b.status] || b.status} · {b.uploader_name || ""}</div>
                 </div>
-                <Button size="sm" variant="outline" onClick={() => del(b)} className="rounded-lg text-rose-600 border-rose-200 shrink-0">
-                  <Trash2 className="w-4 h-4 ml-1" /> حذف
-                </Button>
+                <div className="flex items-center gap-1 shrink-0">
+                  {hasPerm("book.edit") && (
+                    <>
+                      <Button size="sm" variant="outline" onClick={() => openEdit(b)} className="rounded-lg">
+                        <PenLine className="w-4 h-4 ml-1" /> تعديل
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => openReviews(b)} className="rounded-lg">
+                        <MessageSquare className="w-4 h-4 ml-1" /> المراجعات
+                      </Button>
+                    </>
+                  )}
+                  {hasPerm("book.delete") && (
+                    <Button size="sm" variant="outline" onClick={() => del(b)} className="rounded-lg text-rose-600 border-rose-200">
+                      <Trash2 className="w-4 h-4 ml-1" /> حذف
+                    </Button>
+                  )}
+                </div>
               </div>
             ))}
           </div>
         )}
       </Section>
+
+      <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>تعديل الكتاب</DialogTitle></DialogHeader>
+          <form onSubmit={saveEdit} className="grid sm:grid-cols-2 gap-3">
+            <div><Label>العنوان *</Label><Input value={editForm.title || ""} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} className="rounded-xl mt-1" /></div>
+            <div><Label>المؤلف *</Label><Input value={editForm.author || ""} onChange={(e) => setEditForm({ ...editForm, author: e.target.value })} className="rounded-xl mt-1" /></div>
+            <div>
+              <Label>التصنيف</Label>
+              <Select value={editForm.category || "general"} onValueChange={(v) => setEditForm({ ...editForm, category: v })}>
+                <SelectTrigger className="rounded-xl mt-1"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="general">عام</SelectItem><SelectItem value="novels">روايات</SelectItem>
+                  <SelectItem value="culture">ثقافة</SelectItem><SelectItem value="science">علوم</SelectItem>
+                  <SelectItem value="selfdev">تطوير ذات</SelectItem><SelectItem value="kids">أطفال</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div><Label>اللغة</Label><Input value={editForm.language || ""} onChange={(e) => setEditForm({ ...editForm, language: e.target.value })} className="rounded-xl mt-1" /></div>
+            <div><Label>عدد الصفحات</Label><Input type="number" min="0" value={editForm.pages ?? ""} onChange={(e) => setEditForm({ ...editForm, pages: e.target.value })} className="rounded-xl mt-1" /></div>
+            <div><Label>سنة النشر</Label><Input type="number" min="0" value={editForm.year ?? ""} onChange={(e) => setEditForm({ ...editForm, year: e.target.value })} className="rounded-xl mt-1" /></div>
+            <div><Label>دار النشر</Label><Input value={editForm.publisher || ""} onChange={(e) => setEditForm({ ...editForm, publisher: e.target.value })} className="rounded-xl mt-1" /></div>
+            <div><Label>الفئة العمرية</Label><Input value={editForm.age || ""} onChange={(e) => setEditForm({ ...editForm, age: e.target.value })} className="rounded-xl mt-1" /></div>
+            <div className="sm:col-span-2"><Label>الوسوم (افصل بفاصلة)</Label><Input value={editForm.tags || ""} onChange={(e) => setEditForm({ ...editForm, tags: e.target.value })} className="rounded-xl mt-1" /></div>
+            <div className="sm:col-span-2"><Label>الوصف</Label><Textarea value={editForm.description || ""} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} className="rounded-xl mt-1" rows={3} /></div>
+            <div><Label>استبدال ملف PDF <span className="text-slate-400 font-normal">(اتركه فارغاً للإبقاء على الحالي)</span></Label><Input type="file" accept="application/pdf" onChange={(e) => setEditPdf(e.target.files?.[0] || null)} className="rounded-xl mt-1" /></div>
+            <div><Label>استبدال الغلاف <span className="text-slate-400 font-normal">(اتركه فارغاً للإبقاء على الحالي)</span></Label><Input type="file" accept="image/*" onChange={(e) => setEditCover(e.target.files?.[0] || null)} className="rounded-xl mt-1" /></div>
+          </form>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setEditing(null)} className="rounded-xl">إلغاء</Button>
+            <Button onClick={saveEdit} disabled={savingEdit} className="rounded-xl bg-emerald-600 hover:bg-emerald-700">
+              {savingEdit ? "جارٍ الحفظ..." : "حفظ التعديلات"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!revBook} onOpenChange={(o) => !o && setRevBook(null)}>
+        <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>مراجعات: {revBook?.title}</DialogTitle></DialogHeader>
+          {reviews.length === 0 ? <Empty t="لا مراجعات بعد" /> : (
+            <div className="space-y-2">
+              {reviews.map((r) => (
+                <div key={r.id} className="p-3 bg-white rounded-xl border border-slate-100">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="font-semibold text-sm text-slate-700">{r.user_name || "مستخدم"}</div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-amber-500 text-sm">{"★".repeat(r.rating || 0)}</span>
+                      <Button size="sm" variant="outline" onClick={() => delReview(r)} className="rounded-lg text-rose-600 border-rose-200">
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                  {r.text && <div className="text-sm text-slate-500 mt-1">{r.text}</div>}
+                </div>
+              ))}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
