@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { toast } from "sonner";
 import { PenLine, BookOpen, Feather, ScrollText, Heart, Clock, CheckCircle2, XCircle, Send, Trash2, Plus, Star } from "lucide-react";
 import { FadeUp, Stagger, Item } from "@/components/anim";
+import BookmarkButton from "@/components/BookmarkButton";
 
 const TYPES = [
   { v: "article", l: "مقال", icon: ScrollText },
@@ -118,7 +119,7 @@ export default function Studio() {
             {gallery.items.length === 0 ? <EmptyState icon={BookOpen} title="لا أعمال منشورة بعد" hint="كن أول من ينشر في الاستوديو!" /> : (
               <Stagger className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {gallery.items.map((w) => (
-                  <Item key={w.id}>
+                  <Item key={w.id} className="relative">
                   <button onClick={() => nav(`/studio/${w.id}`)} className="w-full h-full text-right bg-white rounded-2xl p-5 border border-slate-100 ft-shadow hover-lift">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-xs font-bold text-violet-600 bg-violet-50 px-2.5 py-1 rounded-full">{w.type_label}</span>
@@ -131,6 +132,7 @@ export default function Studio() {
                     <p className="text-sm text-slate-500 line-clamp-3 leading-relaxed">{w.excerpt}</p>
                     <div className="mt-3 text-xs text-slate-400">بقلم {w.author_name}</div>
                   </button>
+                  <BookmarkButton kind="work" refId={w.id} title={w.title} className="absolute top-3 left-3 shadow" />
                   </Item>
                 ))}
               </Stagger>

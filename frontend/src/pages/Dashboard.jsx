@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { Flame, Trophy, BookOpen, Crown, Calendar, Zap, Award, TrendingUp, Sparkles, MessagesSquare, Medal, PenLine, Rocket, Bell, Quote, ArrowLeft, Star } from "lucide-react";
 import * as Icons from "lucide-react";
 import { FadeUp, Stagger, Item } from "@/components/anim";
+import { WeeklyGoals, ActivityHeatmap, UpcomingDeadlines, DailyChallenge, SavedItems, Suggestions, AchievementsShowcase } from "@/components/dashboard/widgets";
 import { timeAgo } from "@/components/NotificationsPanel";
 
 const VSTATUS = { idea: "فكرة", in_progress: "قيد التنفيذ", completed: "مكتمل" };
@@ -309,6 +310,21 @@ export default function Dashboard() {
             </section>
             </FadeUp>
           </div>
+        </div>
+
+        {/* NEW: personal progress wave */}
+        <div className="mt-6 space-y-6">
+          <div className="grid lg:grid-cols-2 gap-6">
+            <WeeklyGoals />
+            <DailyChallenge onXp={() => { refresh(); }} />
+          </div>
+          <ActivityHeatmap />
+          <div className="grid lg:grid-cols-2 gap-6">
+            <UpcomingDeadlines />
+            <SavedItems />
+          </div>
+          <Suggestions />
+          <AchievementsShowcase />
         </div>
       </div>
     </Layout>

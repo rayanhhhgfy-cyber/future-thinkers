@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Star, Search, Upload, BookOpen, Eye } from "lucide-react";
+import BookmarkButton from "@/components/BookmarkButton";
 
 const SORTS = [{ v: "recent", l: "الأحدث" }, { v: "popular", l: "الأكثر قراءة" }, { v: "rating", l: "الأعلى تقييماً" }, { v: "title", l: "أبجدي" }];
 
@@ -16,6 +17,7 @@ export function BookCard({ b }) {
       <div className="relative aspect-[3/4] rounded-2xl overflow-hidden ft-shadow bg-slate-100">
         <img src={fileUrl(b.cover_url)} alt={b.title} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
         {b.status && b.status !== "approved" && <span className="absolute top-2 right-2 px-2 py-0.5 rounded-md bg-amber-500 text-white text-[10px]">{b.status === "pending" ? "قيد المراجعة" : "مرفوض"}</span>}
+        <BookmarkButton kind="book" refId={b.id} title={b.title} className="absolute top-2 left-2 shadow" />
       </div>
       <div className="mt-2.5">
         <h3 className="font-semibold text-slate-800 line-clamp-1 group-hover:text-blue-700 transition-colors">{b.title}</h3>
