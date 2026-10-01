@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import api from "@/lib/api";
 import { motion, AnimatePresence } from "framer-motion";
@@ -51,13 +52,21 @@ export function NotificationsPanel({ onClose }) {
 
   const unread = (items || []).filter((n) => !n.read).length;
 
+  // The panel is rendered inside <header class="glass"> (backdrop-filter).
+  // backdrop-filter makes the header a containing block for position:fixed
+  // descendants, so the overlay + mobile sheet must be portaled to
+  // document.body to position against the real viewport.
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (e) => { if (e.key === "Escape") onClose?.(); };
+    window.addEventListener("keydown", onKey);
+    return () => { document.body.style.overflow = prev; window.removeEventListener("keydown", onKey); };
+  }, [onClose]);
+
   return (
     <>
-      <motion.div
-        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-        className="fixed inset-0 z-40 bg-black/30 backdrop-blur-[2px]" onClick={onClose}
-      />
-      {/* desktop dropdown */}
+      {/* desktop dropdown — absolute, so it stays anchored to the bell */}
       <motion.div
         initial={{ opacity: 0, y: -12, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -12, scale: 0.98 }}
         transition={{ duration: 0.25, ease: EASE }}
@@ -66,18 +75,29 @@ export function NotificationsPanel({ onClose }) {
       >
         <PanelBody items={items} unread={unread} markAll={markAll} openItem={openItem} onClose={onClose} />
       </motion.div>
-      {/* mobile bottom sheet */}
-      <motion.div
-        initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
-        transition={{ type: "spring", stiffness: 320, damping: 34 }}
-        className="sm:hidden fixed inset-x-0 bottom-0 z-50 bg-white rounded-t-[28px] shadow-2xl border-t border-slate-200 max-h-[82dvh] flex flex-col"
-        data-testid="notifications-panel"
-      >
-        <div className="pt-2.5 pb-1 grid place-items-center shrink-0" onClick={onClose}>
-          <div className="w-11 h-1.5 rounded-full bg-slate-300" />
-        </div>
-        <PanelBody items={items} unread={unread} markAll={markAll} openItem={openItem} onClose={onClose} sheet />
-      </motion.div>
+      {createPortal(
+        <>
+          {/* overlay — z-40 sits below the header (z-50) so the desktop dropdown
+              stays clickable, and below the mobile sheet (z-[100]) */}
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-40 bg-slate-950/40 backdrop-blur-[2px]" onClick={onClose}
+          />
+          {/* mobile bottom sheet */}
+          <motion.div
+            initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
+            transition={{ type: "spring", stiffness: 320, damping: 34 }}
+            className="sm:hidden fixed inset-x-0 bottom-0 z-[100] bg-white rounded-t-[28px] shadow-2xl border-t border-slate-200 max-h-[82dvh] flex flex-col"
+            data-testid="notifications-panel"
+          >
+            <div className="pt-2.5 pb-1 grid place-items-center shrink-0" onClick={onClose}>
+              <div className="w-11 h-1.5 rounded-full bg-slate-300" />
+            </div>
+            <PanelBody items={items} unread={unread} markAll={markAll} openItem={openItem} onClose={onClose} sheet />
+          </motion.div>
+        </>,
+        document.body
+      )}
     </>
   );
 }
