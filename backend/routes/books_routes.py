@@ -5,7 +5,10 @@ from db import db, ser, sers, oid, now_iso
 from auth import get_current_user, get_optional_user, require_permission, effective_permissions
 from services import award_xp, bump_stat, create_notification, audit_log
 from storage import save_file, read_file, MAX_SIZE
-from telegram_storage import save_pdf, fetch_pdf_from_telegram, delete_telegram_message
+from telegram_storage import (
+    save_pdf, fetch_pdf_from_telegram, iter_pdf_parts_from_telegram,
+    delete_telegram_messages,
+)
 
 router = APIRouter(prefix="/api/books")
 
@@ -19,7 +22,7 @@ def _book_out(b, user_id=None):
     d = ser(b)
     if b.get("external_pdf_url"):
         d["pdf_url"] = b["external_pdf_url"]
-    elif b.get("telegram_file_id"):
+    elif b.get("telegram_file_ids") or b.get("telegram_file_id"):
         d["pdf_url"] = f"/api/books/{d.get('id')}/pdf"
     elif b.get("storage_path"):
         d["pdf_url"] = f"/api/files/{b['storage_path']}"
@@ -104,18 +107,22 @@ async def get_book(book_id: str, request: Request):
 @router.get("/{book_id}/pdf")
 async def get_book_pdf(book_id: str):
     """Serve a book's PDF. Telegram-hosted files are proxied through the
-    backend so the bot token never reaches the browser."""
+    backend (parts stitched in order) so the bot token never reaches the browser."""
+    from fastapi.responses import StreamingResponse
     b = await db.books.find_one({"_id": oid(book_id)})
     if not b:
         raise HTTPException(status_code=404, detail="الكتاب غير موجود")
-    if b.get("telegram_file_id"):
+    file_ids = b.get("telegram_file_ids") or b.get("telegram_file_id")
+    if file_ids:
         try:
-            data = fetch_pdf_from_telegram(b["telegram_file_id"])
+            return StreamingResponse(
+                iter_pdf_parts_from_telegram(file_ids),
+                media_type="application/pdf",
+                headers={"Content-Disposition": "inline",
+                         "Cache-Control": "public, max-age=86400"},
+            )
         except Exception:
             raise HTTPException(status_code=502, detail="تعذر جلب الملف من التخزين")
-        return Response(content=data, media_type="application/pdf",
-                        headers={"Content-Disposition": "inline",
-                                 "Cache-Control": "public, max-age=86400"})
     if b.get("storage_path"):
         try:
             data, _ct = await read_file(b["storage_path"])
@@ -154,6 +161,8 @@ async def _create_book_from_pdf(user: dict, meta: dict, pdf_bytes: bytes, pdf_fi
         "tags": [t.strip() for t in (meta.get("tags") or "").split(",") if t.strip()] or [meta.get("category", "general")],
         "cover_url": cover_url, "cover_path": cover_path,
         "storage_path": pdf_meta["storage_path"], "external_pdf_url": None,
+        "telegram_file_ids": pdf_meta.get("telegram_file_ids"),
+        "telegram_message_ids": pdf_meta.get("telegram_message_ids"),
         "telegram_file_id": pdf_meta.get("telegram_file_id"),
         "telegram_message_id": pdf_meta.get("telegram_message_id"),
         "status": "approved" if auto_approved else "pending",
@@ -210,8 +219,7 @@ async def delete_book(book_id: str, request: Request, user: dict = Depends(requi
         from storage import delete_file
         await delete_file(b.get("storage_path"))
         await delete_file(b.get("cover_path"))
-        if b.get("telegram_message_id"):
-            delete_telegram_message(b["telegram_message_id"])
+        delete_telegram_messages(b.get("telegram_message_ids") or b.get("telegram_message_id"))
     except Exception:
         pass
     await audit_log(user, "book_delete", "book", book_id, {"title": b.get("title")}, request)
@@ -246,8 +254,10 @@ async def edit_book(book_id: str, request: Request,
             raise HTTPException(status_code=400, detail="يجب أن يكون الملف بصيغة PDF")
         pdf_meta = await save_pdf(pdf_bytes, pdf.filename, "application/pdf", user["id"])
         old = b.get("storage_path")
-        old_tg_msg = b.get("telegram_message_id")
+        old_tg_msgs = b.get("telegram_message_ids") or b.get("telegram_message_id")
         updates["storage_path"] = pdf_meta["storage_path"]
+        updates["telegram_file_ids"] = pdf_meta.get("telegram_file_ids")
+        updates["telegram_message_ids"] = pdf_meta.get("telegram_message_ids")
         updates["telegram_file_id"] = pdf_meta.get("telegram_file_id")
         updates["telegram_message_id"] = pdf_meta.get("telegram_message_id")
         updates["external_pdf_url"] = None
@@ -257,8 +267,9 @@ async def edit_book(book_id: str, request: Request,
                 await delete_file(old)
             except Exception:
                 pass
-        if old_tg_msg and old_tg_msg != pdf_meta.get("telegram_message_id"):
-            delete_telegram_message(old_tg_msg)
+        new_msgs = pdf_meta.get("telegram_message_ids") or pdf_meta.get("telegram_message_id")
+        if old_tg_msgs and old_tg_msgs != new_msgs:
+            delete_telegram_messages(old_tg_msgs)
     if cover:
         cbytes = await cover.read()
         if cover.content_type not in ("image/png", "image/jpeg", "image/webp"):
