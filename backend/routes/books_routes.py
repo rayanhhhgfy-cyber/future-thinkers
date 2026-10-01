@@ -160,6 +160,83 @@ async def delete_book(book_id: str, request: Request, user: dict = Depends(requi
     return {"status": "deleted"}
 
 
+@router.patch("/{book_id}")
+async def edit_book(book_id: str, request: Request,
+                    title: str | None = Form(None), author: str | None = Form(None),
+                    description: str | None = Form(None), category: str | None = Form(None),
+                    language: str | None = Form(None), pages: int | None = Form(None),
+                    year: int | None = Form(None), publisher: str | None = Form(None),
+                    age: str | None = Form(None), tags: str | None = Form(None),
+                    pdf: UploadFile | None = File(None), cover: UploadFile | None = File(None),
+                    user: dict = Depends(require_permission("book.edit"))):
+    b = await db.books.find_one({"_id": oid(book_id)})
+    if not b:
+        raise HTTPException(status_code=404, detail="الكتاب غير موجود")
+    updates = {}
+    for k, v in {"title": title, "author": author, "description": description,
+                 "category": category, "language": language, "pages": pages,
+                 "year": year, "publisher": publisher, "age": age}.items():
+        if v is not None:
+            updates[k] = v
+    if tags is not None:
+        updates["tags"] = [t.strip() for t in tags.split(",") if t.strip()]
+    if pdf:
+        pdf_bytes = await pdf.read()
+        if len(pdf_bytes) > MAX_SIZE:
+            raise HTTPException(status_code=400, detail="حجم الملف يتجاوز الحد المسموح (50MB)")
+        if pdf.content_type != "application/pdf":
+            raise HTTPException(status_code=400, detail="يجب أن يكون الملف بصيغة PDF")
+        pdf_meta = await save_file(pdf_bytes, pdf.filename, "application/pdf", user["id"], "books")
+        old = b.get("storage_path")
+        updates["storage_path"] = pdf_meta["storage_path"]
+        updates["telegram_file_id"] = pdf_meta.get("telegram_file_id")
+        updates["external_pdf_url"] = None
+        if old and old != pdf_meta["storage_path"]:
+            try:
+                from storage import delete_file
+                await delete_file(old)
+            except Exception:
+                pass
+    if cover:
+        cbytes = await cover.read()
+        if cover.content_type not in ("image/png", "image/jpeg", "image/webp"):
+            raise HTTPException(status_code=400, detail="صيغة الغلاف غير مدعومة")
+        cmeta = await save_file(cbytes, cover.filename, cover.content_type, user["id"], "covers")
+        old_cover = b.get("cover_path")
+        updates["cover_path"] = cmeta["storage_path"]
+        if old_cover and old_cover != cmeta["storage_path"]:
+            try:
+                from storage import delete_file
+                await delete_file(old_cover)
+            except Exception:
+                pass
+    if not updates:
+        return {"status": "no_changes"}
+    updates["updated_at"] = now_iso()
+    await db.books.update_one({"_id": b["_id"]}, {"$set": updates})
+    await audit_log(user, "book_edit", "book", book_id, {"fields": list(updates.keys())}, request)
+    return {"status": "updated", "fields": list(updates.keys())}
+
+
+@router.delete("/{book_id}/reviews/{review_id}")
+async def delete_review(book_id: str, review_id: str, request: Request,
+                        user: dict = Depends(require_permission("book.edit"))):
+    r = await db.reviews.find_one({"_id": oid(review_id), "book_id": book_id})
+    if not r:
+        raise HTTPException(status_code=404, detail="المراجعة غير موجودة")
+    await db.reviews.delete_one({"_id": r["_id"]})
+    agg = await db.reviews.aggregate([{"$match": {"book_id": book_id}},
+        {"$group": {"_id": None, "avg": {"$avg": "$rating"}, "count": {"$sum": 1}}}]).to_list(1)
+    if agg:
+        await db.books.update_one({"_id": oid(book_id)},
+            {"$set": {"rating_avg": round(agg[0]["avg"], 1), "rating_count": agg[0]["count"]}})
+    else:
+        await db.books.update_one({"_id": oid(book_id)}, {"$set": {"rating_avg": 0, "rating_count": 0}})
+    await audit_log(user, "review_delete", "review", review_id,
+                    {"book_id": book_id, "user_name": r.get("user_name")}, request)
+    return {"status": "deleted"}
+
+
 @router.post("/{book_id}/approve")
 async def approve_book(book_id: str, request: Request, user: dict = Depends(require_permission("book.approve"))):
     b = await db.books.find_one({"_id": oid(book_id)})
