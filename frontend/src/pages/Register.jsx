@@ -66,7 +66,7 @@ export default function Register() {
     try {
       const res = await register({ ...form, school_id: school || null });
       if (res && res.pending_approval) {
-        toast.success("تم استلام طلبك بنجاح! ستراجع الإدارة حسابك كمعلم وسيصلك إشعار عند الموافقة.");
+        toast.success("تم استلام طلبك بنجاح! حسابك كمعلم قيد مراجعة الإدارة — يمكنك متابعة حالة طلبك من صفحة تسجيل الدخول.", { duration: 8000 });
         nav("/login");
       } else {
         toast.success("تم إنشاء حسابك بنجاح!");

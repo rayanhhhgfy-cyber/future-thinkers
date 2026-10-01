@@ -30,7 +30,7 @@ export function AuthProvider({ children }) {
     const { data } = await api.post("/auth/login", { email, password });
     localStorage.setItem("ft_token", data.access_token);
     setUser(data.user);
-    return data.user;
+    return data; // includes just_approved on first login after a teacher approval
   };
 
   const register = async (payload) => {

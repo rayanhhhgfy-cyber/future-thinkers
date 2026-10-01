@@ -111,6 +111,30 @@ async def register(body: RegisterBody, request: Request, response: Response):
     return {"user": _public_user(doc), "access_token": access, "refresh_token": refresh}
 
 
+@router.get("/teacher-application-status")
+async def teacher_application_status(email: str = ""):
+    """Public: let a teacher applicant check whether their account was approved.
+
+    Only reveals the application state of teacher-role accounts — nothing else.
+    """
+    email = (email or "").lower().strip()
+    if not email:
+        return {"status": "none", "message": "أدخل البريد الإلكتروني للتحقق من حالة الطلب"}
+    user = await db.users.find_one({"email": email})
+    if not user or user.get("role") != "teacher":
+        return {"status": "none", "message": "لا يوجد طلب حساب معلم بهذا البريد الإلكتروني"}
+    st = user.get("status")
+    if st == "pending_approval":
+        return {"status": "pending",
+                "message": "طلبك قيد المراجعة من قبل الإدارة. تحقق مجدداً لاحقاً — ستظهر لك هنا رسالة الموافقة فور اعتمادها."}
+    if st == "rejected":
+        reason = user.get("rejection_reason") or "لم يتم قبول الطلب"
+        return {"status": "rejected",
+                "message": f"تم رفض طلب حسابك: {reason}"}
+    return {"status": "approved",
+            "message": "تمت الموافقة على حسابك! سجل الدخول الآن للبدء."}
+
+
 @router.post("/login")
 async def login(body: LoginBody, request: Request, response: Response):
     email = body.email.lower().strip()
@@ -144,7 +168,18 @@ async def login(body: LoginBody, request: Request, response: Response):
     access, refresh = create_access_token(uid, email), create_refresh_token(uid)
     _set_cookies(response, access, refresh)
     await audit_log({"id": uid, "email": email}, "login", "user", uid, request=request)
-    return {"user": _public_user(user), "access_token": access, "refresh_token": refresh}
+    resp = {"user": _public_user(user), "access_token": access, "refresh_token": refresh}
+    if user.get("approval_notice"):
+        # First login after a teacher approval — the frontend shows a celebration
+        # toast, then calls /auth/ack-approval-notice so it only shows once.
+        resp["just_approved"] = True
+    return resp
+
+
+@router.post("/ack-approval-notice")
+async def ack_approval_notice(user: dict = Depends(get_current_user)):
+    await db.users.update_one({"_id": user["_id"]}, {"$unset": {"approval_notice": ""}})
+    return {"ok": True}
 
 
 @router.post("/logout")

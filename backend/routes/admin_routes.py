@@ -227,7 +227,8 @@ async def approve_teacher(uid: str, request: Request,
     if not target or target.get("status") != "pending_approval":
         raise HTTPException(status_code=404, detail="لا يوجد طلب معلق لهذا الحساب")
     await db.users.update_one({"_id": target["_id"]},
-                              {"$set": {"status": "active"}, "$unset": {"rejection_reason": ""}})
+                              {"$set": {"status": "active", "approval_notice": True},
+                               "$unset": {"rejection_reason": ""}})
     await create_notification(
         uid, "account",
         "تمت الموافقة على حسابك 🎉",

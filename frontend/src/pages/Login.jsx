@@ -1,13 +1,20 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
-import { apiErr } from "@/lib/api";
+import api, { apiErr } from "@/lib/api";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Loader2, ChevronDown } from "lucide-react";
+
+const STATUS_STYLES = {
+  pending: "text-amber-700 bg-amber-50 border-amber-200",
+  approved: "text-emerald-700 bg-emerald-50 border-emerald-200",
+  rejected: "text-red-700 bg-red-50 border-red-200",
+  none: "text-slate-600 bg-slate-100 border-slate-200",
+};
 
 export default function Login() {
   const { login } = useAuth();
@@ -15,17 +22,38 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  // Teacher application status checker
+  const [showStatus, setShowStatus] = useState(false);
+  const [statusEmail, setStatusEmail] = useState("");
+  const [statusResult, setStatusResult] = useState(null);
+  const [statusLoading, setStatusLoading] = useState(false);
 
   const submit = async (e) => {
     e.preventDefault();
     setLoading(true);
     try {
-      await login(email, password);
-      toast.success("مرحباً بعودتك!");
+      const data = await login(email, password);
+      if (data && data.just_approved) {
+        toast.success("تمت الموافقة على حسابك كمعلم 🎉 أهلاً بك في مفكري المستقبل!");
+        try { await api.post("/auth/ack-approval-notice"); } catch {}
+      } else {
+        toast.success("مرحباً بعودتك!");
+      }
       nav("/dashboard");
     } catch (err) {
       toast.error(apiErr(err));
     } finally { setLoading(false); }
+  };
+
+  const checkStatus = async () => {
+    if (!statusEmail.trim()) { toast.error("أدخل البريد الإلكتروني أولاً"); return; }
+    setStatusLoading(true);
+    try {
+      const { data } = await api.get("/auth/teacher-application-status", { params: { email: statusEmail.trim() } });
+      setStatusResult(data);
+    } catch {
+      setStatusResult({ status: "none", message: "تعذر التحقق الآن، حاول لاحقاً" });
+    } finally { setStatusLoading(false); }
   };
 
   return (
@@ -59,6 +87,38 @@ export default function Login() {
             </Button>
           </form>
           <p className="mt-6 text-center text-sm text-slate-500">ليس لديك حساب؟ <Link to="/register" data-testid="go-register-link" className="text-emerald-600 font-medium">أنشئ حساباً</Link></p>
+
+          <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <button
+              type="button"
+              onClick={() => setShowStatus((s) => !s)}
+              className="flex w-full items-center justify-between text-sm font-medium text-slate-700"
+            >
+              <span>قدمت طلب حساب معلم؟ تحقق من حالة طلبك</span>
+              <ChevronDown className={`w-4 h-4 transition-transform ${showStatus ? "rotate-180" : ""}`} />
+            </button>
+            {showStatus && (
+              <div className="mt-3">
+                <div className="flex gap-2">
+                  <Input
+                    type="email"
+                    value={statusEmail}
+                    onChange={(e) => setStatusEmail(e.target.value)}
+                    placeholder="البريد الإلكتروني للطلب"
+                    className="rounded-xl bg-white"
+                  />
+                  <Button type="button" onClick={checkStatus} disabled={statusLoading} className="rounded-xl shrink-0">
+                    {statusLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "تحقق"}
+                  </Button>
+                </div>
+                {statusResult && (
+                  <p className={`mt-3 text-sm rounded-xl border px-3 py-2 ${STATUS_STYLES[statusResult.status] || STATUS_STYLES.none}`}>
+                    {statusResult.message}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
