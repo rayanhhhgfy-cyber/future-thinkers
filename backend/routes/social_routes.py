@@ -115,6 +115,11 @@ async def dashboard(user: dict = Depends(get_current_user)):
     competitions = await db.competitions.find({"status": "open"}).sort("start_at", -1).limit(3).to_list(3)
     chess_challenges = await db.chess_challenges.count_documents({"opponent_id": uid, "status": "pending"})
     unread = await db.notifications.count_documents({"user_id": uid, "read": False})
+    my_ventures = await db.ventures.find(
+        {"$or": [{"owner_id": uid}, {"members.id": uid}]}).sort("updated_at", -1).limit(3).to_list(3)
+    active_chess = await db.chess_games.count_documents(
+        {"$or": [{"white_id": uid}, {"black_id": uid}], "status": "active"})
+    recent_notifs = await db.notifications.find({"user_id": uid}).sort("created_at", -1).limit(5).to_list(5)
     return {
         "xp": user.get("xp", 0), "level": user.get("level", 1),
         "level_title": user.get("level_title", "قارئ مبتدئ"), "streak": user.get("streak", 0),
@@ -127,4 +132,10 @@ async def dashboard(user: dict = Depends(get_current_user)):
         "books_read": user.get("stats", {}).get("books_read", 0),
         "posts": user.get("stats", {}).get("posts", 0),
         "chess_rating": user.get("chess_rating", 1200),
+        "my_ventures": [{"id": str(v["_id"]), "title": v.get("title"), "status": v.get("status"),
+                         "is_owner": v.get("owner_id") == uid} for v in my_ventures],
+        "active_chess": active_chess,
+        "recent_notifications": [{"id": str(n["_id"]), "title": n.get("title"), "body": n.get("body"),
+                                  "link": n.get("link"), "read": n.get("read", False),
+                                  "created_at": n.get("created_at")} for n in recent_notifs],
     }

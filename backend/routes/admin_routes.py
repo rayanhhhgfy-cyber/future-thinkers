@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException, Depends, Request, Query
+from datetime import datetime, timezone, timedelta
 from pydantic import BaseModel, EmailStr, Field
 from db import db, ser, sers, oid, now_iso
 from auth import (get_current_user, require_permission, require_role, ALL_PERMISSIONS,
@@ -28,7 +29,18 @@ async def overview(user: dict = Depends(require_permission("analytics.view"))):
         "chess_games": await db.chess_games.count_documents({}),
         "reports_open": await db.reports.count_documents({"status": "open"}),
         "activities_pending": await db.activities.count_documents({"status": "pending"}),
+        "teachers_pending": await db.users.count_documents({"role": "teacher", "status": "pending_approval"}),
+        "works_pending": await db.works.count_documents({"status": "pending"}),
+        "ventures": await db.ventures.count_documents({}),
+        "new_users_7d": await db.users.count_documents({"created_at": {"$gte": (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()}}),
+        "push_devices": await db.push_subscriptions.count_documents({}),
     }
+
+
+@router.get("/activity")
+async def recent_activity(limit: int = 12, user: dict = Depends(require_permission("audit.view"))):
+    docs = await db.audit_logs.find({}).sort("created_at", -1).limit(limit).to_list(limit)
+    return sers(docs)
 
 
 @router.get("/analytics")

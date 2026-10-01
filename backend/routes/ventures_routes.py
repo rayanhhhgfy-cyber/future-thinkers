@@ -78,9 +78,12 @@ async def _get_venture(vid: str) -> dict:
 
 @router.get("/ventures")
 async def list_ventures(sort: str = "votes", category: str | None = None,
-                        status: str | None = None, q: str | None = None,
+                        status: str | None = None, q: str | None = None, mine: bool = False,
                         user: dict = Depends(get_current_user)):
     query: dict = {}
+    if mine:
+        uid = user["id"]
+        query["$or"] = [{"owner_id": uid}, {"members.id": uid}]
     if category and category != "الكل":
         query["category"] = category
     if status and status != "all":

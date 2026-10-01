@@ -84,6 +84,9 @@ async def get_work(work_id: str, request: Request):
     d = _work_out(w)
     if user:
         d["liked"] = bool(await db.work_likes.find_one({"user_id": user["id"], "work_id": work_id}))
+        my_rev = await db.work_reviews.find_one({"user_id": user["id"], "work_id": work_id})
+        d["my_stars"] = my_rev["stars"] if my_rev else 0
+        d["my_review_id"] = str(my_rev["_id"]) if my_rev else None
     return d
 
 
@@ -203,3 +206,53 @@ async def reject_work(work_id: str, body: ReviewBody, request: Request,
                               body.note or f"«{w['title']}» — راجع الملاحظات وعدّل ثم أعد الإرسال", "/studio")
     await audit_log(user, "work_reject", "work", work_id, {"note": body.note}, request)
     return {"status": "rejected"}
+
+
+# ---------- reviews & ratings ----------
+
+class WorkReviewBody(BaseModel):
+    stars: int = Field(ge=1, le=5)
+    text: str = ""
+
+
+async def _recalc_work_rating(work_id: str):
+    agg = await db.work_reviews.aggregate([{"$match": {"work_id": work_id}},
+        {"$group": {"_id": None, "avg": {"$avg": "$stars"}, "count": {"$sum": 1}}}]).to_list(1)
+    if agg:
+        await db.works.update_one({"_id": oid(work_id)},
+            {"$set": {"rating_avg": round(agg[0]["avg"], 1), "rating_count": agg[0]["count"]}})
+    else:
+        await db.works.update_one({"_id": oid(work_id)}, {"$set": {"rating_avg": 0, "rating_count": 0}})
+
+
+@router.post("/works/{work_id}/reviews")
+async def review_work(work_id: str, body: WorkReviewBody, user: dict = Depends(get_current_user)):
+    w = await db.works.find_one({"_id": oid(work_id)})
+    if not w or w["status"] != "published":
+        raise HTTPException(status_code=404, detail="العمل غير موجود")
+    existing = await db.work_reviews.find_one({"user_id": user["id"], "work_id": work_id})
+    await db.work_reviews.update_one({"user_id": user["id"], "work_id": work_id},
+        {"$set": {"stars": body.stars, "text": body.text.strip(), "user_name": user["name"], "updated_at": now_iso()},
+         "$setOnInsert": {"created_at": now_iso()}}, upsert=True)
+    await _recalc_work_rating(work_id)
+    if not existing:
+        await award_xp(user["id"], await _points("review_work", 10), "تقييم عمل أدبي", work_id)
+    return {"ok": True}
+
+
+@router.get("/works/{work_id}/reviews")
+async def list_work_reviews(work_id: str):
+    docs = await db.work_reviews.find({"work_id": work_id}).sort("created_at", -1).to_list(100)
+    return sers(docs)
+
+
+@router.delete("/works/{work_id}/reviews/{review_id}")
+async def delete_work_review(work_id: str, review_id: str, user: dict = Depends(get_current_user)):
+    r = await db.work_reviews.find_one({"_id": oid(review_id), "work_id": work_id})
+    if not r:
+        raise HTTPException(status_code=404, detail="المراجعة غير موجودة")
+    if r["user_id"] != user["id"] and "studio.review" not in effective_permissions(user):
+        raise HTTPException(status_code=403, detail="لا تملك صلاحية حذف هذه المراجعة")
+    await db.work_reviews.delete_one({"_id": r["_id"]})
+    await _recalc_work_rating(work_id)
+    return {"status": "deleted"}
