@@ -13,7 +13,10 @@ import NotifyPanel from "@/components/admin/NotifyPanel";
 import UsersPanel from "@/components/admin/UsersPanel";
 import { toast } from "sonner";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
-import { LayoutDashboard, ShieldCheck, Users, BookOpen, Calendar, Trophy, Newspaper, Settings, ScrollText, Plus, Check, X, Megaphone, PenLine, Medal, Award, Upload, Trash2, Search, MessageSquare } from "lucide-react";
+import { LayoutDashboard, ShieldCheck, Users, BookOpen, Calendar, Trophy, Newspaper, Settings, ScrollText, Plus, Check, X, Megaphone, PenLine, Medal, Award, Upload, Trash2, Search, MessageSquare, Activity, Smartphone, UserPlus, FileCheck, Rocket, Zap, ArrowLeft } from "lucide-react";
+import { timeAgo } from "@/components/NotificationsPanel";
+import { motion } from "framer-motion";
+import { FadeUp, Stagger, Item } from "@/components/anim";
 
 const NAV = [
   { k: "overview", l: "نظرة عامة", icon: LayoutDashboard, perm: "analytics.view" },
@@ -84,10 +87,25 @@ export default function Admin() {
   );
 }
 
+const ACT_LABELS = {
+  work_approve: "نشر عمل أدبي", work_reject: "رفض عمل أدبي", work_submit: "إرسال عمل للمراجعة",
+  book_approve: "اعتماد كتاب", book_reject: "رفض كتاب", user_create: "إنشاء حساب",
+  user_delete: "حذف حساب", role_change: "تغيير دور", teacher_approve: "قبول معلم", teacher_reject: "رفض معلم",
+  campaign_send: "إرسال حملة إشعارات", badge_award: "منح شارة",
+};
+
 function Overview() {
   const [o, setO] = useState(null);
   const [a, setA] = useState(null);
-  useEffect(() => { api.get("/admin/overview").then((r) => setO(r.data)); api.get("/admin/analytics").then((r) => setA(r.data)); }, []);
+  const [act, setAct] = useState(null);
+  const [health, setHealth] = useState(null);
+  const nav = useNavigate();
+  useEffect(() => {
+    api.get("/admin/overview").then((r) => setO(r.data));
+    api.get("/admin/analytics").then((r) => setA(r.data));
+    api.get("/admin/activity").then((r) => setAct(r.data)).catch(() => setAct([]));
+    api.get("/health").then((r) => setHealth(r.data)).catch(() => setHealth({ status: "down" }));
+  }, []);
   if (!o || !a) return <PageLoader />;
   const cards = [
     { l: "الطلاب", v: o.students, icon: Users, c: "#2563EB" }, { l: "المدارس", v: o.schools, icon: BookOpen, c: "#059669" },
@@ -95,17 +113,63 @@ function Overview() {
     { l: "المسابقات", v: o.competitions, icon: Trophy, c: "#0891B2" }, { l: "النقاشات", v: o.discussions, icon: Users, c: "#E11D48" },
     { l: "بلاغات مفتوحة", v: o.reports_open, icon: ShieldCheck, c: "#dc2626" }, { l: "بانتظار المراجعة", v: o.books_pending + o.activities_pending, icon: ShieldCheck, c: "#f59e0b" },
   ];
+  // NEW: pulse metrics
+  const pulse = [
+    { l: "معلمون بانتظار الموافقة", v: o.teachers_pending || 0, icon: UserPlus, c: "#7C3AED", tab: "users" },
+    { l: "أعمال أدبية قيد المراجعة", v: o.works_pending || 0, icon: FileCheck, c: "#D97706", tab: "studio" },
+    { l: "مستخدمون جدد (7 أيام)", v: o.new_users_7d || 0, icon: Zap, c: "#059669", tab: "users" },
+    { l: "أجهزة إشعارات الهاتف", v: o.push_devices || 0, icon: Smartphone, c: "#0891B2", tab: "notify" },
+    { l: "مشاريع طلابية", v: o.ventures || 0, icon: Rocket, c: "#E11D48", link: "/ventures" },
+  ];
+  const queue = [
+    { l: "طلبات المعلمين", v: o.teachers_pending || 0, tab: "users", c: "#7C3AED" },
+    { l: "أعمال الاستوديو", v: o.works_pending || 0, tab: "studio", c: "#D97706" },
+    { l: "الكتب المقترحة", v: o.books_pending || 0, tab: "moderation", c: "#2563EB" },
+    { l: "الأنشطة", v: o.activities_pending || 0, tab: "moderation", c: "#059669" },
+    { l: "البلاغات", v: o.reports_open || 0, tab: "moderation", c: "#dc2626" },
+  ];
+  const totalPending = queue.reduce((s, q) => s + q.v, 0);
+  const quick = [
+    { l: "بث إشعار", icon: Megaphone, tab: "notify", c: "#7C3AED" },
+    { l: "حساب جديد", icon: Plus, tab: "users", c: "#2563EB" },
+    { l: "فعالية / مسابقة", icon: Calendar, tab: "content", c: "#059669" },
+    { l: "خبر جديد", icon: Newspaper, tab: "news", c: "#D97706" },
+    { l: "منح شارة", icon: Medal, tab: "badges", c: "#E11D48" },
+    { l: "سجل العمليات", icon: ScrollText, tab: "audit", c: "#0A192F" },
+  ];
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <Stagger className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {cards.map((c) => (
-          <div key={c.l} className="bg-white rounded-2xl p-5 border border-slate-100 ft-shadow">
+          <Item key={c.l}>
+          <div className="bg-white rounded-2xl p-5 border border-slate-100 ft-shadow hover-lift">
             <div className="w-10 h-10 rounded-xl grid place-items-center mb-3" style={{ background: `${c.c}15`, color: c.c }}><c.icon className="w-5 h-5" /></div>
             <div className="text-2xl font-extrabold font-head text-slate-900">{c.v}</div>
             <div className="text-xs text-slate-500">{c.l}</div>
           </div>
+          </Item>
         ))}
+      </Stagger>
+
+      {/* NEW 1: live pulse metrics */}
+      <FadeUp>
+      <div>
+        <h3 className="font-head font-bold mb-3 flex items-center gap-2"><Activity className="w-5 h-5 text-emerald-600" /> نبض المنصة</h3>
+        <Stagger className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+          {pulse.map((p) => (
+            <Item key={p.l}>
+            <button onClick={() => p.tab ? nav(`/admin/${p.tab}`) : nav(p.link)}
+              className="w-full text-right bg-gradient-to-br from-white to-slate-50 rounded-2xl p-4 border border-slate-100 ft-shadow hover-lift">
+              <div className="w-9 h-9 rounded-xl grid place-items-center mb-2" style={{ background: `${p.c}15`, color: p.c }}><p.icon className="w-4.5 h-4.5" /></div>
+              <div className="text-xl font-extrabold font-head text-slate-900">{p.v}</div>
+              <div className="text-[11px] text-slate-500 leading-tight">{p.l}</div>
+            </button>
+            </Item>
+          ))}
+        </Stagger>
       </div>
+      </FadeUp>
+
       <div className="grid lg:grid-cols-2 gap-6">
         <div className="bg-white rounded-2xl p-6 border border-slate-100 ft-shadow">
           <h3 className="font-head font-bold mb-4">الطلاب حسب المحافظة</h3>
@@ -125,6 +189,99 @@ function Overview() {
               </Pie><Tooltip />
             </PieChart>
           </ResponsiveContainer>
+        </div>
+      </div>
+
+      <div className="grid lg:grid-cols-3 gap-6">
+        {/* NEW 2: approval queue */}
+        <FadeUp className="lg:col-span-1">
+        <div className="bg-white rounded-2xl p-6 border border-slate-100 ft-shadow h-full">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-head font-bold flex items-center gap-2"><ShieldCheck className="w-5 h-5 text-amber-600" /> طابور الموافقات</h3>
+            {totalPending > 0 && <span className="px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 text-xs font-bold">{totalPending} بانتظارك</span>}
+          </div>
+          <div className="space-y-2">
+            {queue.map((q) => (
+              <button key={q.l} onClick={() => nav(`/admin/${q.tab}`)}
+                className="w-full flex items-center justify-between p-3 rounded-xl bg-slate-50 hover:bg-slate-100 transition-colors group">
+                <span className="text-sm font-medium text-slate-700 flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full" style={{ background: q.c }} />{q.l}
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="text-sm font-extrabold text-slate-900">{q.v}</span>
+                  <ArrowLeft className="w-3.5 h-3.5 text-slate-300 group-hover:text-slate-500 group-hover:-translate-x-0.5 transition-all" />
+                </span>
+              </button>
+            ))}
+          </div>
+          {totalPending === 0 && <div className="text-center text-sm text-emerald-600 font-medium py-4">كل شيء مُراجع — أحسنت! ✨</div>}
+        </div>
+        </FadeUp>
+
+        {/* NEW 3: recent activity */}
+        <FadeUp className="lg:col-span-1" delay={0.05}>
+        <div className="bg-white rounded-2xl p-6 border border-slate-100 ft-shadow h-full">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-head font-bold flex items-center gap-2"><Activity className="w-5 h-5 text-blue-600" /> آخر النشاطات</h3>
+            <button onClick={() => nav("/admin/audit")} className="text-xs text-blue-600 font-medium">السجل الكامل</button>
+          </div>
+          <div className="space-y-1 max-h-[300px] overflow-y-auto">
+            {!act ? <div className="text-sm text-slate-400 text-center py-6">جارٍ التحميل…</div>
+              : act.length === 0 ? <div className="text-sm text-slate-400 text-center py-6">لا نشاطات مسجلة بعد</div>
+              : act.slice(0, 8).map((e, i) => (
+                <motion.div key={i} initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }}
+                  className="flex items-start gap-3 p-2.5 rounded-xl hover:bg-slate-50">
+                  <span className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 grid place-items-center shrink-0 text-xs font-bold">
+                    {(e.user_name || "?").trim()[0]}
+                  </span>
+                  <div className="min-w-0">
+                    <div className="text-[13px] text-slate-700"><span className="font-bold">{e.user_name}</span> · {ACT_LABELS[e.action] || e.action}</div>
+                    <div className="text-[11px] text-slate-400">{timeAgo(e.created_at)}</div>
+                  </div>
+                </motion.div>
+              ))}
+          </div>
+        </div>
+        </FadeUp>
+
+        <div className="space-y-6">
+          {/* NEW 4: quick actions */}
+          <FadeUp delay={0.1}>
+          <div className="bg-white rounded-2xl p-6 border border-slate-100 ft-shadow">
+            <h3 className="font-head font-bold mb-4 flex items-center gap-2"><Zap className="w-5 h-5 text-violet-600" /> إجراءات سريعة</h3>
+            <div className="grid grid-cols-3 gap-2">
+              {quick.map((q) => (
+                <button key={q.l} onClick={() => nav(`/admin/${q.tab}`)}
+                  className="flex flex-col items-center gap-1.5 p-3.5 rounded-2xl bg-slate-50 hover:bg-slate-100 transition-colors group">
+                  <span className="w-10 h-10 rounded-xl grid place-items-center group-hover:scale-110 transition-transform" style={{ background: `${q.c}15`, color: q.c }}>
+                    <q.icon className="w-5 h-5" />
+                  </span>
+                  <span className="text-[11px] font-medium text-slate-600">{q.l}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+          </FadeUp>
+
+          {/* NEW 5: platform health */}
+          <FadeUp delay={0.15}>
+          <div className="bg-slate-900 rounded-2xl p-6 text-white ft-shadow relative overflow-hidden">
+            <div className="absolute -top-10 -left-10 w-40 h-40 bg-emerald-500/20 rounded-full blur-3xl" />
+            <div className="relative">
+              <h3 className="font-head font-bold mb-4 flex items-center gap-2"><Smartphone className="w-5 h-5 text-emerald-400" /> صحة المنصة</h3>
+              <div className="flex items-center gap-3">
+                <span className="relative flex h-3.5 w-3.5">
+                  <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-60 ${health?.status === "healthy" ? "bg-emerald-400" : "bg-rose-400"}`} />
+                  <span className={`relative inline-flex rounded-full h-3.5 w-3.5 ${health?.status === "healthy" ? "bg-emerald-500" : "bg-rose-500"}`} />
+                </span>
+                <div>
+                  <div className="font-bold text-sm">{!health ? "يفحص…" : health.status === "healthy" ? "المنصة تعمل بشكل سليم ✅" : "مشكلة في الاتصال ⚠️"}</div>
+                  <div className="text-xs text-slate-400">قاعدة البيانات: {health?.db === "up" ? "متصلة" : "—"}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          </FadeUp>
         </div>
       </div>
     </div>
