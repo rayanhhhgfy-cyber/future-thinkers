@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Layout, PageLoader, EmptyState } from "@/components/Layout";
 import api, { apiErr } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
@@ -8,7 +9,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { PenLine, BookOpen, Feather, ScrollText, Heart, Eye, Clock, CheckCircle2, XCircle, Send, Trash2, Plus } from "lucide-react";
+import { PenLine, BookOpen, Feather, ScrollText, Heart, Clock, CheckCircle2, XCircle, Send, Trash2, Plus, Star } from "lucide-react";
+import { FadeUp, Stagger, Item } from "@/components/anim";
 
 const TYPES = [
   { v: "article", l: "مقال", icon: ScrollText },
@@ -29,35 +31,14 @@ function StatusBadge({ s }) {
   return <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ${st.c}`}><st.icon className="w-3.5 h-3.5" />{st.l}</span>;
 }
 
-function WorkReader({ work, onClose, onLike }) {
-  if (!work) return null;
-  return (
-    <Dialog open={!!work} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto" dir="rtl">
-        <DialogHeader><DialogTitle className="font-head text-2xl">{work.title}</DialogTitle></DialogHeader>
-        <div className="flex items-center gap-3 text-sm text-slate-500">
-          <span>{work.author_name}</span>·<span>{work.type_label}</span>·
-          <span className="flex items-center gap-1"><Eye className="w-4 h-4" />{work.views}</span>
-        </div>
-        <div className="prose prose-slate max-w-none whitespace-pre-wrap leading-loose text-slate-700">{work.content}</div>
-        {work.status === "published" && (
-          <Button variant={work.liked ? "default" : "outline"} onClick={() => onLike(work)} className="rounded-xl w-fit">
-            <Heart className={`w-4 h-4 ml-1 ${work.liked ? "fill-current" : ""}`} /> {work.likes} أعجبني
-          </Button>
-        )}
-      </DialogContent>
-    </Dialog>
-  );
-}
-
 export default function Studio() {
   const { user } = useAuth();
+  const nav = useNavigate();
   const [tab, setTab] = useState("gallery");
   const [mine, setMine] = useState([]);
   const [gallery, setGallery] = useState({ items: [], total: 0 });
   const [filter, setFilter] = useState("");
   const [q, setQ] = useState("");
-  const [reader, setReader] = useState(null);
   const [editing, setEditing] = useState(null); // work being edited or "new"
   const [form, setForm] = useState({ title: "", type: "article", content: "", excerpt: "" });
   const [saving, setSaving] = useState(false);
@@ -67,19 +48,6 @@ export default function Studio() {
 
   useEffect(() => { loadMine(); }, []);
   useEffect(() => { loadGallery(); }, [filter]);
-
-  const openReader = async (id) => {
-    try { const { data } = await api.get(`/studio/works/${id}`); setReader(data); }
-    catch (e) { toast.error(apiErr(e)); }
-  };
-
-  const like = async (w) => {
-    try {
-      const { data } = await api.post(`/studio/works/${w.id}/like`);
-      setReader({ ...w, liked: data.liked, likes: w.likes + (data.liked ? 1 : -1) });
-      loadGallery();
-    } catch (e) { toast.error(apiErr(e)); }
-  };
 
   const startNew = () => { setForm({ title: "", type: "article", content: "", excerpt: "" }); setEditing("new"); };
   const startEdit = (w) => { setForm({ title: w.title, type: w.type, content: w.content, excerpt: w.excerpt || "" }); setEditing(w); };
@@ -148,19 +116,24 @@ export default function Studio() {
               </div>
             </div>
             {gallery.items.length === 0 ? <EmptyState icon={BookOpen} title="لا أعمال منشورة بعد" hint="كن أول من ينشر في الاستوديو!" /> : (
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <Stagger className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {gallery.items.map((w) => (
-                  <button key={w.id} onClick={() => openReader(w.id)} className="text-right bg-white rounded-2xl p-5 border border-slate-100 ft-shadow hover-lift">
+                  <Item key={w.id}>
+                  <button onClick={() => nav(`/studio/${w.id}`)} className="w-full h-full text-right bg-white rounded-2xl p-5 border border-slate-100 ft-shadow hover-lift">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-xs font-bold text-violet-600 bg-violet-50 px-2.5 py-1 rounded-full">{w.type_label}</span>
-                      <span className="text-xs text-slate-400 flex items-center gap-1"><Heart className="w-3.5 h-3.5" />{w.likes}</span>
+                      <span className="text-xs text-slate-400 flex items-center gap-2">
+                        {(w.rating_count || 0) > 0 && <span className="flex items-center gap-1"><Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />{w.rating_avg}</span>}
+                        <span className="flex items-center gap-1"><Heart className="w-3.5 h-3.5" />{w.likes}</span>
+                      </span>
                     </div>
                     <div className="font-head font-bold text-slate-900 mb-1 line-clamp-1">{w.title}</div>
                     <p className="text-sm text-slate-500 line-clamp-3 leading-relaxed">{w.excerpt}</p>
                     <div className="mt-3 text-xs text-slate-400">بقلم {w.author_name}</div>
                   </button>
+                  </Item>
                 ))}
-              </div>
+              </Stagger>
             )}
           </>
         )}
@@ -183,7 +156,7 @@ export default function Studio() {
                       )}
                     </div>
                     <div className="flex gap-2 flex-wrap">
-                      <Button size="sm" variant="outline" onClick={() => openReader(w.id)} className="rounded-xl">قراءة</Button>
+                      <Button size="sm" variant="outline" onClick={() => nav(`/studio/${w.id}`)} className="rounded-xl">قراءة</Button>
                       {(w.status === "draft" || w.status === "rejected") && (
                         <>
                           <Button size="sm" variant="outline" onClick={() => startEdit(w)} className="rounded-xl">تعديل</Button>
@@ -232,7 +205,6 @@ export default function Studio() {
           </DialogContent>
         </Dialog>
 
-        <WorkReader work={reader} onClose={() => setReader(null)} onLike={like} />
       </div>
     </Layout>
   );
