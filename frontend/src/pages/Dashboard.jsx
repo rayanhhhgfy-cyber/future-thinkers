@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Layout, PageLoader } from "@/components/Layout";
-import api, { fileUrl } from "@/lib/api";
+import api from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -11,6 +11,7 @@ import * as Icons from "lucide-react";
 import { FadeUp, Stagger, Item } from "@/components/anim";
 import { WeeklyGoals, ActivityHeatmap, UpcomingDeadlines, DailyChallenge, SavedItems, Suggestions, AchievementsShowcase } from "@/components/dashboard/widgets";
 import { timeAgo } from "@/components/NotificationsPanel";
+import BookCover from "@/components/BookCover";
 
 const VSTATUS = { idea: "فكرة", in_progress: "قيد التنفيذ", completed: "مكتمل" };
 const VSTATUS_C = { idea: "bg-sky-100 text-sky-700", in_progress: "bg-amber-100 text-amber-700", completed: "bg-emerald-100 text-emerald-700" };
@@ -167,7 +168,7 @@ export default function Dashboard() {
                 <div className="space-y-3">
                   {data.currently_reading.map((b) => (
                     <Link key={b.id} to={`/books/${b.id}`} className="flex items-center gap-4 p-2 rounded-xl hover:bg-slate-50 transition-colors">
-                      <img src={fileUrl(b.cover_url)} alt={b.title} className="w-12 h-16 object-cover rounded-lg" />
+                      <BookCover book={b} className="w-12 h-16 rounded-lg" imgClassName="w-12 h-16 object-cover rounded-lg" />
                       <div className="flex-1">
                         <div className="font-semibold text-slate-800">{b.title}</div>
                         <div className="text-xs text-slate-500 mb-1.5">{b.author}</div>
@@ -186,7 +187,7 @@ export default function Dashboard() {
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 {recs.slice(0, 4).map((b) => (
                   <Link key={b.id} to={`/books/${b.id}`} className="group">
-                    <img src={fileUrl(b.cover_url)} alt={b.title} className="w-full aspect-[3/4] object-cover rounded-xl ft-shadow group-hover:scale-[1.03] transition-transform" />
+                    <BookCover book={b} className="w-full aspect-[3/4] rounded-xl ft-shadow" imgClassName="w-full aspect-[3/4] object-cover rounded-xl ft-shadow group-hover:scale-[1.03] transition-transform" />
                     <div className="mt-2 text-sm font-medium text-slate-800 line-clamp-1">{b.title}</div>
                     <div className="text-xs text-slate-400 line-clamp-1">{b.author}</div>
                   </Link>

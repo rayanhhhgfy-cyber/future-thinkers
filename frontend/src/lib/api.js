@@ -60,7 +60,7 @@ export function apiErr(e, fallback = "حدث خطأ ما، حاول مرة أخ�
   return String(d);
 }
 
-export const fileUrl = (path) => (path?.startsWith("http") ? path : `${API}/files/${path}`);
+export const fileUrl = (path) => (!path ? null : (path.startsWith("http") ? path : `${API}/files/${path}`));
 
 export const wsUrl = (path) => {
   const base = (BACKEND_URL || window.location.origin).replace(/^http/, "ws");

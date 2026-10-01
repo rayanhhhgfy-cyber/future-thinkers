@@ -14,6 +14,7 @@ import {
   MapPin, Timer, CheckCircle2, XCircle, Gift, ChevronLeft,
 } from "lucide-react";
 import * as Icons from "lucide-react";
+import BookCover from "@/components/BookCover";
 
 const Section = ({ icon: Icon, title, color, link, linkLabel, children, className = "" }) => (
   <FadeUp>
@@ -390,7 +391,7 @@ export function Suggestions() {
               <div className="grid grid-cols-4 md:grid-cols-2 gap-2">
                 {s.books.map((b) => (
                   <Link key={b.id} to={`/books/${b.id}`} className="group">
-                    <img src={fileUrl(b.cover_url)} alt={b.title} loading="lazy" className="w-full aspect-[3/4] object-cover rounded-xl bg-slate-100 group-hover:scale-[1.04] transition-transform" />
+                    <BookCover book={b} className="w-full aspect-[3/4] rounded-xl bg-slate-100" imgClassName="w-full aspect-[3/4] object-cover rounded-xl bg-slate-100 group-hover:scale-[1.04] transition-transform" />
                     <div className="mt-1 text-[11px] font-medium text-slate-700 line-clamp-1">{b.title}</div>
                   </Link>
                 ))}

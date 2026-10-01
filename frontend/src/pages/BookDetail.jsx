@@ -1,34 +1,25 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, lazy, Suspense } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Layout, PageLoader } from "@/components/Layout";
-import api, { fileUrl, apiErr } from "@/lib/api";
+import api, { apiErr } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Star, Heart, BookOpen, ArrowRight, Eye, Download, Maximize2, X, Check, Bookmark, BookmarkCheck } from "lucide-react";
+import { Star, Heart, BookOpen, ArrowRight, Eye, Bookmark, BookmarkCheck } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useBookmarks } from "@/components/BookmarkButton";
+import BookCover from "@/components/BookCover";
 
-function Reader({ book, onClose, onProgress }) {
-  const [percent, setPercent] = useState(book.my_progress || 0);
-  const save = async (p) => { setPercent(p); await onProgress(p); };
+const BookReader = lazy(() => import("./reader/BookReader"));
+
+function ReaderLoader() {
   return (
-    <div className="fixed inset-0 z-[70] bg-slate-900 flex flex-col" data-testid="pdf-reader">
-      <div className="h-14 flex items-center justify-between px-4 bg-slate-800 text-white">
-        <div className="font-semibold line-clamp-1">{book.title}</div>
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-slate-300">تقدم القراءة: {Math.round(percent)}%</span>
-          <Button size="sm" variant="secondary" data-testid="reader-mark-btn" onClick={() => save(Math.min(100, percent + 25))} className="rounded-lg"><Check className="w-4 h-4 ml-1" />+25%</Button>
-          <Button size="sm" variant="secondary" data-testid="reader-complete-btn" onClick={() => save(100)} className="rounded-lg">أكملت الكتاب</Button>
-          <Button size="icon" variant="ghost" data-testid="reader-close-btn" onClick={onClose} className="text-white"><X className="w-5 h-5" /></Button>
-        </div>
+    <div className="fixed inset-0 z-[80] bg-[#0b1020] text-white flex items-center justify-center" dir="rtl">
+      <div className="text-center">
+        <BookOpen className="w-10 h-10 mx-auto text-indigo-300 animate-pulse" />
+        <p className="mt-3 text-sm text-slate-300">جارٍ تجهيز القارئ…</p>
       </div>
-      <div className="flex-1 bg-slate-700">
-        <iframe title={book.title} src={book.pdf_url} className="w-full h-full" />
-      </div>
-      <div className="h-2 bg-slate-800"><div className="h-full bg-emerald-500 transition-all" style={{ width: `${percent}%` }} /></div>
     </div>
   );
 }
@@ -77,7 +68,7 @@ export default function BookDetail() {
         <button onClick={() => nav(-1)} className="text-slate-500 hover:text-slate-800 text-sm mb-6 flex items-center gap-1"><ArrowRight className="w-4 h-4" /> رجوع</button>
         <div className="grid md:grid-cols-[280px_1fr] gap-8">
           <div>
-            <img src={fileUrl(book.cover_url)} alt={book.title} className="w-full aspect-[3/4] object-cover rounded-3xl ft-shadow-lg" />
+            <BookCover book={book} className="w-full aspect-[3/4] rounded-3xl ft-shadow-lg" imgClassName="w-full aspect-[3/4] object-cover rounded-3xl ft-shadow-lg" />
             <div className="mt-4 space-y-2">
               <Button data-testid="read-book-btn" onClick={() => (user ? setReading(true) : nav("/login"))} className="w-full rounded-xl bg-blue-600 hover:bg-blue-700 h-11"><BookOpen className="w-4 h-4 ml-1" /> {book.my_progress > 0 ? "متابعة القراءة" : "اقرأ الآن"}</Button>
               <Button data-testid="favorite-btn" onClick={toggleFav} variant="outline" className="w-full rounded-xl h-11"><Heart className={`w-4 h-4 ml-1 ${book.is_favorite ? "fill-rose-500 text-rose-500" : ""}`} /> {book.is_favorite ? "في المفضلة" : "أضف للمفضلة"}</Button>
@@ -135,7 +126,17 @@ export default function BookDetail() {
           </div>
         </div>
       </div>
-      {reading && <Reader book={book} onClose={() => setReading(false)} onProgress={saveProgress} />}
+      {reading && (
+        <Suspense fallback={<ReaderLoader />}>
+          <BookReader
+            book={book}
+            pdfUrl={book.pdf_url}
+            onClose={() => setReading(false)}
+            onProgress={saveProgress}
+            initialPercent={book.my_progress || 0}
+          />
+        </Suspense>
+      )}
     </Layout>
   );
 }
