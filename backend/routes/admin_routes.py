@@ -295,8 +295,9 @@ async def list_permissions(user: dict = Depends(get_current_user)):
 # ---------- Points config (CMS) ----------
 @router.get("/points-config")
 async def get_points_config(user: dict = Depends(require_permission("points.manage"))):
+    from seed import POINTS_CONFIG
     s = await db.settings.find_one({"key": "points_config"})
-    return (s or {}).get("value", {})
+    return {**POINTS_CONFIG, **(s or {}).get("value", {})}
 
 
 @router.put("/points-config")
