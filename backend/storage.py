@@ -6,7 +6,7 @@ from motor.motor_asyncio import AsyncIOMotorGridFSBucket
 
 from db import get_db
 
-MAX_SIZE = 50 * 1024 * 1024
+MAX_SIZE = 100 * 1024 * 1024  # 100MB — larger books go through chunked/resumable uploads (/api/uploads/*)
 MIME_EXT = {
     "application/pdf": "pdf", "image/png": "png", "image/jpeg": "jpg",
     "image/jpg": "jpg", "image/webp": "webp", "video/mp4": "mp4",
@@ -18,7 +18,7 @@ def _bucket():
 
 async def save_file(data: bytes, filename: str, content_type: str, user_id: str, folder: str = "uploads") -> dict:
     if len(data) > MAX_SIZE:
-        raise ValueError("File exceeds the 50MB limit")
+        raise ValueError("File exceeds the 100MB limit")
     ext = MIME_EXT.get(content_type, filename.rsplit(".", 1)[-1] if "." in filename else "bin")
     path = f"{APP_NAME}/{folder}/{user_id}/{uuid.uuid4().hex}.{ext}"
     await _bucket().upload_from_stream(

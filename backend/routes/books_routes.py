@@ -98,33 +98,30 @@ async def get_book(book_id: str, request: Request):
     return d
 
 
-@router.post("")
-async def upload_book(request: Request, title: str = Form(...), author: str = Form(...),
-                      description: str = Form(""), category: str = Form("general"),
-                      language: str = Form("العربية"), pages: int = Form(0), year: int = Form(0),
-                      publisher: str = Form(""), age: str = Form("عام"), tags: str = Form(""),
-                      pdf: UploadFile = File(...), cover: UploadFile | None = File(None),
-                      user: dict = Depends(get_current_user)):
-    pdf_bytes = await pdf.read()
-    if len(pdf_bytes) > MAX_SIZE:
-        raise HTTPException(status_code=400, detail="حجم الملف يتجاوز الحد المسموح (50MB)")
-    if pdf.content_type != "application/pdf":
-        raise HTTPException(status_code=400, detail="يجب أن يكون الملف بصيغة PDF")
-    pdf_meta = await save_file(pdf_bytes, pdf.filename, "application/pdf", user["id"], "books")
+async def _create_book_from_pdf(user: dict, meta: dict, pdf_bytes: bytes, pdf_filename: str,
+                                cover_bytes: bytes | None = None, cover_filename: str | None = None,
+                                cover_ct: str | None = None, request=None) -> dict:
+    """Shared book-creation path for direct and chunked/resumable uploads.
 
+    meta: title, author, description, category, language, pages, year, publisher, age, tags (comma string).
+    Returns {"id", "status"} and handles audit logging + moderator notifications.
+    """
+    if len(pdf_bytes) > MAX_SIZE:
+        raise HTTPException(status_code=400, detail="حجم الملف يتجاوز الحد المسموح (100MB)")
+    pdf_meta = await save_file(pdf_bytes, pdf_filename, "application/pdf", user["id"], "books")
     cover_path = None
     cover_url = None
-    if cover:
-        cbytes = await cover.read()
-        if cover.content_type in ("image/png", "image/jpeg", "image/webp"):
-            cmeta = await save_file(cbytes, cover.filename, cover.content_type, user["id"], "covers")
-            cover_path = cmeta["storage_path"]
+    if cover_bytes and cover_ct in ("image/png", "image/jpeg", "image/webp"):
+        cmeta = await save_file(cover_bytes, cover_filename or "cover", cover_ct, user["id"], "covers")
+        cover_path = cmeta["storage_path"]
     # staff uploads skip the review queue
     auto_approved = "book.approve" in effective_permissions(user)
     doc = {
-        "title": title, "author": author, "description": description, "category": category,
-        "language": language, "pages": pages, "year": year, "publisher": publisher, "age": age,
-        "tags": [t.strip() for t in tags.split(",") if t.strip()] or [category],
+        "title": meta.get("title", ""), "author": meta.get("author", ""), "description": meta.get("description", ""),
+        "category": meta.get("category", "general"), "language": meta.get("language", "العربية"),
+        "pages": int(meta.get("pages") or 0), "year": int(meta.get("year") or 0),
+        "publisher": meta.get("publisher", ""), "age": meta.get("age", "عام"),
+        "tags": [t.strip() for t in (meta.get("tags") or "").split(",") if t.strip()] or [meta.get("category", "general")],
         "cover_url": cover_url, "cover_path": cover_path,
         "storage_path": pdf_meta["storage_path"], "external_pdf_url": None,
         "telegram_file_id": pdf_meta.get("telegram_file_id"),
@@ -134,13 +131,41 @@ async def upload_book(request: Request, title: str = Form(...), author: str = Fo
         "created_at": now_iso(),
     }
     res = await db.books.insert_one(doc)
-    await audit_log(user, "book_upload", "book", str(res.inserted_id), {"title": title}, request)
+    await audit_log(user, "book_upload", "book", str(res.inserted_id), {"title": doc["title"]}, request)
     if auto_approved:
         return {"id": str(res.inserted_id), "status": "approved"}
     mods = await db.users.find({"role": {"$in": ["moderator", "admin", "super_admin"]}}).to_list(100)
     for m in mods:
-        await create_notification(str(m["_id"]), "moderation", "كتاب جديد بانتظار المراجعة", title, "/admin/moderation")
+        await create_notification(str(m["_id"]), "moderation", "كتاب جديد بانتظار المراجعة", doc["title"], "/admin/moderation")
     return {"id": str(res.inserted_id), "status": "pending"}
+
+
+@router.post("")
+async def upload_book(request: Request, title: str = Form(...), author: str = Form(...),
+                      description: str = Form(""), category: str = Form("general"),
+                      language: str = Form("العربية"), pages: int = Form(0), year: int = Form(0),
+                      publisher: str = Form(""), age: str = Form("عام"), tags: str = Form(""),
+                      pdf: UploadFile = File(...), cover: UploadFile | None = File(None),
+                      user: dict = Depends(get_current_user)):
+    if pdf.content_type != "application/pdf":
+        raise HTTPException(status_code=400, detail="يجب أن يكون الملف بصيغة PDF")
+    if pdf.size and pdf.size > MAX_SIZE:
+        raise HTTPException(status_code=400, detail="حجم الملف يتجاوز الحد المسموح (100MB)")
+    pdf_bytes = await pdf.read()
+    cover_bytes = None
+    cover_ct = None
+    cover_filename = None
+    if cover:
+        if cover.content_type not in ("image/png", "image/jpeg", "image/webp"):
+            raise HTTPException(status_code=400, detail="صيغة الغلاف غير مدعومة")
+        cover_bytes = await cover.read()
+        cover_ct = cover.content_type
+        cover_filename = cover.filename
+    meta = {"title": title, "author": author, "description": description, "category": category,
+            "language": language, "pages": pages, "year": year, "publisher": publisher,
+            "age": age, "tags": tags}
+    return await _create_book_from_pdf(user, meta, pdf_bytes, pdf.filename,
+                                       cover_bytes, cover_filename, cover_ct, request)
 
 
 @router.delete("/{book_id}")
@@ -183,7 +208,7 @@ async def edit_book(book_id: str, request: Request,
     if pdf:
         pdf_bytes = await pdf.read()
         if len(pdf_bytes) > MAX_SIZE:
-            raise HTTPException(status_code=400, detail="حجم الملف يتجاوز الحد المسموح (50MB)")
+            raise HTTPException(status_code=400, detail="حجم الملف يتجاوز الحد المسموح (100MB)")
         if pdf.content_type != "application/pdf":
             raise HTTPException(status_code=400, detail="يجب أن يكون الملف بصيغة PDF")
         pdf_meta = await save_file(pdf_bytes, pdf.filename, "application/pdf", user["id"], "books")

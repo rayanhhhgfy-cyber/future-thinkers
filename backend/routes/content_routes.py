@@ -157,3 +157,106 @@ async def resolve_report(rid: str, body: ReportActionBody, user: dict = Depends(
                                                              "note": body.note, "resolved_by": user["id"]}})
     await audit_log(user, "report_resolve", "report", rid, {"action": body.action})
     return {"status": "resolved"}
+
+
+# ---------------- Announcement banners (stored in db.settings)
+
+_ANNOUNCE_KEY = "announcement_banners"
+_ANNOUNCE_PERM = "cms.manage"  # perm chosen: exists in auth.py catalog
+
+
+async def _load_banners() -> list:
+    s = await db.settings.find_one({"key": _ANNOUNCE_KEY})
+    return list((s or {}).get("value", {}).get("banners", []))
+
+
+async def _save_banners(banners: list):
+    await db.settings.update_one(
+        {"key": _ANNOUNCE_KEY},
+        {"$set": {"key": _ANNOUNCE_KEY, "value": {"banners": banners},
+                  "updated_at": now_iso()}},
+        upsert=True,
+    )
+
+
+class BannerBody(BaseModel):
+    text: str
+    link: str = ""
+    bg: str = "#1B7A5A"
+    starts_at: str | None = None
+    ends_at: str | None = None
+    active: bool = True
+
+
+class BannerPatchBody(BaseModel):
+    text: str | None = None
+    link: str | None = None
+    bg: str | None = None
+    starts_at: str | None = None
+    ends_at: str | None = None
+    active: bool | None = None
+
+
+def _banner_live(b: dict) -> bool:
+    now = now_iso()
+    if not b.get("active"):
+        return False
+    if b.get("starts_at") and b["starts_at"] > now:
+        return False
+    if b.get("ends_at") and b["ends_at"] < now:
+        return False
+    return True
+
+
+@router.get("/announcements")
+async def list_announcements():
+    banners = [b for b in await _load_banners() if _banner_live(b)]
+    banners.sort(key=lambda b: b.get("created_at", ""), reverse=True)
+    return {"banners": banners}
+
+
+@router.get("/admin/announcements")
+async def admin_list_announcements(user: dict = Depends(require_permission(_ANNOUNCE_PERM))):
+    banners = await _load_banners()
+    banners.sort(key=lambda b: b.get("created_at", ""), reverse=True)
+    return {"banners": banners}
+
+
+@router.post("/admin/announcements")
+async def create_announcement(body: BannerBody, request: Request,
+                             user: dict = Depends(require_permission(_ANNOUNCE_PERM))):
+    import uuid as _uuid
+    banners = await _load_banners()
+    banner = {**body.model_dump(), "id": _uuid.uuid4().hex[:8], "created_at": now_iso()}
+    banners.append(banner)
+    await _save_banners(banners)
+    await audit_log(user, "announcement_create", "announcement", banner["id"],
+                    {"text": body.text}, request)
+    return banner
+
+
+@router.patch("/admin/announcements/{bid}")
+async def update_announcement(bid: str, body: BannerPatchBody, request: Request,
+                              user: dict = Depends(require_permission(_ANNOUNCE_PERM))):
+    banners = await _load_banners()
+    banner = next((b for b in banners if b.get("id") == bid), None)
+    if not banner:
+        raise HTTPException(status_code=404, detail="غير موجود")
+    updates = {k: v for k, v in body.model_dump().items() if v is not None}
+    banner.update(updates)
+    banner["updated_at"] = now_iso()
+    await _save_banners(banners)
+    await audit_log(user, "announcement_update", "announcement", bid, updates, request)
+    return banner
+
+
+@router.delete("/admin/announcements/{bid}")
+async def delete_announcement(bid: str, request: Request,
+                              user: dict = Depends(require_permission(_ANNOUNCE_PERM))):
+    banners = await _load_banners()
+    kept = [b for b in banners if b.get("id") != bid]
+    if len(kept) == len(banners):
+        raise HTTPException(status_code=404, detail="غير موجود")
+    await _save_banners(kept)
+    await audit_log(user, "announcement_delete", "announcement", bid, request=request)
+    return {"ok": True}

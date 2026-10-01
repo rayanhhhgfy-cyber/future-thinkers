@@ -51,6 +51,25 @@ async def create_event(body: EventBody, request: Request, user: dict = Depends(r
     return {"id": str(res.inserted_id)}
 
 
+@router.get("/events/mine")
+async def my_events(user: dict = Depends(get_current_user)):
+    """Events the current user registered for — upcoming first."""
+    regs = await db.event_registrations.find({"user_id": user["id"]}).to_list(500)
+    eids = {r["event_id"] for r in regs if r.get("event_id")}
+    items = []
+    for eid in eids:
+        e = await db.events.find_one({"_id": oid(eid)})
+        if not e:
+            continue
+        d = ser(e)
+        items.append({"id": d["id"], "title": d.get("title"), "date": d.get("date"),
+                      "time": d.get("time", ""), "location": d.get("location", ""),
+                      "mode": d.get("mode", "online")})
+    today = now_iso()[:10]
+    items.sort(key=lambda x: (x.get("date", "") < today, x.get("date", "")))
+    return {"items": items}
+
+
 @router.get("/events/{eid}")
 async def get_event(eid: str, request: Request):
     e = await db.events.find_one({"_id": oid(eid)})
@@ -195,6 +214,24 @@ async def create_competition(body: CompetitionBody, request: Request, user: dict
     res = await db.competitions.insert_one(doc)
     await audit_log(user, "competition_create", "competition", str(res.inserted_id), {"title": body.title}, request)
     return {"id": str(res.inserted_id)}
+
+
+@router.get("/competitions/mine")
+async def my_competitions(user: dict = Depends(get_current_user)):
+    """Competitions the current user joined/submitted to."""
+    entries = await db.competition_entries.find({"user_id": user["id"]}).to_list(500)
+    cids = {e["competition_id"] for e in entries if e.get("competition_id")}
+    items = []
+    for cid in cids:
+        c = await db.competitions.find_one({"_id": oid(cid)})
+        if not c:
+            continue
+        d = ser(c)
+        items.append({"id": d["id"], "title": d.get("title"), "type": d.get("type"),
+                      "start_at": d.get("start_at"), "end_at": d.get("end_at"),
+                      "status": d.get("status")})
+    items.sort(key=lambda x: x.get("end_at", ""), reverse=True)
+    return {"items": items}
 
 
 @router.get("/competitions/{cid}")
