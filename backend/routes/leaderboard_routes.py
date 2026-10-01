@@ -178,3 +178,25 @@ async def points_table():
     from seed import POINTS_CONFIG
     s = await db.settings.find_one({"key": "points_config"})
     return {"points": {**POINTS_CONFIG, **(s or {}).get("value", {})}}
+
+
+@router.get("/activity/heatmap")
+async def activity_heatmap(user: dict = Depends(get_current_user)):
+    """Own xp_transactions aggregated by day for the last 120 days."""
+    now = datetime.now(timezone.utc)
+    start = now - timedelta(days=119)
+    start_iso = start.replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
+    # NOTE: xp_transactions.created_at is stored as an ISO string, so group by
+    # the date prefix (first 10 chars) rather than $dateToString.
+    rows = await db.xp_transactions.aggregate([
+        {"$match": {"user_id": user["id"], "created_at": {"$gte": start_iso}}},
+        {"$group": {"_id": {"$substr": ["$created_at", 0, 10]},
+                    "count": {"$sum": 1}, "xp": {"$sum": "$amount"}}},
+    ]).to_list(500)
+    by_day = {r["_id"]: {"count": r["count"], "xp": r["xp"]} for r in rows if r.get("_id")}
+    days = []
+    for i in range(120):
+        d = (start + timedelta(days=i)).date().isoformat()
+        v = by_day.get(d, {"count": 0, "xp": 0})
+        days.append({"date": d, "count": v["count"], "xp": v["xp"]})
+    return {"days": days}
