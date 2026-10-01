@@ -125,3 +125,56 @@ async def daily_checkin(user: dict = Depends(get_current_user)):
     s = await db.settings.find_one({"key": "points_config"})
     await award_xp(user["id"], (s or {}).get("value", {}).get("daily_checkin", 5), "تسجيل حضور يومي")
     return {"already": False, "streak": streak}
+
+
+@router.get("/gamification/history")
+async def points_history(user: dict = Depends(get_current_user), page: int = 1, limit: int = 20):
+    limit = max(1, min(limit, 100))
+    query = {"user_id": user["id"]}
+    total = await db.xp_transactions.count_documents(query)
+    docs = await db.xp_transactions.find(query).sort("created_at", -1).skip((page - 1) * limit).limit(limit).to_list(limit)
+    items = [{"amount": d.get("amount", 0), "reason": d.get("reason", ""),
+              "ref": d.get("ref"), "balance": d.get("balance", 0),
+              "created_at": d.get("created_at")} for d in docs]
+    return {"items": items, "total": total, "page": page, "limit": limit}
+
+
+# ---------------- Extra leaderboards ----------------
+@router.get("/leaderboard/chess")
+async def chess_top(limit: int = 20):
+    limit = max(1, min(limit, 100))
+    query = {"$or": [{"chess_rating": {"$gt": 0}}, {"stats.chess_games": {"$gt": 0}}]}
+    docs = await db.users.find(query).sort("chess_rating", -1).limit(limit).to_list(limit)
+    items = [{"user_id": str(u["_id"]), "name": u["name"], "avatar": u.get("avatar_url"),
+              "chess_rating": u.get("chess_rating", 1200),
+              "level_title": u.get("level_title", "قارئ مبتدئ")} for u in docs]
+    return {"items": items}
+
+
+@router.get("/leaderboard/studio")
+async def studio_top(limit: int = 20):
+    limit = max(1, min(limit, 100))
+    docs = await db.works.find({"status": "published"}).sort("likes", -1).limit(limit).to_list(limit)
+    items = [{"id": str(w["_id"]), "title": w.get("title", ""), "author_name": w.get("author_name", ""),
+              "likes": w.get("likes", 0), "rating_avg": w.get("rating_avg", 0),
+              "rating_count": w.get("rating_count", 0), "views": w.get("views", 0),
+              "cover_url": w.get("cover_url")} for w in docs]
+    return {"items": items}
+
+
+@router.get("/leaderboard/ventures")
+async def ventures_top(limit: int = 20):
+    limit = max(1, min(limit, 100))
+    docs = await db.ventures.find({}).sort("votes_count", -1).limit(limit).to_list(limit)
+    items = [{"id": str(v["_id"]), "title": v.get("title", ""), "owner_name": v.get("owner_name", ""),
+              "votes": v.get("votes_count", 0), "members_count": 1 + len(v.get("members", [])),
+              "status": v.get("status")} for v in docs]
+    return {"items": items}
+
+
+@router.get("/gamification/points-table")
+async def points_table():
+    """Public XP earn-table for the Points page (no perm needed)."""
+    from seed import POINTS_CONFIG
+    s = await db.settings.find_one({"key": "points_config"})
+    return {"points": {**POINTS_CONFIG, **(s or {}).get("value", {})}}

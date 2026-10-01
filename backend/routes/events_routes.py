@@ -67,6 +67,47 @@ async def get_event(eid: str, request: Request):
     return d
 
 
+class EventPatchBody(BaseModel):
+    title: str | None = None
+    description: str | None = None
+    cover_url: str | None = None
+    date: str | None = None
+    time: str | None = None
+    location: str | None = None
+    mode: str | None = None
+    scope: str | None = None
+    organizer: str | None = None
+    audience: str | None = None
+    capacity: int | None = None
+    club_slug: str | None = None
+
+
+@router.patch("/events/{eid}")
+async def update_event(eid: str, body: EventPatchBody, request: Request, user: dict = Depends(require_permission("event.edit"))):
+    e = await db.events.find_one({"_id": oid(eid)})
+    if not e:
+        raise HTTPException(status_code=404, detail="الفعالية غير موجودة")
+    updates = {k: v for k, v in body.model_dump().items() if v is not None}
+    if not updates:
+        raise HTTPException(status_code=400, detail="لا توجد حقول للتحديث")
+    await db.events.update_one({"_id": e["_id"]}, {"$set": {**updates, "updated_at": now_iso()}})
+    await audit_log(user, "event_update", "event", eid, updates, request)
+    d = ser(await db.events.find_one({"_id": e["_id"]}))
+    d["registered_count"] = await db.event_registrations.count_documents({"event_id": eid})
+    return d
+
+
+@router.delete("/events/{eid}")
+async def delete_event(eid: str, request: Request, user: dict = Depends(require_permission("event.delete"))):
+    e = await db.events.find_one({"_id": oid(eid)})
+    if not e:
+        raise HTTPException(status_code=404, detail="الفعالية غير موجودة")
+    await db.events.delete_one({"_id": e["_id"]})
+    await db.event_registrations.delete_many({"event_id": eid})
+    await audit_log(user, "event_delete", "event", eid, request=request)
+    return {"ok": True}
+
+
 @router.post("/events/{eid}/register")
 async def register_event(eid: str, user: dict = Depends(get_current_user)):
     e = await db.events.find_one({"_id": oid(eid)})
@@ -175,6 +216,45 @@ async def get_competition(cid: str, request: Request):
     if not can_manage:
         d["questions"] = [{"text": q["text"], "options": q["options"]} for q in c.get("questions", [])]
     return d
+
+
+class CompetitionPatchBody(BaseModel):
+    title: str | None = None
+    description: str | None = None
+    type: str | None = None
+    club_slug: str | None = None
+    start_at: str | None = None
+    end_at: str | None = None
+    duration_minutes: int | None = None
+    questions: list[Question] | None = None
+
+
+@router.patch("/competitions/{cid}")
+async def update_competition(cid: str, body: CompetitionPatchBody, request: Request, user: dict = Depends(require_permission("competition.edit"))):
+    c = await db.competitions.find_one({"_id": oid(cid)})
+    if not c:
+        raise HTTPException(status_code=404, detail="المسابقة غير موجودة")
+    updates = {k: v for k, v in body.model_dump().items() if v is not None}
+    if not updates:
+        raise HTTPException(status_code=400, detail="لا توجد حقول للتحديث")
+    if "questions" in updates:
+        updates["questions"] = [q.model_dump() if isinstance(q, Question) else q for q in updates["questions"]]
+    await db.competitions.update_one({"_id": c["_id"]}, {"$set": {**updates, "updated_at": now_iso()}})
+    await audit_log(user, "competition_update", "competition", cid, {k: v for k, v in updates.items() if k != "questions"}, request)
+    d = ser(await db.competitions.find_one({"_id": c["_id"]}))
+    d["participants_count"] = await db.competition_entries.count_documents({"competition_id": cid})
+    return d
+
+
+@router.delete("/competitions/{cid}")
+async def delete_competition(cid: str, request: Request, user: dict = Depends(require_permission("competition.delete"))):
+    c = await db.competitions.find_one({"_id": oid(cid)})
+    if not c:
+        raise HTTPException(status_code=404, detail="المسابقة غير موجودة")
+    await db.competitions.delete_one({"_id": c["_id"]})
+    await db.competition_entries.delete_many({"competition_id": cid})
+    await audit_log(user, "competition_delete", "competition", cid, request=request)
+    return {"ok": True}
 
 
 @router.post("/competitions/{cid}/register")

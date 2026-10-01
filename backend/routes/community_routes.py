@@ -1,6 +1,9 @@
 from fastapi import APIRouter, HTTPException, Depends, Query, Request
 from pydantic import BaseModel, Field
 from bson import ObjectId
+import re
+import secrets
+import unicodedata
 from db import db, ser, sers, oid, now_iso
 from auth import get_current_user, get_optional_user, require_permission
 from services import award_xp, bump_stat, create_notification, audit_log
@@ -8,6 +11,25 @@ from services import award_xp, bump_stat, create_notification, audit_log
 router = APIRouter(prefix="/api")
 
 # ---------- Clubs ----------
+def _slugify(name: str) -> str:
+    s = unicodedata.normalize("NFKD", name).encode("ascii", "ignore").decode("ascii")
+    s = re.sub(r"[^a-z0-9]+", "-", s.lower()).strip("-")
+    return s or f"club-{secrets.token_hex(3)}"
+
+
+class ClubBody(BaseModel):
+    name: str = Field(min_length=2, max_length=60)
+    slug: str | None = None
+    description: str = ""
+    icon: str = "Users"
+    color: str = "#2563EB"
+
+
+class ClubPatchBody(BaseModel):
+    name: str | None = None
+    description: str | None = None
+    icon: str | None = None
+    color: str | None = None
 @router.get("/clubs")
 async def list_clubs(request: Request):
     docs = await db.clubs.find({}).to_list(50)
@@ -35,6 +57,47 @@ async def get_club(slug: str, request: Request):
     user = await get_optional_user(request)
     d["is_member"] = bool(user and await db.club_members.find_one({"club_id": d["id"], "user_id": user["id"]}))
     return d
+
+
+@router.post("/clubs")
+async def create_club(body: ClubBody, request: Request, user: dict = Depends(require_permission("club.create"))):
+    slug = (body.slug or "").strip().lower() or _slugify(body.name)
+    if not re.fullmatch(r"[a-z0-9-]+", slug):
+        raise HTTPException(status_code=400, detail="المعرّف (slug) يجب أن يكون أحرفاً إنجليزية صغيرة أو أرقام أو شرطات")
+    if await db.clubs.find_one({"slug": slug}):
+        raise HTTPException(status_code=400, detail="هذا المعرّف مستخدم مسبقاً")
+    doc = {"slug": slug, "name": body.name.strip(), "description": body.description,
+           "icon": body.icon, "color": body.color,
+           "members_count": 0, "created_at": now_iso(), "created_by": user["id"]}
+    res = await db.clubs.insert_one(doc)
+    await audit_log(user, "club_create", "club", slug, {"name": body.name}, request)
+    return ser({**doc, "_id": res.inserted_id})
+
+
+@router.patch("/clubs/{slug}")
+async def update_club(slug: str, body: ClubPatchBody, request: Request, user: dict = Depends(require_permission("club.edit"))):
+    c = await db.clubs.find_one({"slug": slug})
+    if not c:
+        raise HTTPException(status_code=404, detail="النادي غير موجود")
+    updates = {k: v for k, v in body.model_dump().items() if v is not None}
+    if not updates:
+        raise HTTPException(status_code=400, detail="لا توجد حقول للتحديث")
+    if "name" in updates:
+        updates["name"] = updates["name"].strip()
+    await db.clubs.update_one({"_id": c["_id"]}, {"$set": {**updates, "updated_at": now_iso()}})
+    await audit_log(user, "club_update", "club", slug, updates, request)
+    return ser(await db.clubs.find_one({"_id": c["_id"]}) )
+
+
+@router.delete("/clubs/{slug}")
+async def delete_club(slug: str, request: Request, user: dict = Depends(require_permission("club.delete"))):
+    c = await db.clubs.find_one({"slug": slug})
+    if not c:
+        raise HTTPException(status_code=404, detail="النادي غير موجود")
+    await db.clubs.delete_one({"_id": c["_id"]})
+    await db.club_members.delete_many({"club_slug": slug})
+    await audit_log(user, "club_delete", "club", slug, request=request)
+    return {"ok": True}
 
 
 @router.post("/clubs/{slug}/join")

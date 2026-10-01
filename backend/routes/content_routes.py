@@ -39,6 +39,36 @@ async def get_news(nid: str):
     return ser(n)
 
 
+class NewsPatchBody(BaseModel):
+    title: str | None = None
+    body: str | None = None
+    cover_url: str | None = None
+    category: str | None = None
+
+
+@router.patch("/news/{nid}")
+async def update_news(nid: str, body: NewsPatchBody, request: Request, user: dict = Depends(require_permission("news.edit"))):
+    n = await db.news.find_one({"_id": oid(nid)})
+    if not n:
+        raise HTTPException(status_code=404, detail="الخبر غير موجود")
+    updates = {k: v for k, v in body.model_dump().items() if v is not None}
+    if not updates:
+        raise HTTPException(status_code=400, detail="لا توجد حقول للتحديث")
+    await db.news.update_one({"_id": n["_id"]}, {"$set": {**updates, "updated_at": now_iso()}})
+    await audit_log(user, "news_update", "news", nid, updates, request)
+    return ser(await db.news.find_one({"_id": n["_id"]}) )
+
+
+@router.delete("/news/{nid}")
+async def delete_news(nid: str, request: Request, user: dict = Depends(require_permission("news.delete"))):
+    n = await db.news.find_one({"_id": oid(nid)})
+    if not n:
+        raise HTTPException(status_code=404, detail="الخبر غير موجود")
+    await db.news.delete_one({"_id": n["_id"]})
+    await audit_log(user, "news_delete", "news", nid, request=request)
+    return {"ok": True}
+
+
 # ---------------- Activities gallery ----------------
 class ActivityBody(BaseModel):
     title: str
