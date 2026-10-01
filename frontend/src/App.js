@@ -29,6 +29,7 @@ import Profile from "@/pages/Profile";
 import Settings from "@/pages/Settings";
 import News from "@/pages/News";
 import Studio from "@/pages/Studio";
+import StudioWork from "@/pages/StudioWork";
 import Ventures from "@/pages/Ventures";
 import VentureDetail from "@/pages/VentureDetail";
 import Admin from "@/pages/Admin";
@@ -73,6 +74,7 @@ function AnimatedRoutes() {
       <Route path="/leaderboard" element={<Leaderboard />} />
       <Route path="/news" element={<News />} />
       <Route path="/studio" element={<Studio />} />
+      <Route path="/studio/:id" element={<StudioWork />} />
       <Route path="/ventures" element={<Ventures />} />
       <Route path="/ventures/:id" element={<VentureDetail />} />
       <Route path="/profile/:id" element={<Profile />} />

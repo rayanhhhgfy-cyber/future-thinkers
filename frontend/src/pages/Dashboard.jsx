@@ -1,14 +1,28 @@
 import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Layout, PageLoader } from "@/components/Layout";
 import api, { fileUrl } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
-import { Flame, Trophy, BookOpen, Crown, Calendar, Zap, Award, TrendingUp, Sparkles, MessagesSquare, Medal, PenLine } from "lucide-react";
+import { Flame, Trophy, BookOpen, Crown, Calendar, Zap, Award, TrendingUp, Sparkles, MessagesSquare, Medal, PenLine, Rocket, Bell, Quote, ArrowLeft, Star } from "lucide-react";
 import * as Icons from "lucide-react";
 import { FadeUp, Stagger, Item } from "@/components/anim";
+import { timeAgo } from "@/components/NotificationsPanel";
+
+const VSTATUS = { idea: "فكرة", in_progress: "قيد التنفيذ", completed: "مكتمل" };
+const VSTATUS_C = { idea: "bg-sky-100 text-sky-700", in_progress: "bg-amber-100 text-amber-700", completed: "bg-emerald-100 text-emerald-700" };
+
+const QUOTES = [
+  { t: "العلم في الصغر كالنقش على الحجر", a: "حكمة عربية" },
+  { t: "من جدّ وجد، ومن زرع حصد", a: "مثل عربي" },
+  { t: "القراءة تصنع الإنسان الكامل", a: "فرانسيس بيكون" },
+  { t: "لا تؤجل عمل اليوم إلى الغد", a: "حكمة" },
+  { t: "العقل السليم في الجسم السليم", a: "حكمة لاتينية" },
+  { t: "خير جليس في الزمان كتاب", a: "المتنبي" },
+  { t: "اطلبوا العلم من المهد إلى اللحد", a: "حديث شريف" },
+];
 
 const StatCard = ({ icon: Icon, label, value, color, sub }) => (
   <div className="bg-white rounded-2xl p-5 border border-slate-100 ft-shadow hover-lift">
@@ -23,21 +37,26 @@ const StatCard = ({ icon: Icon, label, value, color, sub }) => (
 
 export default function Dashboard() {
   const { user, refresh } = useAuth();
+  const nav = useNavigate();
   const [data, setData] = useState(null);
   const [gam, setGam] = useState(null);
   const [recs, setRecs] = useState([]);
   const [myBadges, setMyBadges] = useState([]);
   const [myWorks, setMyWorks] = useState([]);
+  const [trending, setTrending] = useState([]);
   const [checkedIn, setCheckedIn] = useState(false);
+  const quote = QUOTES[new Date().getDate() % QUOTES.length];
 
   const load = async () => {
-    const [d, g, r, b, w] = await Promise.all([
+    const [d, g, r, b, w, t] = await Promise.all([
       api.get("/dashboard"), api.get("/gamification/me"), api.get("/books/me/recommendations"),
       api.get("/badges/me").catch(() => ({ data: [] })),
       api.get("/studio/works/me").catch(() => ({ data: [] })),
+      api.get("/studio/published", { params: { limit: 3 } }).catch(() => ({ data: { items: [] } })),
     ]);
     setData(d.data); setGam(g.data); setRecs(r.data);
     setMyBadges(b.data); setMyWorks(w.data);
+    setTrending((t.data.items || []).sort((x, y) => (y.likes || 0) - (x.likes || 0)).slice(0, 3));
   };
   useEffect(() => { load(); }, []);
 
@@ -92,6 +111,47 @@ export default function Dashboard() {
           <Item><StatCard icon={MessagesSquare} label="مشاركاتك" value={data.posts} color="#059669" /></Item>
         </Stagger>
 
+        {/* NEW: ventures + chess + daily quote */}
+        <Stagger className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+          <Item>
+            <div className="bg-white rounded-2xl p-5 border border-slate-100 ft-shadow h-full">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-head font-bold flex items-center gap-2 text-sm"><Rocket className="w-4.5 h-4.5 text-rose-500" /> مشاريعي</h3>
+                <Link to="/ventures" className="text-xs text-rose-600 font-medium flex items-center gap-0.5">الكل <ArrowLeft className="w-3 h-3" /></Link>
+              </div>
+              {(data.my_ventures || []).length === 0 ? (
+                <div className="text-xs text-slate-400 text-center py-4">لم تنضم لأي مشروع بعد<br /><Link to="/ventures" className="text-rose-600 font-medium">اكتشف المشاريع 🚀</Link></div>
+              ) : data.my_ventures.map((v) => (
+                <Link key={v.id} to={`/ventures/${v.id}`} className="flex items-center justify-between gap-2 p-2.5 rounded-xl hover:bg-slate-50 transition-colors">
+                  <span className="text-sm font-medium text-slate-700 line-clamp-1">{v.title}</span>
+                  <span className={`text-[11px] px-2 py-0.5 rounded-full font-bold whitespace-nowrap ${VSTATUS_C[v.status] || "bg-slate-100 text-slate-600"}`}>{VSTATUS[v.status] || v.status}</span>
+                </Link>
+              ))}
+            </div>
+          </Item>
+          <Item>
+            <button onClick={() => nav("/clubs/chess")} className="w-full text-right bg-slate-900 rounded-2xl p-5 text-white ft-shadow h-full relative overflow-hidden group">
+              <div className="absolute -top-8 -left-8 w-32 h-32 bg-amber-500/20 rounded-full blur-2xl group-hover:scale-125 transition-transform" />
+              <div className="relative">
+                <h3 className="font-head font-bold flex items-center gap-2 text-sm mb-2"><Crown className="w-4.5 h-4.5 text-amber-400" /> حلبة الشطرنج</h3>
+                <div className="text-3xl font-extrabold font-head">{data.active_chess || 0}</div>
+                <div className="text-xs text-slate-400">مباريات نشطة بانتظارك</div>
+                {(data.chess_challenges || 0) > 0 && <div className="mt-2 text-xs font-bold text-amber-300">⚔ {data.chess_challenges} تحديات جديدة!</div>}
+              </div>
+            </button>
+          </Item>
+          <Item>
+            <div className="bg-gradient-to-br from-violet-600 to-purple-700 rounded-2xl p-5 text-white ft-shadow h-full relative overflow-hidden sm:col-span-2 lg:col-span-1">
+              <Quote className="absolute -bottom-3 -left-3 w-24 h-24 text-white/10" />
+              <div className="relative">
+                <h3 className="font-head font-bold text-sm mb-2 opacity-90">حكمة اليوم 💡</h3>
+                <p className="font-head text-lg font-bold leading-relaxed">"{quote.t}"</p>
+                <p className="text-xs text-violet-200 mt-2">— {quote.a}</p>
+              </div>
+            </div>
+          </Item>
+        </Stagger>
+
         <div className="grid lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
             <FadeUp>
@@ -133,8 +193,53 @@ export default function Dashboard() {
               </div>
             </section>
             </FadeUp>
+            {/* NEW: trending studio works */}
+            {trending.length > 0 && (
+            <FadeUp>
+            <section className="bg-white rounded-2xl p-6 border border-slate-100 ft-shadow">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="font-head font-bold text-lg flex items-center gap-2"><PenLine className="w-5 h-5 text-violet-600" /> رائج في الاستوديو</h2>
+                <Link to="/studio" className="text-sm text-violet-600">الاستوديو</Link>
+              </div>
+              <div className="space-y-2">
+                {trending.map((w) => (
+                  <Link key={w.id} to={`/studio/${w.id}`} className="block p-3 rounded-xl hover:bg-slate-50 bg-slate-50/50 transition-colors">
+                    <div className="font-medium text-sm text-slate-800 line-clamp-1">{w.title}</div>
+                    <div className="text-xs text-slate-400 mt-1 flex items-center gap-3">
+                      <span>{w.author_name}</span>
+                      <span className="flex items-center gap-1"><Star className="w-3 h-3 text-amber-400 fill-amber-400" />{(w.likes || 0)} إعجاب</span>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </section>
+            </FadeUp>
+            )}
           </div>
           <div className="space-y-6">
+            {/* NEW: recent notifications */}
+            <FadeUp>
+            <section className="bg-white rounded-2xl p-6 border border-slate-100 ft-shadow">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="font-head font-bold text-lg flex items-center gap-2">
+                  <Bell className="w-5 h-5 text-blue-600" /> آخر الإشعارات
+                  {(data.unread_notifications || 0) > 0 && <span className="min-w-5 h-5 px-1 rounded-full bg-rose-500 text-white text-[11px] grid place-items-center font-bold">{data.unread_notifications}</span>}
+                </h2>
+              </div>
+              {(data.recent_notifications || []).length === 0 ? (
+                <div className="text-sm text-slate-400 text-center py-4">لا إشعارات حديثة 🔕</div>
+              ) : data.recent_notifications.map((n) => (
+                <button key={n.id} onClick={() => n.link ? nav(n.link) : null}
+                  className={`w-full text-right block p-3 rounded-xl mb-2 transition-colors ${n.link ? "hover:bg-slate-50 cursor-pointer" : ""} ${!n.read ? "bg-blue-50/60" : "bg-slate-50/50"}`}>
+                  <div className="font-medium text-sm text-slate-800 flex items-start gap-2">
+                    {!n.read && <span className="w-2 h-2 rounded-full bg-blue-500 shrink-0 mt-1.5" />}
+                    <span className="line-clamp-1">{n.title}</span>
+                  </div>
+                  <div className="text-[11px] text-slate-400 mt-0.5">{timeAgo(n.created_at)}</div>
+                </button>
+              ))}
+            </section>
+            </FadeUp>
             <FadeUp>
             <section className="bg-white rounded-2xl p-6 border border-slate-100 ft-shadow">
               <h2 className="font-head font-bold text-lg flex items-center gap-2 mb-4"><Calendar className="w-5 h-5 text-amber-600" /> فعاليات قادمة</h2>

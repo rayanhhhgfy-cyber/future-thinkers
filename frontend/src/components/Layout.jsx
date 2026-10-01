@@ -1,15 +1,30 @@
 import React from "react";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
-import { Navigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { Loader2 } from "lucide-react";
+import { motion, useReducedMotion } from "framer-motion";
+import { EASE } from "@/components/anim";
 
 export function Layout({ children, noFooter }) {
+  const { pathname } = useLocation();
+  const reduce = useReducedMotion();
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
-      <main className="flex-1">{children}</main>
+      <main className="flex-1">
+        {reduce ? children : (
+          <motion.div
+            key={pathname}
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.38, ease: EASE }}
+          >
+            {children}
+          </motion.div>
+        )}
+      </main>
       {!noFooter && <Footer />}
     </div>
   );

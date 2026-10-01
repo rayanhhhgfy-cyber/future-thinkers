@@ -1,8 +1,37 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "@/lib/api";
-import { Bell, Check } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Bell, Check, Trophy, BookOpen, Users, Calendar, MessageSquare, Sparkles,
+  Heart, Star, ShieldCheck, Megaphone, X,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { EASE } from "@/components/anim";
+
+const TYPE_STYLE = {
+  achievement: { icon: Trophy, bg: "bg-amber-100", fg: "text-amber-600" },
+  book: { icon: BookOpen, bg: "bg-blue-100", fg: "text-blue-600" },
+  club: { icon: Users, bg: "bg-emerald-100", fg: "text-emerald-600" },
+  event: { icon: Calendar, bg: "bg-violet-100", fg: "text-violet-600" },
+  discussion: { icon: MessageSquare, bg: "bg-sky-100", fg: "text-sky-600" },
+  studio: { icon: Sparkles, bg: "bg-purple-100", fg: "text-purple-600" },
+  like: { icon: Heart, bg: "bg-rose-100", fg: "text-rose-600" },
+  review: { icon: Star, bg: "bg-yellow-100", fg: "text-yellow-600" },
+  moderation: { icon: ShieldCheck, bg: "bg-orange-100", fg: "text-orange-600" },
+  broadcast: { icon: Megaphone, bg: "bg-indigo-100", fg: "text-indigo-600" },
+};
+const FALLBACK = { icon: Bell, bg: "bg-slate-100", fg: "text-slate-500" };
+
+export function timeAgo(iso) {
+  if (!iso) return "";
+  const s = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+  if (s < 60) return "الآن";
+  if (s < 3600) return `منذ ${Math.floor(s / 60)} د`;
+  if (s < 86400) return `منذ ${Math.floor(s / 3600)} س`;
+  if (s < 86400 * 7) return `منذ ${Math.floor(s / 86400)} يوم`;
+  return new Date(iso).toLocaleDateString("ar", { day: "numeric", month: "short" });
+}
 
 export function NotificationsPanel({ onClose }) {
   const [items, setItems] = useState(null);
@@ -20,26 +49,113 @@ export function NotificationsPanel({ onClose }) {
     else load();
   };
 
+  const unread = (items || []).filter((n) => !n.read).length;
+
   return (
     <>
-      <div className="fixed inset-0 z-40" onClick={onClose} />
-      <div className="absolute left-0 mt-2 w-[360px] max-w-[92vw] bg-white rounded-2xl ft-shadow-lg border border-slate-200 z-50 overflow-hidden" data-testid="notifications-panel">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
-          <span className="font-semibold flex items-center gap-2"><Bell className="w-4 h-4" /> الإشعارات</span>
-          <Button variant="ghost" size="sm" data-testid="mark-all-read-btn" onClick={markAll} className="text-xs text-blue-600"><Check className="w-3.5 h-3.5 ml-1" />تعليم الكل كمقروء</Button>
+      <motion.div
+        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+        className="fixed inset-0 z-40 bg-black/30 backdrop-blur-[2px]" onClick={onClose}
+      />
+      {/* desktop dropdown */}
+      <motion.div
+        initial={{ opacity: 0, y: -12, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -12, scale: 0.98 }}
+        transition={{ duration: 0.25, ease: EASE }}
+        className="hidden sm:block absolute left-0 mt-3 w-[400px] max-w-[92vw] bg-white rounded-3xl shadow-2xl border border-slate-200/80 z-50 overflow-hidden"
+        data-testid="notifications-panel"
+      >
+        <PanelBody items={items} unread={unread} markAll={markAll} openItem={openItem} onClose={onClose} />
+      </motion.div>
+      {/* mobile bottom sheet */}
+      <motion.div
+        initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
+        transition={{ type: "spring", stiffness: 320, damping: 34 }}
+        className="sm:hidden fixed inset-x-0 bottom-0 z-50 bg-white rounded-t-[28px] shadow-2xl border-t border-slate-200 max-h-[82dvh] flex flex-col"
+        data-testid="notifications-panel"
+      >
+        <div className="pt-2.5 pb-1 grid place-items-center shrink-0" onClick={onClose}>
+          <div className="w-11 h-1.5 rounded-full bg-slate-300" />
         </div>
-        <div className="max-h-[420px] overflow-y-auto">
-          {items === null ? (
-            <div className="p-6 text-center text-slate-400 text-sm">جارٍ التحميل…</div>
-          ) : items.length === 0 ? (
-            <div className="p-8 text-center text-slate-400 text-sm">لا توجد إشعارات بعد</div>
-          ) : items.map((n) => (
-            <button key={n.id} onClick={() => openItem(n)} className={`w-full text-right px-4 py-3 border-b border-slate-50 hover:bg-slate-50 transition-colors ${!n.read ? "bg-blue-50/50" : ""}`}>
-              <div className="font-medium text-sm text-slate-800">{n.title}</div>
-              {n.body && <div className="text-xs text-slate-500 mt-0.5 line-clamp-2">{n.body}</div>}
-            </button>
-          ))}
+        <PanelBody items={items} unread={unread} markAll={markAll} openItem={openItem} onClose={onClose} sheet />
+      </motion.div>
+    </>
+  );
+}
+
+function PanelBody({ items, unread, markAll, openItem, onClose, sheet }) {
+  return (
+    <>
+      <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 bg-gradient-to-l from-slate-50 to-white shrink-0">
+        <span className="font-extrabold font-head flex items-center gap-2 text-slate-900">
+          <span className="w-8 h-8 rounded-xl bg-slate-900 text-white grid place-items-center"><Bell className="w-4 h-4" /></span>
+          الإشعارات
+          {unread > 0 && (
+            <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} className="min-w-6 h-6 px-1.5 rounded-full bg-rose-500 text-white text-xs grid place-items-center font-bold">
+              {unread > 99 ? "99+" : unread}
+            </motion.span>
+          )}
+        </span>
+        <div className="flex items-center gap-1">
+          {unread > 0 && (
+            <Button variant="ghost" size="sm" data-testid="mark-all-read-btn" onClick={markAll} className="text-xs text-blue-600 rounded-xl">
+              <Check className="w-3.5 h-3.5 ml-1" />تعليم الكل كمقروء
+            </Button>
+          )}
+          {sheet && (
+            <button onClick={onClose} className="w-8 h-8 rounded-full bg-slate-100 grid place-items-center text-slate-500"><X className="w-4 h-4" /></button>
+          )}
         </div>
+      </div>
+      <div className={`${sheet ? "flex-1 overflow-y-auto" : "max-h-[440px] overflow-y-auto"}`}>
+        {items === null ? (
+          <div className="p-8 space-y-3">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="flex gap-3 animate-pulse">
+                <div className="w-10 h-10 rounded-xl bg-slate-100 shrink-0" />
+                <div className="flex-1 space-y-2"><div className="h-3 rounded bg-slate-100 w-3/4" /><div className="h-2.5 rounded bg-slate-100 w-1/2" /></div>
+              </div>
+            ))}
+          </div>
+        ) : items.length === 0 ? (
+          <div className="p-10 text-center">
+            <motion.div
+              animate={{ rotate: [0, 12, -12, 0] }} transition={{ duration: 2.4, repeat: Infinity, repeatDelay: 1.5 }}
+              className="w-16 h-16 mx-auto rounded-3xl bg-slate-100 grid place-items-center text-slate-400 mb-3"
+            >
+              <Bell className="w-8 h-8" />
+            </motion.div>
+            <div className="font-bold text-slate-700">كل شيء هادئ هنا 🔕</div>
+            <div className="text-xs text-slate-400 mt-1">ستصلك إشعارات الأنشطة والفعاليات هنا</div>
+          </div>
+        ) : (
+          <AnimatePresence initial={false}>
+            {items.map((n, i) => {
+              const st = TYPE_STYLE[n.type] || FALLBACK;
+              const Icon = st.icon;
+              return (
+                <motion.button
+                  key={n.id}
+                  initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -24 }}
+                  transition={{ duration: 0.3, delay: Math.min(i * 0.04, 0.3), ease: EASE }}
+                  onClick={() => openItem(n)}
+                  className={`w-full text-right px-5 py-3.5 border-b border-slate-50 flex gap-3.5 transition-colors hover:bg-slate-50 active:bg-slate-100 ${!n.read ? "bg-blue-50/60" : ""}`}
+                >
+                  <span className={`w-10 h-10 rounded-2xl grid place-items-center shrink-0 ${st.bg} ${st.fg}`}>
+                    <Icon className="w-5 h-5" />
+                  </span>
+                  <span className="flex-1 min-w-0">
+                    <span className="flex items-start justify-between gap-2">
+                      <span className="font-bold text-sm text-slate-800 leading-snug">{n.title}</span>
+                      {!n.read && <span className="w-2.5 h-2.5 rounded-full bg-blue-500 shrink-0 mt-1.5 animate-pulse" />}
+                    </span>
+                    {n.body && <span className="block text-xs text-slate-500 mt-1 line-clamp-2 leading-relaxed">{n.body}</span>}
+                    <span className="block text-[11px] text-slate-400 mt-1">{timeAgo(n.created_at)}</span>
+                  </span>
+                </motion.button>
+              );
+            })}
+          </AnimatePresence>
+        )}
       </div>
     </>
   );
