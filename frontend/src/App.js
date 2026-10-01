@@ -32,6 +32,8 @@ import Studio from "@/pages/Studio";
 import StudioWork from "@/pages/StudioWork";
 import Ventures from "@/pages/Ventures";
 import VentureDetail from "@/pages/VentureDetail";
+import Points from "@/pages/Points";
+import BookReviews from "@/pages/BookReviews";
 import Admin from "@/pages/Admin";
 
 function NotFound() {
@@ -72,6 +74,7 @@ function AnimatedRoutes() {
       <Route path="/competitions" element={<Competitions />} />
       <Route path="/competitions/:id" element={<CompetitionDetail />} />
       <Route path="/leaderboard" element={<Leaderboard />} />
+      <Route path="/points" element={<Protected><Points /></Protected>} />
       <Route path="/news" element={<News />} />
       <Route path="/studio" element={<Studio />} />
       <Route path="/studio/:id" element={<StudioWork />} />
@@ -81,6 +84,7 @@ function AnimatedRoutes() {
       <Route path="/settings" element={<Protected><Settings /></Protected>} />
       <Route path="/dashboard" element={<Protected><Dashboard /></Protected>} />
       <Route path="/admin/*" element={<Protected staff><Admin /></Protected>} />
+      <Route path="/admin/books/:bookId/reviews" element={<Protected staff><BookReviews /></Protected>} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
