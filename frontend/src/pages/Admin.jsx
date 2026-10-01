@@ -18,7 +18,7 @@ import { LayoutDashboard, ShieldCheck, Users, BookOpen, Calendar, Trophy, Newspa
 import { timeAgo } from "@/components/NotificationsPanel";
 import { motion } from "framer-motion";
 import { FadeUp, Stagger, Item } from "@/components/anim";
-import { startChunkedUpload, uploadChunks, completeChunkedUpload, fileToBase64, CHUNK_THRESHOLD, MAX_PDF_SIZE } from "@/lib/chunkedUpload";
+import { startChunkedUpload, uploadChunks, completeChunkedUpload, fileToBase64, compressCoverImage, CHUNK_THRESHOLD, MAX_PDF_SIZE } from "@/lib/chunkedUpload";
 
 const NAV = [
   { k: "overview", l: "نظرة عامة", icon: LayoutDashboard, perm: "analytics.view" },
@@ -1097,7 +1097,7 @@ function BooksPanel() {
           setUploadProgress(Math.round((done / total) * 100)));
         let cover_b64 = null, cover_ct = null;
         if (cover) {
-          const c = await fileToBase64(cover);
+          const c = await fileToBase64(await compressCoverImage(cover));
           cover_b64 = c.b64; cover_ct = c.type;
         }
         data = await completeChunkedUpload(upload_id, "book_create", {
@@ -1109,7 +1109,7 @@ function BooksPanel() {
         fd.append("title", form.title); fd.append("author", form.author);
         fd.append("category", form.category); fd.append("description", form.description);
         fd.append("pdf", pdf);
-        if (cover) fd.append("cover", cover);
+        if (cover) fd.append("cover", await compressCoverImage(cover));
         ({ data } = await api.post("/books", fd));
       }
       toast.success(data.status === "approved" ? "تم رفع الكتاب ونشره مباشرة 📚" : "تم رفع الكتاب");
@@ -1156,7 +1156,7 @@ function BooksPanel() {
         ["title", "author", "category", "description", "language", "publisher", "age", "tags"].forEach((k) => fd.append(k, editForm[k] ?? ""));
         if (editForm.pages !== "" && editForm.pages != null) fd.append("pages", editForm.pages);
         if (editForm.year !== "" && editForm.year != null) fd.append("year", editForm.year);
-        if (editCover) fd.append("cover", editCover);
+        if (editCover) fd.append("cover", await compressCoverImage(editCover));
         await api.patch(`/books/${editing.id}`, fd);
       } else {
         const fd = new FormData();
@@ -1164,7 +1164,7 @@ function BooksPanel() {
         if (editForm.pages !== "" && editForm.pages != null) fd.append("pages", editForm.pages);
         if (editForm.year !== "" && editForm.year != null) fd.append("year", editForm.year);
         if (editPdf) fd.append("pdf", editPdf);
-        if (editCover) fd.append("cover", editCover);
+        if (editCover) fd.append("cover", await compressCoverImage(editCover));
         await api.patch(`/books/${editing.id}`, fd);
       }
       toast.success("تم حفظ التعديلات ✅");
