@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Loader2, Upload, FileText, Image } from "lucide-react";
-import { startChunkedUpload, uploadChunks, completeChunkedUpload, fileToBase64, CHUNK_THRESHOLD, MAX_PDF_SIZE } from "@/lib/chunkedUpload";
+import { startChunkedUpload, uploadChunks, completeChunkedUpload, fileToBase64, compressCoverImage, CHUNK_THRESHOLD, MAX_PDF_SIZE } from "@/lib/chunkedUpload";
 
 export default function UploadBook() {
   const nav = useNavigate();
@@ -37,7 +37,7 @@ export default function UploadBook() {
           setProgress(Math.round((done / total) * 100)));
         let cover_b64 = null, cover_ct = null;
         if (cover) {
-          const c = await fileToBase64(cover);
+          const c = await fileToBase64(await compressCoverImage(cover));
           cover_b64 = c.b64; cover_ct = c.type;
         }
         await completeChunkedUpload(upload_id, "book_create", {
@@ -50,7 +50,7 @@ export default function UploadBook() {
         const fd = new FormData();
         Object.entries(form).forEach(([k, v]) => fd.append(k, v));
         fd.append("pdf", pdf);
-        if (cover) fd.append("cover", cover);
+        if (cover) fd.append("cover", await compressCoverImage(cover));
         await api.post("/books", fd);
       }
       toast.success("تم رفع الكتاب! سيُراجع من قبل الإدارة قبل النشر.");
