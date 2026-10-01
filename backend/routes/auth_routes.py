@@ -89,7 +89,9 @@ async def register(body: RegisterBody, request: Request, response: Response):
     doc = {
         "name": body.name.strip(), "email": email,
         "password_hash": hash_password(body.password), "role": body.role,
-        "status": "active", "grade": body.grade, "section": body.section,
+        # Teachers need admin approval before their account is activated.
+        "status": "pending_approval" if body.role == "teacher" else "active",
+        "grade": body.grade, "section": body.section,
         "xp": 0, "level": 1, "level_title": "قارئ مبتدئ",
         "extra_permissions": [], "badges": [], "achievements": [], "stats": {},
         "streak": 0, "chess_rating": 1200, "email_verified": False,
@@ -99,9 +101,13 @@ async def register(body: RegisterBody, request: Request, response: Response):
     res = await db.users.insert_one(doc)
     doc["_id"] = res.inserted_id
     uid = str(res.inserted_id)
+    await audit_log({"id": uid, "email": email}, "register", "user", uid, request=request)
+    if body.role == "teacher":
+        # No session yet — the account activates only after admin approval.
+        return {"pending_approval": True,
+                "message": "تم استلام طلب إنشاء حسابك كمعلم بنجاح. سيتم مراجعته من قبل الإدارة وسيصلك إشعار عند الموافقة."}
     access, refresh = create_access_token(uid, email), create_refresh_token(uid)
     _set_cookies(response, access, refresh)
-    await audit_log({"id": uid, "email": email}, "register", "user", uid, request=request)
     return {"user": _public_user(doc), "access_token": access, "refresh_token": refresh}
 
 
@@ -127,6 +133,11 @@ async def login(body: LoginBody, request: Request, response: Response):
         raise HTTPException(status_code=401, detail="البريد الإلكتروني أو كلمة المرور غير صحيحة")
     if user.get("status") == "banned":
         raise HTTPException(status_code=403, detail="تم حظر هذا الحساب")
+    if user.get("status") == "pending_approval":
+        raise HTTPException(status_code=403, detail="حسابك كمعلم قيد المراجعة من قبل الإدارة. سيصلك إشعار عند الموافقة.")
+    if user.get("status") == "rejected":
+        reason = user.get("rejection_reason") or "لم يتم قبول طلب إنشاء الحساب"
+        raise HTTPException(status_code=403, detail=f"تم رفض طلب إنشاء حسابك: {reason}")
 
     await db.login_attempts.delete_one({"identifier": ident})
     uid = str(user["_id"])

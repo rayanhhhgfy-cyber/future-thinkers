@@ -1,8 +1,9 @@
 from fastapi import APIRouter, HTTPException, Depends, Request, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr, Field
 from db import db, ser, sers, oid, now_iso
 from auth import (get_current_user, require_permission, require_role, ALL_PERMISSIONS,
-                  ROLES, ROLE_LABELS, ROLE_PERMISSIONS)
+                  ROLES, ROLE_LABELS, ROLE_PERMISSIONS, PERMISSION_GROUPS, PERMISSION_LABELS,
+                  effective_permissions, hash_password)
 from services import audit_log, broadcast_notification, create_notification, deliver_notification
 
 router = APIRouter(prefix="/api/admin")
@@ -113,10 +114,160 @@ async def adjust_xp(uid: str, body: AdjustXpBody, request: Request, user: dict =
     return {"ok": True}
 
 
+def _may_grant(creator: dict, role: str, perms: list[str]) -> bool:
+    """Privilege-escalation guard: a non-super-admin can only hand out
+    permissions they themselves hold, and can never create admin/super_admin."""
+    if creator.get("role") == "super_admin":
+        return True
+    if role in ("admin", "super_admin"):
+        return False
+    have = effective_permissions(creator)
+    if not set(perms) <= have:
+        return False
+    if not set(ROLE_PERMISSIONS.get(role, set())) <= have:
+        return False
+    return True
+
+
+class UserCreateBody(BaseModel):
+    name: str = Field(min_length=2, max_length=80)
+    email: EmailStr
+    password: str = Field(min_length=6, max_length=128)
+    role: str = "custom"
+    # Hand-picked permissions. For role "custom" these are the account's ONLY
+    # permissions; for other roles they are added on top of the role's base set.
+    permissions: list[str] = []
+
+
+@router.post("/users")
+async def admin_create_user(body: UserCreateBody, request: Request,
+                            user: dict = Depends(require_permission("user.create"))):
+    if body.role not in ROLES:
+        raise HTTPException(status_code=400, detail="دور غير صالح")
+    invalid = set(body.permissions) - set(ALL_PERMISSIONS)
+    if invalid:
+        raise HTTPException(status_code=400, detail="صلاحيات غير معروفة")
+    if not _may_grant(user, body.role, body.permissions):
+        raise HTTPException(status_code=403, detail="لا يمكنك منح صلاحيات لا تملكها")
+    email = body.email.lower().strip()
+    if await db.users.find_one({"email": email}):
+        raise HTTPException(status_code=400, detail="البريد الإلكتروني مستخدم مسبقاً")
+    doc = {
+        "name": body.name.strip(), "email": email,
+        "password_hash": hash_password(body.password), "role": body.role,
+        "status": "active",
+        "xp": 0, "level": 1, "level_title": "قارئ مبتدئ",
+        "extra_permissions": sorted(set(body.permissions)),
+        "badges": [], "achievements": [], "stats": {},
+        "streak": 0, "chess_rating": 1200, "email_verified": False,
+        "privacy": {"show_school": True, "show_activity": True},
+        "created_at": now_iso(),
+    }
+    res = await db.users.insert_one(doc)
+    uid = str(res.inserted_id)
+    await audit_log(user, "user_create", "user", uid,
+                    {"role": body.role, "permissions": sorted(set(body.permissions))}, request)
+    doc["_id"] = res.inserted_id
+    return {"user": ser(doc)}
+
+
+class PermsBody(BaseModel):
+    permissions: list[str]
+
+
+@router.put("/users/{uid}/permissions")
+async def update_user_permissions(uid: str, body: PermsBody, request: Request,
+                                  user: dict = Depends(require_permission("role.manage"))):
+    target = await db.users.find_one({"_id": oid(uid)})
+    if not target:
+        raise HTTPException(status_code=404, detail="المستخدم غير موجود")
+    invalid = set(body.permissions) - set(ALL_PERMISSIONS)
+    if invalid:
+        raise HTTPException(status_code=400, detail="صلاحيات غير معروفة")
+    if not _may_grant(user, target.get("role", "student"), body.permissions):
+        raise HTTPException(status_code=403, detail="لا يمكنك منح صلاحيات لا تملكها")
+    await db.users.update_one({"_id": target["_id"]},
+                              {"$set": {"extra_permissions": sorted(set(body.permissions))}})
+    await audit_log(user, "user_permissions_update", "user", uid,
+                    {"permissions": sorted(set(body.permissions))}, request)
+    return {"ok": True}
+
+
+@router.delete("/users/{uid}")
+async def delete_user(uid: str, request: Request,
+                      user: dict = Depends(require_permission("user.delete"))):
+    target = await db.users.find_one({"_id": oid(uid)})
+    if not target:
+        raise HTTPException(status_code=404, detail="المستخدم غير موجود")
+    if str(target["_id"]) == user.get("id"):
+        raise HTTPException(status_code=400, detail="لا يمكنك حذف حسابك الخاص")
+    if target.get("role") == "super_admin":
+        if user.get("role") != "super_admin":
+            raise HTTPException(status_code=403, detail="فقط المسؤول الأعلى يمكنه حذف مسؤول أعلى")
+        remaining = await db.users.count_documents({"role": "super_admin"})
+        if remaining <= 1:
+            raise HTTPException(status_code=400, detail="لا يمكن حذف المسؤول الأعلى الوحيد")
+    await db.users.delete_one({"_id": target["_id"]})
+    await audit_log(user, "user_delete", "user", uid, {"email": target.get("email")}, request)
+    return {"ok": True}
+
+
+# ---------- Teacher account approvals ----------
+
+@router.get("/users/pending-teachers")
+async def pending_teachers(user: dict = Depends(require_permission("teacher.approve"))):
+    docs = await db.users.find({"status": "pending_approval"}).sort("created_at", -1).to_list(100)
+    return {"items": sers(docs)}
+
+
+@router.post("/users/{uid}/approve-teacher")
+async def approve_teacher(uid: str, request: Request,
+                          user: dict = Depends(require_permission("teacher.approve"))):
+    target = await db.users.find_one({"_id": oid(uid)})
+    if not target or target.get("status") != "pending_approval":
+        raise HTTPException(status_code=404, detail="لا يوجد طلب معلق لهذا الحساب")
+    await db.users.update_one({"_id": target["_id"]},
+                              {"$set": {"status": "active"}, "$unset": {"rejection_reason": ""}})
+    await create_notification(
+        uid, "account",
+        "تمت الموافقة على حسابك 🎉",
+        "أهلاً بك في منصة مفكري المستقبل! تم تفعيل حسابك كمعلم، يمكنك الآن تسجيل الدخول.",
+        "/dashboard",
+    )
+    await audit_log(user, "teacher_approve", "user", uid, None, request)
+    return {"ok": True}
+
+
+class RejectTeacherBody(BaseModel):
+    reason: str = Field(default="", max_length=500)
+
+
+@router.post("/users/{uid}/reject-teacher")
+async def reject_teacher(uid: str, body: RejectTeacherBody, request: Request,
+                         user: dict = Depends(require_permission("teacher.approve"))):
+    target = await db.users.find_one({"_id": oid(uid)})
+    if not target or target.get("status") != "pending_approval":
+        raise HTTPException(status_code=404, detail="لا يوجد طلب معلق لهذا الحساب")
+    reason = body.reason.strip() or "لم يتم قبول طلب إنشاء الحساب"
+    await db.users.update_one({"_id": target["_id"]},
+                              {"$set": {"status": "rejected", "rejection_reason": reason}})
+    # The denial message is shown to them on their next login attempt.
+    await audit_log(user, "teacher_reject", "user", uid, {"reason": reason}, request)
+    return {"ok": True}
+
+
 @router.get("/permissions")
-async def list_permissions(user: dict = Depends(require_permission("role.manage"))):
-    return {"permissions": ALL_PERMISSIONS, "roles": [{"key": r, "label": ROLE_LABELS[r],
-            "permissions": sorted(ROLE_PERMISSIONS.get(r, set()))} for r in ROLES]}
+async def list_permissions(user: dict = Depends(get_current_user)):
+    # Needed both for editing roles and for the create-account permission picker.
+    perms = effective_permissions(user)
+    if "role.manage" not in perms and "user.create" not in perms:
+        raise HTTPException(status_code=403, detail="ليس لديك صلاحية للقيام بهذا الإجراء")
+    return {"permissions": ALL_PERMISSIONS,
+            "labels": PERMISSION_LABELS,
+            "groups": [{"key": k, "label": label, "permissions": perms}
+                       for k, label, perms in PERMISSION_GROUPS],
+            "roles": [{"key": r, "label": ROLE_LABELS[r],
+                       "permissions": sorted(ROLE_PERMISSIONS.get(r, set()))} for r in ROLES]}
 
 
 # ---------- Points config (CMS) ----------
@@ -410,10 +561,21 @@ async def list_campaigns(user: dict = Depends(require_permission(NOTIFY_PERM))):
 
 
 @router.delete("/notify/campaigns/{cid}")
-async def cancel_campaign(cid: str, request: Request,
-                          user: dict = Depends(require_permission(NOTIFY_PERM))):
-    r = await db.notification_campaigns.delete_one({"_id": oid(cid), "status": "scheduled"})
-    if r.deleted_count:
+async def cancel_campaign(cid: str, request: Request, user: dict = Depends(get_current_user)):
+    doc = await db.notification_campaigns.find_one({"_id": oid(cid)})
+    if not doc:
+        raise HTTPException(404, "الحملة غير موجودة")
+    perms = effective_permissions(user)
+    if doc.get("status") == "scheduled":
+        # Cancelling a scheduled campaign keeps the original permission.
+        if NOTIFY_PERM not in perms:
+            raise HTTPException(403, "ليس لديك صلاحية للقيام بهذا الإجراء")
+        await db.notification_campaigns.delete_one({"_id": doc["_id"]})
         await audit_log(user, "notify.cancel", "notification", cid, None, request)
-        return {"ok": True}
-    raise HTTPException(400, "لا يمكن إلغاء هذه الحملة")
+        return {"ok": True, "cancelled": True}
+    # Deleting an already-sent campaign from the history needs its own permission.
+    if "notification.delete" not in perms:
+        raise HTTPException(403, "تحتاج صلاحية «حذف سجل الإشعارات» لحذف عناصر من السجل")
+    await db.notification_campaigns.delete_one({"_id": doc["_id"]})
+    await audit_log(user, "notify.history_delete", "notification", cid, None, request)
+    return {"ok": True, "deleted": True}

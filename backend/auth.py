@@ -12,7 +12,7 @@ REFRESH_TTL = timedelta(days=30)
 
 ROLES = [
     "student", "teacher", "school_admin", "directorate_admin",
-    "moderator", "admin", "super_admin",
+    "moderator", "admin", "super_admin", "custom",
 ]
 
 ROLE_LABELS = {
@@ -23,28 +23,130 @@ ROLE_LABELS = {
     "moderator": "مشرف محتوى",
     "admin": "مسؤول المنصة",
     "super_admin": "المسؤول الأعلى",
+    "custom": "صلاحيات مخصصة",
 }
 
 ALL_PERMISSIONS = [
-    "book.create", "book.edit", "book.delete", "book.approve", "book.reject",
-    "event.create", "event.edit", "event.delete", "event.approve",
+    # الكتب
+    "book.view", "book.create", "book.edit", "book.delete", "book.approve", "book.reject",
+    # الفعاليات
+    "event.view", "event.create", "event.edit", "event.delete", "event.approve",
+    # المسابقات
+    "competition.view", "competition.create", "competition.edit", "competition.delete",
     "competition.manage",
-    "user.manage", "user.view", "role.manage",
-    "school.manage", "school.view",
-    "directorate.view",
-    "student.view",
-    "leaderboard.manage",
-    "discussion.moderate", "discussion.create",
+    # المستخدمون
+    "user.view", "user.create", "user.edit", "user.delete", "user.manage", "user.ban",
+    # الأدوار والصلاحيات
+    "role.view", "role.manage",
+    # المعلمون
+    "teacher.approve",
+    # المدارس
+    "school.view", "school.create", "school.edit", "school.delete", "school.manage",
+    # المديريات
+    "directorate.view", "directorate.create", "directorate.manage",
+    # الطلاب
+    "student.view", "student.edit", "student.manage",
+    # المناقشات والتعليقات
+    "discussion.view", "discussion.create", "discussion.delete", "discussion.moderate",
+    "comment.moderate",
+    # المحتوى والبلاغات
     "content.moderate", "report.manage",
-    "news.manage", "activity.approve",
-    "points.manage", "achievement.manage",
-    "studio.review",
-    "badge.award", "badge.manage",
-    "certificate.manage",
-    "notification.broadcast",
-    "cms.manage", "analytics.view", "audit.view",
-    "club.manage",
+    # الأخبار
+    "news.view", "news.create", "news.edit", "news.delete", "news.manage",
+    # الأنشطة
+    "activity.view", "activity.create", "activity.approve", "activity.delete",
+    # النقاط والإنجازات
+    "points.view", "points.manage", "achievement.view", "achievement.manage",
+    # الاستوديو
+    "studio.view", "studio.create", "studio.review", "studio.delete",
+    # الشارات
+    "badge.view", "badge.create", "badge.award", "badge.manage",
+    # الشهادات
+    "certificate.view", "certificate.create", "certificate.manage", "certificate.delete",
+    # الإشعارات
+    "notification.view", "notification.broadcast", "notification.delete",
+    # الأندية
+    "club.view", "club.create", "club.edit", "club.delete", "club.manage",
+    # المتصدرون
+    "leaderboard.view", "leaderboard.manage",
+    # النظام
+    "cms.view", "cms.edit", "cms.manage",
+    "analytics.view", "analytics.manage",
+    "audit.view", "audit.manage",
+    "settings.manage", "backup.manage",
 ]
+
+PERMISSION_GROUPS = [
+    ("books", "📚 الكتب", ["book.view", "book.create", "book.edit", "book.delete", "book.approve", "book.reject"]),
+    ("events", "📅 الفعاليات", ["event.view", "event.create", "event.edit", "event.delete", "event.approve"]),
+    ("competitions", "🏆 المسابقات", ["competition.view", "competition.create", "competition.edit", "competition.delete", "competition.manage"]),
+    ("users", "👥 المستخدمون", ["user.view", "user.create", "user.edit", "user.delete", "user.manage", "user.ban"]),
+    ("roles", "🛡️ الأدوار", ["role.view", "role.manage"]),
+    ("teachers", "👨‍🏫 المعلمون", ["teacher.approve"]),
+    ("schools", "🏫 المدارس", ["school.view", "school.create", "school.edit", "school.delete", "school.manage"]),
+    ("directorates", "🗺️ المديريات", ["directorate.view", "directorate.create", "directorate.manage"]),
+    ("students", "🎒 الطلاب", ["student.view", "student.edit", "student.manage"]),
+    ("discussions", "💬 المناقشات", ["discussion.view", "discussion.create", "discussion.delete", "discussion.moderate", "comment.moderate"]),
+    ("content", "🛠️ المحتوى والبلاغات", ["content.moderate", "report.manage"]),
+    ("news", "📰 الأخبار", ["news.view", "news.create", "news.edit", "news.delete", "news.manage"]),
+    ("activities", "⚡ الأنشطة", ["activity.view", "activity.create", "activity.approve", "activity.delete"]),
+    ("points", "⭐ النقاط والإنجازات", ["points.view", "points.manage", "achievement.view", "achievement.manage"]),
+    ("studio", "🎨 الاستوديو", ["studio.view", "studio.create", "studio.review", "studio.delete"]),
+    ("badges", "🎖️ الشارات", ["badge.view", "badge.create", "badge.award", "badge.manage"]),
+    ("certificates", "📜 الشهادات", ["certificate.view", "certificate.create", "certificate.manage", "certificate.delete"]),
+    ("notifications", "🔔 الإشعارات", ["notification.view", "notification.broadcast", "notification.delete"]),
+    ("clubs", "🤝 الأندية", ["club.view", "club.create", "club.edit", "club.delete", "club.manage"]),
+    ("leaderboard", "🥇 المتصدرون", ["leaderboard.view", "leaderboard.manage"]),
+    ("system", "⚙️ النظام", ["cms.view", "cms.edit", "cms.manage", "analytics.view", "analytics.manage",
+                             "audit.view", "audit.manage", "settings.manage", "backup.manage"]),
+]
+
+PERMISSION_LABELS = {
+    "book.view": "عرض الكتب", "book.create": "رفع كتب", "book.edit": "تعديل الكتب",
+    "book.delete": "حذف الكتب", "book.approve": "الموافقة على الكتب", "book.reject": "رفض الكتب",
+    "event.view": "عرض الفعاليات", "event.create": "إنشاء فعاليات", "event.edit": "تعديل الفعاليات",
+    "event.delete": "حذف الفعاليات", "event.approve": "الموافقة على الفعاليات",
+    "competition.view": "عرض المسابقات", "competition.create": "إنشاء مسابقات",
+    "competition.edit": "تعديل المسابقات", "competition.delete": "حذف المسابقات",
+    "competition.manage": "إدارة المسابقات",
+    "user.view": "عرض المستخدمين", "user.create": "إنشاء حسابات", "user.edit": "تعديل المستخدمين",
+    "user.delete": "حذف المستخدمين", "user.manage": "إدارة المستخدمين (حظر/تفعيل)",
+    "user.ban": "حظر المستخدمين",
+    "role.view": "عرض الأدوار", "role.manage": "إدارة الأدوار والصلاحيات",
+    "teacher.approve": "الموافقة على حسابات المعلمين",
+    "school.view": "عرض المدارس", "school.create": "إضافة مدارس", "school.edit": "تعديل المدارس",
+    "school.delete": "حذف المدارس", "school.manage": "إدارة المدارس",
+    "directorate.view": "عرض المديريات", "directorate.create": "إضافة مديريات",
+    "directorate.manage": "إدارة المديريات",
+    "student.view": "عرض الطلاب", "student.edit": "تعديل بيانات الطلاب",
+    "student.manage": "إدارة الطلاب",
+    "discussion.view": "عرض المناقشات", "discussion.create": "إنشاء مناقشات",
+    "discussion.delete": "حذف المناقشات", "discussion.moderate": "إشراف على المناقشات",
+    "comment.moderate": "إشراف على التعليقات",
+    "content.moderate": "مراجعة المحتوى", "report.manage": "إدارة البلاغات",
+    "news.view": "عرض الأخبار", "news.create": "نشر أخبار", "news.edit": "تعديل الأخبار",
+    "news.delete": "حذف الأخبار", "news.manage": "إدارة الأخبار",
+    "activity.view": "عرض الأنشطة", "activity.create": "إنشاء أنشطة",
+    "activity.approve": "الموافقة على الأنشطة", "activity.delete": "حذف الأنشطة",
+    "points.view": "عرض النقاط", "points.manage": "إدارة النقاط",
+    "achievement.view": "عرض الإنجازات", "achievement.manage": "إدارة الإنجازات",
+    "studio.view": "عرض الاستوديو", "studio.create": "النشر في الاستوديو",
+    "studio.review": "مراجعة أعمال الاستوديو", "studio.delete": "حذف أعمال الاستوديو",
+    "badge.view": "عرض الشارات", "badge.create": "إنشاء شارات",
+    "badge.award": "منح الشارات", "badge.manage": "إدارة الشارات",
+    "certificate.view": "عرض الشهادات", "certificate.create": "إصدار شهادات",
+    "certificate.manage": "إدارة الشهادات", "certificate.delete": "حذف الشهادات",
+    "notification.view": "عرض الإشعارات", "notification.broadcast": "بث الإشعارات",
+    "notification.delete": "حذف سجل الإشعارات",
+    "club.view": "عرض الأندية", "club.create": "إنشاء أندية", "club.edit": "تعديل الأندية",
+    "club.delete": "حذف الأندية", "club.manage": "إدارة الأندية",
+    "leaderboard.view": "عرض المتصدرين", "leaderboard.manage": "إدارة المتصدرين",
+    "cms.view": "عرض إعدادات المحتوى", "cms.edit": "تعديل إعدادات المحتوى",
+    "cms.manage": "إدارة المحتوى",
+    "analytics.view": "عرض الإحصائيات", "analytics.manage": "إدارة الإحصائيات",
+    "audit.view": "عرض سجل العمليات", "audit.manage": "إدارة سجل العمليات",
+    "settings.manage": "إدارة إعدادات المنصة", "backup.manage": "إدارة النسخ الاحتياطي",
+}
 
 _STUDENT = {"book.create", "discussion.create", "student.view"}
 _TEACHER = _STUDENT | {"discussion.moderate", "event.create"}
@@ -62,6 +164,9 @@ ROLE_PERMISSIONS = {
     "moderator": _MODERATOR,
     "admin": set(ALL_PERMISSIONS),
     "super_admin": set(ALL_PERMISSIONS),
+    # "custom" starts with zero base permissions — everything it can do comes
+    # from hand-picked extra_permissions assigned by an admin.
+    "custom": set(),
 }
 
 
@@ -115,6 +220,10 @@ async def get_current_user(request: Request) -> dict:
             raise HTTPException(status_code=401, detail="المستخدم غير موجود")
         if user.get("status") == "banned":
             raise HTTPException(status_code=403, detail="تم حظر هذا الحساب")
+        if user.get("status") == "pending_approval":
+            raise HTTPException(status_code=403, detail="الحساب قيد المراجعة من قبل الإدارة")
+        if user.get("status") == "rejected":
+            raise HTTPException(status_code=403, detail="تم رفض طلب إنشاء هذا الحساب")
         user["id"] = str(user["_id"])
         return user
     except jwt.ExpiredSignatureError:
