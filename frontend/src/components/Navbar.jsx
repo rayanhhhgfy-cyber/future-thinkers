@@ -4,7 +4,7 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import {
   Bell, Search, Menu, X, LogOut, User, LayoutDashboard, Shield, Settings,
   BookOpen, Sparkles, Users, Calendar, Trophy, Newspaper, Rocket, Crown,
-  Gamepad2, Flame, ChevronLeft, ChevronDown, Puzzle, BarChart3, Route as RouteIcon, MessagesSquare, CalendarDays, Target, Timer,
+  Gamepad2, Flame, ChevronLeft, ChevronDown, Puzzle, BarChart3, Route as RouteIcon, MessagesSquare, CalendarDays, Target, Timer, Award,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { EASE } from "@/components/anim";
@@ -52,6 +52,7 @@ const MORE_GROUPS = [
     { to: "/community", label: "ساحة المجتمع", icon: MessagesSquare, tint: "bg-rose-100 text-rose-600" },
     { to: "/news", label: "الأخبار", icon: Newspaper, tint: "bg-sky-100 text-sky-600" },
     { to: "/calendar", label: "التقويم", icon: CalendarDays, tint: "bg-indigo-100 text-indigo-600" },
+    { to: "/certificates-wall", label: "جدار الشهادات", icon: Award, tint: "bg-amber-100 text-amber-600" },
   ]},
 ];
 

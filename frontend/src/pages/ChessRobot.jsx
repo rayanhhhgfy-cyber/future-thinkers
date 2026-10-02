@@ -4,7 +4,7 @@ import { Chess } from "chess.js";
 import { Layout } from "@/components/Layout";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Undo2, Plus, Bot, User } from "lucide-react";
+import { ArrowRight, Undo2, Plus, Bot, User, History } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { EASE } from "@/components/anim";
 import { FILES, pieceSrc, useSyncedPieces, useChessTheme, capturedBy, materialOf, PlayerBar } from "@/components/chess/shared";
@@ -13,6 +13,8 @@ import { pickRobotMove, DIFFICULTIES } from "@/components/chess/engine";
 import { playChessSound } from "@/components/chess/sounds";
 
 /* Play against the built-in robot: 3 difficulty levels. */
+const ROBOT_HISTORY_KEY = "ft-robot-history";
+
 export default function ChessRobot() {
   const { user } = useAuth();
   const nav = useNavigate();
@@ -30,6 +32,11 @@ export default function ChessRobot() {
   const [myColor, setMyColor] = useState("w");
   const [difficulty, setDifficulty] = useState("medium");
   const [thinking, setThinking] = useState(false);
+  const [matchLog, setMatchLog] = useState(() => {
+    try { const raw = JSON.parse(localStorage.getItem(ROBOT_HISTORY_KEY) || "[]"); return Array.isArray(raw) ? raw : []; }
+    catch { return []; }
+  });
+  const recordedRef = useRef(false);
   const movesRef = useRef(null);
   const timerRef = useRef(null);
 
@@ -106,6 +113,7 @@ export default function ChessRobot() {
     const color = colorChoice === "random" ? (Math.random() < 0.5 ? "w" : "b") : colorChoice;
     chess.reset();
     setMyColor(color);
+    recordedRef.current = false;
     setFlipped(false);
     setSel(null); setLegal([]); setPromo(null);
     setStarted(true);
@@ -127,6 +135,7 @@ export default function ChessRobot() {
     if (timerRef.current) clearTimeout(timerRef.current);
     setThinking(false);
     setStarted(false);
+    recordedRef.current = false;
     chess.reset();
     setSel(null); setLegal([]); setPromo(null);
     refresh();
@@ -170,6 +179,23 @@ export default function ChessRobot() {
   });
 
   const diffLabel = DIFFICULTIES.find((d) => d.id === difficulty)?.label || "";
+
+  /* record each finished robot game once into the local match history */
+  useEffect(() => {
+    if (!over || !started || recordedRef.current) return;
+    recordedRef.current = true;
+    const result = iWon ? "win" : chess.isCheckmate() ? "loss" : "draw";
+    const entry = { result, difficulty, moves: history.length, date: new Date().toISOString() };
+    setMatchLog((prev) => {
+      const next = [entry, ...prev].slice(0, 30);
+      try { localStorage.setItem(ROBOT_HISTORY_KEY, JSON.stringify(next)); } catch {}
+      return next;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [over, started]);
+
+  const logWins = matchLog.filter((m) => m.result === "win").length;
+  const logWinRate = matchLog.length ? Math.round((logWins / matchLog.length) * 100) : 0;
 
   return (
     <Layout noFooter>
@@ -252,6 +278,40 @@ export default function ChessRobot() {
                   </div>
                 </div>
               </div>
+
+              {matchLog.length > 0 && (
+                <div className="rounded-3xl p-5 sm:p-6 bg-white/[0.05] border border-white/10 backdrop-blur-xl mt-5" data-testid="robot-history-panel">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <h3 className="font-head font-bold flex items-center gap-2 text-slate-200">
+                      <span className="w-8 h-8 rounded-xl grid place-items-center bg-gradient-to-br from-amber-400 to-orange-500 shadow-[0_6px_16px_-4px_rgba(245,158,11,0.6)]"><History className="w-4 h-4 text-white" /></span>
+                      سجل مبارياتي ضد الروبوت
+                    </h3>
+                    <span className="rounded-full bg-amber-400/15 border border-amber-300/25 text-amber-200 px-3 py-1 text-[11px] font-extrabold tabular-nums">
+                      نسبة الفوز {logWinRate}%
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-4 mt-3 text-xs text-slate-400 font-semibold">
+                    <span><span className="text-slate-100 font-extrabold tabular-nums">{matchLog.length}</span> مباراة</span>
+                    <span><span className="text-emerald-300 font-extrabold tabular-nums">{logWins}</span> فوز</span>
+                    <span><span className="text-rose-300 font-extrabold tabular-nums">{matchLog.filter((m) => m.result === "loss").length}</span> خسارة</span>
+                    <span><span className="text-slate-200 font-extrabold tabular-nums">{matchLog.filter((m) => m.result === "draw").length}</span> تعادل</span>
+                  </div>
+                  <div className="mt-3.5 space-y-1.5">
+                    {matchLog.slice(0, 6).map((m, i) => (
+                      <div key={`${m.date}-${i}`} className="flex items-center gap-2.5 rounded-2xl bg-white/[0.04] border border-white/[0.06] px-3 py-2">
+                        <span className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-extrabold ${m.result === "win" ? "bg-emerald-500/15 text-emerald-300 border border-emerald-400/25" : m.result === "loss" ? "bg-rose-500/15 text-rose-300 border border-rose-400/25" : "bg-slate-500/20 text-slate-300 border border-slate-400/25"}`}>
+                          {m.result === "win" ? "فوز 🏆" : m.result === "loss" ? "خسارة" : "تعادل"}
+                        </span>
+                        <span className="flex-1 min-w-0 text-xs font-bold text-slate-300 truncate">
+                          {DIFFICULTIES.find((d) => d.id === m.difficulty)?.label || m.difficulty}
+                        </span>
+                        <span className="text-[11px] text-slate-500 tabular-nums">{m.moves} نقلة</span>
+                        <span className="text-[11px] text-slate-500 tabular-nums" dir="ltr">{String(m.date || "").slice(0, 10)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </motion.div>
           ) : (
             <div className="grid lg:grid-cols-[1fr_320px] gap-5 items-start">

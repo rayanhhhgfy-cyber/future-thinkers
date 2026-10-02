@@ -18,6 +18,7 @@ const COLS = [
     { to: "/clubs/chess", l: "نادي الشطرنج" },
     { to: "/news", l: "الأخبار" },
     { to: "/calendar", l: "التقويم" },
+    { to: "/certificates-wall", l: "جدار الشهادات" },
   ]},
   { title: "طوّر نفسك", links: [
     { to: "/paths", l: "مسارات التعلم" },
