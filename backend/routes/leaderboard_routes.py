@@ -146,19 +146,35 @@ async def my_gamification(user: dict = Depends(get_current_user)):
 
 @router.post("/gamification/checkin")
 async def daily_checkin(user: dict = Depends(get_current_user)):
-    today = datetime.now(timezone.utc).date().isoformat()
+    today = datetime.now(timezone.utc).date()
     last = user.get("last_checkin")
-    if last == today:
+    if last == today.isoformat():
         return {"already": True, "streak": user.get("streak", 0)}
-    yesterday = (datetime.now(timezone.utc).date() - timedelta(days=1)).isoformat()
-    streak = user.get("streak", 0) + 1 if last == yesterday else 1
+    yesterday = (today - timedelta(days=1)).isoformat()
+    freeze_used = False
+    if last == yesterday:
+        streak = user.get("streak", 0) + 1
+    elif last and user.get("streak_freezes", 0) > 0:
+        try:
+            gap = (today - datetime.fromisoformat(last).date()).days
+        except Exception:
+            gap = 99
+        if gap == 2:
+            streak = user.get("streak", 0) + 1
+            freeze_used = True
+        else:
+            streak = 1
+    else:
+        streak = 1
     max_streak = max(streak, user.get("stats", {}).get("max_streak", 0))
-    await db.users.update_one({"_id": oid(user["id"])},
-        {"$set": {"last_checkin": today, "streak": streak, "stats.max_streak": max_streak}})
+    upd = {"$set": {"last_checkin": today.isoformat(), "streak": streak, "stats.max_streak": max_streak}}
+    if freeze_used:
+        upd["$inc"] = {"streak_freezes": -1}
+    await db.users.update_one({"_id": oid(user["id"])}, upd)
     s = await db.settings.find_one({"key": "points_config"})
     await award_xp(user["id"], (s or {}).get("value", {}).get("daily_checkin", 5), "تسجيل حضور يومي")
     await track_quest(user["id"], "checkin")
-    return {"already": False, "streak": streak}
+    return {"already": False, "streak": streak, "freeze_used": freeze_used}
 
 
 @router.get("/gamification/history")

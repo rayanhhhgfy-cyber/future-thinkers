@@ -239,6 +239,27 @@ async def dispatch_due_campaigns():
     """Send all scheduled notification campaigns whose time has come.
     Safe to call from cron, middleware, or anywhere: claims each campaign
     atomically so concurrent instances never double-send."""
+    # event reminders due within 24h
+    try:
+        from datetime import date as _date, timedelta as _td, datetime as _dt, timezone as _tz
+        from db import oid as _oid
+        today = _dt.now(_tz.utc).date()
+        rems = await db.event_reminders.find({"sent": False}).to_list(1000)
+        for r in rems:
+            ev = await db.events.find_one({"_id": _oid(r["event_id"])})
+            if not ev:
+                await db.event_reminders.update_one({"_id": r["_id"]}, {"$set": {"sent": True}})
+                continue
+            try:
+                ed = _date.fromisoformat(str(ev.get("date", ""))[:10])
+            except Exception:
+                continue
+            if today <= ed <= today + _td(days=1):
+                await create_notification(r["user_id"], "event", "تذكير بفعالية 🔔",
+                                          f"{ev['title']} — {ev['date']}", "/events")
+                await db.event_reminders.update_one({"_id": r["_id"]}, {"$set": {"sent": True}})
+    except Exception as e:
+        print(f"reminder sweep: {e}")
     due = await db.notification_campaigns.find(
         {"status": "scheduled", "send_at": {"$lte": now_iso()}}
     ).to_list(20)

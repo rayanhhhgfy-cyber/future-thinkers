@@ -93,6 +93,28 @@ async def my_reading(user: dict = Depends(get_current_user)):
     return out
 
 
+@router.get("/featured")
+async def featured_book():
+    s = await db.settings.find_one({"key": "featured_book"})
+    bid = ((s or {}).get("value") or {}).get("book_id")
+    if not bid:
+        return None
+    b = await db.books.find_one({"_id": oid(bid), "status": "published"})
+    return _book_out(b) if b else None
+
+
+@router.post("/{book_id}/feature")
+async def feature_book(book_id: str, request: Request,
+                       user: dict = Depends(require_permission("book.edit"))):
+    b = await db.books.find_one({"_id": oid(book_id)})
+    if not b:
+        raise HTTPException(status_code=404, detail="غير موجود")
+    await db.settings.update_one({"key": "featured_book"},
+                                 {"$set": {"value": {"book_id": book_id}}}, upsert=True)
+    await audit_log(user, "book_feature", "book", book_id, request=request)
+    return {"ok": True}
+
+
 @router.get("/{book_id}")
 async def get_book(book_id: str, request: Request):
     b = await db.books.find_one({"_id": oid(book_id)})

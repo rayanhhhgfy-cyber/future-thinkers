@@ -31,6 +31,19 @@ async def read_all(user: dict = Depends(get_current_user)):
     return {"ok": True}
 
 
+# ---------------- Site theme (design switcher) ----------------
+THEME_PRESETS = ("emerald", "royal", "sunset", "violet", "ocean", "gold", "rose", "crimson")
+
+
+@router.get("/theme")
+async def public_theme():
+    s = await db.settings.find_one({"key": "theme"})
+    preset = ((s or {}).get("value") or {}).get("preset", "emerald")
+    if preset not in THEME_PRESETS:
+        preset = "emerald"
+    return {"preset": preset}
+
+
 # ---------------- Public stats (landing) ----------------
 @router.get("/stats/public")
 async def public_stats():

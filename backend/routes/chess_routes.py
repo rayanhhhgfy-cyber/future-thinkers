@@ -191,6 +191,167 @@ async def _finalize(g, result, resigned_by=None):
         await hub.broadcast_game(str(g["_id"]), {"kind": "result", "result": result, "winner_id": winner_id})
     except Exception:
         pass
+    if g.get("tournament_id"):
+        try:
+            await _advance_tournament(g["tournament_id"], g, winner_id)
+        except Exception:
+            pass
+
+
+async def _advance_tournament(tid: str, game: dict, winner_id):
+    """Advance a finished tournament match; crown the champion at the end."""
+    t = await db.chess_tournaments.find_one({"_id": oid(tid)})
+    if not t or t.get("status") != "running":
+        return
+    matches = t.get("matches", [])
+    for m in matches:
+        if m.get("game_id") == str(game["_id"]):
+            m["winner_id"] = winner_id
+            m["status"] = "done"
+    cur_round = max((m["round"] for m in matches), default=1)
+    round_matches = [m for m in matches if m["round"] == cur_round]
+    if not all(m["status"] == "done" for m in round_matches):
+        await db.chess_tournaments.update_one({"_id": oid(tid)}, {"$set": {"matches": matches}})
+        return
+    winners = []
+    for m in round_matches:
+        if m.get("winner_id"):
+            u = await db.users.find_one({"_id": oid(m["winner_id"])}, {"name": 1})
+            winners.append({"user_id": m["winner_id"], "name": (u or {}).get("name", m.get("winner_name", ""))})
+    if len(round_matches) == 1 and len(winners) == 1:
+        champ = winners[0]
+        await db.chess_tournaments.update_one({"_id": oid(tid)},
+            {"$set": {"matches": matches, "status": "completed",
+                      "champion_id": champ["user_id"], "champion_name": champ["name"]}})
+        await award_xp(champ["user_id"], 150, "بطل بطولة الشطرنج 🏆", tid)
+        await create_notification(champ["user_id"], "chess", "بطل البطولة! 🏆",
+                                  f"فزت ببطولة {t['name']} — +150 خبرة", "/clubs/chess")
+        return
+    rnd = cur_round + 1
+    midx = len(matches)
+    for i in range(0, len(winners), 2):
+        a = winners[i]
+        b = winners[i + 1] if i + 1 < len(winners) else None
+        matches.append({
+            "idx": midx, "round": rnd,
+            "a_id": a["user_id"], "a_name": a["name"],
+            "b_id": b["user_id"] if b else None, "b_name": b["name"] if b else None,
+            "winner_id": a["user_id"] if not b else None,
+            "game_id": None, "status": "pending" if b else "done",
+        })
+        midx += 1
+    await db.chess_tournaments.update_one({"_id": oid(tid)}, {"$set": {"matches": matches}})
+
+
+class TournamentBody(BaseModel):
+    name: str
+    max_players: int = 8
+
+
+@router.get("/tournaments")
+async def list_tournaments(user: dict = Depends(get_current_user)):
+    docs = await db.chess_tournaments.find({}).sort("created_at", -1).limit(20).to_list(20)
+    out = []
+    for d in docs:
+        x = ser(d)
+        x["joined"] = any(p["user_id"] == user["id"] for p in x.get("players", []))
+        out.append(x)
+    return out
+
+
+@router.post("/tournaments")
+async def create_tournament(body: TournamentBody, user: dict = Depends(get_current_user)):
+    name = body.name.strip()
+    if len(name) < 3:
+        raise HTTPException(status_code=400, detail="اسم البطولة قصير")
+    doc = {"name": name, "max_players": max(4, min(32, body.max_players)),
+           "creator_id": user["id"], "creator_name": user["name"],
+           "players": [], "matches": [], "status": "registration",
+           "champion_id": None, "created_at": now_iso()}
+    res = await db.chess_tournaments.insert_one(doc)
+    return {"id": str(res.inserted_id)}
+
+
+@router.post("/tournaments/{tid}/join")
+async def join_tournament(tid: str, user: dict = Depends(get_current_user)):
+    t = await db.chess_tournaments.find_one({"_id": oid(tid)})
+    if not t:
+        raise HTTPException(status_code=404, detail="البطولة غير موجودة")
+    if t["status"] != "registration":
+        raise HTTPException(status_code=400, detail="بدأت البطولة بالفعل")
+    if any(p["user_id"] == user["id"] for p in t.get("players", [])):
+        return {"ok": True, "already": True}
+    if len(t.get("players", [])) >= t["max_players"]:
+        raise HTTPException(status_code=400, detail="اكتمل العدد")
+    await db.chess_tournaments.update_one({"_id": oid(tid)},
+        {"$push": {"players": {"user_id": user["id"], "name": user["name"]}}})
+    return {"ok": True}
+
+
+@router.post("/tournaments/{tid}/start")
+async def start_tournament(tid: str, user: dict = Depends(get_current_user)):
+    t = await db.chess_tournaments.find_one({"_id": oid(tid)})
+    if not t:
+        raise HTTPException(status_code=404, detail="البطولة غير موجودة")
+    if t["status"] != "registration":
+        raise HTTPException(status_code=400, detail="بدأت مسبقاً")
+    players = t.get("players", [])
+    if len(players) < 2:
+        raise HTTPException(status_code=400, detail="يحتاج لاعبين على الأقل للبدء")
+    matches = []
+    for i in range(0, len(players), 2):
+        a = players[i]
+        b = players[i + 1] if i + 1 < len(players) else None
+        matches.append({
+            "idx": len(matches), "round": 1,
+            "a_id": a["user_id"], "a_name": a["name"],
+            "b_id": b["user_id"] if b else None, "b_name": b["name"] if b else None,
+            "winner_id": a["user_id"] if not b else None,
+            "game_id": None, "status": "pending" if b else "done",
+        })
+    await db.chess_tournaments.update_one({"_id": oid(tid)},
+        {"$set": {"matches": matches, "status": "running", "started_at": now_iso()}})
+    for p in players:
+        await create_notification(p["user_id"], "chess", "بدأت البطولة! ⚔️",
+                                  f"{t['name']} — العب مباراتك الآن", "/clubs/chess")
+    return {"ok": True, "matches": len(matches)}
+
+
+@router.post("/tournaments/{tid}/matches/{idx}/play")
+async def play_match(tid: str, idx: int, user: dict = Depends(get_current_user)):
+    t = await db.chess_tournaments.find_one({"_id": oid(tid)})
+    if not t or t.get("status") != "running":
+        raise HTTPException(status_code=404, detail="المباراة غير متاحة")
+    m = next((x for x in t.get("matches", []) if x.get("idx") == idx), None)
+    if not m or m["status"] != "pending":
+        raise HTTPException(status_code=400, detail="المباراة غير جاهزة")
+    if user["id"] not in (m["a_id"], m["b_id"]):
+        raise HTTPException(status_code=403, detail="لست طرفاً في هذه المباراة")
+    if m.get("game_id"):
+        return {"game_id": m["game_id"]}
+    wu = await db.users.find_one({"_id": oid(m["a_id"])})
+    bu = await db.users.find_one({"_id": oid(m["b_id"])})
+    doc = {
+        "white_id": m["a_id"], "white_name": m["a_name"],
+        "black_id": m["b_id"], "black_name": m["b_name"],
+        "white_rating": (wu or {}).get("chess_rating", 1200),
+        "black_rating": (bu or {}).get("chess_rating", 1200),
+        "fen": START_FEN, "pgn": "", "moves": [], "turn": "w",
+        "status": "active", "result": None, "winner_id": None,
+        "tournament_id": tid, "created_at": now_iso(), "updated_at": now_iso(),
+    }
+    res = await db.chess_games.insert_one(doc)
+    gid = str(res.inserted_id)
+    matches = t["matches"]
+    for x in matches:
+        if x.get("idx") == idx:
+            x["game_id"] = gid
+            x["status"] = "playing"
+    await db.chess_tournaments.update_one({"_id": oid(tid)}, {"$set": {"matches": matches}})
+    opp = m["b_id"] if user["id"] == m["a_id"] else m["a_id"]
+    await create_notification(opp, "chess", "مباراة بطولة بانتظارك ⚔️",
+                              f"{t['name']} — ادخل للعب", f"/chess/{gid}")
+    return {"game_id": gid}
 
 
 @router.get("/leaderboard")

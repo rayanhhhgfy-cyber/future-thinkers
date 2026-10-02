@@ -69,6 +69,8 @@ ALL_PERMISSIONS = [
     "club.view", "club.create", "club.edit", "club.delete", "club.manage",
     # المتصدرون
     "leaderboard.view", "leaderboard.manage",
+    # البرمجة
+    "coding.view", "coding.manage",
     # النظام
     "cms.view", "cms.edit", "cms.manage",
     "analytics.view", "analytics.manage",
@@ -97,6 +99,7 @@ PERMISSION_GROUPS = [
     ("notifications", "🔔 الإشعارات", ["notification.view", "notification.broadcast", "notification.delete"]),
     ("clubs", "🤝 الأندية", ["club.view", "club.create", "club.edit", "club.delete", "club.manage"]),
     ("leaderboard", "🥇 المتصدرون", ["leaderboard.view", "leaderboard.manage"]),
+    ("coding", "💻 البرمجة", ["coding.view", "coding.manage"]),
     ("system", "⚙️ النظام", ["cms.view", "cms.edit", "cms.manage", "analytics.view", "analytics.manage",
                              "audit.view", "audit.manage", "settings.manage", "backup.manage"]),
 ]
@@ -141,6 +144,7 @@ PERMISSION_LABELS = {
     "club.view": "عرض الأندية", "club.create": "إنشاء أندية", "club.edit": "تعديل الأندية",
     "club.delete": "حذف الأندية", "club.manage": "إدارة الأندية",
     "leaderboard.view": "عرض المتصدرين", "leaderboard.manage": "إدارة المتصدرين",
+    "coding.view": "عرض تحديات البرمجة", "coding.manage": "إدارة تحديات البرمجة",
     "cms.view": "عرض إعدادات المحتوى", "cms.edit": "تعديل إعدادات المحتوى",
     "cms.manage": "إدارة المحتوى",
     "analytics.view": "عرض الإحصائيات", "analytics.manage": "إدارة الإحصائيات",
