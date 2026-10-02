@@ -168,6 +168,7 @@ export default function ChessGame() {
                   orientation={orientation} flipped={flipped} setFlipped={setFlipped}
                   sel={sel} legal={legal} lastMove={lastMove} kingSq={kingSq}
                   onSquareClick={onSquareClick}
+                  movableColor={myColor}
                   promo={promo}
                   onPromote={(t) => doMove(promo.from, promo.to, t)}
                   onCancelPromo={() => { setPromo(null); setSel(null); setLegal([]); }} />

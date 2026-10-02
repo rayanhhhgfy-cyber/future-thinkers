@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Repeat } from "lucide-react";
 import { FILES, THEMES, pieceSrc } from "./shared";
@@ -11,15 +11,18 @@ import { FILES, THEMES, pieceSrc } from "./shared";
  *  chess, pieces, theme, themeId, setTheme, orientation ("w"|"b"),
  *  flipped, setFlipped, sel, legal, lastMove, kingSq,
  *  onSquareClick(square), promo {from,to,color}|null, onPromote(piece), onCancelPromo,
- *  showToolbar (default true)
+ *  movableColor ("w"|"b"|"both"), showToolbar (default true)
  */
 export default function ChessBoardView({
   chess, pieces, theme, themeId, setTheme,
   orientation, flipped, setFlipped,
   sel, legal, lastMove, kingSq,
   onSquareClick, promo, onPromote, onCancelPromo,
-  showToolbar = true,
+  movableColor, showToolbar = true,
 }) {
+  const boardRef = useRef(null);
+  const [drag, setDrag] = useState(null); // {square, type, color, x, y, active}
+
   const ranks = (() => {
     const r = [8, 7, 6, 5, 4, 3, 2, 1];
     const f = [...FILES];
@@ -31,6 +34,39 @@ export default function ChessBoardView({
     let y = 8 - parseInt(square[1], 10);
     if (orientation === "b") { x = 7 - x; y = 7 - y; }
     return { x, y };
+  };
+  const squareFromPoint = (clientX, clientY) => {
+    const el = boardRef.current;
+    if (!el) return null;
+    const r = el.getBoundingClientRect();
+    const fx = Math.min(7, Math.max(0, Math.floor(((clientX - r.left) / r.width) * 8)));
+    const fy = Math.min(7, Math.max(0, Math.floor(((clientY - r.top) / r.height) * 8)));
+    return `${ranks.f[fx]}${ranks.r[fy]}`;
+  };
+
+  const onPointerDown = (e, square) => {
+    if (promo) return;
+    onSquareClick(square);
+    const pc = chess.get(square);
+    if (!pc || !movableColor || (movableColor !== "both" && pc.color !== movableColor)) return;
+    const rect = () => boardRef.current.getBoundingClientRect();
+    const r = rect();
+    setDrag({ square, type: pc.type, color: pc.color, x: e.clientX - r.left, y: e.clientY - r.top, active: false });
+    const move = (ev) => {
+      const rr = rect();
+      setDrag((d) => (d ? { ...d, x: ev.clientX - rr.left, y: ev.clientY - rr.top, active: true } : d));
+    };
+    const up = (ev) => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", up);
+      const target = squareFromPoint(ev.clientX, ev.clientY);
+      if (target && target !== square) onSquareClick(target);
+      setDrag(null);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", up);
   };
 
   return (
@@ -64,7 +100,7 @@ export default function ChessBoardView({
           boxShadow: "0 40px 90px -20px rgba(0,0,0,0.9), 0 0 70px -20px rgba(245,158,11,0.28), inset 0 2px 3px rgba(255,235,200,0.18), inset 0 -3px 6px rgba(0,0,0,0.5)",
         }}>
         <div className="rounded-[20px] p-[3px]" style={{ background: "linear-gradient(145deg, rgba(252,211,77,0.55), rgba(252,211,77,0.05) 35%, rgba(252,211,77,0.05) 65%, rgba(252,211,77,0.45))" }}>
-          <div className="relative aspect-square w-full rounded-[17px] overflow-hidden select-none" dir="ltr"
+          <div ref={boardRef} className="relative aspect-square w-full rounded-[17px] overflow-hidden select-none touch-none" dir="ltr"
             style={{ boxShadow: "inset 0 0 40px rgba(0,0,0,0.28)" }}>
             {/* squares */}
             <div className="absolute inset-0 grid grid-cols-8 grid-rows-8">
@@ -79,8 +115,8 @@ export default function ChessBoardView({
                 const showFile = rank === ranks.r[ranks.r.length - 1];
                 const showRank = file === ranks.f[0];
                 return (
-                  <button key={square} data-testid={`sq-${square}`} onClick={() => onSquareClick(square)}
-                    className="relative group"
+                  <button key={square} data-testid={`sq-${square}`} onPointerDown={(e) => onPointerDown(e, square)}
+                    className="relative"
                     style={{
                       background: isKingCheck
                         ? "radial-gradient(circle at 50% 45%, #f87171 25%, #dc2626 60%, #991b1b 100%)"
@@ -140,15 +176,17 @@ export default function ChessBoardView({
               {pieces.map((p) => {
                 const { x, y } = posOf(p.square);
                 const isLastMoved = lastMove && lastMove.to === p.square;
+                const isDragged = drag && drag.square === p.square && drag.active;
+                const isSelected = sel === p.square;
                 return (
                   <motion.div key={p.id} initial={false}
                     animate={{ left: `${x * 12.5}%`, top: `${y * 12.5}%` }}
                     transition={{ type: "spring", stiffness: 380, damping: 30 }}
                     className="absolute w-[12.5%] h-[12.5%] p-[0.8%]"
-                    style={{ zIndex: isLastMoved ? 20 : 10 }}>
+                    style={{ zIndex: isLastMoved ? 20 : 10, opacity: isDragged ? 0.3 : 1 }}>
                     <motion.img
                       initial={{ scale: 0.5, opacity: 0 }}
-                      animate={{ scale: 1, opacity: 1 }}
+                      animate={{ scale: isSelected ? 1.1 : 1, opacity: 1 }}
                       transition={{ type: "spring", stiffness: 500, damping: 24 }}
                       src={pieceSrc(p.type, p.color)}
                       alt="" draggable={false}
@@ -162,11 +200,20 @@ export default function ChessBoardView({
                 );
               })}
             </div>
+            {/* drag ghost */}
+            {drag && drag.active && (
+              <div className="absolute pointer-events-none z-30"
+                style={{ left: drag.x, top: drag.y, width: "13.5%", aspectRatio: "1", transform: "translate(-50%, -55%)" }}>
+                <img src={pieceSrc(drag.type, drag.color)} alt="" draggable={false}
+                  className="w-full h-full scale-110"
+                  style={{ filter: "drop-shadow(0 14px 16px rgba(0,0,0,0.6))" }} />
+              </div>
+            )}
             {/* promotion picker */}
             <AnimatePresence>
               {promo && (
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                  className="absolute inset-0 z-30 grid place-items-center bg-slate-950/70 backdrop-blur-[3px]">
+                  className="absolute inset-0 z-40 grid place-items-center bg-slate-950/70 backdrop-blur-[3px]">
                   <motion.div initial={{ scale: 0.8, y: 16 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, opacity: 0 }}
                     transition={{ type: "spring", stiffness: 320, damping: 24 }}
                     className="bg-slate-900/95 border border-amber-300/25 rounded-3xl p-5 sm:p-6 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.9)]">
