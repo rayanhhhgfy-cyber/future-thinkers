@@ -25,7 +25,7 @@ export default function News() {
         <Newspaper className="pointer-events-none absolute -top-10 right-[12%] hidden h-32 w-32 -rotate-12 text-white/[0.05] lg:block" />
         <div className="pointer-events-none absolute -top-24 right-1/4 h-72 w-72 rounded-full bg-emerald-400/20 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-28 left-1/3 h-72 w-72 rounded-full bg-sky-400/15 blur-3xl" />
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14 lg:py-16">
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14 lg:py-16 xl:max-w-[1440px] xl:py-20">
           <div className="flex items-center gap-3 animate-fade-up">
             <span className="grid h-12 w-12 place-items-center rounded-2xl border border-white/15 bg-white/10 backdrop-blur">
               <Newspaper className="h-6 w-6" />
@@ -50,7 +50,7 @@ export default function News() {
         <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-l from-transparent via-white/30 to-transparent" />
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-10">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-10 xl:max-w-[1440px] xl:py-12">
         {!data ? (
           <div className="space-y-5">
             <Skeleton className="h-[26rem] rounded-[1.4rem] sm:rounded-3xl lg:h-[30rem]" />
@@ -84,7 +84,7 @@ export default function News() {
                 <>
                   {/* ===== Featured · cinematic ===== */}
                   {featured && (
-                    <article className="group relative mb-5 flex min-h-[26rem] items-end overflow-hidden rounded-[1.4rem] bg-slate-950 ft-shadow-lg animate-fade-up sm:mb-6 sm:min-h-[30rem] lg:min-h-[34rem] sm:rounded-3xl">
+                    <article className="group relative mb-5 flex min-h-[26rem] items-end overflow-hidden rounded-[1.4rem] bg-slate-950 ft-shadow-lg animate-fade-up sm:mb-6 sm:min-h-[30rem] lg:min-h-[34rem] 2xl:min-h-[38rem] sm:rounded-3xl">
                       <div className="absolute inset-0 bg-gradient-to-br from-blue-800 via-cyan-700 to-emerald-700" />
                       {featured.cover_url && <img src={fileUrl(featured.cover_url)} alt="" className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-105" />}
                       <div className="absolute inset-0 bg-gradient-to-t from-slate-950/95 via-slate-950/45 to-slate-950/10" />
@@ -93,8 +93,8 @@ export default function News() {
                         <span className="rounded-full bg-white/15 px-3 py-1.5 text-xs font-bold text-white ring-1 ring-white/25 backdrop-blur">{featured.category}</span>
                         <span className="inline-flex items-center gap-1 rounded-full bg-amber-400/90 px-3 py-1.5 text-xs font-extrabold text-slate-950 shadow-lg"><Sparkles className="h-3.5 w-3.5" /> خبر مميز</span>
                       </div>
-                      <div className="relative w-full p-5 sm:p-8 lg:p-10">
-                        <h3 className="font-head max-w-4xl text-3xl font-extrabold leading-snug text-white line-clamp-3 sm:text-4xl lg:text-[2.75rem]">{featured.title}</h3>
+                      <div className="relative w-full p-5 sm:p-8 lg:p-10 xl:p-12">
+                        <h3 className="font-head max-w-4xl text-3xl font-extrabold leading-snug text-white line-clamp-3 sm:text-4xl lg:text-[2.75rem] xl:text-5xl">{featured.title}</h3>
                         <p className={`mt-3 max-w-3xl text-sm leading-loose text-white/80 sm:text-base ${expanded === featured.id ? "" : "line-clamp-2"}`}>{featured.body}</p>
                         <div className="mt-5 flex flex-wrap items-center gap-2 sm:gap-3">
                           <span className="inline-flex items-center gap-2 rounded-full bg-white/12 py-1 pl-4 pr-1 text-xs font-bold text-white ring-1 ring-white/20 backdrop-blur sm:text-sm">
@@ -120,7 +120,7 @@ export default function News() {
                     <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:gap-6">
                       {rest.map((n, i) => (
                         <article key={n.id} className={`group flex h-full flex-col overflow-hidden bg-white rounded-[1.4rem] sm:rounded-3xl border border-slate-100 ft-shadow hover-lift animate-fade-up d-${((i + 1) % 6) + 1}`}>
-                          <div className="relative h-44 shrink-0 overflow-hidden bg-gradient-to-br from-blue-700 via-cyan-600 to-emerald-600 sm:h-48">
+                          <div className="relative h-44 shrink-0 overflow-hidden bg-gradient-to-br from-blue-700 via-cyan-600 to-emerald-600 sm:h-48 lg:h-52">
                             {n.cover_url && <img src={fileUrl(n.cover_url)} alt="" className="h-full w-full object-cover transition duration-500 group-hover:scale-110" />}
                             <div className="absolute inset-0 bg-gradient-to-t from-slate-950/55 via-transparent to-transparent" />
                             <Newspaper className="absolute -bottom-7 left-3 h-28 w-28 rotate-12 text-white/15" />

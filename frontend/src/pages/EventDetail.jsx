@@ -5,7 +5,7 @@ import api, { fileUrl, apiErr } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Calendar, MapPin, Users, Globe, ArrowRight, Building2, QrCode, CheckCircle2, CalendarDays, Wifi, Clock } from "lucide-react";
+import { Calendar, MapPin, Users, Globe, ArrowRight, Building2, QrCode, CheckCircle2, CalendarDays, Wifi, Clock, CalendarPlus } from "lucide-react";
 
 const MONTHS = ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"];
 
@@ -31,6 +31,53 @@ export default function EventDetail() {
       const a = document.createElement("a"); a.href = url; a.download = `event-${id}.pdf`; a.click();
       URL.revokeObjectURL(url);
     } catch (err) { toast.error(apiErr(err)); }
+  };
+
+  /* Build an .ics calendar file client-side from the event date/time and
+     download it · defaults to 10:00 +03 (Asia/Amman) for two hours when the
+     event has no parseable time. */
+  const addToCalendar = () => {
+    const esc = (s) => String(s ?? "").replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\r?\n/g, "\\n");
+    const d = String(e.date || "").replace(/[^0-9]/g, "").slice(0, 8);
+    const tm = String(e.time || "").match(/(\d{1,2})[:.](\d{2})/);
+    let hh = 10, mm = 0;
+    if (tm) { hh = Math.min(23, Number(tm[1])); mm = Math.min(59, Number(tm[2])); }
+    const p2 = (n) => String(n).padStart(2, "0");
+    const start = `${d}T${p2(hh)}${p2(mm)}00`;
+    const end = `${d}T${p2((hh + 2) % 24)}${p2(mm)}00`;
+    const stamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+    const loc = e.mode === "online" ? "عن بُعد (أونلاين)" : (e.location || "");
+    const ics = [
+      "BEGIN:VCALENDAR",
+      "VERSION:2.0",
+      "PRODID:-//FutureThinkers//Events//AR",
+      "CALSCALE:GREGORIAN",
+      "METHOD:PUBLISH",
+      "BEGIN:VTIMEZONE",
+      "TZID:Asia/Amman",
+      "BEGIN:STANDARD",
+      "DTSTART:19700101T000000",
+      "TZOFFSETFROM:+0300",
+      "TZOFFSETTO:+0300",
+      "TZNAME:EET",
+      "END:STANDARD",
+      "END:VTIMEZONE",
+      "BEGIN:VEVENT",
+      `UID:event-${e.id}@future-thinkers`,
+      `DTSTAMP:${stamp}`,
+      `DTSTART;TZID=Asia/Amman:${start}`,
+      `DTEND;TZID=Asia/Amman:${end}`,
+      `SUMMARY:${esc(e.title)}`,
+      `DESCRIPTION:${esc(e.description)}`,
+      `LOCATION:${esc(loc)}`,
+      "END:VEVENT",
+      "END:VCALENDAR",
+    ].join("\r\n");
+    const blob = new Blob([ics], { type: "text/calendar;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a"); a.href = url; a.download = `event-${e.id}.ics`; a.click();
+    URL.revokeObjectURL(url);
+    toast.success("تم تنزيل ملف التقويم · افتحه لإضافة الفعالية");
   };
 
   if (!e) return <Layout><PageLoader /></Layout>;
@@ -62,7 +109,7 @@ export default function EventDetail() {
           </div>
         )}
 
-        <div className="relative z-10 mx-auto flex min-h-[21rem] w-full max-w-6xl flex-col justify-end px-4 pb-7 pt-28 sm:min-h-[26rem] sm:px-6 sm:pb-9 lg:min-h-[29rem] lg:px-8 lg:pb-11">
+        <div className="relative z-10 mx-auto flex min-h-[21rem] w-full max-w-6xl flex-col justify-end px-4 pb-7 pt-28 sm:min-h-[26rem] sm:px-6 sm:pb-9 lg:min-h-[29rem] lg:px-8 lg:pb-11 xl:max-w-[1440px]">
           <div className="flex flex-wrap items-center gap-2 animate-fade-up">
             <span className="inline-flex min-h-[2.25rem] items-center rounded-full border border-white/40 bg-white/90 px-3 py-1 text-xs font-bold text-blue-700 shadow backdrop-blur">{e.scope === "national" ? "وطنية" : e.scope === "directorate" ? "مديرية" : "مدرسة"}</span>
             <span className="inline-flex min-h-[2.25rem] items-center gap-1.5 rounded-full bg-slate-950/50 px-3 py-1 text-xs font-bold text-white backdrop-blur-md">
@@ -74,7 +121,7 @@ export default function EventDetail() {
               {e.date} {e.time}
             </span>
           </div>
-          <h1 className="font-head mt-4 max-w-3xl text-3xl font-extrabold leading-[1.2] animate-fade-up d-1 sm:text-4xl sm:leading-[1.2] lg:text-[3.4rem]">{e.title}</h1>
+          <h1 className="font-head mt-4 max-w-3xl text-3xl font-extrabold leading-[1.2] animate-fade-up d-1 sm:text-4xl sm:leading-[1.2] lg:text-[3.4rem] xl:max-w-4xl 2xl:text-6xl">{e.title}</h1>
           <p className="mt-3.5 flex items-center gap-2 font-semibold text-slate-200 animate-fade-up d-2">
             <Building2 className="h-5 w-5 shrink-0 ft-text-accent-bright" />
             <span>تنظيم: {e.organizer}</span>
@@ -82,10 +129,10 @@ export default function EventDetail() {
         </div>
       </div>
 
-      <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10">
-        {/* capacity + CTA (sticky action bar on mobile) */}
-        <div className="sticky bottom-3 z-30 rounded-[1.4rem] border border-slate-100 bg-white/95 p-4 ft-shadow-lg backdrop-blur-xl animate-fade-up sm:p-6 lg:static">
-          <div className="flex flex-col gap-4 sm:gap-5 lg:flex-row lg:items-center">
+      <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8 lg:grid lg:grid-cols-[minmax(0,1fr)_370px] lg:items-start lg:gap-8 lg:px-8 lg:py-10 xl:max-w-[1440px] xl:gap-10">
+        {/* capacity + CTA (sticky action bar on mobile · registration rail on desktop) */}
+        <div className="sticky bottom-3 z-30 rounded-[1.4rem] border border-slate-100 bg-white/95 p-4 ft-shadow-lg backdrop-blur-xl animate-fade-up sm:p-6 lg:col-start-2 lg:row-start-1 lg:bottom-auto lg:top-24">
+          <div className="flex flex-col gap-4 sm:gap-5">
             <div className="min-w-0 flex-1">
               <div className="flex items-center justify-between gap-3 text-xs font-bold text-slate-500 sm:text-sm">
                 <span className="flex items-center gap-1.5"><Users className="h-4 w-4 text-blue-600" />{e.registered_count} / {e.capacity}</span>
@@ -97,16 +144,44 @@ export default function EventDetail() {
               <div className="mt-2 hidden text-[11px] font-semibold text-slate-400 sm:block">نسبة المقاعد المحجوزة حتى الآن</div>
             </div>
             {e.is_registered ? (
-              <Button data-testid="unregister-event-btn" onClick={unregister} variant="outline" className="pressable h-12 w-full shrink-0 rounded-2xl px-7 text-base font-bold lg:w-auto">إلغاء التسجيل</Button>
+              <Button data-testid="unregister-event-btn" onClick={unregister} variant="outline" className="pressable h-12 w-full shrink-0 rounded-2xl px-7 text-base font-bold">إلغاء التسجيل</Button>
             ) : (
-              <Button data-testid="register-event-btn" onClick={register} className="pressable h-12 w-full shrink-0 rounded-2xl ft-btn-primary px-8 text-base font-bold shadow-lg lg:w-auto">سجّل الآن</Button>
+              <Button data-testid="register-event-btn" onClick={register} className="pressable h-12 w-full shrink-0 rounded-2xl ft-btn-primary px-8 text-base font-bold shadow-lg">سجّل الآن</Button>
             )}
+            <button
+              data-testid="add-to-calendar-btn"
+              onClick={addToCalendar}
+              className="pressable flex h-11 w-full shrink-0 items-center justify-center gap-2 rounded-2xl border border-blue-200/80 bg-blue-50/70 text-sm font-bold text-blue-700 transition hover:bg-blue-100"
+            >
+              <CalendarPlus className="h-4 w-4" /> أضف إلى التقويم
+            </button>
           </div>
         </div>
 
-        <p className="mt-7 whitespace-pre-wrap leading-loose text-slate-700 animate-fade-up d-1 sm:mt-9 sm:text-lg">{e.description}</p>
+        {/* quick details rail (desktop only) */}
+        <div className="hidden lg:col-start-2 lg:mt-5 lg:block">
+          <div className="rounded-[1.4rem] border border-slate-100 bg-white p-5 ft-shadow animate-fade-up d-1">
+            <div className="font-head text-sm font-extrabold text-slate-900">تفاصيل سريعة</div>
+            <div className="mt-4 space-y-3.5 text-sm">
+              <div className="flex items-center gap-3">
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-blue-50 text-blue-600"><Calendar className="h-4 w-4" /></span>
+                <span className="font-semibold text-slate-600">{e.date} {e.time}</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl ft-bg-soft ft-text-accent">{e.mode === "online" ? <Globe className="h-4 w-4" /> : <MapPin className="h-4 w-4" />}</span>
+                <span className="font-semibold text-slate-600">{e.mode === "online" ? "عن بُعد (أونلاين)" : e.location || "حضوري"}</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-amber-50 text-amber-600"><Users className="h-4 w-4" /></span>
+                <span className="font-semibold text-slate-600">{Math.max(0, capacity - registered)} مقعد متبقٍ من {capacity}</span>
+              </div>
+            </div>
+          </div>
+        </div>
 
-        <div className="mt-7 grid grid-cols-2 gap-3 animate-fade-up d-2 sm:gap-4 lg:grid-cols-4">
+        <p className="mt-7 whitespace-pre-wrap leading-loose text-slate-700 animate-fade-up d-1 sm:mt-9 sm:text-lg lg:col-start-1 lg:row-start-1 lg:mt-1 lg:text-xl lg:leading-loose">{e.description}</p>
+
+        <div className="mt-7 grid grid-cols-2 gap-3 animate-fade-up d-2 sm:gap-4 lg:col-start-1 lg:grid-cols-2 2xl:grid-cols-4">
           <Info icon={Calendar} label="التاريخ والوقت" value={`${e.date} ${e.time}`} />
           <Info icon={e.mode === "online" ? Globe : MapPin} label="المكان" value={e.mode === "online" ? "عن بُعد (أونلاين)" : e.location || "حضوري"} />
           <Info icon={Users} label="المقاعد" value={`${e.registered_count} / ${e.capacity}`} />
@@ -114,7 +189,7 @@ export default function EventDetail() {
         </div>
 
         {e.is_registered && e.qr_code && (
-          <div className="mt-6 overflow-hidden rounded-[1.4rem] border border-emerald-200/80 bg-gradient-to-l from-emerald-50 via-teal-50/60 to-blue-50 ft-shadow animate-fade-up d-3 sm:rounded-3xl sm:p-1.5">
+          <div className="mt-6 overflow-hidden rounded-[1.4rem] border border-emerald-200/80 bg-gradient-to-l from-emerald-50 via-teal-50/60 to-blue-50 ft-shadow animate-fade-up d-3 sm:rounded-3xl sm:p-1.5 lg:col-start-1">
             <div className="flex flex-col gap-5 p-5 sm:flex-row sm:items-center sm:p-6">
               <div className="grid h-28 w-28 shrink-0 place-items-center rounded-[1.4rem] bg-white ft-shadow ring-1 ring-emerald-100">
                 <QrCode className="h-16 w-16 text-slate-800" />

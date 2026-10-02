@@ -61,12 +61,12 @@ export default function Calendar() {
 
   return (
     <Layout>
-      <div className="max-w-6xl mx-auto px-4 py-8">
-        <div className="animate-fade-up relative overflow-hidden rounded-[2rem] ft-hero-gradient grain px-6 py-8 sm:px-10 mb-8">
+      <div className="max-w-6xl mx-auto px-4 py-8 xl:max-w-[1440px] xl:py-10">
+        <div className="animate-fade-up relative overflow-hidden rounded-[2rem] ft-hero-gradient grain px-6 py-8 sm:px-10 xl:px-12 xl:py-10 mb-8">
           <div className="pointer-events-none absolute -top-24 -left-16 w-72 h-72 rounded-full bg-emerald-400/25 blur-3xl" />
           <div className="pointer-events-none absolute -bottom-32 right-8 w-80 h-80 rounded-full bg-sky-400/20 blur-3xl" />
           <span className="relative inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/15 ring-1 ring-white/25 backdrop-blur text-white text-xs font-bold"><CalendarDays className="w-3.5 h-3.5" /> كل مواعيد النادي</span>
-          <h1 className="relative font-head text-3xl sm:text-5xl font-extrabold text-white mt-4 leading-tight">تقويم الفعاليات والمسابقات</h1>
+          <h1 className="relative font-head text-3xl sm:text-5xl xl:text-6xl font-extrabold text-white mt-4 leading-tight">تقويم الفعاليات والمسابقات</h1>
           <p className="relative text-white/75 text-sm sm:text-base mt-2 max-w-xl">اضغط أي يوم لعرض فعالياته، وفعّل التذكير لتصلك رسالة قبلها بيوم.</p>
           {events !== null && (
             <div className="relative mt-5 flex flex-wrap gap-2 animate-fade-up">
@@ -80,8 +80,8 @@ export default function Calendar() {
         </div>
 
         {events === null ? <PageLoader /> : (
-          <div className="grid lg:grid-cols-[1fr_330px] gap-6 items-start">
-            <div className="bg-white rounded-[1.8rem] sm:rounded-[2rem] border border-slate-100 ft-shadow-lg p-4 sm:p-6 animate-fade-up">
+          <div className="grid lg:grid-cols-[1fr_330px] xl:grid-cols-[minmax(0,1fr)_380px] gap-6 xl:gap-8 items-start">
+            <div className="bg-white rounded-[1.8rem] sm:rounded-[2rem] border border-slate-100 ft-shadow-lg p-4 sm:p-6 xl:p-8 animate-fade-up">
               <div className="flex items-center justify-between gap-2 mb-5">
                 <button onClick={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1))} className="pressable w-10 h-10 sm:w-11 sm:h-11 grid place-items-center rounded-full bg-slate-900 text-white shadow-lg shadow-slate-900/20 hover:bg-slate-700 transition"><ChevronRight className="w-5 h-5" /></button>
                 <div className="text-center">
@@ -103,10 +103,13 @@ export default function Calendar() {
                   const first = items[0];
                   return (
                     <button key={i} onClick={() => setSelected(k)}
-                      className={`pressable relative rounded-xl sm:rounded-2xl min-h-[46px] sm:min-h-[68px] lg:min-h-[78px] px-1 py-1.5 text-sm font-bold transition flex flex-col items-center justify-start gap-1 ${isSel ? "ft-navy-gradient text-white shadow-lg shadow-slate-900/25 ring-2 ring-slate-900/10" : isToday ? "bg-emerald-50 text-emerald-700 ring-2 ring-emerald-400" : "text-slate-600 ring-1 ring-slate-100 hover:bg-slate-50 ft-hover-ring-accent"}`}>
+                      className={`pressable relative rounded-xl sm:rounded-2xl min-h-[46px] sm:min-h-[68px] lg:min-h-[84px] xl:min-h-[98px] 2xl:min-h-[110px] px-1 py-1.5 text-sm font-bold transition flex flex-col items-center justify-start gap-1 ${isSel ? "ft-navy-gradient text-white shadow-lg shadow-slate-900/25 ring-2 ring-slate-900/10" : isToday ? "bg-emerald-50 text-emerald-700 ring-2 ring-emerald-400" : "text-slate-600 ring-1 ring-slate-100 hover:bg-slate-50 ft-hover-ring-accent"}`}>
                       <span className={`leading-none ${isToday && !isSel ? "relative after:absolute after:-bottom-1.5 after:left-1/2 after:-translate-x-1/2 after:w-1 after:h-1 after:rounded-full after:bg-emerald-500" : ""}`}>{d.getDate()}</span>
                       {first && (
                         <span className={`hidden sm:block max-w-full truncate text-[9px] leading-tight font-bold px-1.5 py-0.5 rounded-md ${isSel ? "bg-white/20 text-white" : first._kind === "comp" ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"}`}>{first.title}</span>
+                      )}
+                      {items[1] && (
+                        <span className={`hidden xl:block max-w-full truncate text-[9px] leading-tight font-bold px-1.5 py-0.5 rounded-md ${isSel ? "bg-white/15 text-white" : items[1]._kind === "comp" ? "bg-amber-100/80 text-amber-700" : "bg-emerald-100/80 text-emerald-700"}`}>{items[1].title}</span>
                       )}
                       {items.length > 0 && (
                         <span className="flex gap-0.5 mt-auto sm:mt-0">

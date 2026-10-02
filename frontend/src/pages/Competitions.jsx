@@ -43,14 +43,14 @@ export default function Competitions() {
         <Crown className="pointer-events-none absolute -top-10 right-6 h-44 w-44 -rotate-12 text-amber-300/10" />
         <div className="pointer-events-none absolute -top-24 right-1/4 h-72 w-72 rounded-full bg-amber-400/15 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-28 left-1/3 h-72 w-72 rounded-full bg-emerald-400/15 blur-3xl" />
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14 lg:py-16">
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14 lg:py-16 xl:max-w-[1440px] xl:py-20">
           <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-3.5 py-1.5 text-xs font-bold backdrop-blur">
             <Sparkles className="h-3.5 w-3.5 text-amber-300" /> مسابقات النادي · تحدَّ نفسك واجمع الخبرة
           </span>
           <div className="mt-5 grid h-14 w-14 place-items-center rounded-[1.1rem] border border-white/15 bg-white/10 shadow-2xl backdrop-blur">
             <Trophy className="h-7 w-7 text-amber-300" />
           </div>
-          <h1 className="font-head mt-4 text-4xl sm:text-5xl lg:text-6xl font-extrabold leading-tight">المسابقات</h1>
+          <h1 className="font-head mt-4 text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-extrabold leading-tight">المسابقات</h1>
           <p className="text-emerald-50/80 mt-3 max-w-2xl leading-relaxed sm:text-lg">اختبارات معرفية وعلمية وبرمجية وأدبية مع نقاط خبرة وشهادات وترتيب.</p>
           {data && (
             <div className="mt-6 flex flex-wrap gap-2.5">
@@ -62,14 +62,15 @@ export default function Competitions() {
         <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-l from-transparent via-amber-300/40 to-transparent" />
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-10">
-        <div className="sticky top-[calc(4rem+env(safe-area-inset-top))] z-30 mb-6 flex gap-2 overflow-x-auto rounded-[1.4rem] border border-white/60 bg-white/85 p-2 shadow-xl shadow-slate-900/[0.04] ring-1 ring-slate-200/60 backdrop-blur-xl [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:flex-wrap sm:overflow-visible">
-          <button data-testid="competition-type-all" onClick={() => setType("")} className={`pressable flex min-h-[44px] shrink-0 items-center rounded-full px-4 py-2 text-sm font-bold transition-all ${!type ? "bg-slate-900 text-white shadow-lg shadow-slate-900/20" : "bg-slate-100/80 text-slate-600 hover:bg-slate-200"}`}>الكل</button>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-10 xl:max-w-[1440px] xl:grid xl:grid-cols-[250px_minmax(0,1fr)] xl:items-start xl:gap-8">
+        <div className="sticky top-[calc(4rem+env(safe-area-inset-top))] z-30 mb-6 flex gap-2 overflow-x-auto rounded-[1.4rem] border border-white/60 bg-white/85 p-2 shadow-xl shadow-slate-900/[0.04] ring-1 ring-slate-200/60 backdrop-blur-xl [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:flex-wrap sm:overflow-visible xl:top-24 xl:mb-0 xl:flex-col xl:flex-nowrap xl:gap-2.5 xl:rounded-3xl xl:p-3">
+          <span className="hidden px-2 pb-0.5 pt-1 text-xs font-extrabold text-slate-400 xl:block">تصنيف المسابقات</span>
+          <button data-testid="competition-type-all" onClick={() => setType("")} className={`pressable flex min-h-[44px] shrink-0 items-center rounded-full px-4 py-2 text-sm font-bold transition-all xl:w-full ${!type ? "bg-slate-900 text-white shadow-lg shadow-slate-900/20" : "bg-slate-100/80 text-slate-600 hover:bg-slate-200"}`}>الكل</button>
           {Object.entries(TYPE_META).map(([k, m]) => {
             const Icon = m.icon;
             const active = type === k;
             return (
-              <button key={k} data-testid={`competition-type-${k}`} onClick={() => setType(k)} className={`pressable flex min-h-[44px] shrink-0 items-center gap-2 rounded-full px-4 py-2 text-sm font-bold transition-all ${active ? "text-white" : "bg-slate-100/80 text-slate-600 hover:bg-slate-200"}`} style={active ? { background: `linear-gradient(135deg, ${m.color}, ${m.color}CC)`, boxShadow: `0 12px 22px -10px ${m.color}` } : {}}>
+              <button key={k} data-testid={`competition-type-${k}`} onClick={() => setType(k)} className={`pressable flex min-h-[44px] shrink-0 items-center gap-2 rounded-full px-4 py-2 text-sm font-bold transition-all xl:w-full ${active ? "text-white" : "bg-slate-100/80 text-slate-600 hover:bg-slate-200"}`} style={active ? { background: `linear-gradient(135deg, ${m.color}, ${m.color}CC)`, boxShadow: `0 12px 22px -10px ${m.color}` } : {}}>
                 <Icon className="h-4 w-4" style={!active ? { color: m.color } : {}} />
                 {m.label}
               </button>
@@ -77,10 +78,10 @@ export default function Competitions() {
           })}
         </div>
 
-        {!data ? <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">{Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-64 rounded-[1.4rem] sm:rounded-3xl" />)}</div>
+        {!data ? <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4">{Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-64 rounded-[1.4rem] sm:rounded-3xl" />)}</div>
           : data.items.length === 0 ? <EmptyState icon={Trophy} title="لا مسابقات حالياً" desc="ستُعلن المسابقات القادمة قريباً" />
           : (
-            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 xl:gap-6">
+            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 xl:gap-6">
               {data.items.map((c, i) => {
                 const m = TYPE_META[c.type] || TYPE_META.quiz;
                 const Icon = m.icon;

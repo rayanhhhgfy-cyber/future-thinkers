@@ -64,7 +64,8 @@ export default function CompetitionDetail() {
 
   return (
     <Layout>
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-10">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-10 xl:max-w-[1440px] xl:grid xl:grid-cols-[minmax(0,48rem)_minmax(300px,360px)] xl:items-start xl:justify-center xl:gap-10">
+        <div className="min-w-0">
         <button onClick={() => nav(-1)} className="pressable mb-5 inline-flex min-h-[44px] items-center gap-1.5 rounded-full bg-white px-4 py-2 text-sm font-bold text-slate-500 shadow-sm ring-1 ring-slate-200/70 transition-colors hover:text-slate-900"><ArrowRight className="w-4 h-4" /> رجوع</button>
 
         <section className="overflow-hidden bg-white rounded-[1.4rem] sm:rounded-3xl border border-slate-100 ft-shadow animate-fade-up">
@@ -170,7 +171,9 @@ export default function CompetitionDetail() {
           </div>
         )}
 
-        <section className="mt-8 sm:mt-10">
+        </div>
+
+        <section className="mt-8 sm:mt-10 xl:sticky xl:top-24 xl:mt-0">
           <h2 className="font-head font-extrabold text-xl mb-4 flex items-center gap-2 text-slate-900"><Trophy className="w-5 h-5 text-amber-500" /> ترتيب المتسابقين</h2>
           {board.length === 0 ? <p className="rounded-[1.4rem] border border-dashed border-slate-200 bg-white/70 px-5 py-6 text-center text-slate-400 text-sm">لا نتائج بعد</p> : (
             <div className="bg-white rounded-[1.4rem] sm:rounded-3xl border border-slate-100 ft-shadow overflow-hidden">

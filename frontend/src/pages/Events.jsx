@@ -21,7 +21,7 @@ export default function Events() {
         <CalendarDays className="pointer-events-none absolute -bottom-14 -left-12 h-72 w-72 rotate-12 text-white/10 sm:h-96 sm:w-96" />
         <CalendarDays className="pointer-events-none absolute -top-10 right-[12%] hidden h-40 w-40 -rotate-12 text-white/[0.06] lg:block" />
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/20 to-transparent" />
-        <div className="relative mx-auto max-w-6xl px-4 pb-12 pt-10 sm:px-6 sm:pb-16 sm:pt-14 lg:px-8 lg:pb-20 lg:pt-16">
+        <div className="relative mx-auto max-w-6xl px-4 pb-12 pt-10 sm:px-6 sm:pb-16 sm:pt-14 lg:px-8 lg:pb-20 lg:pt-16 xl:max-w-[1440px] xl:pb-24 xl:pt-20">
           <div className="animate-fade-up">
             <span className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3.5 py-1.5 text-xs font-bold text-emerald-50 backdrop-blur">
               <CalendarDays className="h-3.5 w-3.5" />
@@ -33,7 +33,7 @@ export default function Events() {
               <Calendar className="h-7 w-7 sm:h-8 sm:w-8" />
             </div>
             <div className="min-w-0">
-              <h1 className="font-head text-4xl font-extrabold leading-[1.15] sm:text-5xl lg:text-6xl">الفعاليات</h1>
+              <h1 className="font-head text-4xl font-extrabold leading-[1.15] sm:text-5xl lg:text-6xl xl:text-7xl">الفعاليات</h1>
               <p className="mt-3 max-w-2xl leading-relaxed text-emerald-50/85 sm:text-lg">فعاليات وطنية وعلى مستوى المديريات والمدارس، حضورية وعن بُعد.</p>
             </div>
           </div>
@@ -52,7 +52,7 @@ export default function Events() {
         </div>
       </div>
 
-      <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10">
+      <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10 xl:max-w-[1440px] xl:py-12">
         <div className="sticky top-[calc(4rem+env(safe-area-inset-top))] z-30 mb-6">
           <div className="flex gap-2 overflow-x-auto rounded-[1.75rem] border border-slate-200/70 bg-white/85 p-2 ft-shadow-lg backdrop-blur-xl [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:flex-wrap sm:overflow-visible sm:rounded-full">
             {[["", "الكل"], ["national", "وطنية"], ["directorate", "مديرية"], ["school", "مدرسة"]].map(([v, l]) => (
@@ -73,8 +73,8 @@ export default function Events() {
                 const registered = Number(e.registered_count) || 0;
                 const capacityPct = capacity > 0 ? Math.min(100, Math.max(0, (registered / capacity) * 100)) : 0;
                 return (
-                  <Link key={e.id} to={`/events/${e.id}`} data-testid={`event-${e.id}`} className={`group flex h-full flex-col overflow-hidden bg-white rounded-[1.4rem] sm:rounded-3xl border border-slate-100 ft-shadow hover-lift animate-fade-up d-${(i % 6) + 1}`}>
-                    <div className="relative h-44 shrink-0 overflow-hidden bg-gradient-to-br from-blue-600 via-cyan-600 to-emerald-600 sm:h-48">
+                  <Link key={e.id} to={`/events/${e.id}`} data-testid={`event-${e.id}`} className={`group flex h-full flex-col overflow-hidden bg-white rounded-[1.4rem] sm:rounded-3xl border border-slate-100 ft-shadow hover-lift animate-fade-up d-${(i % 6) + 1} ${i === 0 ? "lg:col-span-2 lg:flex-row" : ""}`}>
+                    <div className={`relative h-44 shrink-0 overflow-hidden bg-gradient-to-br from-blue-600 via-cyan-600 to-emerald-600 sm:h-48 ${i === 0 ? "lg:h-auto lg:min-h-[19rem] lg:w-[48%]" : ""}`}>
                       {e.cover_url && <img src={fileUrl(e.cover_url)} alt="" className="h-full w-full object-cover transition duration-700 ease-out group-hover:scale-110" />}
                       <div className="absolute inset-0 bg-gradient-to-t from-slate-950/75 via-slate-950/15 to-slate-950/5" />
                       <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-l from-blue-400 via-cyan-400 to-emerald-400 opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
@@ -91,9 +91,9 @@ export default function Events() {
                         </div>
                       )}
                     </div>
-                    <div className="flex flex-1 flex-col p-5">
-                      <h3 className="font-head text-lg font-extrabold leading-snug text-slate-900 line-clamp-2 transition-colors group-hover:text-blue-700">{e.title}</h3>
-                      <p className="mt-2 text-sm leading-relaxed text-slate-500 line-clamp-3">{e.description}</p>
+                    <div className={`flex flex-1 flex-col p-5 ${i === 0 ? "lg:justify-center lg:p-8" : ""}`}>
+                      <h3 className={`font-head text-lg font-extrabold leading-snug text-slate-900 line-clamp-2 transition-colors group-hover:text-blue-700 ${i === 0 ? "lg:text-2xl" : ""}`}>{e.title}</h3>
+                      <p className={`mt-2 text-sm leading-relaxed text-slate-500 line-clamp-3 ${i === 0 ? "lg:line-clamp-4 lg:text-[15px]" : ""}`}>{e.description}</p>
                       <div className="mt-4 space-y-2.5 text-xs text-slate-500 sm:text-[13px]">
                         <div className="flex items-center gap-2.5">
                           <span className="grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-blue-50 text-blue-600"><Calendar className="h-4 w-4" /></span>
