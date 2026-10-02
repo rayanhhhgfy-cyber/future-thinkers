@@ -44,8 +44,12 @@ async def student_leaderboard(scope: str = "national", scope_id: str | None = No
     if period != "all":
         xp_map = await _period_xp_map(period)
         users = await db.users.find(query).to_list(5000)
-        ranked = sorted(users, key=lambda u: xp_map.get(str(u["_id"]), 0), reverse=True)[:limit]
-        return [_row(u, i, xp_map.get(str(u["_id"]), 0)) for i, u in enumerate(ranked)]
+        # only people who actually earned points in this period belong on a
+        # period board — otherwise it is just the all-time board with zeros
+        ranked = sorted(
+            (u for u in users if xp_map.get(str(u["_id"]), 0) > 0),
+            key=lambda u: xp_map[str(u["_id"])], reverse=True)[:limit]
+        return [_row(u, i, xp_map[str(u["_id"])]) for i, u in enumerate(ranked)]
 
     docs = await db.users.find(query).sort("xp", -1).limit(limit).to_list(limit)
     return [_row(u, i, u.get("xp", 0)) for i, u in enumerate(docs)]
@@ -83,6 +87,35 @@ async def directorates_leaderboard(limit: int = 50):
 @router.get("/leaderboard/governorates")
 async def governorates_leaderboard(limit: int = 20):
     return await _group_leaderboard("governorate_id", "governorate_name", limit)
+
+
+@router.get("/leaderboard/my-standing")
+async def my_standing(user: dict = Depends(get_current_user)):
+    """The signed-in user's own numbers for the leaderboard page — shown for
+    every role, even though the public students board lists students only."""
+    xp = user.get("xp", 0)
+    stats = user.get("stats", {})
+    out = {
+        "xp": xp, "level": user.get("level", 1),
+        "level_title": user.get("level_title", "قارئ مبتدئ"),
+        "streak": user.get("streak", 0), "role": user.get("role"),
+        "rank_all": await db.users.count_documents({"xp": {"$gt": xp}}) + 1,
+        "total_all": await db.users.count_documents({}),
+        "chess_rating": user.get("chess_rating", 1200),
+        "chess_games": stats.get("chess_games", 0),
+        "chess_wins": stats.get("chess_wins", 0),
+        "pages_read": stats.get("pages_read", 0),
+        "books_read": stats.get("books_read", 0),
+    }
+    if user.get("role") == "student":
+        out["rank_students"] = await db.users.count_documents(
+            {"role": "student", "xp": {"$gt": xp}}) + 1
+        out["total_students"] = await db.users.count_documents({"role": "student"})
+    if out["chess_games"] > 0:
+        out["chess_rank"] = await db.users.count_documents(
+            {"stats.chess_games": {"$gt": 0},
+             "chess_rating": {"$gt": user.get("chess_rating", 1200)}}) + 1
+    return out
 
 
 # ---------------- Gamification ----------------
@@ -143,7 +176,9 @@ async def points_history(user: dict = Depends(get_current_user), page: int = 1, 
 @router.get("/leaderboard/chess")
 async def chess_top(limit: int = 20):
     limit = max(1, min(limit, 100))
-    query = {"$or": [{"chess_rating": {"$gt": 0}}, {"stats.chess_games": {"$gt": 0}}]}
+    # only real players: accounts that never finished a game sit at the
+    # default 1200 and made the board look frozen
+    query = {"stats.chess_games": {"$gt": 0}}
     docs = await db.users.find(query).sort("chess_rating", -1).limit(limit).to_list(limit)
     items = [{"user_id": str(u["_id"]), "name": u["name"], "avatar": u.get("avatar_url"),
               "chess_rating": u.get("chess_rating", 1200),
