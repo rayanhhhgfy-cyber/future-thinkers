@@ -13,11 +13,13 @@ import NotifyPanel from "@/components/admin/NotifyPanel";
 import UsersPanel from "@/components/admin/UsersPanel";
 import ClubsPanel from "@/components/admin/ClubsPanel";
 import { toast } from "sonner";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
-import { LayoutDashboard, ShieldCheck, Users, BookOpen, Calendar, Trophy, Newspaper, Settings, ScrollText, Plus, Check, X, Megaphone, PenLine, Medal, Award, Upload, Trash2, Search, MessageSquare, MessagesSquare, Activity, Smartphone, UserPlus, FileCheck, Rocket, Zap, ArrowLeft, Star, Heart, ThumbsUp, Flag, CalendarCheck, Crown, Download, Link2, CalendarDays } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area, CartesianGrid } from "recharts";
+import { LayoutDashboard, ShieldCheck, Users, BookOpen, Calendar, Trophy, Newspaper, Settings, ScrollText, Plus, Check, X, Megaphone, PenLine, Medal, Award, Upload, Trash2, Search, MessageSquare, MessagesSquare, Activity, Smartphone, UserPlus, FileCheck, Rocket, Zap, ArrowLeft, Star, Heart, ThumbsUp, Flag, CalendarCheck, Crown, Download, Link2, CalendarDays, Code2, FlaskConical, Terminal, Palette, Globe2, Route as RouteIcon } from "lucide-react";
+import { THEME_PRESETS, applyTheme } from "@/lib/theme";
 import { timeAgo } from "@/components/NotificationsPanel";
 import { motion } from "framer-motion";
 import { FadeUp, Stagger, Item } from "@/components/anim";
+import { CodingAdminPanel, ThemePanel, ReportsPanel, HealthPanel, LandingPanel, PathsAdminPanel, AnalyticsV2 } from "@/pages/AdminExtra";
 import { startChunkedUpload, uploadChunks, completeChunkedUpload, fileToBase64, compressCoverImage, CHUNK_THRESHOLD, MAX_PDF_SIZE } from "@/lib/chunkedUpload";
 
 const NAV = [
@@ -32,7 +34,13 @@ const NAV = [
   { k: "content", l: "الفعاليات والمسابقات", icon: Calendar, perm: "event.create" },
   { k: "news", l: "الأخبار", icon: Newspaper, perm: "news.manage" },
   { k: "banners", l: "لافتات الإعلانات", icon: Flag, perm: "cms.manage" },
+  { k: "theme", l: "مظهر الموقع", icon: Palette, perm: "cms.manage" },
+  { k: "reports", l: "الإبلاغات", icon: Flag, perm: "report.manage" },
+  { k: "healthsys", l: "صحة النظام", icon: Activity, perm: "analytics.view" },
+  { k: "landing", l: "صفحة الهبوط", icon: Globe2, perm: "cms.manage" },
   { k: "calendar", l: "التقويم", icon: CalendarDays, perm: "analytics.view" },
+  { k: "coding", l: "تحديات البرمجة", icon: Code2, perm: "coding.manage" },
+  { k: "paths", l: "مسارات التعلم", icon: RouteIcon, perm: "cms.manage" },
   { k: "exports", l: "تصدير البيانات", icon: Download, perm: "user.view" },
   { k: "clubs", l: "الأندية", icon: Users, perm: ["club.create", "club.edit", "club.delete", "club.manage"] },
   { k: "points", l: "نظام النقاط", icon: Settings, perm: "points.manage" },
@@ -84,7 +92,13 @@ export default function Admin() {
             {tab === "content" && <ContentPanel />}
             {tab === "news" && <NewsPanel />}
             {tab === "banners" && <BannersPanel />}
+            {tab === "theme" && <ThemePanel />}
+            {tab === "reports" && <ReportsPanel />}
+            {tab === "healthsys" && <HealthPanel />}
+            {tab === "landing" && <LandingPanel />}
             {tab === "calendar" && <CalendarPanel />}
+            {tab === "coding" && <CodingAdminPanel />}
+            {tab === "paths" && <PathsAdminPanel />}
             {tab === "exports" && <ExportsPanel />}
             {tab === "clubs" && <ClubsPanel />}
             {tab === "points" && <PointsPanel />}
@@ -103,6 +117,12 @@ const ACT_LABELS = {
   user_delete: "حذف حساب", role_change: "تغيير دور", teacher_approve: "قبول معلم", teacher_reject: "رفض معلم",
   campaign_send: "إرسال حملة إشعارات", badge_award: "منح شارة",
 };
+
+
+
+
+
+
 
 function Overview() {
   const [o, setO] = useState(null);
@@ -272,6 +292,9 @@ function Overview() {
             </div>
           </div>
           </FadeUp>
+
+          {/* analytics v2 growth */}
+          <AnalyticsV2 />
 
           {/* NEW 5: platform health */}
           <FadeUp delay={0.15}>
@@ -482,6 +505,14 @@ function CompetitionsManager() {
     try { await api.delete(`/competitions/${c.id}`); toast.success("تم حذف المسابقة"); load(); }
     catch (e) { toast.error(apiErr(e)); }
   };
+  const finalizeComp = async (c) => {
+    if (!window.confirm(`إنهاء مسابقة "${c.title}"؟ سيحصل أفضل 3 على نقاط وشهادات تلقائياً.`)) return;
+    try {
+      const { data } = await api.post(`/admin/competitions/${c.id}/finalize`);
+      toast.success(`اكتملت المسابقة — ${data.winners.length} فائز حصلوا على شهادات 🏆`);
+      load();
+    } catch (e) { toast.error(apiErr(e)); }
+  };
   if (!comps) return <PageLoader />;
   const set = (k) => (v) => setF((x) => ({ ...x, [k]: v }));
   return (
@@ -497,9 +528,12 @@ function CompetitionsManager() {
                   <div className="text-xs text-slate-400 mt-0.5">{c.type || ""}{c.start_at ? ` · تبدأ ${String(c.start_at).slice(0, 10)}` : ""}</div>
                 </div>
               </div>
-              <div className="flex gap-2 shrink-0">
+              <div className="flex gap-2 shrink-0 flex-wrap">
                 {canEdit && <Button size="sm" variant="outline" onClick={() => openEdit(c)} className="rounded-xl flex-1 sm:flex-none h-10"><PenLine className="w-4 h-4 ml-1" /> تعديل</Button>}
                 {canDelete && <Button size="sm" variant="outline" onClick={() => del(c)} className="rounded-xl flex-1 sm:flex-none h-10 text-rose-600 border-rose-200"><Trash2 className="w-4 h-4 ml-1" /> حذف</Button>}
+                {hasPerm("competition.manage") && c.status !== "completed" && (
+                  <Button size="sm" onClick={() => finalizeComp(c)} className="rounded-xl flex-1 sm:flex-none h-10 bg-amber-500 hover:bg-amber-600 text-white">إنهاء + شهادات 🏆</Button>
+                )}
               </div>
             </Item>
           ))}
