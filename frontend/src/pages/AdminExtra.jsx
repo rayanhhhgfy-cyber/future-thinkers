@@ -5,6 +5,7 @@ import { PageLoader } from "@/components/Layout";
 import { FadeUp } from "@/components/anim";
 import { timeAgo } from "@/components/NotificationsPanel";
 import { THEME_PRESETS, applyTheme } from "@/lib/theme";
+import { PythonEditor, PyErrorText } from "@/components/PythonCode";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { Code2, FlaskConical, Terminal, Palette, Flag, Activity, Globe2, Route as RouteIcon, Plus, Bug, Copy, Mail, CheckCircle2, Trash2 } from "lucide-react";
 
@@ -114,15 +115,14 @@ function CodingAdminPanel() {
                 <FlaskConical className="w-3.5 h-3.5" /> {busy === "test" ? "يُشغّل…" : "تشغيل الاختبارات"}
               </button>
             </div>
-            <textarea value={solCode} onChange={(e) => setSolCode(e.target.value)} dir="ltr" spellCheck={false} autoCapitalize="off" autoCorrect="off"
-              placeholder={"# reference solution…\nn = int(input())\nprint(n * n)"}
-              className="w-full bg-slate-900 text-emerald-300 font-mono text-xs p-4 min-h-[140px] outline-none resize-y" />
+            <PythonEditor value={solCode} onChange={(e) => setSolCode(e.target.value)} minHeight={140}
+              placeholder={"# reference solution…\nn = int(input())\nprint(n * n)"} />
             {testOut && (
               <div className="p-3 space-y-1.5 border-t border-slate-800">
                 <div className={`text-xs font-bold ${testOut.all_passed ? "text-emerald-400" : "text-amber-400"}`}>{testOut.all_passed ? "كل الاختبارات ناجحة · جاهز للنشر ✅" : "بعض الاختبارات فشلت · راجعها قبل النشر"}</div>
                 {testOut.results.map((r) => (
                   <div key={r.test} dir="ltr" className={`text-left font-mono text-[11px] px-3 py-2 rounded-lg ${r.passed ? "bg-emerald-500/10 text-emerald-300" : "bg-rose-500/10 text-rose-300"}`}>
-                    Test {r.test}: {r.passed ? "PASS" : r.ran ? "WRONG OUTPUT" : "ERROR"} · got: {(r.output || "").slice(0, 120) || "(empty)"}{!r.passed && ` · expected: ${String(r.expected).slice(0, 120)}`}
+                    Test {r.test}: {r.passed ? "PASS" : r.ran ? "WRONG OUTPUT" : "ERROR"} · got: {r.ran ? ((r.output || "").slice(0, 120) || "(empty)") : <PyErrorText text={(r.output || "").slice(0, 300) || "(empty)"} />}{!r.passed && ` · expected: ${String(r.expected).slice(0, 120)}`}
                   </div>
                 ))}
               </div>

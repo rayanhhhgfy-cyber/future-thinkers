@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import api, { apiErr } from "@/lib/api";
 import { ReportErrorButton } from "@/components/ErrorState";
+import { PythonEditor, PyErrorText } from "@/components/PythonCode";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -89,14 +90,14 @@ function ProblemView({ pid, onBack }) {
             <textarea value={stdin} onChange={(e) => setStdin(e.target.value)} dir="ltr" spellCheck={false} autoCapitalize="off" autoCorrect="off"
               placeholder={"stdin… e.g. 7"} className="w-full bg-slate-900 text-slate-200 font-mono text-xs p-3 min-h-[64px] outline-none resize-none" />
             {consoleOut && (
-              <pre dir="ltr" className={`text-left font-mono text-xs p-3 whitespace-pre-wrap max-h-48 overflow-auto ${consoleOut.ok ? "text-emerald-300" : "text-rose-300"}`}>{consoleOut.output || "(لا مخرجات)"}</pre>
+              <pre dir="ltr" className={`text-left font-mono text-xs p-3 whitespace-pre-wrap max-h-48 overflow-auto ${consoleOut.ok ? "text-emerald-300" : "text-rose-300"}`}>{consoleOut.ok ? (consoleOut.output || "(لا مخرجات)") : <PyErrorText text={consoleOut.output || "(لا مخرجات)"} />}</pre>
             )}
           </div>
         </div>
         <div>
           <div className="bg-slate-900 rounded-2xl overflow-hidden ft-shadow">
             <div className="px-4 py-2 text-slate-400 text-xs border-b border-slate-700 flex items-center gap-2"><Code2 className="w-4 h-4" /> Python 3 · بيئة معزولة آمنة</div>
-            <Textarea data-testid="code-editor" value={code} onChange={(e) => setCode(e.target.value)} dir="ltr" spellCheck={false} autoCapitalize="off" autoCorrect="off" className="min-h-[280px] bg-slate-900 text-emerald-300 font-mono border-0 rounded-none focus-visible:ring-0 resize-none" />
+            <PythonEditor testId="code-editor" value={code} onChange={(e) => setCode(e.target.value)} minHeight={280} />
           </div>
           <div className="grid grid-cols-2 gap-2 mt-3">
             <Button data-testid="run-samples-btn" onClick={runSamples} disabled={!!running} variant="outline" className="rounded-xl h-11 border-slate-300">
@@ -111,7 +112,7 @@ function ProblemView({ pid, onBack }) {
               {runResults.map((r) => (
                 <div key={r.test} dir="ltr" className={`text-left p-3 rounded-xl font-mono text-xs ${r.passed ? "bg-emerald-50 text-emerald-800" : "bg-rose-50 text-rose-800"}`}>
                   <div className="font-bold">Test {r.test}: {r.passed ? "PASS ✓" : r.ran ? "WRONG OUTPUT" : "ERROR"}</div>
-                  <div className="mt-1 whitespace-pre-wrap">got: {r.output || "(empty)"}</div>
+                  <div className="mt-1 whitespace-pre-wrap">got: {r.ran ? (r.output || "(empty)") : <PyErrorText tone="light" text={r.output || "(empty)"} />}</div>
                   {!r.passed && <div className="whitespace-pre-wrap opacity-75">expected: {r.expected}</div>}
                 </div>
               ))}
@@ -121,7 +122,7 @@ function ProblemView({ pid, onBack }) {
             <div className={`mt-3 p-4 rounded-xl ${result.verdict === "accepted" ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"}`} data-testid="code-result">
               <div className="font-bold">{result.verdict === "accepted" ? "مقبول ✓" : result.verdict === "wrong_answer" ? "إجابة خاطئة" : "خطأ في التنفيذ"}</div>
               <div className="text-sm mt-1">نجح {result.passed} من {result.total} اختبار</div>
-              {result.detail && <div className="text-xs mt-1 font-mono" dir="ltr">{result.detail}</div>}
+              {result.detail && <div className="text-xs mt-1 font-mono text-left" dir="ltr"><PyErrorText tone="light" text={result.detail} /></div>}
               {result.verdict !== "accepted" && (
                 <div className="mt-3" dir="rtl">
                   <ReportErrorButton message={`حكم الحل: ${result.verdict} · ${result.detail || ""}`}
