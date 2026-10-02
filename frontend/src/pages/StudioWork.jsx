@@ -109,6 +109,9 @@ export default function StudioWork() {
         {/* hero */}
         <div className={`bg-gradient-to-l ${t.g} relative`}>
           <div className="absolute inset-0 bg-black/25" />
+          <TIcon className="absolute -left-10 -bottom-14 w-64 h-64 sm:w-80 sm:h-80 text-white/10 -rotate-12 pointer-events-none" />
+          <div className="absolute top-0 left-1/4 w-72 h-72 bg-white/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute -bottom-20 right-0 w-64 h-64 bg-black/10 rounded-full blur-3xl pointer-events-none" />
           <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, ease: EASE }}
             className="relative max-w-4xl mx-auto px-4 sm:px-6 pt-10 pb-16 sm:pb-20 text-white">
             <button onClick={() => nav("/studio")} className="text-white/70 hover:text-white text-sm flex items-center gap-1.5 mb-6 transition-colors">
@@ -144,7 +147,7 @@ export default function StudioWork() {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
           {/* like bar */}
           <FadeUp>
-            <div className="flex flex-wrap items-center justify-between gap-3 bg-white rounded-2xl border border-slate-100 ft-shadow p-4 mb-6">
+            <div className="sticky top-20 z-30 flex flex-wrap items-center justify-between gap-3 bg-white/90 backdrop-blur-xl rounded-[1.4rem] border border-slate-100 ft-shadow p-4 mb-6">
               <div className="flex items-center gap-3">
                 <div className="relative">
                   <motion.button
@@ -183,7 +186,8 @@ export default function StudioWork() {
 
           {/* content */}
           <FadeUp delay={0.05}>
-            <article className="bg-white rounded-3xl border border-slate-100 ft-shadow p-6 sm:p-10 mb-8">
+            <article className="relative bg-white rounded-[2rem] border border-slate-100 ft-shadow p-6 sm:p-10 mb-8 overflow-hidden">
+              <div className={`absolute top-0 right-0 left-0 h-1.5 bg-gradient-to-l ${t.g}`} />
               <div className="prose prose-slate prose-lg max-w-none whitespace-pre-wrap leading-[2.2] text-slate-700 font-medium">
                 {work.content}
               </div>
@@ -196,23 +200,27 @@ export default function StudioWork() {
 
           {/* rating + reviews */}
           <FadeUp>
-            <section className="bg-white rounded-3xl border border-slate-100 ft-shadow p-6 sm:p-8 mb-8">
-              <h2 className="font-head text-xl font-extrabold mb-1 flex items-center gap-2">
-                <Star className="w-5 h-5 text-amber-400 fill-amber-400" /> التقييمات والمراجعات
+            <section className="bg-white rounded-[2rem] border border-slate-100 ft-shadow p-6 sm:p-8 mb-8">
+              <h2 className="font-head text-xl font-extrabold mb-1 flex items-center gap-2 flex-wrap">
+                <span className="w-9 h-9 rounded-xl bg-amber-50 grid place-items-center"><Star className="w-5 h-5 text-amber-400 fill-amber-400" /></span> التقييمات والمراجعات
+                {reviews.length > 0 && <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-slate-100 text-slate-500">{reviews.length} مراجعة</span>}
               </h2>
               <p className="text-sm text-slate-400 mb-6">
                 {(work.rating_count || 0) > 0 ? `متوسط ${work.rating_avg} من 5 · ${work.rating_count} تقييم` : "كن أول من يقيّم هذا العمل"}
               </p>
 
               {user && (
-                <div className="bg-slate-50 rounded-2xl p-5 mb-6">
-                  <div className="font-bold text-sm mb-3">قيّم هذا العمل</div>
+                <div className="relative bg-gradient-to-br from-amber-50 to-orange-50/60 border border-amber-100 rounded-[1.4rem] p-5 mb-6 overflow-hidden">
+                  <Star className="absolute -left-3 -top-3 w-20 h-20 text-amber-200/40 fill-amber-200/40 -rotate-12 pointer-events-none" />
+                  <div className="relative">
+                  <div className="font-extrabold text-sm mb-3 text-slate-800">قيّم هذا العمل</div>
                   <Stars value={revStars} onRate={setRevStars} />
                   <Textarea value={revText} onChange={(e) => setRevText(e.target.value)}
                     placeholder="شارك رأيك بالعمل... ما الذي أعجبك؟" className="rounded-xl mt-3 bg-white" rows={3} maxLength={1000} />
-                  <Button onClick={submitReview} disabled={sending} className="rounded-xl mt-3 bg-amber-500 hover:bg-amber-600 text-white">
+                  <Button onClick={submitReview} disabled={sending} className="pressable rounded-xl mt-3 bg-gradient-to-l from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-md shadow-amber-200">
                     <Send className="w-4 h-4 ml-1" /> {sending ? "جارٍ النشر..." : "نشر التقييم"}
                   </Button>
+                  </div>
                 </div>
               )}
 
@@ -222,24 +230,24 @@ export default function StudioWork() {
                 <Stagger className="space-y-3">
                   {reviews.map((r) => (
                     <Item key={r.id}>
-                      <div className="p-4 rounded-2xl border border-slate-100 bg-white hover:border-amber-200 transition-colors">
-                        <div className="flex items-center justify-between gap-2 mb-1.5">
-                          <div className="flex items-center gap-2.5">
-                            <span className="w-9 h-9 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 text-white grid place-items-center font-bold text-sm">
-                              {r.user_name?.trim()?.[0]}
-                            </span>
-                            <div>
-                              <div className="font-bold text-sm text-slate-800">{r.user_name}</div>
+                      <div className="flex gap-3 p-4 rounded-[1.4rem] border border-slate-100 bg-white hover:border-amber-200 hover:shadow-md hover:shadow-amber-50 transition-all">
+                        <span className="w-10 h-10 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 text-white grid place-items-center font-extrabold text-sm shrink-0 shadow-md shadow-violet-100">
+                          {r.user_name?.trim()?.[0]}
+                        </span>
+                        <div className="flex-1 min-w-0 bg-slate-50/80 rounded-2xl rounded-tr-md px-4 py-3">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 flex-wrap min-w-0">
+                              <span className="font-extrabold text-sm text-slate-800">{r.user_name}</span>
                               <Stars value={r.stars} readonly size="w-3.5 h-3.5" />
                             </div>
+                            {user && (r.user_id === user.id) && (
+                              <button onClick={() => delReview(r)} className="pressable text-slate-300 hover:text-rose-500 transition-colors p-1 shrink-0">
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
                           </div>
-                          {user && (r.user_id === user.id) && (
-                            <button onClick={() => delReview(r)} className="text-slate-300 hover:text-rose-500 transition-colors p-1">
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          )}
+                          {r.text && <p className="text-sm text-slate-600 leading-relaxed mt-1.5">{r.text}</p>}
                         </div>
-                        {r.text && <p className="text-sm text-slate-600 leading-relaxed mt-1">{r.text}</p>}
                       </div>
                     </Item>
                   ))}
@@ -254,16 +262,28 @@ export default function StudioWork() {
               <section className="mb-8">
                 <h2 className="font-head text-xl font-extrabold mb-4">أعمال مشابهة</h2>
                 <div className="grid sm:grid-cols-3 gap-4">
-                  {related.map((w) => (
-                    <Link key={w.id} to={`/studio/${w.id}`} className="bg-white rounded-2xl p-5 border border-slate-100 ft-shadow hover-lift">
-                      <div className="font-bold text-slate-900 line-clamp-1 mb-1">{w.title}</div>
-                      <p className="text-sm text-slate-500 line-clamp-2">{w.excerpt}</p>
-                      <div className="mt-3 text-xs text-slate-400 flex items-center gap-3">
-                        <span className="flex items-center gap-1"><Heart className="w-3.5 h-3.5" />{w.likes}</span>
-                        {(w.rating_count || 0) > 0 && <span className="flex items-center gap-1"><Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />{w.rating_avg}</span>}
+                  {related.map((w) => {
+                    const rt = TYPES[w.type] || TYPES.article;
+                    const RIcon = rt.icon;
+                    return (
+                    <Link key={w.id} to={`/studio/${w.id}`} className="group bg-white rounded-[1.4rem] border border-slate-100 ft-shadow hover-lift overflow-hidden flex flex-col">
+                      <div className={`relative h-14 bg-gradient-to-l ${rt.g} shrink-0 overflow-hidden`}>
+                        <RIcon className="absolute -left-2 -bottom-4 w-16 h-16 text-white/15 -rotate-12 transition-transform duration-500 group-hover:scale-110" />
+                        <span className="absolute top-2.5 right-3 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/20 backdrop-blur text-white text-[11px] font-bold">
+                          <RIcon className="w-3 h-3" />{rt.l}
+                        </span>
+                      </div>
+                      <div className="p-4 flex flex-col flex-1">
+                        <div className="font-head font-extrabold text-slate-900 line-clamp-1 mb-1 group-hover:text-violet-700 transition-colors">{w.title}</div>
+                        <p className="text-sm text-slate-500 line-clamp-2 flex-1">{w.excerpt}</p>
+                        <div className="mt-3 pt-3 border-t border-slate-100 text-xs text-slate-400 flex items-center gap-3">
+                          <span className="flex items-center gap-1"><Heart className="w-3.5 h-3.5" />{w.likes}</span>
+                          {(w.rating_count || 0) > 0 && <span className="flex items-center gap-1"><Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />{w.rating_avg}</span>}
+                        </div>
                       </div>
                     </Link>
-                  ))}
+                    );
+                  })}
                 </div>
               </section>
             </FadeUp>
