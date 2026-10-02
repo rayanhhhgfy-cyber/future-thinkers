@@ -407,11 +407,35 @@ function ReportsPanel() {
 function HealthPanel() {
   const [h, setH] = useState(null);
   useEffect(() => { api.get("/admin/system-health").then((r) => setH(r.data)).catch(() => setH({})); }, []);
+  const [sigMode, setSigMode] = useState(null);
+  const [sigBusy, setSigBusy] = useState(false);
+  useEffect(() => { api.get("/admin/signing").then((r) => setSigMode(r.data?.mode || "warn")).catch(() => setSigMode(null)); }, []);
+  const changeSigMode = async (m) => {
+    setSigBusy(true);
+    try { const { data } = await api.put("/admin/signing", { mode: m }); setSigMode(data.mode); toast.success("تم تحديث وضع توقيع الـ API"); }
+    catch (e) { toast.error(apiErr(e)); }
+    setSigBusy(false);
+  };
   if (!h) return <PageLoader />;
   const colAr = { users: "المستخدمون", books: "الكتب", works: "الأعمال", ventures: "المشاريع", chess_games: "مباريات الشطرنج", notifications: "الإشعارات", push_subscriptions: "أجهزة الدفع", certificates: "الشهادات", xp_transactions: "حركات النقاط", reports: "البلاغات" };
   return (
     <div>
       <h2 className="font-head font-extrabold text-lg flex items-center gap-2 mb-5"><Activity className="w-5 h-5 text-emerald-600" /> صحة النظام <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">آخر فحص: {String(h.checked_at || "").slice(11, 16)}</span></h2>
+      {sigMode !== null && (
+        <div className="bg-white rounded-3xl p-5 border border-slate-100 ft-shadow mb-6">
+          <div className="flex items-center gap-2 font-head font-extrabold text-slate-800"><ShieldCheck className="w-5 h-5 text-emerald-600" /> توقيع طلبات الـ API · حماية ضد الأتمتة</div>
+          <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">كل طلب للموقع يُوقَّع تشفيرياً (HMAC-SHA256) مع منع إعادة التشغيل. «تحذير» يراقب دون رفض · فعّل «فرض» فقط بعد التأكد أن الموقع يعمل طبيعياً لأيام.</p>
+          <div className="flex gap-2 mt-4 flex-wrap">
+            {[["off", "إيقاف"], ["warn", "تحذير · مراقبة"], ["enforce", "فرض · حماية كاملة"]].map(([m, label]) => (
+              <button key={m} disabled={sigBusy || sigMode === m} onClick={() => changeSigMode(m)}
+                className={`min-h-[44px] px-4 rounded-xl text-sm font-bold transition disabled:opacity-100 ${sigMode === m ? (m === "enforce" ? "bg-rose-600 text-white" : m === "warn" ? "bg-amber-500 text-white" : "bg-slate-700 text-white") : "bg-slate-100 text-slate-600 hover:bg-slate-200 disabled:opacity-40"}`}>
+                {label}
+              </button>
+            ))}
+            <span className="text-[11px] font-bold text-slate-400 self-center">الوضع الحالي: {sigMode === "enforce" ? "فرض" : sigMode === "warn" ? "تحذير" : "إيقاف"}</span>
+          </div>
+        </div>
+      )}
       <div className="grid sm:grid-cols-3 gap-4 mb-6">
         <div className="bg-slate-900 rounded-3xl p-5 text-white ft-shadow">
           <div className="text-xs text-slate-400 mb-1">بانتظار إجراء</div>

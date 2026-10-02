@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   X, Download, ZoomIn, ZoomOut, Check, Loader2,
   AlertTriangle, ExternalLink, ChevronUp, BookOpen,
@@ -6,6 +6,7 @@ import {
   Sun, Coffee, Moon, StickyNote, Plus, NotebookText,
 } from "lucide-react";
 import api, { apiErr } from "@/lib/api";
+import { signUrl } from "@/lib/signing";
 
 // pdf.js is loaded on demand from CDN (never bundled, never pushed through
 // the repo) · the reader chunk stays small and the main bundle is untouched.
@@ -103,6 +104,9 @@ function PageView({ pdf, pageNumber, scale, active, onSize }) {
 }
 
 export default function BookReader({ book, pdfUrl, onClose, onProgress, initialPercent = 0 }) {
+  // Media GETs cannot carry headers, so the PDF URL is signed once
+  // (fts/fnonce/fsig query params) for pdf.js and the download links.
+  const signedPdfUrl = useMemo(() => signUrl(pdfUrl), [pdfUrl]);
   const [pdf, setPdf] = useState(null);
   const [numPages, setNumPages] = useState(0);
   const [loadPct, setLoadPct] = useState(0);
@@ -175,7 +179,7 @@ export default function BookReader({ book, pdfUrl, onClose, onProgress, initialP
     setError(null); setLoadPct(0); setPdf(null);
     loadPdfjs().then((pdfjsLib) => {
       if (dead) return;
-      loadingTask = pdfjsLib.getDocument({ url: pdfUrl });
+      loadingTask = pdfjsLib.getDocument({ url: signedPdfUrl });
       loadingTask.onProgress = ({ loaded, total }) => {
         if (!dead && total > 0) setLoadPct(Math.round((loaded / total) * 100));
       };
@@ -462,7 +466,7 @@ export default function BookReader({ book, pdfUrl, onClose, onProgress, initialP
               )}
             </button>
             <a
-              href={pdfUrl}
+              href={signedPdfUrl}
               download
               className="w-10 h-10 shrink-0 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md hidden sm:flex items-center justify-center transition"
               aria-label="تحميل"
@@ -517,7 +521,7 @@ export default function BookReader({ book, pdfUrl, onClose, onProgress, initialP
                   إعادة المحاولة
                 </button>
                 <a
-                  href={pdfUrl}
+                  href={signedPdfUrl}
                   target="_blank"
                   rel="noreferrer"
                   className="h-11 rounded-xl bg-indigo-500 hover:bg-indigo-400 font-bold text-sm flex items-center justify-center gap-2 transition"
@@ -525,7 +529,7 @@ export default function BookReader({ book, pdfUrl, onClose, onProgress, initialP
                   <ExternalLink className="w-4 h-4" /> فتح في تبويب جديد
                 </a>
                 <a
-                  href={pdfUrl}
+                  href={signedPdfUrl}
                   download
                   className="h-11 rounded-xl bg-white/10 hover:bg-white/15 font-bold text-sm flex items-center justify-center gap-2 transition"
                 >
