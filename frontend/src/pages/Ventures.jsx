@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Layout, PageLoader } from "@/components/Layout";
 import { useAuth } from "@/context/AuthContext";
@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import BookmarkButton from "@/components/BookmarkButton";
+import { ErrorState } from "@/components/ErrorState";
 
 export const VENTURE_CATEGORIES = ["الكل", "تقنية وبرمجة", "ريادة أعمال", "علمي", "بيئي", "مجتمعي", "ثقافي وأدبي", "فني وإعلامي", "أخرى"];
 export const VENTURE_STATUSES = [
@@ -66,7 +67,9 @@ export default function Ventures() {
   const { user } = useAuth();
   const nav = useNavigate();
   const [ventures, setVentures] = useState(null);
+  const [loadError, setLoadError] = useState(false);
   const [q, setQ] = useState("");
+  const [debouncedQ, setDebouncedQ] = useState("");
   const [category, setCategory] = useState("الكل");
   const [status, setStatus] = useState("all");
   const [sort, setSort] = useState("votes");
@@ -74,13 +77,27 @@ export default function Ventures() {
   const [votingId, setVotingId] = useState(null);
   const [form, setForm] = useState({ title: "", description: "", category: "تقنية وبرمجة", looking_for: "", max_members: 5 });
   const [saving, setSaving] = useState(false);
+  const reqSeq = useRef(0);
+
+  // Debounce the search box so typing doesn't fire a request per keystroke.
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQ(q), 300);
+    return () => clearTimeout(t);
+  }, [q]);
 
   const load = useCallback(async () => {
+    const seq = ++reqSeq.current;
     try {
-      const { data } = await api.get("/ventures", { params: { sort, category, status, q: q || undefined } });
+      const { data } = await api.get("/ventures", { params: { sort, category, status, q: debouncedQ || undefined } });
+      if (seq !== reqSeq.current) return; // stale response · a newer request already won
       setVentures(data);
-    } catch { toast.error("تعذّر تحميل المشاريع"); }
-  }, [sort, category, status, q]);
+      setLoadError(false);
+    } catch {
+      if (seq !== reqSeq.current) return;
+      setLoadError(true);
+      toast.error("تعذّر تحميل المشاريع");
+    }
+  }, [sort, category, status, debouncedQ]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -111,7 +128,7 @@ export default function Ventures() {
       const { data } = await api.post(`/ventures/${v.id}/vote`);
       setVentures((list) => list.map((x) => x.id === v.id
         ? { ...x, voted: data.voted, votes_count: x.votes_count + (data.voted ? 1 : -1) } : x));
-    } catch {}
+    } catch { toast.error("تعذّر التصويت، حاول مجدداً"); }
     finally { setVotingId(null); }
   };
 
@@ -125,8 +142,8 @@ export default function Ventures() {
         <div className="ft-hero-gradient grain relative overflow-hidden rounded-[2rem] text-white px-6 py-10 sm:px-10 sm:py-14 ft-shadow-lg">
           <Rocket className="pointer-events-none absolute -left-6 -bottom-8 w-44 h-44 sm:w-64 sm:h-64 text-white/10 -rotate-12" />
           <Sparkles className="pointer-events-none absolute left-[38%] top-8 w-8 h-8 text-white/15 hidden sm:block" />
-          <div className="pointer-events-none absolute -top-20 right-[15%] w-56 h-56 rounded-full bg-[color:color-mix(in_srgb,var(--ft-accent)_20%,transparent)] blur-3xl" />
-          <div className="pointer-events-none absolute -bottom-24 left-[30%] w-56 h-56 rounded-full bg-[color:color-mix(in_srgb,var(--ft-accent)_15%,transparent)] blur-3xl" />
+          <div className="pointer-events-none absolute -top-20 right-[15%] w-56 h-56 rounded-full bg-[color:color-mix(in_srgb,var(--ft-accent)_20%,transparent)] blur-3xl animate-pulse [animation-duration:4s]" />
+          <div className="pointer-events-none absolute -bottom-24 left-[30%] w-56 h-56 rounded-full bg-[color:color-mix(in_srgb,var(--ft-accent)_15%,transparent)] blur-3xl animate-pulse [animation-duration:5.5s]" />
           <div className="relative">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 border border-white/25 px-3.5 py-1.5 text-xs font-bold backdrop-blur-md shadow-inner">
               <Sparkles className="w-3.5 h-3.5 ft-text-accent-bright" /> مشاريع طلابية
@@ -165,13 +182,14 @@ export default function Ventures() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div id="ventures-toolbar" className="sticky top-[72px] lg:top-20 z-30 scroll-mt-28">
+        <div id="ventures-toolbar" className="sticky top-[calc(4rem+env(safe-area-inset-top))] z-30 scroll-mt-28">
           <div className="bg-white/85 backdrop-blur-xl rounded-[1.4rem] sm:rounded-3xl border border-white/60 ring-1 ring-slate-200/60 ft-shadow-lg p-4 sm:p-5 space-y-4">
             <div className="relative">
               <Search className="w-5 h-5 absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
               <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="ابحث عن مشروع..."
                 className="rounded-2xl pr-12 min-h-[52px] text-base border-slate-200 bg-white/80 shadow-inner focus-visible:bg-white transition-colors" />
             </div>
+            <div className="relative">
             <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:flex-wrap sm:overflow-visible sm:mx-0 sm:px-0 sm:pb-0">
               {VENTURE_CATEGORIES.map((c) => (
                 <button key={c} onClick={() => setCategory(c)}
@@ -179,6 +197,8 @@ export default function Ventures() {
                   {c}
                 </button>
               ))}
+            </div>
+              <div className="pointer-events-none absolute inset-y-0 left-0 w-10 bg-gradient-to-r from-white/80 to-transparent sm:hidden" />
             </div>
             <div className="flex flex-wrap items-center gap-2">
               {VENTURE_STATUSES.map((s) => (
@@ -201,40 +221,43 @@ export default function Ventures() {
           </div>
         </div>
 
-        {!ventures ? (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 mt-6" aria-hidden="true">
+        {loadError ? (
+          <div className="mt-6 animate-fade-up">
+            <ErrorState message="تعذّر تحميل المشاريع" onRetry={load} context="ventures-list" className="max-w-xl mx-auto shadow-sm" />
+          </div>
+        ) : !ventures ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 mt-6" aria-hidden="true">
             {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="bg-white rounded-[1.6rem] border border-slate-100 ft-shadow overflow-hidden animate-pulse">
-                <div className="h-1.5 bg-slate-200" />
-                <div className="p-5 sm:p-6 space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="w-12 h-12 rounded-2xl bg-slate-200" />
-                    <div className="w-8 h-8 rounded-full bg-slate-100" />
+              <div key={i} className="bg-white rounded-[1.6rem] border border-slate-100 ft-shadow overflow-hidden animate-pulse flex flex-col">
+                <div className="h-28 sm:h-32 bg-slate-200/80 shrink-0" />
+                <div className="px-5 pb-5 flex flex-col flex-1">
+                  <div className="-mt-8 w-14 h-14 rounded-2xl bg-slate-200 ring-4 ring-white" />
+                  <div className="flex gap-2 mt-3.5">
+                    <div className="h-6 w-20 rounded-full bg-slate-200" />
+                    <div className="h-6 w-16 rounded-full bg-slate-100" />
                   </div>
-                  <div className="flex gap-2">
-                    <div className="h-6 w-16 rounded-full bg-slate-200" />
-                    <div className="h-6 w-20 rounded-full bg-slate-100" />
-                  </div>
-                  <div className="h-5 w-3/4 rounded-lg bg-slate-200" />
-                  <div className="space-y-2">
+                  <div className="h-5 w-3/4 rounded-lg bg-slate-200 mt-3" />
+                  <div className="space-y-2 mt-2.5">
                     <div className="h-3.5 w-full rounded bg-slate-100" />
                     <div className="h-3.5 w-2/3 rounded bg-slate-100" />
                   </div>
-                  <div className="flex items-center gap-2.5 pt-1">
+                  <div className="flex items-center gap-2.5 mt-4">
                     <div className="w-9 h-9 rounded-full bg-slate-200" />
                     <div className="h-3.5 w-24 rounded bg-slate-100" />
                   </div>
-                  <div className="border-t border-slate-100 pt-4 flex items-center justify-between">
-                    <div className="h-7 w-16 rounded-full bg-slate-100" />
-                    <div className="h-7 w-14 rounded-full bg-slate-100" />
-                    <div className="h-4 w-14 rounded bg-slate-200" />
+                  <div className="mt-auto">
+                    <div className="border-t border-slate-100 mt-4 pt-4 flex items-center justify-between">
+                      <div className="h-9 w-16 rounded-full bg-slate-100" />
+                      <div className="h-11 w-16 rounded-full bg-slate-100" />
+                      <div className="h-4 w-14 rounded bg-slate-200" />
+                    </div>
                   </div>
                 </div>
               </div>
             ))}
           </div>
         ) : ventures.length === 0 ? (
-          <div className="text-center py-20 text-slate-400">
+          <div className="text-center py-20 text-slate-400 animate-fade-up">
             <div className="w-20 h-20 mx-auto mb-4 rounded-[1.4rem] bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-100 flex items-center justify-center shadow-inner">
               <Lightbulb className="w-10 h-10 text-amber-400" />
             </div>
@@ -251,27 +274,31 @@ export default function Ventures() {
               <Sparkles className="w-4 h-4 ft-text-accent" />
               عرض {ventures.length} مشروع
             </div>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
               {ventures.map((v, i) => {
                 const meta = CATEGORY_META[v.category] || CATEGORY_DEFAULT;
                 const CatIcon = meta.icon;
                 return (
                   <div key={v.id} style={{ animationDelay: `${Math.min(i, 11) * 60}ms` }}
-                    className="group relative bg-white rounded-[1.6rem] border border-slate-100 ft-shadow hover-lift flex flex-col overflow-hidden animate-fade-up">
-                    <div className={`h-1.5 bg-gradient-to-l ${STATUS_RIBBON[v.status] || "from-slate-300 to-slate-200"}`} />
-                    <div className="pointer-events-none absolute inset-0 bg-gradient-to-tl from-[color:color-mix(in_srgb,var(--ft-accent)_7%,transparent)] via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                    <div className="relative p-5 sm:p-6 pt-5 flex flex-col flex-1">
-                      <div className="flex items-start justify-between gap-2">
-                        <span className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${meta.grad} text-white flex items-center justify-center shadow-lg ${meta.shadow} ring-1 ring-white/40 transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-3`}>
-                          <CatIcon className="w-6 h-6" />
-                        </span>
-                        <BookmarkButton kind="venture" refId={v.id} title={v.title} className="shadow shrink-0" />
-                      </div>
-                      <div className="flex items-center gap-2 flex-wrap mt-4">
-                        <Badge variant="outline" className={`${STATUS_COLORS[v.status] || ""} rounded-full font-bold backdrop-blur`}>
+                    className="group relative bg-white rounded-[1.6rem] border border-slate-100 ft-shadow hover-lift flex flex-col overflow-hidden animate-fade-up transition-shadow duration-300 hover:shadow-[0_24px_50px_-16px_color-mix(in_srgb,var(--ft-accent)_35%,transparent)]">
+                    <div className={`relative h-28 sm:h-32 shrink-0 overflow-hidden bg-gradient-to-l ${meta.grad}`}>
+                      <CatIcon className="pointer-events-none absolute -left-4 -bottom-7 w-32 h-32 text-white/20 -rotate-12 transition-transform duration-500 group-hover:scale-110 group-hover:-rotate-6" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-white/10" />
+                      <div className="absolute top-3 inset-x-3 flex items-start justify-between gap-2">
+                        <Badge variant="outline" className={`${STATUS_COLORS[v.status] || ""} rounded-full font-bold backdrop-blur shadow-sm`}>
                           <span className={`w-1.5 h-1.5 rounded-full ml-1.5 ${STATUS_DOT[v.status] || "bg-slate-300"}`} />
                           {v.status_label}
                         </Badge>
+                        <BookmarkButton kind="venture" refId={v.id} title={v.title} className="shadow shrink-0" />
+                      </div>
+                      <div className={`absolute bottom-0 inset-x-0 h-1.5 bg-gradient-to-l ${STATUS_RIBBON[v.status] || "from-slate-300 to-slate-200"}`} />
+                    </div>
+                    <div className="pointer-events-none absolute inset-0 bg-gradient-to-tl from-[color:color-mix(in_srgb,var(--ft-accent)_7%,transparent)] via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                    <div className="relative px-5 pb-5 flex flex-col flex-1">
+                      <span className={`-mt-8 relative z-10 w-14 h-14 rounded-2xl bg-gradient-to-br ${meta.grad} text-white flex items-center justify-center shadow-xl ${meta.shadow} ring-4 ring-white transition-transform duration-300 group-hover:scale-105 group-hover:-rotate-3`}>
+                        <CatIcon className="w-7 h-7" />
+                      </span>
+                      <div className="flex items-center gap-2 flex-wrap mt-3.5">
                         <Badge variant="secondary" className="rounded-full">{v.category}</Badge>
                         {v.is_owner && <Badge className="rounded-full bg-violet-100 text-violet-700 border border-violet-200 font-bold">مشروعك</Badge>}
                         {v.votes_count >= 10 && (
