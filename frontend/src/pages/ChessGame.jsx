@@ -214,7 +214,7 @@ export default function ChessGame() {
                             transition={{ duration: 2.8, repeat: Infinity, ease: "easeInOut", repeatDelay: 1.4 }}
                             style={{ background: "linear-gradient(100deg, transparent 25%, rgba(255,255,255,0.16) 50%, transparent 75%)" }} />
                         )}
-                        <span className="relative">{myTurn ? "دورك الآن — حرّك قطعة" : `بانتظار ${opponent}…`}</span>
+                        <span className="relative">{myTurn ? "دورك الآن · حرّك قطعة" : `بانتظار ${opponent}…`}</span>
                       </motion.div>
                     </AnimatePresence>
                     {inCheck && <div className="text-sm text-red-400 mt-2 font-bold animate-pulse">كش! الملك تحت التهديد 👑</div>}
@@ -229,7 +229,7 @@ export default function ChessGame() {
                 <h4 className="font-semibold text-sm mb-3 text-slate-300">النقلات ({(game.moves || []).length})</h4>
                 <div ref={movesRef} className="max-h-40 sm:max-h-48 lg:max-h-64 overflow-y-auto pr-1" dir="ltr">
                   {movePairs.length === 0 ? (
-                    <div className="text-sm text-slate-500 text-center py-4">لا نقلات بعد — ابدأ اللعب!</div>
+                    <div className="text-sm text-slate-500 text-center py-4">لا نقلات بعد · ابدأ اللعب!</div>
                   ) : (
                     <div className="grid grid-cols-[2rem_1fr_1fr] gap-y-1 text-sm font-mono">
                       {movePairs.map((pair, i) => (

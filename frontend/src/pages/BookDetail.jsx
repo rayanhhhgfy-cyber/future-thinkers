@@ -124,13 +124,13 @@ export default function BookDetail() {
             <h1 className="font-head text-3xl font-extrabold text-slate-900">{book.title}</h1>
             <p className="text-slate-500 mt-1">تأليف: {book.author}</p>
             <div className="flex items-center gap-5 mt-4 text-sm text-slate-600">
-              <span className="flex items-center gap-1"><Star className="w-4 h-4 text-amber-500 fill-amber-500" />{book.rating_avg || "—"} ({book.rating_count})</span>
+              <span className="flex items-center gap-1"><Star className="w-4 h-4 text-amber-500 fill-amber-500" />{book.rating_avg || "·"} ({book.rating_count})</span>
               <span className="flex items-center gap-1"><Eye className="w-4 h-4" />{book.views} قراءة</span>
               <span className="flex items-center gap-1"><Heart className="w-4 h-4" />{book.favorites_count}</span>
             </div>
             <p className="mt-5 text-slate-700 leading-relaxed">{book.description}</p>
             <div className="mt-5 grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
-              {[["الصفحات", book.pages || "—"], ["سنة النشر", book.year || "—"], ["اللغة", book.language], ["الفئة", book.age]].map(([k, v]) => (
+              {[["الصفحات", book.pages || "·"], ["سنة النشر", book.year || "·"], ["اللغة", book.language], ["الفئة", book.age]].map(([k, v]) => (
                 <div key={k} className="bg-slate-50 rounded-xl p-3 border border-slate-100"><div className="text-slate-400 text-xs">{k}</div><div className="font-semibold text-slate-800">{v}</div></div>
               ))}
             </div>
@@ -178,7 +178,7 @@ export default function BookDetail() {
               ) : (
                 <p className="text-sm text-slate-400 mb-5">سجّل دخولك للانضمام إلى نقاش القرّاء.</p>
               )}
-              {comments.length === 0 ? <p className="text-slate-400 text-sm">لا تعليقات بعد — ابدأ النقاش!</p> : (
+              {comments.length === 0 ? <p className="text-slate-400 text-sm">لا تعليقات بعد · ابدأ النقاش!</p> : (
                 <div className="space-y-4">
                   {comments.map((c) => (
                     <div key={c.id} className="flex gap-3 group">

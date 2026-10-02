@@ -248,7 +248,7 @@ export default function Dashboard() {
                 {data.later_count > 0 && <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">{data.later_count}</span>}
               </div>
               {(data.later_books || []).length === 0 ? (
-                <p className="text-sm text-slate-400">لا كتب بانتظارك — من صفحة أي كتاب اضغط «أكمل لاحقاً» وسيظهر هنا.</p>
+                <p className="text-sm text-slate-400">لا كتب بانتظارك · من صفحة أي كتاب اضغط «أكمل لاحقاً» وسيظهر هنا.</p>
               ) : (
                 <div className="flex gap-2">
                   {data.later_books.map((b) => (
@@ -321,7 +321,7 @@ export default function Dashboard() {
               <div className="relative">
                 <h3 className="font-head font-bold text-sm mb-2 opacity-90">حكمة اليوم 💡</h3>
                 <p className="font-head text-lg font-bold leading-relaxed">"{quote.t}"</p>
-                <p className="text-xs text-violet-200 mt-2">— {quote.a}</p>
+                <p className="text-xs text-violet-200 mt-2">· {quote.a}</p>
               </div>
             </div>
           </Item>

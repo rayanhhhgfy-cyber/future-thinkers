@@ -63,7 +63,7 @@ export default function CompetitionDetail() {
 
           {submitted ? (
             <div className="mt-5 space-y-3">
-              <div className="p-4 rounded-xl bg-emerald-50 text-emerald-700 flex items-center gap-2"><CheckCircle2 className="w-5 h-5" /> أكملت المسابقة — نتيجتك {c.my_entry.score}% ({c.my_entry.correct}/{c.my_entry.total})</div>
+              <div className="p-4 rounded-xl bg-emerald-50 text-emerald-700 flex items-center gap-2"><CheckCircle2 className="w-5 h-5" /> أكملت المسابقة · نتيجتك {c.my_entry.score}% ({c.my_entry.correct}/{c.my_entry.total})</div>
               <Button data-testid="download-cert-btn" onClick={downloadCert} variant="outline" className="rounded-xl h-11 border-emerald-200 text-emerald-700"><Award className="w-4 h-4 ml-1" /> تنزيل شهادة المشاركة</Button>
             </div>
           ) : !registered ? (
