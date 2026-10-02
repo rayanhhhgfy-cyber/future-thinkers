@@ -1,4 +1,4 @@
-"""استوديو النشر الطلابي — مقالات وشعر وخواطر بمراجعة تحريرية قبل النشر."""
+"""استوديو النشر الطلابي · مقالات وشعر وخواطر بمراجعة تحريرية قبل النشر."""
 from fastapi import APIRouter, HTTPException, Depends, Query, Request
 from pydantic import BaseModel, Field
 from db import db, ser, sers, oid, now_iso
@@ -116,7 +116,7 @@ async def delete_work(work_id: str, user: dict = Depends(get_current_user)):
     if w["author_id"] != user["id"]:
         raise HTTPException(status_code=403, detail="ليس عملك")
     if w["status"] == "published":
-        raise HTTPException(status_code=400, detail="لا يمكن حذف عمل منشور — تواصل مع الإدارة")
+        raise HTTPException(status_code=400, detail="لا يمكن حذف عمل منشور · تواصل مع الإدارة")
     await db.works.delete_one({"_id": w["_id"]})
     return {"ok": True}
 
@@ -136,7 +136,7 @@ async def submit_work(work_id: str, request: Request, user: dict = Depends(get_c
     mods = await db.users.find({"role": {"$in": ["moderator", "admin", "super_admin"]}}).to_list(100)
     for m in mods:
         await create_notification(str(m["_id"]), "moderation", "عمل جديد بانتظار المراجعة ✍️",
-                                  f"{w['title']} — {w['author_name']}", "/admin/studio")
+                                  f"{w['title']} · {w['author_name']}", "/admin/studio")
     return {"status": "pending"}
 
 
@@ -203,7 +203,7 @@ async def reject_work(work_id: str, body: ReviewBody, request: Request,
         "status": "rejected", "reviewed_by": user["id"],
         "review_note": body.note, "updated_at": now_iso()}})
     await create_notification(w["author_id"], "studio", "عملك يحتاج تعديلاً ✍️",
-                              body.note or f"«{w['title']}» — راجع الملاحظات وعدّل ثم أعد الإرسال", "/studio")
+                              body.note or f"«{w['title']}» · راجع الملاحظات وعدّل ثم أعد الإرسال", "/studio")
     await audit_log(user, "work_reject", "work", work_id, {"note": body.note}, request)
     return {"status": "rejected"}
 

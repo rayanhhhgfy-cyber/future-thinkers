@@ -54,7 +54,7 @@ async def award_xp(user_id: str, amount: int, reason: str, ref: str = None):
     if new_level > old_level:
         await create_notification(
             user_id, "achievement", "🎉 ترقية مستوى!",
-            f"وصلت إلى المستوى {new_level} — {level_title(new_level)}",
+            f"وصلت إلى المستوى {new_level} · {level_title(new_level)}",
         )
     await check_achievements(user_id)
 
@@ -256,7 +256,7 @@ async def dispatch_due_campaigns():
                 continue
             if today <= ed <= today + _td(days=1):
                 await create_notification(r["user_id"], "event", "تذكير بفعالية 🔔",
-                                          f"{ev['title']} — {ev['date']}", "/events")
+                                          f"{ev['title']} · {ev['date']}", "/events")
                 await db.event_reminders.update_one({"_id": r["_id"]}, {"$set": {"sent": True}})
     except Exception as e:
         print(f"reminder sweep: {e}")

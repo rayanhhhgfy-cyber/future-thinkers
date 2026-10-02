@@ -103,7 +103,7 @@ ACHIEVEMENTS = [
     {"key": "xp_10000", "title": "أسطورة النقاط", "description": "جمعت 10000 نقطة خبرة", "metric": "xp", "threshold": 10000, "badge": "أسطورة", "icon": "Trophy"},
 ]
 
-# شارات المهارات — اعتمادات مصغّرة يمنحها المشرفون يدوياً
+# شارات المهارات · اعتمادات مصغّرة يمنحها المشرفون يدوياً
 SKILL_BADGES = [
     {"key": "public_speaker", "name": "خطيب مفوّه", "description": "مهارة الخطابة والإلقاء أمام الجمهور", "criteria": "إلقاء مميز في فعالية أو مسابقة خطابية", "icon": "Mic", "color": "#DC2626", "order": 1},
     {"key": "creative_writer", "name": "كاتب مبدع", "description": "مهارة الكتابة الإبداعية والأدبية", "criteria": "نشر 3 أعمال أدبية مميزة في الاستوديو", "icon": "PenLine", "color": "#7C3AED", "order": 2},
@@ -287,7 +287,7 @@ async def seed_all():
             ]
         }}}, upsert=True)
 
-    # national hierarchy — dedupe FIRST (existing duplicate rows would make
+    # national hierarchy · dedupe FIRST (existing duplicate rows would make
     # unique-index creation fail), then unique indexes, then idempotent
     # name-keyed upserts (a plain count-check races under concurrent cold
     # starts and inserts every governorate twice)

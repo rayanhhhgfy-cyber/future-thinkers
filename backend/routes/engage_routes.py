@@ -114,7 +114,7 @@ async def claim_step(pid: str, idx: int, user: dict = Depends(get_current_user))
     if claimed_count == len(steps) and len(steps) > 0:
         await award_xp(user["id"], 100, f"إكمال مسار {p['title']} 🎉", pid)
         await create_notification(user["id"], "achievement", "أكملت مساراً كاملاً! 🛤️",
-                                  f"{p['title']} — +100 خبرة إضافية")
+                                  f"{p['title']} · +100 خبرة إضافية")
         await log_activity(user, "path_completed", pid, f"أكمل مسار {p['title']}")
     return {"ok": True, "xp": xp}
 

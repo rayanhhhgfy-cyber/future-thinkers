@@ -198,7 +198,7 @@ async def approve_join(vid: str, uid: str, user: dict = Depends(get_current_user
          "$push": {"members": {"id": uid, "name": req.get("name"), "joined_at": now_iso()}}})
     await create_notification(uid, "venture_approved",
                               f"تم قبولك في مشروع: {doc['title']}",
-                              "أصبحت عضواً في الفريق — بالتوفيق!",
+                              "أصبحت عضواً في الفريق · بالتوفيق!",
                               f"/ventures/{vid}")
     return {"ok": True}
 
