@@ -305,8 +305,31 @@ async def join_challenge(cid: str, user: dict = Depends(get_current_user)):
 
 
 # ---------------- Focus rooms ----------------
+FOCUS_MOODS = {"violet", "emerald", "ocean", "sunset", "rose", "slate"}
+
+
 class FocusRoomBody(BaseModel):
     name: str
+    mood: str = "violet"
+    goal_min: int = 25
+    topic: str = ""
+
+
+@router.get("/focus/stats/me")
+async def focus_stats_me(user: dict = Depends(get_current_user)):
+    from datetime import datetime, timezone, timedelta
+    rows = await db.focus_sessions.find({"user_id": user["id"]}).sort("at", -1).to_list(1000)
+    now = datetime.now(timezone.utc)
+    today_key = now.strftime("%Y-%m-%d")
+    week_ago = (now - timedelta(days=7)).isoformat()
+    today_min = sum(r.get("minutes", 0) for r in rows if str(r.get("at", "")).startswith(today_key))
+    week_min = sum(r.get("minutes", 0) for r in rows if str(r.get("at", "")) >= week_ago)
+    best = max((r.get("minutes", 0) for r in rows), default=0)
+    live = await db.focus_rooms.find({"members.user_id": user["id"]}).to_list(5)
+    live_min = sum(int(m.get("focus_min", 0)) for g in live for m in g.get("members", [])
+                   if m.get("user_id") == user["id"])
+    return {"today_min": int(today_min), "week_min": int(week_min),
+            "sessions": len(rows), "best_min": int(best), "live_min": int(live_min)}
 
 
 @router.get("/focus/rooms")
@@ -328,6 +351,9 @@ async def create_room(body: FocusRoomBody, user: dict = Depends(get_current_user
     if len(name) < 2:
         raise HTTPException(status_code=400, detail="اسم الغرفة قصير")
     doc = {"name": name, "host_id": user["id"], "host_name": user["name"],
+           "mood": body.mood if body.mood in FOCUS_MOODS else "violet",
+           "goal_min": min(120, max(10, int(body.goal_min or 25))),
+           "topic": (body.topic or "").strip()[:80],
            "members": [{"user_id": user["id"], "name": user["name"], "focus_min": 0,
                         "joined_at": now_iso(), "claimed": False}],
            "created_at": now_iso(), "updated_at": now_iso()}
@@ -366,6 +392,10 @@ async def leave_room(rid: str, user: dict = Depends(get_current_user)):
         return {"ok": True}
     me = next((m for m in r.get("members", []) if m["user_id"] == user["id"]), None)
     xp = 0
+    if me and int(me.get("focus_min", 0)) >= 1:
+        await db.focus_sessions.insert_one(
+            {"user_id": user["id"], "name": user.get("name"),
+             "minutes": int(me["focus_min"]), "room_id": rid, "at": now_iso()})
     if me and not me.get("claimed") and me.get("focus_min", 0) >= 10:
         xp = min(30, int(me["focus_min"]))
         await db.focus_rooms.update_one({"_id": oid(rid), "members.user_id": user["id"]},

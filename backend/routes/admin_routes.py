@@ -664,9 +664,28 @@ async def send_weekly_digest(request: Request,
     return {"ok": True, "sent": sent}
 
 
-# ---------------- Site theme switcher (admin) ----------------
+# ---------------- Site design control (admin) ----------------
+import re as _re
+
+_HEX_RE = _re.compile(r"^#[0-9a-fA-F]{6}$")
+
+
+class CustomColors(BaseModel):
+    a: str
+    b: str
+    c: str
+    accent: str
+
+
+class EffectsBody(BaseModel):
+    grain: bool = True
+    motion: bool = True
+
+
 class ThemeBody(BaseModel):
     preset: str
+    custom: CustomColors | None = None
+    effects: EffectsBody = EffectsBody()
 
 
 @router.put("/theme")
@@ -675,10 +694,19 @@ async def set_theme(body: ThemeBody, request: Request,
     from routes.social_routes import THEME_PRESETS
     if body.preset not in THEME_PRESETS:
         raise HTTPException(status_code=400, detail="سمة غير معروفة")
+    custom = None
+    if body.custom is not None:
+        raw = body.custom.model_dump()
+        if not all(isinstance(v, str) and _HEX_RE.match(v) for v in raw.values()):
+            raise HTTPException(status_code=400, detail="لون غير صالح · استخدم صيغة #RRGGBB")
+        custom = {k: v.lower() for k, v in raw.items()}
+    config = {"preset": body.preset, "custom": custom,
+              "effects": {"grain": bool(body.effects.grain), "motion": bool(body.effects.motion)}}
     await db.settings.update_one({"key": "theme"},
-                                 {"$set": {"value": {"preset": body.preset}}}, upsert=True)
-    await audit_log(user, "theme_change", "settings", "theme", {"preset": body.preset}, request)
-    return {"ok": True, "preset": body.preset}
+                                 {"$set": {"value": config}}, upsert=True)
+    await audit_log(user, "theme_change", "settings", "theme",
+                    {"preset": body.preset, "custom": bool(custom)}, request)
+    return {"ok": True, **config}
 
 class BulkRow(BaseModel):
     name: str

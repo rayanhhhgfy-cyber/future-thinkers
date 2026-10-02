@@ -32,16 +32,32 @@ async def read_all(user: dict = Depends(get_current_user)):
 
 
 # ---------------- Site theme (design switcher) ----------------
-THEME_PRESETS = ("emerald", "royal", "sunset", "violet", "ocean", "gold", "rose", "crimson")
+THEME_PRESETS = ("emerald", "royal", "sunset", "violet", "ocean", "gold", "rose", "crimson",
+                 "midnight", "forest", "desert", "lavender")
+_HEX = __import__("re").compile(r"^#[0-9a-fA-F]{6}$")
+
+
+def _design_config(stored: dict | None) -> dict:
+    """الإعدادات الافتراضية + أي قيم محفوظة (تُطهَّر دائماً قبل الإرجاع)."""
+    v = (stored or {}).get("value") or {}
+    preset = v.get("preset", "emerald")
+    if preset not in THEME_PRESETS:
+        preset = "emerald"
+    custom = v.get("custom")
+    if not (isinstance(custom, dict) and all(
+            isinstance(custom.get(k), str) and _HEX.match(custom[k])
+            for k in ("a", "b", "c", "accent"))):
+        custom = None
+    eff = v.get("effects") or {}
+    return {"preset": preset, "custom": custom,
+            "effects": {"grain": bool(eff.get("grain", True)),
+                        "motion": bool(eff.get("motion", True))}}
 
 
 @router.get("/theme")
 async def public_theme():
     s = await db.settings.find_one({"key": "theme"})
-    preset = ((s or {}).get("value") or {}).get("preset", "emerald")
-    if preset not in THEME_PRESETS:
-        preset = "emerald"
-    return {"preset": preset}
+    return _design_config(s)
 
 
 # ---------------- Public stats (landing) ----------------
