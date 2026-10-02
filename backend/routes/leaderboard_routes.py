@@ -118,6 +118,23 @@ async def my_standing(user: dict = Depends(get_current_user)):
     return out
 
 
+@router.get("/leaderboard/around-me")
+async def leaderboard_around_me(user: dict = Depends(get_current_user)):
+    """Rivals view: the caller's neighbourhood on the students board
+    (same role=student filter as GET /leaderboard, ranked by xp desc).
+    Up to 2 students above + me + 2 below. Callers outside the students
+    set (other roles) get the top 5 with me_rank null."""
+    docs = await db.users.find({"role": "student"}).sort("xp", -1).to_list(10000)
+    ranked = [{"user_id": str(u["_id"]), "name": u["name"], "xp": u.get("xp", 0),
+               "rank": i + 1, "is_me": str(u["_id"]) == user["id"]}
+              for i, u in enumerate(docs)]
+    me_idx = next((i for i, r in enumerate(ranked) if r["is_me"]), None)
+    if me_idx is None:
+        return {"me_rank": None, "items": ranked[:5]}
+    return {"me_rank": me_idx + 1,
+            "items": ranked[max(0, me_idx - 2): me_idx + 3]}
+
+
 # ---------------- Gamification ----------------
 @router.get("/gamification/achievements")
 async def all_achievements(user: dict = Depends(get_current_user)):

@@ -464,6 +464,40 @@ async def delete_page_bookmark(book_id: str, bookmark_id: str, user: dict = Depe
     return {"ok": True}
 
 
+class NoteBody(BaseModel):
+    text: str
+    page: int | None = None
+
+
+@router.post("/{book_id}/notes")
+async def create_note(book_id: str, body: NoteBody, user: dict = Depends(get_current_user)):
+    if not await db.books.find_one({"_id": oid(book_id)}):
+        raise HTTPException(status_code=404, detail="الكتاب غير موجود")
+    text = body.text.strip()
+    if not text or len(text) > 1000:
+        raise HTTPException(status_code=400, detail="نص الملاحظة غير صالح")
+    doc = {"user_id": user["id"], "book_id": book_id, "page": body.page,
+           "text": text, "created_at": now_iso()}
+    res = await db.book_notes.insert_one(doc)
+    return ser(await db.book_notes.find_one({"_id": res.inserted_id}))
+
+
+@router.get("/{book_id}/notes")
+async def list_notes(book_id: str, user: dict = Depends(get_current_user)):
+    docs = await db.book_notes.find(
+        {"user_id": user["id"], "book_id": book_id}).sort("created_at", -1).to_list(500)
+    return sers(docs)
+
+
+@router.delete("/{book_id}/notes/{note_id}")
+async def delete_note(book_id: str, note_id: str, user: dict = Depends(get_current_user)):
+    res = await db.book_notes.delete_one(
+        {"_id": oid(note_id), "user_id": user["id"], "book_id": book_id})
+    if not res.deleted_count:
+        raise HTTPException(status_code=404, detail="الملاحظة غير موجودة")
+    return {"ok": True}
+
+
 class ProgressBody(BaseModel):
     page: int = 1
     percent: float = 0

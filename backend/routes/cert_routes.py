@@ -1,5 +1,6 @@
 """شهادات PDF · قوالب قابلة للتخصيص من لوحة الإدارة + منح شهادات للمستخدمين."""
 import io
+import secrets
 from pathlib import Path
 from datetime import datetime
 from fastapi import APIRouter, HTTPException, Depends, Request
@@ -89,97 +90,147 @@ def _build(name, title_line, subtitle, meta_lines, tpl=None, code=None):
     D = colors.HexColor(tpl["color_dark"])
     M = colors.HexColor(tpl["color_muted"])
     G = colors.HexColor(tpl.get("color_gold") or "#C6A15B")
-    # background + triple frame (primary · dark hairline · gold hairline)
+    INK = colors.HexColor("#1E293B")
+    cx = W / 2
+
+    # background + tight triple frame
     c.setFillColor(colors.HexColor(tpl["bg_color"]))
     c.rect(0, 0, W, H, fill=1, stroke=0)
-    c.setStrokeColor(P); c.setLineWidth(5)
-    c.rect(18, 18, W - 36, H - 36)
-    c.setStrokeColor(D); c.setLineWidth(1.1)
-    c.rect(29, 29, W - 58, H - 58)
-    c.setStrokeColor(G); c.setLineWidth(0.7)
-    c.rect(36, 36, W - 72, H - 72)
-    for fx, fy in ((36, 36), (W - 36, 36), (36, H - 36), (W - 36, H - 36)):
-        _diamond(c, fx, fy, 6, G)
-
-    cx = W / 2
-    c.setFillColor(D)
-    c.setFont("Amiri-Bold", 20)
-    c.drawCentredString(cx, H - 76, ar(tpl["org_name"]))
-    c.setFillColor(M)
-    c.setFont("Amiri", 12)
-    c.drawCentredString(cx, H - 96, ar(tpl["country_line"]))
-    # gold divider: line · diamond · line
+    c.setStrokeColor(P); c.setLineWidth(4.5)
+    c.rect(12, 12, W - 24, H - 24)
     c.setStrokeColor(G); c.setLineWidth(1)
-    c.line(cx - 78, H - 112, cx - 14, H - 112)
-    c.line(cx + 14, H - 112, cx + 78, H - 112)
-    _diamond(c, cx, H - 112, 5, G)
+    c.rect(19, 19, W - 38, H - 38)
+    c.setStrokeColor(D); c.setLineWidth(0.6)
+    c.rect(24, 24, W - 48, H - 48)
+    for fx, fy in ((24, 24), (W - 24, 24), (24, H - 24), (W - 24, H - 24)):
+        _diamond(c, fx, fy, 5.5, G)
+        _diamond(c, fx, fy, 2.4, P)
 
-    c.setFillColor(P)
-    c.setFont("Amiri-Bold", 36)
-    c.drawCentredString(cx, H - 160, ar(tpl["main_title"]))
+    # subtle side ornament stars (kept clear of the text column)
+    c.saveState()
+    c.setFillAlpha(0.10)
+    _star(c, 92, H - 210, 23, 10, G)
+    _star(c, W - 92, H - 210, 23, 10, G)
+    c.restoreState()
 
-    c.setFillColor(M)
-    c.setFont("Amiri", 14)
-    c.drawCentredString(cx, H - 194, ar(tpl["award_label"]))
-
+    # header band (dark) with gold base line
     c.setFillColor(D)
-    c.setFont("Amiri-Bold", 32)
-    c.drawCentredString(cx, H - 240, ar(name))
-    c.setStrokeColor(G); c.setLineWidth(1.6)
-    c.line(cx - 58, H - 254, cx + 58, H - 254)
-    _diamond(c, cx, H - 254, 4, G)
+    c.rect(24, H - 96, W - 48, 72, fill=1, stroke=0)
+    c.setFillColor(G)
+    c.rect(24, H - 99, W - 48, 3, fill=1, stroke=0)
+    _diamond(c, 44, H - 60, 4, G)
+    _diamond(c, W - 44, H - 60, 4, G)
+    c.setFillColor(colors.white)
+    c.setFont("Amiri-Bold", 19)
+    c.drawCentredString(cx, H - 66, ar(tpl["org_name"]))
+    c.setFillColor(G)
+    c.setFont("Amiri", 10.5)
+    c.drawCentredString(cx, H - 84, ar(tpl["country_line"]))
 
-    c.setFillColor(colors.HexColor("#334155"))
-    c.setFont("Amiri", 15)
-    c.drawCentredString(cx, H - 284, ar(title_line))
-    if subtitle:
-        c.setFont("Amiri-Bold", 16)
-        c.setFillColor(D)
-        c.drawCentredString(cx, H - 311, ar(subtitle))
-
-    y = 168
-    c.setFont("Amiri", 12)
-    c.setFillColor(M)
-    for line in meta_lines:
-        c.drawCentredString(cx, y, ar(line))
-        y -= 20
-
-    # seal (left): gold ring + primary ring + star + ribbons
-    sx, sy = 108, 96
+    # main title with gold flourishes
+    ty = H - 158
     c.setFillColor(P)
-    p = c.beginPath()
-    p.moveTo(sx - 17, sy - 22); p.lineTo(sx - 3, sy - 22); p.lineTo(sx - 10, sy - 46)
-    p.close(); c.drawPath(p, fill=1, stroke=0)
-    p = c.beginPath()
-    p.moveTo(sx + 17, sy - 22); p.lineTo(sx + 3, sy - 22); p.lineTo(sx + 10, sy - 46)
-    p.close(); c.drawPath(p, fill=1, stroke=0)
-    c.setStrokeColor(G); c.setLineWidth(2.2)
-    c.circle(sx, sy, 27, stroke=1, fill=0)
-    c.setStrokeColor(P); c.setLineWidth(0.8)
-    c.circle(sx, sy, 21.5, stroke=1, fill=0)
-    _star(c, sx, sy, 11, 4.6, G)
+    c.setFont("Amiri-Bold", 37)
+    c.drawCentredString(cx, ty, ar(tpl["main_title"]))
+    for sgn in (-1, 1):
+        x0 = cx + sgn * 118
+        c.setStrokeColor(G); c.setLineWidth(1.1)
+        c.line(x0, ty + 10, x0 + sgn * 54, ty + 10)
+        _diamond(c, x0 + sgn * 62, ty + 10, 4, G)
+        _diamond(c, x0 + sgn * 74, ty + 10, 2.4, P)
+
+    c.setFillColor(M)
+    c.setFont("Amiri", 12.5)
+    c.drawCentredString(cx, H - 184, ar(tpl["award_label"]))
+
+    # recipient name + double gold underline
+    ny = H - 238
+    c.setFillColor(INK)
+    c.setFont("Amiri-Bold", 37)
+    c.drawCentredString(cx, ny, ar(name))
+    c.setStrokeColor(G); c.setLineWidth(1.8)
+    c.line(cx - 96, ny - 15, cx + 96, ny - 15)
+    c.setLineWidth(0.7)
+    c.line(cx - 76, ny - 20.5, cx + 76, ny - 20.5)
+    _diamond(c, cx, ny - 15, 4.2, G)
+
+    # achievement lines (dense)
+    yy = H - 276
+    c.setFillColor(colors.HexColor("#334155"))
+    c.setFont("Amiri", 15.5)
+    c.drawCentredString(cx, yy, ar(title_line))
+    if subtitle:
+        yy -= 27
+        c.setFont("Amiri-Bold", 16.5)
+        c.setFillColor(P)
+        c.drawCentredString(cx, yy, ar(subtitle))
+    yy -= 24
+    c.setFont("Amiri", 11.5)
+    c.setFillColor(M)
+    for line in [l for l in (meta_lines or []) if l][:3]:
+        c.drawCentredString(cx, yy, ar(line))
+        yy -= 17
+
+    # divider above the bottom zone
+    c.setStrokeColor(G); c.setLineWidth(0.9)
+    c.line(56, 200, W - 56, 200)
+    _diamond(c, cx, 200, 4, G)
+    _diamond(c, 56, 200, 3, P)
+    _diamond(c, W - 56, 200, 3, P)
+
+    # info box (left): code · date · org
+    bx, bw, btop = 48, 252, 188
+    c.setFillColor(colors.white)
+    c.setFillAlpha(0.65)
+    c.roundRect(bx, btop - 108, bw, 108, 8, fill=1, stroke=0)
+    c.setFillAlpha(1)
+    c.setStrokeColor(G); c.setLineWidth(0.8)
+    c.roundRect(bx, btop - 108, bw, 108, 8, fill=0, stroke=1)
+    rows = [
+        ("رمز التحقق", code or "······", bool(code)),
+        ("تاريخ الإصدار", datetime.now().strftime("%Y-%m-%d"), True),
+        ("الجهة المانحة", tpl["org_name"], False),
+    ]
+    ry = btop - 24
+    for label, val, latin in rows:
+        c.setFillColor(M); c.setFont("Amiri", 9)
+        c.drawRightString(bx + bw - 12, ry, ar(label))
+        c.setFillColor(INK)
+        if latin:
+            c.setFont("Helvetica-Bold", 10.5)
+            c.drawRightString(bx + bw - 12, ry - 14, str(val))
+        else:
+            c.setFont("Amiri-Bold", 11)
+            c.drawRightString(bx + bw - 12, ry - 14, ar(val))
+        ry -= 33
+
+    # seal (center bottom)
+    sx, sy = cx, 134
+    c.setFillColor(P)
+    for dx in (-13, 13):
+        p = c.beginPath()
+        p.moveTo(sx + dx - 7, sy - 28); p.lineTo(sx + dx + 7, sy - 28); p.lineTo(sx + dx, sy - 58)
+        p.close(); c.drawPath(p, fill=1, stroke=0)
+    c.setFillColor(colors.HexColor(tpl["bg_color"]))
+    c.circle(sx, sy, 35, stroke=0, fill=1)
+    c.setStrokeColor(G); c.setLineWidth(2.4)
+    c.circle(sx, sy, 35, stroke=1, fill=0)
+    c.setStrokeColor(P); c.setLineWidth(0.9)
+    c.circle(sx, sy, 28.5, stroke=1, fill=0)
+    _star(c, sx, sy, 15, 6.2, G)
 
     # signature (right)
-    c.setFillColor(D)
-    c.setFont("Amiri-Bold", 13)
-    c.drawRightString(W - 62, 108, ar(tpl["org_name"]))
+    rx = W - 48
+    c.setFillColor(INK)
+    c.setFont("Amiri-Bold", 12.5)
+    c.drawRightString(rx, 174, ar(tpl["org_name"]))
     c.setStrokeColor(M); c.setLineWidth(0.8)
-    c.line(W - 196, 96, W - 62, 96)
-    c.setFillColor(M)
-    c.setFont("Amiri", 10.5)
-    c.drawRightString(W - 62, 82, ar("إدارة المنصة"))
+    c.line(rx - 178, 162, rx, 162)
+    c.setFillColor(M); c.setFont("Amiri", 10)
+    c.drawRightString(rx, 148, ar("إدارة المنصة"))
+    c.setFont("Amiri", 9.5)
+    c.drawRightString(rx, 120, ar(tpl["footer_right"]))
 
-    # footer: date · verification · org
-    c.setFillColor(M)
-    c.setFont("Helvetica", 10)
-    c.drawString(60, 50, datetime.now().strftime("%Y-%m-%d"))
-    c.setFont("Amiri", 11)
-    c.drawRightString(W - 60, 50, ar(tpl["footer_right"]))
-    if code:
-        c.setFont("Amiri", 9.5)
-        c.drawCentredString(cx, 62, ar(f"رمز التحقق: {code}"))
-        c.setFont("Helvetica", 8.5)
-        c.drawCentredString(cx, 50, f"f-thinkers.vercel.app/verify/{code}")
     c.showPage()
     c.save()
     buf.seek(0)
@@ -269,6 +320,25 @@ async def verify_certificate(code: str):
             "created_at": cert.get("created_at", ""), "org": tpl["org_name"]}
 
 
+# ---------- public: certificates wall (latest awards) ----------
+
+@router.get("/wall")
+async def certificates_wall():
+    docs = await db.certificates.find({}).sort("created_at", -1).limit(12).to_list(12)
+    uids = [oid(d["user_id"]) for d in docs if d.get("user_id") and oid(d["user_id"])]
+    names = {}
+    if uids:
+        async for u in db.users.find({"_id": {"$in": uids}}, {"name": 1}):
+            names[str(u["_id"])] = u["name"]
+    return [{
+        "user_name": names.get(d.get("user_id")) or d.get("user_name", ""),
+        "title_line": d.get("title_line", ""),
+        "subtitle": d.get("subtitle", ""),
+        "created_at": d.get("created_at", ""),
+        "code": d.get("code") or str(d["_id"])[:8].upper(),
+    } for d in docs]
+
+
 @router.get("/{cert_id}/pdf")
 async def certificate_pdf(cert_id: str, user: dict = Depends(get_current_user)):
     cert = await db.certificates.find_one({"_id": oid(cert_id)})
@@ -321,28 +391,63 @@ class AwardBody(BaseModel):
     meta_lines: list = Field(default_factory=list)
 
 
+def _gen_code() -> str:
+    return secrets.token_hex(3).upper()
+
+
+async def _insert_cert(target: dict, title_line: str, subtitle: str,
+                       meta_lines: list, tpl: dict, admin: dict) -> str:
+    """Shared award path (single + bulk): insert the cert doc and notify."""
+    doc = {
+        "user_id": str(target["_id"]), "user_name": target["name"],
+        "title_line": title_line, "subtitle": subtitle,
+        "meta_lines": [str(x) for x in (meta_lines or [])][:6],
+        "template": tpl,
+        "code": _gen_code(),
+        "awarded_by": admin["id"], "awarded_by_name": admin["name"],
+        "created_at": now_iso(),
+    }
+    res = await db.certificates.insert_one(doc)
+    await create_notification(str(target["_id"]), "certificate",
+                              "حصلت على شهادة جديدة! 🏅", title_line,
+                              f"/profile/{str(target['_id'])}")
+    return str(res.inserted_id)
+
+
 @router.post("/admin/award")
 async def admin_award_certificate(body: AwardBody, user: dict = Depends(require_permission("certificate.manage"))):
     target = await db.users.find_one({"_id": oid(body.user_id)})
     if not target:
         raise HTTPException(status_code=404, detail="المستخدم غير موجود")
     tpl = await get_template()
-    doc = {
-        "user_id": str(target["_id"]), "user_name": target["name"],
-        "title_line": body.title_line, "subtitle": body.subtitle,
-        "meta_lines": [str(x) for x in (body.meta_lines or [])][:6],
-        "template": tpl,
-        "code": __import__("secrets").token_hex(3).upper(),
-        "awarded_by": user["id"], "awarded_by_name": user["name"],
-        "created_at": now_iso(),
-    }
-    res = await db.certificates.insert_one(doc)
-    await create_notification(str(target["_id"]), "certificate",
-                              "حصلت على شهادة جديدة! 🏅", body.title_line,
-                              f"/profile/{str(target['_id'])}")
-    await audit_log(user, "certificate_award", "certificate", str(res.inserted_id),
+    cert_id = await _insert_cert(target, body.title_line, body.subtitle,
+                                 body.meta_lines, tpl, user)
+    await audit_log(user, "certificate_award", "certificate", cert_id,
                     {"user_id": str(target["_id"]), "title": body.title_line})
-    return {"id": str(res.inserted_id)}
+    return {"id": cert_id}
+
+
+class AwardBulkBody(BaseModel):
+    user_ids: list = Field(..., min_length=1, max_length=50)
+    title_line: str = Field(..., min_length=1)
+    subtitle: str = ""
+
+
+@router.post("/admin/award-bulk")
+async def admin_award_bulk(body: AwardBulkBody, user: dict = Depends(require_permission("certificate.manage"))):
+    tpl = await get_template()
+    awarded = 0
+    skipped = []
+    for uid in body.user_ids:
+        target = await db.users.find_one({"_id": oid(str(uid))})
+        if not target:
+            skipped.append(uid)
+            continue
+        await _insert_cert(target, body.title_line, body.subtitle, [], tpl, user)
+        awarded += 1
+    await audit_log(user, "certificate_award_bulk", "certificate", "bulk",
+                    {"awarded": awarded, "skipped": skipped, "title": body.title_line})
+    return {"awarded": awarded, "skipped": skipped}
 
 
 @router.get("/admin/awarded")
