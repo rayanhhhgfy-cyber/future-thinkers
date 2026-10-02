@@ -45,6 +45,7 @@ import Points from "@/pages/Points";
 import Stats from "@/pages/Stats";
 import ChessPuzzle from "@/pages/ChessPuzzle";
 import VerifyCertificate from "@/pages/VerifyCertificate";
+import CertificatesWall from "@/pages/CertificatesWall";
 import BookReviews from "@/pages/BookReviews";
 import Admin from "@/pages/Admin";
 
@@ -92,6 +93,7 @@ function AnimatedRoutes() {
       <Route path="/stats" element={<Protected><Stats /></Protected>} />
       <Route path="/chess/puzzle" element={<Protected><ChessPuzzle /></Protected>} />
       <Route path="/verify/:code" element={<VerifyCertificate />} />
+      <Route path="/certificates-wall" element={<CertificatesWall />} />
       <Route path="/paths" element={<Protected><Paths /></Protected>} />
       <Route path="/community" element={<Protected><Community /></Protected>} />
       <Route path="/calendar" element={<Calendar />} />

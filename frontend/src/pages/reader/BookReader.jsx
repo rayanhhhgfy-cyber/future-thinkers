@@ -3,11 +3,12 @@ import {
   X, Download, ZoomIn, ZoomOut, Check, Loader2,
   AlertTriangle, ExternalLink, ChevronUp, BookOpen,
   Bookmark, BookmarkCheck, Trash2,
+  Sun, Coffee, Moon, StickyNote, Plus, NotebookText,
 } from "lucide-react";
-import api from "@/lib/api";
+import api, { apiErr } from "@/lib/api";
 
 // pdf.js is loaded on demand from CDN (never bundled, never pushed through
-// the repo) — the reader chunk stays small and the main bundle is untouched.
+// the repo) · the reader chunk stays small and the main bundle is untouched.
 const PDFJS_VERSION = "6.3.289";
 const PDFJS_LIB_URL = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${PDFJS_VERSION}/build/pdf.mjs`;
 const PDFJS_WORKER_URL = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${PDFJS_VERSION}/build/pdf.worker.min.mjs`;
@@ -21,6 +22,15 @@ function loadPdfjs() {
 
 const ZOOM_STEPS = [0.6, 0.8, 1, 1.25, 1.5, 2, 2.5];
 const RENDER_AHEAD_BEHIND = 3; // pages rendered around the visible one
+
+/* Reader backdrop themes · applied to the reader container/pages desk.
+   The PDF pages themselves stay white; the theme colors the space around
+   them so long reading sessions feel easy on the eyes. */
+const READER_THEMES = [
+  { id: "light", label: "فاتح", desk: "#E9E6DF", icon: Sun },
+  { id: "sepia", label: "سيبيا", desk: "#F5E9D3", icon: Coffee },
+  { id: "night", label: "ليلي", desk: "#111827", icon: Moon },
+];
 
 function PageView({ pdf, pageNumber, scale, active, onSize }) {
   const wrapRef = useRef(null);
@@ -104,6 +114,13 @@ export default function BookReader({ book, pdfUrl, onClose, onProgress, initialP
   const [markingDone, setMarkingDone] = useState(false);
   const [pageBookmarks, setPageBookmarks] = useState([]);
   const [showBookmarks, setShowBookmarks] = useState(false);
+  const [themeId, setThemeId] = useState(() => { try { return localStorage.getItem("ft-reader-theme") || "night"; } catch { return "night"; } });
+  const [notes, setNotes] = useState([]);
+  const [notesLoaded, setNotesLoaded] = useState(false);
+  const [notesErr, setNotesErr] = useState("");
+  const [showNotes, setShowNotes] = useState(false);
+  const [noteText, setNoteText] = useState("");
+  const [addingNote, setAddingNote] = useState(false);
 
   const scrollRef = useRef(null);
   const pageTops = useRef({});
@@ -114,6 +131,11 @@ export default function BookReader({ book, pdfUrl, onClose, onProgress, initialP
   const pdfRef = useRef(null);
 
   const scale = fitScale * ZOOM_STEPS[zoomIdx];
+  const desk = (READER_THEMES.find((t) => t.id === themeId) || READER_THEMES[2]).desk;
+
+  useEffect(() => {
+    try { localStorage.setItem("ft-reader-theme", themeId); } catch {}
+  }, [themeId]);
 
   const pokeBars = useCallback(() => {
     setBarsVisible(true);
@@ -238,7 +260,7 @@ export default function BookReader({ book, pdfUrl, onClose, onProgress, initialP
     return () => clearTimeout(t);
   }, [pdf, numPages, zoomIdx, measure, updateCurrent, initialPercent]);
 
-  // Persist reading progress (debounced) — percent + current page.
+  // Persist reading progress (debounced) · percent + current page.
   useEffect(() => {
     if (!numPages || !onProgress) return;
     if (progressTimer.current) clearTimeout(progressTimer.current);
@@ -254,6 +276,63 @@ export default function BookReader({ book, pdfUrl, onClose, onProgress, initialP
     if (el && top != null) el.scrollTop = Math.max(0, top - 12);
     setCurrentPage(n);
     pokeBars();
+  };
+
+  /* zoom presets · absolute scales (fit = current fit-to-width step) */
+  const setAbsZoom = (abs) => {
+    const target = abs / (fitScale || 1);
+    let best = 2, bd = Infinity;
+    ZOOM_STEPS.forEach((s, i) => { const d = Math.abs(s - target); if (d < bd) { bd = d; best = i; } });
+    setZoomIdx(best);
+    pokeBars();
+  };
+
+  /* ---- personal notes per page ---- */
+  const loadNotes = useCallback(async () => {
+    const bid = book?.id;
+    if (!bid) return;
+    try {
+      const { data } = await api.get(`/books/${bid}/notes`);
+      setNotes(Array.isArray(data) ? data : (data?.items || []));
+      setNotesErr("");
+    } catch (err) {
+      setNotesErr(apiErr(err));
+    }
+    setNotesLoaded(true);
+  }, [book?.id]);
+
+  const openNotes = () => {
+    setShowNotes(true);
+    pokeBars();
+    if (!notesLoaded) loadNotes();
+  };
+
+  const addNote = async () => {
+    const bid = book?.id;
+    const text = noteText.trim();
+    if (!text || !bid || addingNote) return;
+    setAddingNote(true);
+    try {
+      await api.post(`/books/${bid}/notes`, { text, page: currentPage });
+      setNoteText("");
+      setNotesLoaded(false);
+      await loadNotes();
+    } catch (err) {
+      setNotesErr(apiErr(err));
+    }
+    setAddingNote(false);
+  };
+
+  const deleteNote = async (note) => {
+    const bid = book?.id;
+    const nid = note.id || note._id;
+    if (!nid || !bid) return;
+    try {
+      await api.delete(`/books/${bid}/notes/${nid}`);
+      setNotes((ns) => ns.filter((n) => (n.id || n._id) !== nid));
+    } catch (err) {
+      setNotesErr(apiErr(err));
+    }
   };
 
   /* ---- page bookmarks ---- */
@@ -296,7 +375,7 @@ export default function BookReader({ book, pdfUrl, onClose, onProgress, initialP
   const near = (n) => Math.abs(n - currentPage) <= RENDER_AHEAD_BEHIND;
 
   return (
-    <div className="fixed inset-0 z-[80] bg-[#0b1020] text-white flex flex-col" dir="rtl" data-testid="pdf-reader">
+    <div className="fixed inset-0 z-[80] text-white flex flex-col transition-colors duration-500" dir="rtl" data-testid="pdf-reader" style={{ background: desk }}>
       {/* ambient glow */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute -top-32 right-1/4 w-96 h-96 bg-indigo-600/25 rounded-full blur-[110px]" />
@@ -368,6 +447,20 @@ export default function BookReader({ book, pdfUrl, onClose, onProgress, initialP
                 </div>
               )}
             </div>
+            <button
+              onClick={openNotes}
+              data-testid="reader-notes-btn"
+              className="relative w-10 h-10 shrink-0 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md flex items-center justify-center transition"
+              aria-label="ملاحظاتي"
+              title="ملاحظاتي على الكتاب"
+            >
+              <NotebookText className="w-5 h-5" />
+              {notesLoaded && notes.length > 0 && (
+                <span className="absolute -bottom-1 -left-1 min-w-5 h-5 px-1 rounded-full bg-amber-400 text-slate-950 text-[10px] font-extrabold grid place-items-center border-2 border-transparent">
+                  {notes.length}
+                </span>
+              )}
+            </button>
             <a
               href={pdfUrl}
               download
@@ -408,7 +501,7 @@ export default function BookReader({ book, pdfUrl, onClose, onProgress, initialP
       >
         {error ? (
           <div className="min-h-full flex items-center justify-center p-6">
-            <div className="max-w-sm w-full text-center bg-white/[0.06] border border-white/10 rounded-3xl p-8 backdrop-blur-md">
+            <div className="max-w-sm w-full text-center bg-slate-950/85 border border-white/10 rounded-3xl p-8 backdrop-blur-md shadow-2xl">
               <div className="w-14 h-14 mx-auto rounded-2xl bg-rose-500/15 flex items-center justify-center">
                 <AlertTriangle className="w-7 h-7 text-rose-400" />
               </div>
@@ -443,7 +536,7 @@ export default function BookReader({ book, pdfUrl, onClose, onProgress, initialP
           </div>
         ) : !pdf ? (
           <div className="min-h-full flex items-center justify-center p-6">
-            <div className="text-center">
+            <div className="text-center rounded-3xl bg-slate-950/85 border border-white/10 px-10 py-8 shadow-2xl">
               <div className="relative w-20 h-20 mx-auto">
                 <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-indigo-500/40 to-emerald-500/40 blur-xl" />
                 <div className="relative w-20 h-20 rounded-3xl bg-white/[0.07] border border-white/10 flex items-center justify-center">
@@ -482,7 +575,45 @@ export default function BookReader({ book, pdfUrl, onClose, onProgress, initialP
           className={`relative z-10 transition-all duration-300 ${barsVisible ? "translate-y-0 opacity-100" : "translate-y-full opacity-0"}`}
         >
           <div className="bg-gradient-to-t from-black/70 to-transparent px-3 sm:px-5 pt-8 pb-4">
-            <div className="max-w-2xl mx-auto bg-white/[0.08] border border-white/10 backdrop-blur-xl rounded-2xl px-3 sm:px-4 py-2.5 flex items-center gap-2 sm:gap-3 shadow-2xl">
+            <div className="max-w-2xl mx-auto bg-white/[0.08] border border-white/10 backdrop-blur-xl rounded-2xl px-3 sm:px-4 py-2.5 shadow-2xl">
+              {/* zoom presets + reader themes */}
+              <div className="flex items-center justify-center gap-1.5 sm:gap-2 flex-wrap mb-2.5" dir="rtl">
+                <button
+                  onClick={() => { setZoomIdx(2); pokeBars(); }}
+                  className={`h-8 px-3 rounded-full text-[11px] font-bold transition ${zoomIdx === 2 ? "bg-amber-400 text-slate-950" : "bg-white/10 hover:bg-white/20 text-slate-200"}`}
+                >
+                  ملاءمة الشاشة
+                </button>
+                <button
+                  onClick={() => setAbsZoom(1)}
+                  className={`h-8 px-3 rounded-full text-[11px] font-bold transition tabular-nums ${Math.abs(scale - 1) < 0.12 ? "bg-amber-400 text-slate-950" : "bg-white/10 hover:bg-white/20 text-slate-200"}`}
+                >
+                  100%
+                </button>
+                <button
+                  onClick={() => setAbsZoom(1.5)}
+                  className={`h-8 px-3 rounded-full text-[11px] font-bold transition tabular-nums ${Math.abs(scale - 1.5) < 0.12 ? "bg-amber-400 text-slate-950" : "bg-white/10 hover:bg-white/20 text-slate-200"}`}
+                >
+                  150%
+                </button>
+                <span className="w-px h-5 bg-white/15 mx-1 hidden sm:block" aria-hidden="true" />
+                {READER_THEMES.map((t) => {
+                  const TIcon = t.icon;
+                  return (
+                    <button
+                      key={t.id}
+                      data-testid={`reader-theme-${t.id}`}
+                      onClick={() => { setThemeId(t.id); pokeBars(); }}
+                      className={`h-8 pl-2.5 pr-2 rounded-full text-[11px] font-bold flex items-center gap-1 transition ${themeId === t.id ? "bg-amber-400 text-slate-950" : "bg-white/10 hover:bg-white/20 text-slate-200"}`}
+                      title={`مظهر ${t.label}`}
+                    >
+                      <TIcon className="w-3.5 h-3.5" />
+                      {t.label}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="flex items-center gap-2 sm:gap-3">
               <button
                 onClick={() => setZoomIdx((i) => Math.max(0, i - 1))}
                 disabled={zoomIdx === 0}
@@ -520,6 +651,93 @@ export default function BookReader({ book, pdfUrl, onClose, onProgress, initialP
               >
                 <ChevronUp className="w-4 h-4" />
               </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* notes bottom sheet */}
+      {showNotes && (
+        <div className="absolute inset-0 z-30" dir="rtl">
+          <div className="absolute inset-0 bg-black/55 backdrop-blur-[2px]" onClick={() => setShowNotes(false)} />
+          <div className="absolute inset-x-0 bottom-0 max-h-[78vh] flex flex-col rounded-t-[28px] bg-slate-900/97 border-t border-white/10 shadow-2xl">
+            <div className="flex items-center gap-2.5 px-5 pt-4 pb-3 border-b border-white/[0.07]">
+              <span className="w-9 h-9 rounded-xl bg-amber-400/15 text-amber-300 grid place-items-center shrink-0">
+                <NotebookText className="w-5 h-5" />
+              </span>
+              <div className="flex-1 min-w-0">
+                <div className="font-head font-extrabold text-sm">ملاحظاتي</div>
+                <div className="text-[11px] text-slate-400">أنت الآن في الصفحة {currentPage}</div>
+              </div>
+              <button
+                onClick={() => setShowNotes(false)}
+                className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 grid place-items-center transition shrink-0"
+                aria-label="إغلاق الملاحظات"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-5 py-3 space-y-2">
+              {notesErr && (
+                <div className="rounded-xl bg-rose-500/10 border border-rose-400/20 text-rose-200 text-xs font-semibold px-3 py-2.5">{notesErr}</div>
+              )}
+              {!notesLoaded ? (
+                <div className="flex items-center justify-center gap-2 py-8 text-slate-400 text-sm">
+                  <Loader2 className="w-4 h-4 animate-spin" /> جارٍ تحميل ملاحظاتك…
+                </div>
+              ) : notes.length === 0 ? (
+                <div className="text-center py-8">
+                  <StickyNote className="w-9 h-9 mx-auto text-slate-600" />
+                  <p className="text-sm text-slate-400 mt-3 leading-relaxed">لا ملاحظات بعد · اكتب أول ملاحظة لك على الصفحة {currentPage} وستجدها هنا دائماً.</p>
+                </div>
+              ) : (
+                notes.map((n) => (
+                  <div key={n.id || n._id} className="flex items-start gap-2.5 rounded-2xl bg-white/[0.05] border border-white/[0.07] px-3.5 py-3 group">
+                    <button
+                      onClick={() => { if (n.page) { goToPage(n.page); setShowNotes(false); } }}
+                      className="shrink-0 rounded-full bg-amber-400/15 text-amber-300 text-[11px] font-extrabold px-2.5 py-1 tabular-nums"
+                      title="الانتقال إلى الصفحة"
+                    >
+                      ص {n.page}
+                    </button>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm leading-relaxed text-slate-100 whitespace-pre-wrap break-words">{n.text}</p>
+                      {n.created_at && <div className="text-[10px] text-slate-500 mt-1 tabular-nums">{String(n.created_at).slice(0, 10)}</div>}
+                    </div>
+                    <button
+                      onClick={() => deleteNote(n)}
+                      className="w-8 h-8 shrink-0 grid place-items-center rounded-lg text-slate-500 hover:text-rose-300 hover:bg-rose-500/10 transition"
+                      aria-label="حذف الملاحظة"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="px-5 pb-5 pt-3 border-t border-white/[0.07] bg-slate-900">
+              <div className="flex items-end gap-2">
+                <textarea
+                  data-testid="note-text-input"
+                  value={noteText}
+                  onChange={(ev) => setNoteText(ev.target.value)}
+                  rows={2}
+                  placeholder={`أضف ملاحظة على الصفحة ${currentPage}…`}
+                  className="flex-1 resize-none rounded-2xl bg-white/[0.06] border border-white/10 focus:border-amber-300/50 focus:ring-2 focus:ring-amber-300/20 outline-none px-3.5 py-2.5 text-sm placeholder:text-slate-500"
+                />
+                <button
+                  data-testid="add-note-btn"
+                  onClick={addNote}
+                  disabled={!noteText.trim() || addingNote}
+                  className="h-11 shrink-0 rounded-2xl bg-amber-400 hover:bg-amber-300 text-slate-950 text-sm font-extrabold px-4 flex items-center gap-1.5 transition disabled:opacity-40"
+                >
+                  {addingNote ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                  إضافة
+                </button>
+              </div>
             </div>
           </div>
         </div>
