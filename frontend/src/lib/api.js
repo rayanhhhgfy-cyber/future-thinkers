@@ -1,5 +1,8 @@
 import axios from "axios";
-import { signHeaders, signUrl, setSigKey, clearSigKey } from "@/lib/signing";
+import {
+  signUrl, setSigKey, clearSigKey, getSigKey, getDeviceId,
+  signRequestV2, canonicalQuery, signEcDSA, ensureDeviceKey, solvePow, registerDeviceKey,
+} from "@/lib/signing";
 
 const BACKEND_URL = (process.env.REACT_APP_BACKEND_URL || "").replace(/\/$/, "");
 const API = `${BACKEND_URL}/api`;
@@ -22,10 +25,13 @@ function signablePath(config) {
   return `${basePath}${rel}`;
 }
 
-api.interceptors.request.use((config) => {
+const POW_PATHS = new Set(["/api/auth/login", "/api/auth/register"]);
+
+api.interceptors.request.use(async (config) => {
   const token = localStorage.getItem("ft_token");
   if (token) config.headers.Authorization = `Bearer ${token}`;
-  // Sign every request (HMAC-SHA256) so scripted API abuse is rejected.
+  // Sign every request (v2: hour-bucketed HMAC-SHA512 + ECDSA device key)
+  // so scripted API abuse is rejected.
   try {
     const method = (config.method || "get").toUpperCase();
     let bodyStr = "";
@@ -48,10 +54,28 @@ api.interceptors.request.use((config) => {
         if (!ct) config.headers["Content-Type"] = "application/json";
       }
     }
-    const sig = signHeaders(method, signablePath(config), bodyStr);
-    config.headers["X-Ft-Ts"] = sig["X-Ft-Ts"];
-    config.headers["X-Ft-Nonce"] = sig["X-Ft-Nonce"];
-    config.headers["X-Ft-Sig"] = sig["X-Ft-Sig"];
+    const path = signablePath(config);
+    const query = canonicalQuery(config.url, config.params);
+    const rawCt = typeof config.headers?.get === "function"
+      ? config.headers.get("Content-Type")
+      : config.headers?.["Content-Type"];
+    const contentType = typeof rawCt === "string" ? rawCt : "";
+    const { headers, canonical } = await signRequestV2({
+      method, path, query, bodyStr, contentType,
+    });
+    for (const k of Object.keys(headers)) config.headers[k] = headers[k];
+    // Extra proof of work on the credential endpoints.
+    if (POW_PATHS.has(path)) {
+      const pow = await solvePow(headers["X-Ft-Ts"], getDeviceId(), path);
+      if (pow) config.headers["X-Ft-Pow"] = pow;
+    }
+    // ECDSA device signature on session-signed traffic. When no device key
+    // exists yet, kick off generation in the background and send without it.
+    if (getSigKey()) {
+      const esig = await signEcDSA(canonical);
+      if (esig) config.headers["X-Ft-Esig"] = esig;
+      else ensureDeviceKey().catch(() => {});
+    }
   } catch {}
   return config;
 });
@@ -61,7 +85,13 @@ api.interceptors.response.use(
     // The server rotates a per-session signing key in auth responses.
     try {
       const k = response?.data?.sig_key;
-      if (typeof k === "string" && k) setSigKey(k);
+      if (typeof k === "string" && k) {
+        setSigKey(k);
+        // Bind this device's ECDSA public key to the account (once per key).
+        if (!String(response?.config?.url || "").includes("/auth/device-key")) {
+          registerDeviceKey((u, body) => api.post(u, body)).catch(() => {});
+        }
+      }
     } catch {}
     const contentType = response.headers?.["content-type"] || "";
     if (contentType.includes("text/html")) {

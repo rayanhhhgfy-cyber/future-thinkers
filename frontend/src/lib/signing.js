@@ -243,3 +243,329 @@ export function signUrl(url) {
 }
 
 export { sha256Hex, hmacSha256Hex, APP_KEY };
+
+/* ============================ v2 (hardened) ============================
+ *
+ *   HourBucket = floor(tsMs / 3600000)
+ *   RK         = HMAC-SHA512(key=L0, "rk:" + deviceId + ":" + HourBucket) hex
+ *   canonical  = "V2\n" + METHOD + "\n" + PATH + "\n" + QUERY + "\n" + TSMS
+ *                + "\n" + NONCE + "\n" + DEVICE + "\n" + SHA256HEX(body)
+ *                + "\n" + SHA256HEX(contentType or "")
+ *   sig        = HMAC-SHA512(key=RK, canonical) hex        (WebCrypto)
+ *
+ * L0 is the session sig_key when present, else APP_KEY. HMAC keys are the
+ * UTF-8 bytes of those hex strings (same convention as v1). QUERY is the
+ * canonical sorted query (see canonicalQuery). Headers: X-Ft-V "2",
+ * X-Ft-Ts (milliseconds), X-Ft-Nonce (32 hex), X-Ft-Dev, X-Ft-Sig.
+ * Session-signed requests also carry X-Ft-Esig: an ECDSA P-256 signature
+ * (base64url r||s) over the same canonical string, made by a non-extractable
+ * device key persisted in IndexedDB.
+ */
+
+const DEVICE_ID_STORAGE = "ft_device_id";
+let _deviceIdCache = null;
+
+function uuid() {
+  const c = typeof globalThis !== "undefined" ? globalThis.crypto : null;
+  if (c && typeof c.randomUUID === "function") return c.randomUUID();
+  const b = new Uint8Array(16);
+  if (c && typeof c.getRandomValues === "function") c.getRandomValues(b);
+  else for (let i = 0; i < 16; i++) b[i] = Math.floor(Math.random() * 256);
+  b[6] = (b[6] & 0x0f) | 0x40;
+  b[8] = (b[8] & 0x3f) | 0x80;
+  const h = bytesToHex(b);
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
+}
+
+export function getDeviceId() {
+  if (_deviceIdCache) return _deviceIdCache;
+  const s = storage();
+  if (s) {
+    try {
+      const existing = s.getItem(DEVICE_ID_STORAGE);
+      if (existing) {
+        _deviceIdCache = existing;
+        return existing;
+      }
+    } catch {}
+  }
+  const id = uuid();
+  _deviceIdCache = id;
+  if (s) {
+    try {
+      s.setItem(DEVICE_ID_STORAGE, id);
+    } catch {}
+  }
+  return id;
+}
+
+/* ------------------------- WebCrypto helpers ------------------------- */
+
+function getSubtle() {
+  try {
+    return (typeof globalThis !== "undefined" && globalThis.crypto && globalThis.crypto.subtle) || null;
+  } catch {
+    return null;
+  }
+}
+
+async function hmacSha512Hex(keyStr, msgStr) {
+  const subtle = getSubtle();
+  if (!subtle) throw new Error("WebCrypto unavailable");
+  const key = await subtle.importKey(
+    "raw", enc.encode(String(keyStr)), { name: "HMAC", hash: "SHA-512" }, false, ["sign"]
+  );
+  const sig = await subtle.sign("HMAC", key, enc.encode(String(msgStr)));
+  return bytesToHex(new Uint8Array(sig));
+}
+
+/** Hour-bucketed request key derived from the long-lived key L0. */
+export async function deriveRk(l0, deviceId, bucket) {
+  return hmacSha512Hex(l0, `rk:${deviceId}:${bucket}`);
+}
+
+function makeNonce32() {
+  const bytes = new Uint8Array(16);
+  const cryptoObj = typeof globalThis !== "undefined" ? globalThis.crypto : null;
+  if (cryptoObj && typeof cryptoObj.getRandomValues === "function") {
+    cryptoObj.getRandomValues(bytes);
+  } else {
+    for (let i = 0; i < bytes.length; i++) bytes[i] = Math.floor(Math.random() * 256);
+  }
+  return bytesToHex(bytes);
+}
+
+/** Canonical sorted query: "k=v" pairs sorted by (key, value), raw-joined. */
+export function canonicalQuery(url, params) {
+  const pairs = [];
+  const push = (k, v) => {
+    const key = String(k);
+    if (key === "fts" || key === "fnonce" || key === "fsig") return;
+    pairs.push([key, String(v)]);
+  };
+  if (url) {
+    const s = String(url);
+    const qi = s.indexOf("?");
+    if (qi >= 0) {
+      const qs = s.slice(qi + 1).split("#")[0];
+      try {
+        new URLSearchParams(qs).forEach((v, k) => push(k, v));
+      } catch {}
+    }
+  }
+  if (params && typeof params === "object") {
+    for (const k of Object.keys(params)) {
+      const v = params[k];
+      if (v === null || v === undefined) continue;
+      if (Array.isArray(v)) {
+        for (const el of v) {
+          if (el !== null && el !== undefined) push(k, el);
+        }
+      } else {
+        push(k, v);
+      }
+    }
+  }
+  pairs.sort((a, b) =>
+    a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : a[1] < b[1] ? -1 : a[1] > b[1] ? 1 : 0
+  );
+  return pairs.map(([k, v]) => `${k}=${v}`).join("&");
+}
+
+export function buildCanonicalV2({ method, path, query, ts, nonce, device, bodyStr, contentType }) {
+  return (
+    `V2\n${String(method || "GET").toUpperCase()}\n${path}\n${query || ""}\n${ts}\n${nonce}\n${device}\n` +
+    `${sha256Hex(bodyStr || "")}\n${sha256Hex(contentType || "")}`
+  );
+}
+
+/**
+ * Sign one request the v2 way. Returns { headers, canonical } · the
+ * canonical string is handed back so the caller can ECDSA-sign it too.
+ */
+export async function signRequestV2({ method, path, query, bodyStr, contentType }) {
+  const ts = String(Date.now());
+  const bucket = Math.floor(Number(ts) / 3600000);
+  const device = getDeviceId();
+  const rk = await deriveRk(currentKey(), device, bucket);
+  const nonce = makeNonce32();
+  const canonical = buildCanonicalV2({
+    method, path, query: query || "", ts, nonce, device,
+    bodyStr: bodyStr || "", contentType: contentType || "",
+  });
+  const sig = await hmacSha512Hex(rk, canonical);
+  return {
+    canonical,
+    headers: {
+      "X-Ft-V": "2",
+      "X-Ft-Ts": ts,
+      "X-Ft-Nonce": nonce,
+      "X-Ft-Dev": device,
+      "X-Ft-Sig": sig,
+    },
+  };
+}
+
+/* ------------------- ECDSA device key (IndexedDB) ------------------- */
+
+let _devPair = null;
+let _devPub = null;
+let _devPairPromise = null;
+
+function idbOpen() {
+  return new Promise((resolve) => {
+    try {
+      if (typeof indexedDB === "undefined") return resolve(null);
+      const rq = indexedDB.open("ft-sig", 1);
+      rq.onupgradeneeded = () => {
+        try { rq.result.createObjectStore("keys"); } catch {}
+      };
+      rq.onsuccess = () => resolve(rq.result);
+      rq.onerror = () => resolve(null);
+    } catch {
+      resolve(null);
+    }
+  });
+}
+
+async function idbGet(key) {
+  const db = await idbOpen();
+  if (!db) return null;
+  return new Promise((resolve) => {
+    try {
+      const rq = db.transaction("keys").objectStore("keys").get(key);
+      rq.onsuccess = () => resolve(rq.result || null);
+      rq.onerror = () => resolve(null);
+    } catch {
+      resolve(null);
+    }
+  });
+}
+
+async function idbPut(key, value) {
+  const db = await idbOpen();
+  if (!db) return;
+  return new Promise((resolve) => {
+    try {
+      const tx = db.transaction("keys", "readwrite");
+      tx.objectStore("keys").put(value, key);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => resolve();
+    } catch {
+      resolve();
+    }
+  });
+}
+
+function b64url(bytes) {
+  let bin = "";
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+/**
+ * Load (or create once) the ECDSA P-256 device keypair. The private key is
+ * non-extractable and lives only in IndexedDB. Resolves the public JWK
+ * {x, y}, or null when WebCrypto/IndexedDB are unavailable.
+ */
+export async function ensureDeviceKey() {
+  if (_devPub) return _devPub;
+  if (_devPairPromise) return _devPairPromise;
+  _devPairPromise = (async () => {
+    try {
+      const subtle = getSubtle();
+      if (!subtle) return null;
+      // No IndexedDB means the private key could not persist · stay silent.
+      if (typeof indexedDB === "undefined") return null;
+      let pair = await idbGet("device");
+      if (!pair) {
+        pair = await subtle.generateKey(
+          { name: "ECDSA", namedCurve: "P-256" }, false, ["sign", "verify"]
+        );
+        await idbPut("device", pair);
+      }
+      _devPair = pair;
+      const jwk = await subtle.exportKey("jwk", pair.publicKey);
+      _devPub = { x: jwk.x, y: jwk.y };
+      return _devPub;
+    } catch {
+      _devPairPromise = null;
+      return null;
+    }
+  })();
+  return _devPairPromise;
+}
+
+async function peekDevicePair() {
+  if (_devPair) return _devPair;
+  try {
+    const pair = await idbGet("device");
+    if (pair) {
+      _devPair = pair;
+      return pair;
+    }
+  } catch {}
+  return null;
+}
+
+/** ECDSA-sign a canonical string · base64url(r||s), or null when no key. */
+export async function signEcDSA(canonical) {
+  try {
+    const subtle = getSubtle();
+    if (!subtle) return null;
+    const pair = await peekDevicePair();
+    if (!pair) return null;
+    const raw = await subtle.sign(
+      { name: "ECDSA", hash: "SHA-256" }, pair.privateKey, enc.encode(String(canonical))
+    );
+    return b64url(new Uint8Array(raw));
+  } catch {
+    return null;
+  }
+}
+
+let _registeredForKey = null;
+let _registerInFlight = false;
+
+/**
+ * Register this device's public key with the backend, once per session
+ * key. apiPost(path, body) should return a promise. Fire-and-forget safe.
+ */
+export async function registerDeviceKey(apiPost) {
+  try {
+    const sk = getSigKey();
+    if (!sk || typeof apiPost !== "function") return false;
+    if (_registeredForKey === sk || _registerInFlight) return false;
+    const pub = await ensureDeviceKey();
+    if (!pub) return false;
+    _registerInFlight = true;
+    await apiPost("/auth/device-key", {
+      device_id: getDeviceId(),
+      public_key: { x: pub.x, y: pub.y },
+    });
+    _registeredForKey = sk;
+    _registerInFlight = false;
+    return true;
+  } catch {
+    _registerInFlight = false;
+    return false;
+  }
+}
+
+/* ------------------------------ PoW ------------------------------ */
+
+/**
+ * Proof of work for the auth endpoints: find a 16-hex nonce whose
+ * SHA256(`${ts}.${deviceId}.${nonce}.${path}`) starts with "0000".
+ */
+export async function solvePow(ts, deviceId, path) {
+  let counter = Math.floor(Math.random() * 0xffffffff);
+  for (;;) {
+    counter = (counter + 1) >>> 0;
+    const nonce = counter.toString(16).padStart(8, "0") + makeNonce().slice(0, 8);
+    const digest = sha256Hex(`${ts}.${deviceId}.${nonce}.${path}`);
+    if (digest.startsWith("0000")) return nonce;
+  }
+}
+
+export { hmacSha512Hex };
