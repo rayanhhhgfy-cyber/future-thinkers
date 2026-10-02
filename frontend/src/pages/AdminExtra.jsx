@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import api, { apiErr } from "@/lib/api";
 import { toast } from "sonner";
 import { PageLoader } from "@/components/Layout";
@@ -7,7 +7,7 @@ import { timeAgo } from "@/components/NotificationsPanel";
 import { THEME_PRESETS, applyTheme, applyDesign, resolveColors, FONT_OPTIONS, RADIUS_OPTIONS, DENSITY_OPTIONS, SHADOW_OPTIONS, DESIGN_DEFAULTS } from "@/lib/theme";
 import { PythonEditor, PyErrorText } from "@/components/PythonCode";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
-import { Code2, FlaskConical, Terminal, Palette, Flag, Activity, Globe2, Route as RouteIcon, Plus, Bug, Copy, Mail, CheckCircle2, Trash2 } from "lucide-react";
+import { Code2, FlaskConical, Terminal, Palette, Flag, Activity, Globe2, Route as RouteIcon, Plus, Bug, Copy, Mail, CheckCircle2, Trash2, Award, Search, Save, ShieldCheck, X } from "lucide-react";
 
 function Empty({ t }) {
   return <div className="text-center py-10 text-slate-400 text-sm font-semibold">{t}</div>;
@@ -795,4 +795,291 @@ function ErrorsPanel() {
   );
 }
 
-export { CodingAdminPanel, ThemePanel, ReportsPanel, HealthPanel, LandingPanel, PathsAdminPanel, AnalyticsV2, ErrorsPanel };
+/* ---------------- الشهادات · منح + قالب + سجل ---------------- */
+function CertificatesPanelV2() {
+  const [tpl, setTpl] = useState(null);
+  const [awarded, setAwarded] = useState(null);
+  const [busy, setBusy] = useState("");
+  const [q, setQ] = useState("");
+  const [results, setResults] = useState([]);
+  const [selUser, setSelUser] = useState(null);
+  const [aTitle, setATitle] = useState("");
+  const [aSub, setASub] = useState("");
+  const [aMeta, setAMeta] = useState("");
+  const [confirmDel, setConfirmDel] = useState(null);
+  const searchTimer = useRef(null);
+  const delTimer = useRef(null);
+
+  const loadAwarded = () => api.get("/certificates/admin/awarded").then((r) => setAwarded(r.data)).catch(() => setAwarded([]));
+  useEffect(() => {
+    api.get("/certificates/admin/template").then((r) => setTpl(r.data)).catch(() => setTpl({}));
+    loadAwarded();
+  }, []);
+
+  const onSearch = (v) => {
+    setQ(v);
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+    if (v.trim().length < 2) { setResults([]); return; }
+    searchTimer.current = setTimeout(() => {
+      api.get("/admin/users", { params: { q: v.trim() } })
+        .then((r) => setResults(r.data.items || []))
+        .catch(() => setResults([]));
+    }, 300);
+  };
+
+  const award = async () => {
+    if (!selUser) return toast.error("اختر الطالب أولاً من نتائج البحث");
+    if (!aTitle.trim()) return toast.error("اكتب سطر عنوان الشهادة");
+    setBusy("award");
+    try {
+      await api.post("/certificates/admin/award", {
+        user_id: selUser.id,
+        title_line: aTitle.trim(),
+        subtitle: aSub.trim(),
+        meta_lines: aMeta.split("\n").map((s) => s.trim()).filter(Boolean).slice(0, 6),
+      });
+      toast.success(`مُنحت الشهادة لـ ${selUser.name} 🏅`);
+      setSelUser(null); setQ(""); setResults([]); setATitle(""); setASub(""); setAMeta("");
+      loadAwarded();
+    } catch (e) { toast.error(apiErr(e)); }
+    setBusy("");
+  };
+
+  const saveTpl = async () => {
+    if (!tpl) return;
+    setBusy("tpl");
+    try {
+      const { data } = await api.put("/certificates/admin/template", tpl);
+      setTpl(data);
+      toast.success("حُفظ قالب الشهادة ✓ ستُطبع الشهادات الجديدة بهذا التصميم");
+    } catch (e) { toast.error(apiErr(e)); }
+    setBusy("");
+  };
+
+  const del = async (c) => {
+    if (confirmDel !== c.id) {
+      setConfirmDel(c.id);
+      if (delTimer.current) clearTimeout(delTimer.current);
+      delTimer.current = setTimeout(() => setConfirmDel(null), 3000);
+      return;
+    }
+    if (delTimer.current) clearTimeout(delTimer.current);
+    setConfirmDel(null);
+    try {
+      await api.delete(`/certificates/admin/awarded/${c.id}`);
+      toast.success("حُذفت الشهادة");
+      loadAwarded();
+    } catch (e) { toast.error(apiErr(e)); }
+  };
+
+  const setT = (k, v) => setTpl((t) => ({ ...(t || {}), [k]: v }));
+  const inputCls = "w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm outline-none focus:border-amber-400 focus:bg-white transition min-h-[44px]";
+  const HEX6 = /^#[0-9a-fA-F]{6}$/;
+  const pc = tpl?.color_primary || "#059669";
+  const dc = tpl?.color_dark || "#0A192F";
+  const mc = tpl?.color_muted || "#64748B";
+  const bgc = tpl?.bg_color || "#F6FBF9";
+  const colorRows = [
+    ["color_primary", "اللون الأساسي", "العناوين والأختام والإطارات"],
+    ["color_dark", "اللون الداكن", "اسم الطالب والنصوص القوية"],
+    ["color_muted", "اللون الهادئ", "النصوص الفرعية والتواريخ"],
+    ["bg_color", "لون الخلفية", "خلفية ورقة الشهادة"],
+  ];
+
+  return (
+    <div>
+      <h2 className="font-head font-extrabold text-lg flex items-center gap-2 mb-1">
+        <Award className="w-5 h-5 text-amber-500" /> الشهادات · المنح والقالب والسجل
+      </h2>
+      <p className="text-xs text-slate-400 mb-5">امنح شهادات للطلاب، صمّم قالب الشهادة الرسمي بألوانك، وراجع كل الشهادات الممنوحة · لكل شهادة رمز تحقق فريد يظهر عليها.</p>
+
+      {/* منح شهادة */}
+      <div className="bg-white rounded-3xl border border-slate-100 ft-shadow p-4 sm:p-5 mb-4">
+        <h3 className="font-head font-extrabold text-sm text-slate-700 mb-3">منح شهادة جديدة</h3>
+        <div className="grid lg:grid-cols-2 gap-4">
+          <div className="relative">
+            <label className="text-xs font-bold text-slate-500 block mb-1.5">الطالب</label>
+            {selUser ? (
+              <div className="flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-2.5 min-h-[48px]">
+                <span className="w-9 h-9 rounded-full bg-gradient-to-br from-amber-400 to-yellow-600 text-white grid place-items-center font-black shrink-0">{(selUser.name || "؟").charAt(0)}</span>
+                <span className="flex-1 min-w-0">
+                  <span className="block font-bold text-sm text-slate-800 truncate">{selUser.name}</span>
+                  <span className="block text-[11px] text-slate-400 truncate" dir="ltr">{selUser.email}</span>
+                </span>
+                <button onClick={() => { setSelUser(null); setQ(""); }} className="pressable w-9 h-9 grid place-items-center rounded-full hover:bg-amber-100 text-slate-500 shrink-0" aria-label="إلغاء اختيار الطالب">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="relative">
+                  <Search className="w-4.5 h-4.5 absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input value={q} onChange={(e) => onSearch(e.target.value)} placeholder="ابحث بالاسم أو البريد..."
+                    className={`${inputCls} pr-10`} />
+                </div>
+                {results.length > 0 && (
+                  <div className="absolute z-20 right-0 left-0 top-full mt-1.5 bg-white rounded-2xl border border-slate-100 ft-shadow-lg overflow-hidden max-h-64 overflow-y-auto">
+                    {results.map((u) => (
+                      <button key={u.id} onClick={() => { setSelUser(u); setResults([]); }}
+                        className="w-full flex items-center gap-3 px-3.5 py-2.5 hover:bg-amber-50/60 text-right transition-colors min-h-[52px]">
+                        <span className="w-9 h-9 rounded-full ft-bg-soft-2 ft-text-accent grid place-items-center font-black shrink-0">{(u.name || "؟").charAt(0)}</span>
+                        <span className="flex-1 min-w-0">
+                          <span className="block font-bold text-sm text-slate-800 truncate">{u.name}</span>
+                          <span className="block text-[11px] text-slate-400 truncate" dir="ltr">{u.email}</span>
+                        </span>
+                        {u.school_name && <span className="text-[10px] font-bold text-slate-400 shrink-0 hidden sm:block">{u.school_name}</span>}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {q.trim().length >= 2 && results.length === 0 && <p className="text-[11px] text-slate-400 mt-1.5">اكتب حرفين على الأقل وانتظر نتائج البحث</p>}
+              </>
+            )}
+          </div>
+          <div>
+            <label className="text-xs font-bold text-slate-500 block mb-1.5">سطر عنوان الشهادة</label>
+            <input value={aTitle} onChange={(e) => setATitle(e.target.value)} placeholder="مثال: لتميّزه في مسابقة القراءة السنوية" className={inputCls} maxLength={200} />
+          </div>
+          <div>
+            <label className="text-xs font-bold text-slate-500 block mb-1.5">سطر فرعي (اختياري)</label>
+            <input value={aSub} onChange={(e) => setASub(e.target.value)} placeholder="مثال: المركز الأول على مستوى قصبة إربد الأولى" className={inputCls} maxLength={200} />
+          </div>
+          <div>
+            <label className="text-xs font-bold text-slate-500 block mb-1.5">أسطر إضافية (اختياري · سطر في كل خانة نصية)</label>
+            <textarea value={aMeta} onChange={(e) => setAMeta(e.target.value)} rows={2} placeholder={"بتاريخ ٢ أكتوبر ٢٠٢٦\nشكراً لمساهمتك في مجتمع مفكري المستقبل"}
+              className={`${inputCls} resize-y`} />
+          </div>
+        </div>
+        <button onClick={award} disabled={busy === "award"}
+          className="pressable mt-4 inline-flex items-center gap-2 rounded-2xl ft-btn-primary px-6 py-3 text-sm font-extrabold min-h-[48px] disabled:opacity-50">
+          <Award className="w-4.5 h-4.5" /> {busy === "award" ? "جارٍ المنح..." : "منح الشهادة"}
+        </button>
+      </div>
+
+      {/* القالب + المعاينة */}
+      <div className="grid lg:grid-cols-2 gap-4 mb-4 items-start">
+        <div className="bg-white rounded-3xl border border-slate-100 ft-shadow p-4 sm:p-5">
+          <h3 className="font-head font-extrabold text-sm text-slate-700 mb-3">قالب الشهادة الرسمي</h3>
+          {!tpl ? <PageLoader /> : (
+            <>
+              <div className="space-y-3">
+                {[
+                  ["org_name", "اسم الجهة", "منصة مفكري المستقبل"],
+                  ["country_line", "سطر الدولة", "المملكة الأردنية الهاشمية"],
+                  ["main_title", "العنوان الرئيسي", "شهادة تقدير"],
+                  ["award_label", "سطر المنح", "تُمنح هذه الشهادة إلى"],
+                  ["footer_right", "تذييل الشهادة", "منصة مفكري المستقبل"],
+                ].map(([k, label, ph]) => (
+                  <div key={k}>
+                    <label className="text-xs font-bold text-slate-500 block mb-1.5">{label}</label>
+                    <input value={tpl[k] || ""} onChange={(e) => setT(k, e.target.value)} placeholder={ph} className={inputCls} maxLength={120} />
+                  </div>
+                ))}
+                {colorRows.map(([k, label, hint]) => (
+                  <div key={k}>
+                    <label className="text-xs font-bold text-slate-500 block mb-1.5">{label} <span className="text-slate-300 font-semibold">· {hint}</span></label>
+                    <div className="flex items-center gap-2.5">
+                      <input type="color" value={HEX6.test(tpl[k] || "") ? tpl[k] : "#000000"} onChange={(e) => setT(k, e.target.value)} aria-label={label}
+                        className="w-14 h-11 rounded-xl border border-slate-200 bg-white cursor-pointer p-1 shrink-0" />
+                      <input dir="ltr" value={tpl[k] || ""} onChange={(e) => setT(k, e.target.value)} placeholder="#059669" aria-label={`${label} · كود اللون`}
+                        className={`${inputCls} font-mono text-left ${HEX6.test(tpl[k] || "") || !(tpl[k] || "") ? "" : "border-rose-300"}`} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <button onClick={saveTpl} disabled={busy === "tpl"}
+                className="pressable mt-4 inline-flex items-center gap-2 rounded-2xl ft-btn-primary px-6 py-3 text-sm font-extrabold min-h-[48px] disabled:opacity-50 w-full sm:w-auto justify-center">
+                <Save className="w-4.5 h-4.5" /> {busy === "tpl" ? "جارٍ الحفظ..." : "حفظ القالب"}
+              </button>
+            </>
+          )}
+        </div>
+
+        {/* معاينة حية تحاكي الـ PDF */}
+        <div className="bg-white rounded-3xl border border-slate-100 ft-shadow p-4 sm:p-5 lg:sticky lg:top-4">
+          <h3 className="font-head font-extrabold text-sm text-slate-700 mb-3 flex items-center gap-2">
+            معاينة حية <span className="text-[10px] font-bold text-slate-400">· هكذا ستُطبع الشهادة</span>
+          </h3>
+          <div className="rounded-2xl p-2 shadow-xl" style={{ background: `linear-gradient(135deg, ${pc}, ${dc})` }}>
+            <div className="relative overflow-hidden rounded-xl text-center flex flex-col justify-between px-4 py-4 sm:px-6 sm:py-5" style={{ background: bgc, aspectRatio: "1.414 / 1" }}>
+              <div className="pointer-events-none absolute inset-2 rounded-lg border-2" style={{ borderColor: pc }} />
+              <div className="pointer-events-none absolute inset-[15px] rounded-md border" style={{ borderColor: `${pc}59` }} />
+              <div className="relative">
+                <div className="font-head font-extrabold text-[11px] sm:text-xs" style={{ color: dc }}>{tpl?.org_name || "منصة مفكري المستقبل"}</div>
+                <div className="text-[8px] sm:text-[9px] mt-0.5" style={{ color: mc }}>{tpl?.country_line || "المملكة الأردنية الهاشمية"}</div>
+                <div className="flex items-center justify-center gap-1.5 mt-1.5" aria-hidden="true">
+                  <span className="h-px w-8" style={{ background: pc }} />
+                  <span className="w-1 h-1 rotate-45" style={{ background: pc }} />
+                  <span className="h-px w-8" style={{ background: pc }} />
+                </div>
+              </div>
+              <div className="relative">
+                <div className="font-head font-black text-lg sm:text-2xl" style={{ color: pc }}>{tpl?.main_title || "شهادة تقدير"}</div>
+                <div className="text-[9px] sm:text-[10px] mt-1" style={{ color: mc }}>{tpl?.award_label || "تُمنح هذه الشهادة إلى"}</div>
+                <div className="font-head font-black text-base sm:text-xl mt-0.5" style={{ color: dc }}>{selUser?.name || "اسم الطالب"}</div>
+                <div className="mx-auto mt-1 h-[3px] w-24 rounded-full" style={{ background: `linear-gradient(to left, transparent, ${pc}, transparent)` }} />
+                <div className="text-[9px] sm:text-[11px] font-bold mt-1.5 leading-relaxed" style={{ color: dc }}>{aTitle.trim() || "سطر عنوان الشهادة يظهر هنا"}</div>
+                {aSub.trim() && <div className="text-[8px] sm:text-[10px] mt-0.5" style={{ color: mc }}>{aSub.trim()}</div>}
+              </div>
+              <div className="relative flex items-end justify-between gap-2">
+                <div className="text-right">
+                  <div className="text-[9px] sm:text-[10px] font-extrabold" style={{ color: dc }}>{tpl?.footer_right || "منصة مفكري المستقبل"}</div>
+                  <div className="text-[8px] mt-0.5" style={{ color: mc }}>التوقيع والختم الرسمي</div>
+                </div>
+                <div className="relative w-11 h-11 sm:w-14 sm:h-14 shrink-0">
+                  <span className="absolute -bottom-2 right-[18px] w-3 h-6 rounded-b bg-rose-500 rotate-[16deg]" />
+                  <span className="absolute -bottom-2 left-[18px] w-3 h-6 rounded-b bg-amber-500 -rotate-[16deg]" />
+                  <span className="relative z-10 w-11 h-11 sm:w-14 sm:h-14 rounded-full grid place-items-center text-white shadow-md ring-2 ring-white/70" style={{ background: `linear-gradient(135deg, ${pc}, ${dc})` }}>
+                    <Award className="w-5 h-5 sm:w-7 sm:h-7" />
+                  </span>
+                </div>
+                <div className="text-left">
+                  <div className="text-[8px] sm:text-[9px]" style={{ color: mc }}>تاريخ الإصدار</div>
+                  <div className="text-[9px] sm:text-[10px] font-bold" style={{ color: dc }} dir="ltr">{new Date().toISOString().slice(0, 10)}</div>
+                  <div className="flex items-center gap-1 text-[7px] sm:text-[8px] mt-0.5" style={{ color: mc }}>
+                    <ShieldCheck className="w-2.5 h-2.5" /> رمز تحقق على كل شهادة
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <p className="text-[11px] text-slate-400 mt-3 leading-relaxed">المعاينة تقريبية لأغراض التصميم · ملف الـ PDF النهائي يُرسم بنفس الألوان والنصوص عند تحميل الطالب لشهادته.</p>
+        </div>
+      </div>
+
+      {/* سجل الشهادات الممنوحة */}
+      <div className="bg-white rounded-3xl border border-slate-100 ft-shadow p-4 sm:p-5">
+        <h3 className="font-head font-extrabold text-sm text-slate-700 mb-3">الشهادات الممنوحة ({awarded?.length || 0})</h3>
+        {!awarded ? <PageLoader /> : awarded.length === 0 ? <Empty t="لا شهادات ممنوحة بعد · امنح أول شهادة من الأعلى 🏅" /> : (
+          <div className="space-y-2.5">
+            {awarded.map((c) => (
+              <div key={c.id} className="flex items-center gap-3 rounded-2xl border border-amber-100 bg-gradient-to-l from-amber-50/70 to-white px-3.5 py-3 flex-wrap">
+                <span className="w-11 h-11 rounded-2xl bg-gradient-to-br from-amber-400 to-yellow-600 text-white grid place-items-center shrink-0 shadow">
+                  <Award className="w-5.5 h-5.5" />
+                </span>
+                <div className="flex-1 min-w-[170px]">
+                  <div className="font-bold text-sm text-slate-800">{c.user_name}</div>
+                  <div className="text-xs text-slate-500 truncate">{c.title_line}</div>
+                  <div className="flex items-center gap-2 mt-1 flex-wrap">
+                    <span className="text-[10px] font-bold text-slate-400">{String(c.created_at || "").slice(0, 10)}</span>
+                    {c.code && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-white border border-amber-200 px-2 py-0.5 text-[10px] font-bold text-amber-800">
+                        <ShieldCheck className="w-3 h-3" /><span dir="ltr" className="font-mono">{c.code}</span>
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <button onClick={() => del(c)}
+                  className={`pressable inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2.5 text-xs font-extrabold min-h-[44px] transition-colors ${confirmDel === c.id ? "bg-rose-600 text-white shadow" : "bg-rose-50 text-rose-600 hover:bg-rose-100"}`}>
+                  <Trash2 className="w-4 h-4" /> {confirmDel === c.id ? "متأكد؟ اضغط للحذف" : "حذف"}
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export { CodingAdminPanel, ThemePanel, ReportsPanel, HealthPanel, LandingPanel, PathsAdminPanel, AnalyticsV2, ErrorsPanel, CertificatesPanelV2 };
