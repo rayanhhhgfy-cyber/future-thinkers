@@ -87,6 +87,49 @@ function CountUp({ value, className }) {
   return <span ref={ref} className={className}>0</span>;
 }
 
+function BattleCard() {
+  const [b, setB] = useState(null);
+  useEffect(() => { api.get("/battles/weekly").then((r) => setB(r.data)).catch(() => {}); }, []);
+  if (!b || !b.battle) return null;
+  const { a, b: bb } = b.battle;
+  const total = Math.max(1, a.xp + bb.xp);
+  const aPct = Math.round((a.xp / total) * 100);
+  return (
+    <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: EASE }}
+      className="mb-6 rounded-[28px] p-[1.5px] bg-gradient-to-l from-amber-400 via-rose-400 to-blue-500 shadow-lg shadow-rose-100">
+      <div className="rounded-[26.5px] bg-slate-950 text-white px-6 py-5 relative overflow-hidden">
+        <div className="absolute -top-10 -left-10 w-40 h-40 bg-rose-500/25 rounded-full blur-3xl" />
+        <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-blue-500/25 rounded-full blur-3xl" />
+        <div className="relative">
+          <div className="flex items-center justify-center gap-2 mb-4">
+            <Swords className="w-5 h-5 text-amber-400" />
+            <h3 className="font-head font-extrabold">معركة المدارس — هذا الأسبوع</h3>
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-400/30">مباشر</span>
+          </div>
+          <div className="flex items-end justify-between gap-3 mb-2">
+            <div className="text-center flex-1 min-w-0">
+              <div className="font-head font-extrabold truncate">{a.school_name}</div>
+              <div className="text-2xl font-black text-amber-300 font-head">{a.xp.toLocaleString("en-US")}</div>
+              <div className="text-[11px] text-slate-400">{a.members} طالب نشط</div>
+            </div>
+            <div className="font-black text-slate-500 font-head pb-3">ضد</div>
+            <div className="text-center flex-1 min-w-0">
+              <div className="font-head font-extrabold truncate">{bb.school_name}</div>
+              <div className="text-2xl font-black text-sky-300 font-head">{bb.xp.toLocaleString("en-US")}</div>
+              <div className="text-[11px] text-slate-400">{bb.members} طالب نشط</div>
+            </div>
+          </div>
+          <div className="flex h-3.5 rounded-full overflow-hidden bg-white/10" dir="ltr">
+            <motion.div className="bg-gradient-to-r from-amber-500 to-rose-500" initial={{ width: "50%" }} animate={{ width: `${aPct}%` }} transition={{ duration: 1, ease: EASE }} />
+            <div className="flex-1 bg-gradient-to-r from-sky-500 to-blue-600" />
+          </div>
+          <p className="text-center text-[11px] text-slate-400 mt-3">كل نقطة خبرة يجمعها طلاب مدرستك هذا الأسبوع تقرّبها من الكأس 🏆</p>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
 export default function Leaderboard() {
   const { user } = useAuth();
   const [tab, setTab] = useState("students");
@@ -235,6 +278,8 @@ export default function Leaderboard() {
             />
           </div>
         </div>
+
+        {tab === "schools" && <BattleCard />}
 
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
