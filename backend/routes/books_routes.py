@@ -4,7 +4,7 @@ import uuid
 from bson import ObjectId
 from db import db, ser, sers, oid, now_iso
 from auth import get_current_user, get_optional_user, require_permission, effective_permissions
-from services import award_xp, bump_stat, create_notification, audit_log
+from services import award_xp, bump_stat, create_notification, audit_log, track_quest
 from storage import save_file, read_file, MAX_SIZE
 from telegram_storage import (
     save_pdf, fetch_pdf_from_telegram, iter_pdf_parts_from_telegram,
@@ -426,6 +426,45 @@ class ProgressBody(BaseModel):
     percent: float = 0
 
 
+class CommentBody(BaseModel):
+    text: str
+
+
+@router.get("/{book_id}/comments")
+async def list_comments(book_id: str):
+    docs = await db.book_comments.find({"book_id": book_id}).sort("created_at", -1).limit(100).to_list(100)
+    return {"items": sers(docs)}
+
+
+@router.post("/{book_id}/comments")
+async def add_comment(book_id: str, body: CommentBody, user: dict = Depends(get_current_user)):
+    if not await db.books.find_one({"_id": oid(book_id)}):
+        raise HTTPException(status_code=404, detail="الكتاب غير موجود")
+    text = body.text.strip()
+    if not text or len(text) > 1000:
+        raise HTTPException(status_code=400, detail="نص التعليق غير صالح")
+    doc = {"book_id": book_id, "user_id": user["id"], "user_name": user["name"],
+           "avatar_url": user.get("avatar_url"), "text": text, "created_at": now_iso()}
+    res = await db.book_comments.insert_one(doc)
+    await track_quest(user["id"], "posts")
+    doc["id"] = str(res.inserted_id)
+    doc.pop("_id", None)
+    return doc
+
+
+@router.delete("/{book_id}/comments/{comment_id}")
+async def delete_comment(book_id: str, comment_id: str, user: dict = Depends(get_current_user)):
+    c = await db.book_comments.find_one({"_id": oid(comment_id), "book_id": book_id})
+    if not c:
+        raise HTTPException(status_code=404, detail="التعليق غير موجود")
+    if c["user_id"] != user["id"]:
+        perms = await effective_permissions(user)
+        if "book.edit" not in perms:
+            raise HTTPException(status_code=403, detail="لا صلاحية")
+    await db.book_comments.delete_one({"_id": oid(comment_id)})
+    return {"ok": True}
+
+
 @router.post("/{book_id}/progress")
 async def save_progress(book_id: str, body: ProgressBody, user: dict = Depends(get_current_user)):
     existing = await db.reading_progress.find_one({"user_id": user["id"], "book_id": book_id})
@@ -469,6 +508,7 @@ async def add_review(book_id: str, body: ReviewBody, user: dict = Depends(get_cu
             {"$set": {"rating_avg": round(agg[0]["avg"], 1), "rating_count": agg[0]["count"]}})
     if not existing:
         await award_xp(user["id"], await _points("review_book", 20), "تقييم كتاب", book_id)
+        await track_quest(user["id"], "review")
     return {"ok": True}
 
 
