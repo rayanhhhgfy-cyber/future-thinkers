@@ -9,6 +9,7 @@ import InstallPWA from "@/components/InstallPWA";
 import PushBanner from "@/components/PushBanner";
 import { ThemeApplier } from "@/lib/theme";
 import { EASE } from "@/components/anim";
+import { ErrorBoundary, installErrorReporter } from "@/components/ErrorState";
 
 import Landing from "@/pages/Landing";
 import Login from "@/pages/Login";
@@ -123,11 +124,14 @@ function App() {
   useEffect(() => {
     document.documentElement.dir = "rtl";
     document.documentElement.lang = "ar";
+    installErrorReporter();
   }, []);
   return (
     <AuthProvider>
       <BrowserRouter>
-        <AnimatedRoutes />
+        <ErrorBoundary>
+          <AnimatedRoutes />
+        </ErrorBoundary>
         <InstallPWA />
         <PushBanner />
         <ThemeApplier />

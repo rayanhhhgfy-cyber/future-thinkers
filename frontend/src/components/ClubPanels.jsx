@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import api, { apiErr } from "@/lib/api";
+import { ReportErrorButton } from "@/components/ErrorState";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -121,6 +122,13 @@ function ProblemView({ pid, onBack }) {
               <div className="font-bold">{result.verdict === "accepted" ? "مقبول ✓" : result.verdict === "wrong_answer" ? "إجابة خاطئة" : "خطأ في التنفيذ"}</div>
               <div className="text-sm mt-1">نجح {result.passed} من {result.total} اختبار</div>
               {result.detail && <div className="text-xs mt-1 font-mono" dir="ltr">{result.detail}</div>}
+              {result.verdict !== "accepted" && (
+                <div className="mt-3" dir="rtl">
+                  <ReportErrorButton message={`حكم الحل: ${result.verdict} · ${result.detail || ""}`}
+                    detail={`المشكلة: ${pid}\nالحكم: ${result.verdict}\nالرسالة: ${result.detail || ""}\n\nالكود المرسل:\n${(code || "").slice(0, 4000)}`}
+                    context={`مشكلة برمجة ${pid}`} />
+                </div>
+              )}
             </div>
           )}
         </div>

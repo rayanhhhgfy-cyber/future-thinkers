@@ -51,13 +51,69 @@ api.interceptors.response.use(
   }
 );
 
-export function apiErr(e, fallback = "حدث خطأ ما، حاول مرة أخرى") {
-  const d = e?.response?.data?.detail;
-  if (d == null) return e?.message || fallback;
-  if (typeof d === "string") return d;
-  if (Array.isArray(d)) return d.map((x) => (x?.msg ? x.msg : JSON.stringify(x))).join(" ");
-  if (d?.msg) return d.msg;
-  return String(d);
+/* Users only ever see short, friendly Arabic messages. Anything technical
+   (tracebacks, axios internals, raw server text) is filtered out here, and
+   the FULL real error stays available via errorDetail() for admin reports. */
+const TECHY = /(traceback|exception|undefined|is not defined|cannot read prop|node_modules|socket|econn|etimedout|network error|request failed|response status|\.py\b|\.jsx?\b|at object|at async|internal server|objectid|pydantic|validation error|sql|mongo)/i;
+
+const STATUS_MSGS = {
+  400: "تعذر تنفيذ الطلب · تحقق من البيانات وحاول مجددًا",
+  401: "سجل دخولك أولًا للمتابعة",
+  403: "ليس لديك صلاحية لهذا الإجراء",
+  404: "العنصر المطلوب غير موجود",
+  408: "انتهت مهلة الطلب · حاول مجددًا",
+  409: "حدث تعارض · حدّث الصفحة وحاول مجددًا",
+  413: "الملف أكبر من الحد المسموح",
+  422: "بعض البيانات ناقصة أو غير صحيحة · راجع المدخلات",
+  429: "طلبات كثيرة في وقت قصير · انتظر قليلًا وحاول مجددًا",
+  500: "حدث خطأ من جهتنا · تم تسجيله وسنعمل على إصلاحه",
+  502: "الخادم غير متاح مؤقتًا · حاول بعد قليل",
+  503: "الخدمة متوقفة مؤقتًا للصيانة · حاول بعد قليل",
+  504: "الخادم تأخر في الرد · حاول مجددًا",
+};
+
+export function apiErr(e, fallback = "حدث خطأ ما · حاول مرة أخرى") {
+  const res = e?.response;
+  if (!res) {
+    if (e?.code === "ECONNABORTED") return "انتهت مهلة الاتصال · تحقق من الإنترنت وحاول مجددًا";
+    return "تعذر الاتصال بالخادم · تحقق من الإنترنت وحاول مجددًا";
+  }
+  const d = res.data?.detail;
+  let raw = "";
+  if (typeof d === "string") raw = d;
+  else if (Array.isArray(d)) raw = d.map((x) => x?.msg || "").filter(Boolean).join(" ");
+  else if (d?.msg) raw = d.msg;
+  // A short human-language backend message (Arabic) is safe to show as-is.
+  const hasArabic = /[\u0600-\u06FF]/.test(raw);
+  if (raw && hasArabic && raw.length <= 140 && !TECHY.test(raw)) return raw;
+  return STATUS_MSGS[res.status] || (res.status >= 500 ? STATUS_MSGS[500] : fallback);
+}
+
+export function errorDetail(e) {
+  try {
+    const parts = [];
+    if (e?.config) parts.push(`الطلب: ${(e.config.method || "get").toUpperCase()} ${e.config.baseURL || ""}${e.config.url || ""}`);
+    if (e?.response) {
+      const data = e.response.data;
+      parts.push(`حالة الخادم: ${e.response.status}\n${typeof data === "string" ? data : JSON.stringify(data)}`);
+    }
+    if (e?.stack) parts.push(String(e.stack));
+    else if (e?.message) parts.push(String(e.message));
+    return parts.join("\n\n").slice(0, 8000) || "لا تفاصيل";
+  } catch { return String(e?.message || e || "خطأ غير معروف"); }
+}
+
+export async function reportError({ message, detail, context, source = "manual" }) {
+  try {
+    await api.post("/errors/report", {
+      message: String(message || "خطأ غير معروف").slice(0, 300),
+      detail: String(detail || "").slice(0, 20000),
+      page: typeof window !== "undefined" ? window.location.pathname : "",
+      source,
+      context: context || "",
+    }, { timeout: 8000 });
+    return true;
+  } catch { return false; }
 }
 
 export const fileUrl = (path) => (!path ? null : (path.startsWith("http") ? path : `${API}/files/${path}`));
