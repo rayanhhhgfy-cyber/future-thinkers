@@ -98,10 +98,10 @@ export function useChessTheme() {
 }
 
 export function StatusPill({ myTurn, finished, label }) {
-  if (finished) return <span className="text-xs text-slate-300">{label || "انتهت"}</span>;
+  if (finished) return <span className="text-xs lg:text-sm text-slate-300">{label || "انتهت"}</span>;
   return myTurn
-    ? <span className="text-xs font-bold text-emerald-300 animate-pulse">دورك الآن</span>
-    : <span className="text-xs text-slate-300">{label || "بانتظار الخصم"}</span>;
+    ? <span className="text-xs lg:text-sm font-bold text-emerald-300 animate-pulse">دورك الآن</span>
+    : <span className="text-xs lg:text-sm text-slate-300">{label || "بانتظار الخصم"}</span>;
 }
 
 export function PlayerBar({ name, rating, active, you, caps = [], matAhead = 0, color }) {
@@ -109,14 +109,14 @@ export function PlayerBar({ name, rating, active, you, caps = [], matAhead = 0, 
     <motion.div
       animate={active ? { scale: [1, 1.012, 1] } : { scale: 1 }}
       transition={active ? { duration: 2.2, repeat: Infinity } : {}}
-      className={`w-full max-w-[620px] mx-auto rounded-3xl p-[1.5px] transition-all duration-300
+      className={`w-full max-w-[min(94vw,600px)] lg:max-w-[min(780px,calc(100dvh_-_190px))] xl:max-w-[min(860px,calc(100dvh_-_170px))] mx-auto rounded-3xl p-[1.5px] transition-all duration-300
         ${active
           ? "bg-gradient-to-l from-emerald-400/70 via-emerald-400/20 to-emerald-400/70 shadow-[0_0_40px_-6px_rgba(16,185,129,0.55)]"
           : "bg-gradient-to-l from-white/15 via-white/5 to-white/15 shadow-[0_12px_32px_-16px_rgba(0,0,0,0.8)]"}`}>
-      <div className={`rounded-3xl px-4 py-3 backdrop-blur-xl ${active ? "bg-[#0d1f16]/90" : "bg-slate-900/70"}`}>
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className={`relative w-11 h-11 rounded-2xl grid place-items-center font-extrabold text-lg shrink-0
+      <div className={`rounded-3xl px-4 py-3 lg:px-5 lg:py-4 backdrop-blur-xl ${active ? "bg-[#0d1f16]/90" : "bg-slate-900/70"}`}>
+      <div className="flex items-center justify-between gap-3 lg:gap-4">
+        <div className="flex items-center gap-3 lg:gap-3.5 min-w-0">
+          <div className={`relative w-11 h-11 lg:w-12 lg:h-12 rounded-2xl grid place-items-center font-extrabold text-lg lg:text-xl shrink-0
             ${you
               ? "bg-gradient-to-br from-amber-200 via-amber-400 to-orange-600 text-slate-950 shadow-[0_6px_20px_-4px_rgba(245,158,11,0.6)]"
               : "bg-gradient-to-br from-slate-400 via-slate-600 to-slate-900 text-white shadow-[0_6px_20px_-4px_rgba(0,0,0,0.7)]"}
@@ -125,23 +125,23 @@ export function PlayerBar({ name, rating, active, you, caps = [], matAhead = 0, 
             {active && <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-emerald-400 border-2 border-slate-900 animate-pulse shadow-[0_0_10px_rgba(52,211,153,0.9)]" />}
           </div>
           <div className="min-w-0">
-            <div className="font-bold text-sm flex items-center gap-2 truncate text-white">
+            <div className="font-bold text-sm lg:text-base flex items-center gap-2 truncate text-white">
               <span className="truncate">{name}</span>
               {active && <ThinkingDots />}
             </div>
-            <div className="text-xs text-slate-400 mt-1 flex items-center gap-2">
-              {rating != null && <span className="px-2 py-0.5 rounded-lg bg-white/10 font-mono font-bold text-slate-200 ring-1 ring-white/10">{rating}</span>}
+            <div className="text-xs lg:text-[13px] text-slate-400 mt-1 lg:mt-1.5 flex items-center gap-2">
+              {rating != null && <span className="px-2 py-0.5 lg:px-2.5 lg:py-1 rounded-lg bg-white/10 font-mono font-bold text-slate-200 ring-1 ring-white/10">{rating}</span>}
               {matAhead > 0 && <span className="text-emerald-300 font-extrabold">+{matAhead}</span>}
             </div>
           </div>
         </div>
         {caps.length > 0 && (
-          <div className="flex items-center shrink-0 bg-black/25 rounded-full pl-3 pr-2 py-1 ring-1 ring-white/10" dir="ltr" title="قطع مأسورة">
+          <div className="flex items-center shrink-0 bg-black/25 rounded-full pl-3 pr-2 py-1 lg:pl-3.5 lg:pr-2.5 lg:py-1.5 ring-1 ring-white/10" dir="ltr" title="قطع مأسورة">
             {caps.slice(0, 10).map((t, i) => (
               <img key={i} src={pieceSrc(t, color === "w" ? "b" : "w")} alt=""
-                className="w-6 h-6 -ml-2.5 first:ml-0 drop-shadow-[0_2px_3px_rgba(0,0,0,0.6)]" draggable={false} />
+                className="w-6 h-6 lg:w-7 lg:h-7 -ml-2.5 lg:-ml-3 first:ml-0 drop-shadow-[0_2px_3px_rgba(0,0,0,0.6)]" draggable={false} />
             ))}
-            {caps.length > 10 && <span className="text-[10px] text-slate-400 ml-1 font-bold">+{caps.length - 10}</span>}
+            {caps.length > 10 && <span className="text-[10px] lg:text-[11px] text-slate-400 ml-1 font-bold">+{caps.length - 10}</span>}
           </div>
         )}
       </div>

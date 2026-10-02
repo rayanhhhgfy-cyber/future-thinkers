@@ -79,21 +79,21 @@ export default function ChessBoardView({
   return (
     <div>
       {showToolbar && (
-        <div className="flex items-center justify-center gap-2 mb-3">
-          <div className="flex items-center gap-1.5 bg-white/[0.06] border border-white/10 rounded-full px-3 py-2 backdrop-blur-xl shadow-[0_8px_24px_-10px_rgba(0,0,0,0.7)]">
+        <div className="flex items-center justify-center gap-2 lg:gap-3 mb-3 lg:mb-5">
+          <div className="flex items-center gap-1.5 lg:gap-2 bg-white/[0.06] border border-white/10 rounded-full px-3 py-2 lg:px-4 lg:py-2.5 backdrop-blur-xl shadow-[0_8px_24px_-10px_rgba(0,0,0,0.7)]">
             {Object.values(THEMES).map((t) => (
               <button key={t.id} title={t.label} onClick={() => setTheme(t.id)}
-                className={`w-6 h-6 rounded-full transition-all duration-200 ${themeId === t.id ? "ring-2 ring-amber-300 ring-offset-2 ring-offset-slate-900 scale-110" : "ring-1 ring-white/20 hover:scale-110"}`}
+                className={`w-7 h-7 lg:w-8 lg:h-8 rounded-full transition-all duration-200 ${themeId === t.id ? "ring-2 ring-amber-300 ring-offset-2 ring-offset-slate-900 scale-110" : "ring-1 ring-white/20 hover:scale-110"}`}
                 style={{ background: `linear-gradient(135deg, ${t.light} 50%, ${t.dark} 50%)` }} />
             ))}
           </div>
           <button title="قلب الرقعة" onClick={() => setFlipped((f) => !f)}
-            className="w-10 h-10 grid place-items-center rounded-full bg-white/[0.06] border border-white/10 backdrop-blur-xl text-slate-300 hover:text-white hover:bg-white/[0.12] hover:rotate-180 transition-all duration-300 shadow-[0_8px_24px_-10px_rgba(0,0,0,0.7)]">
-            <Repeat className="w-4 h-4" />
+            className="w-11 h-11 lg:w-12 lg:h-12 grid place-items-center rounded-full bg-white/[0.06] border border-white/10 backdrop-blur-xl text-slate-300 hover:text-white hover:bg-white/[0.12] hover:rotate-180 transition-all duration-300 shadow-[0_8px_24px_-10px_rgba(0,0,0,0.7)]">
+            <Repeat className="w-4 h-4 lg:w-5 lg:h-5" />
           </button>
           <button title={soundOn ? "كتم الصوت" : "تشغيل الصوت"} onClick={toggleSound}
-            className={`w-10 h-10 grid place-items-center rounded-full border backdrop-blur-xl transition-all shadow-[0_8px_24px_-10px_rgba(0,0,0,0.7)] ${soundOn ? "bg-amber-400/20 border-amber-300/40 text-amber-300" : "bg-white/[0.06] border-white/10 text-slate-400 hover:text-white"}`}>
-            {soundOn ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+            className={`w-11 h-11 lg:w-12 lg:h-12 grid place-items-center rounded-full border backdrop-blur-xl transition-all shadow-[0_8px_24px_-10px_rgba(0,0,0,0.7)] ${soundOn ? "bg-amber-400/20 border-amber-300/40 text-amber-300" : "bg-white/[0.06] border-white/10 text-slate-400 hover:text-white"}`}>
+            {soundOn ? <Volume2 className="w-4 h-4 lg:w-5 lg:h-5" /> : <VolumeX className="w-4 h-4 lg:w-5 lg:h-5" />}
           </button>
         </div>
       )}
@@ -102,7 +102,7 @@ export default function ChessBoardView({
         initial={{ opacity: 0, scale: 0.97 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-        className="w-full max-w-[620px] lg:max-w-[min(620px,calc(100dvh-400px))] mx-auto rounded-[28px] p-2 sm:p-3"
+        className="w-full max-w-[min(94vw,600px)] lg:max-w-[min(780px,calc(100dvh_-_190px))] xl:max-w-[min(860px,calc(100dvh_-_170px))] mx-auto rounded-[28px] lg:rounded-[32px] p-2 sm:p-3 lg:p-4"
         style={{
           background: `
             repeating-linear-gradient(93deg, rgba(255,255,255,0.025) 0 3px, transparent 3px 9px),
@@ -146,7 +146,7 @@ export default function ChessBoardView({
                     {showRank && (
                       <span className="absolute top-[4%] left-[7%] font-black leading-none tracking-wide"
                         style={{
-                          fontSize: "clamp(8px,1.7vw,12px)",
+                          fontSize: "clamp(8px,1.7vw,14px)",
                           color: isKingCheck ? "#fff" : darkSq ? theme.coordOnDark : theme.coordOnLight,
                           textShadow: darkSq ? "0 1px 2px rgba(0,0,0,0.4)" : "0 1px 1px rgba(255,255,255,0.5)",
                         }}>{rank}</span>
@@ -154,7 +154,7 @@ export default function ChessBoardView({
                     {showFile && (
                       <span className="absolute bottom-[4%] right-[7%] font-black leading-none tracking-wide"
                         style={{
-                          fontSize: "clamp(8px,1.7vw,12px)",
+                          fontSize: "clamp(8px,1.7vw,14px)",
                           color: isKingCheck ? "#fff" : darkSq ? theme.coordOnDark : theme.coordOnLight,
                           textShadow: darkSq ? "0 1px 2px rgba(0,0,0,0.4)" : "0 1px 1px rgba(255,255,255,0.5)",
                         }}>{file}</span>
@@ -171,7 +171,7 @@ export default function ChessBoardView({
                     {isLegal && hasPiece && (
                       <motion.span initial={{ opacity: 0, scale: 1.15 }} animate={{ opacity: 1, scale: 1 }}
                         className="absolute inset-[3%] rounded-full pointer-events-none"
-                        style={{ border: `clamp(3px,0.8vw,6px) solid ${theme.cap}`, boxShadow: `0 0 14px ${theme.cap}, inset 0 0 14px ${theme.cap}` }} />
+                        style={{ border: `clamp(3px,0.8vw,7px) solid ${theme.cap}`, boxShadow: `0 0 14px ${theme.cap}, inset 0 0 14px ${theme.cap}` }} />
                     )}
                     {isKingCheck && (
                       <motion.span animate={{ opacity: [0.3, 0.7, 0.3] }} transition={{ duration: 1.1, repeat: Infinity }}
@@ -252,15 +252,15 @@ export default function ChessBoardView({
                   className="absolute inset-0 z-40 grid place-items-center bg-slate-950/70 backdrop-blur-[3px]">
                   <motion.div initial={{ scale: 0.8, y: 16 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, opacity: 0 }}
                     transition={{ type: "spring", stiffness: 320, damping: 24 }}
-                    className="bg-slate-900/95 border border-amber-300/25 rounded-3xl p-5 sm:p-6 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.9)]">
-                    <div className="text-center font-head font-bold mb-4 text-amber-200">اختر القطعة 👑</div>
-                    <div className="flex gap-2 sm:gap-3" dir="ltr">
+                    className="bg-slate-900/95 border border-amber-300/25 rounded-3xl p-5 sm:p-6 lg:p-7 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.9)]">
+                    <div className="text-center font-head font-bold lg:text-lg mb-4 lg:mb-5 text-amber-200">اختر القطعة 👑</div>
+                    <div className="flex gap-2 sm:gap-3 lg:gap-3.5" dir="ltr">
                       {["q", "r", "b", "n"].map((t, i) => (
                         <motion.button key={t} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 * i }}
                           whileHover={{ scale: 1.12, y: -4 }} whileTap={{ scale: 0.94 }}
                           onClick={() => onPromote(t)}
-                          className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl grid place-items-center bg-gradient-to-b from-white/15 to-white/5 border border-white/15 hover:border-amber-300/60 hover:shadow-[0_0_28px_rgba(252,211,77,0.4)] transition-shadow">
-                          <img src={pieceSrc(t, promo.color)} alt={t} draggable={false} className="w-12 h-12 sm:w-14 sm:h-14 drop-shadow-[0_4px_6px_rgba(0,0,0,0.5)]" />
+                          className="w-16 h-16 sm:w-20 sm:h-20 lg:w-24 lg:h-24 rounded-2xl grid place-items-center bg-gradient-to-b from-white/15 to-white/5 border border-white/15 hover:border-amber-300/60 hover:shadow-[0_0_28px_rgba(252,211,77,0.4)] transition-shadow">
+                          <img src={pieceSrc(t, promo.color)} alt={t} draggable={false} className="w-12 h-12 sm:w-14 sm:h-14 lg:w-[68px] lg:h-[68px] drop-shadow-[0_4px_6px_rgba(0,0,0,0.5)]" />
                         </motion.button>
                       ))}
                     </div>

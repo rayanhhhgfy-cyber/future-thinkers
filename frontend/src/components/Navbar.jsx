@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import {
@@ -74,6 +74,21 @@ export function Navbar() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  // desktop nav links: mouse wheel scrolls the link row horizontally
+  const navScrollRef = useRef(null);
+  useEffect(() => {
+    const el = navScrollRef.current;
+    if (!el) return;
+    const onWheel = (e) => {
+      if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;
+      if (el.scrollWidth <= el.clientWidth) return;
+      e.preventDefault();
+      el.scrollLeft += (getComputedStyle(el).direction === "rtl" ? -1 : 1) * e.deltaY;
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, []);
+
   useEffect(() => {
     const h = (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") { e.preventDefault(); setSearchOpen(true); }
@@ -130,7 +145,8 @@ export function Navbar() {
       <div className={`max-w-[1440px] mx-auto glass rounded-[22px] border border-white/60 ring-1 ring-slate-900/5 px-3.5 sm:px-5 lg:px-6 h-16 lg:h-[68px] flex items-center justify-between gap-3 transition-shadow duration-300 ${scrolled ? "shadow-[0_20px_48px_-16px_rgba(15,23,42,0.38)]" : "shadow-[0_10px_30px_-14px_rgba(15,23,42,0.22)]"}`}>
         <div className="flex items-center gap-8 min-w-0">
           <Link to="/" data-testid="nav-home-link" className="shrink-0"><Logo /></Link>
-          <nav className="hidden lg:flex items-center gap-1.5">
+          <nav className="hidden lg:flex items-center gap-1.5 flex-1 min-w-0">
+            <div ref={navScrollRef} className="nav-scroll flex items-center gap-1.5 overflow-x-auto min-w-0 py-1 px-0.5">
             {PRIMARY_LINKS.map((l) => {
               const active = loc.pathname.startsWith(l.to);
               const Icon = l.icon;
@@ -144,6 +160,7 @@ export function Navbar() {
                 </Link>
               );
             })}
+            </div>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button data-testid="nav-more-btn"
