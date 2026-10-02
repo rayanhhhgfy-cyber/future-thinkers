@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends, Request
 from db import db, ser, sers, oid, now_iso
-from auth import get_current_user, effective_permissions
+from auth import get_current_user, get_optional_user, effective_permissions
+from services import create_notification
 
 router = APIRouter(prefix="/api")
 
@@ -74,13 +75,23 @@ async def global_search(q: str, request: Request):
 
 # ---------------- Public profile ----------------
 @router.get("/users/{uid}/profile")
-async def public_profile(uid: str):
+async def public_profile(uid: str, viewer: dict = Depends(get_optional_user)):
     u = await db.users.find_one({"_id": oid(uid)})
     if not u:
         raise HTTPException(status_code=404, detail="المستخدم غير موجود")
     privacy = u.get("privacy", {})
     rank = await db.users.count_documents({"role": "student", "xp": {"$gt": u.get("xp", 0)}}) + 1
     achievements = await db.achievements.find({"key": {"$in": u.get("achievements", [])}}).to_list(100)
+    works = await db.works.find({"author_id": uid, "status": "published"}).sort("likes", -1).limit(6).to_list(6)
+    ventures = await db.ventures.find(
+        {"$or": [{"owner_id": uid}, {"members.id": uid}]}).sort("updated_at", -1).limit(6).to_list(6)
+    followers_count = await db.follows.count_documents({"following_id": uid})
+    following_count = await db.follows.count_documents({"follower_id": uid})
+    certs_count = await db.certificates.count_documents({"user_id": uid})
+    is_following = False
+    if viewer and viewer.get("id") != uid:
+        is_following = bool(await db.follows.find_one(
+            {"follower_id": viewer["id"], "following_id": uid}))
     return {
         "id": str(u["_id"]), "name": u["name"], "role": u.get("role"),
         "avatar_url": u.get("avatar_url"), "bio": u.get("bio"),
@@ -93,7 +104,89 @@ async def public_profile(uid: str):
         "badges": u.get("badges", []),
         "achievements": [{"key": a["key"], "title": a["title"], "icon": a.get("icon"), "badge": a.get("badge")} for a in achievements],
         "stats": u.get("stats", {}) if privacy.get("show_activity", True) else {},
+        "followers_count": followers_count, "following_count": following_count,
+        "is_following": is_following, "certificates_count": certs_count,
+        "frame": (u.get("cosmetics") or {}).get("frame"),
+        "title_badge": (u.get("cosmetics") or {}).get("title"),
+        "works": [{"id": str(w["_id"]), "title": w["title"], "likes": w.get("likes", 0),
+                   "rating_avg": w.get("rating_avg", 0)} for w in works],
+        "ventures": [{"id": str(v["_id"]), "title": v["title"], "status": v.get("status")} for v in ventures],
     }
+
+
+# ---------------- Follows ----------------
+@router.post("/users/{uid}/follow")
+async def toggle_follow(uid: str, user: dict = Depends(get_current_user)):
+    if uid == user["id"]:
+        raise HTTPException(status_code=400, detail="لا يمكنك متابعة نفسك")
+    target = await db.users.find_one({"_id": oid(uid)}, {"name": 1})
+    if not target:
+        raise HTTPException(status_code=404, detail="المستخدم غير موجود")
+    existing = await db.follows.find_one({"follower_id": user["id"], "following_id": uid})
+    if existing:
+        await db.follows.delete_one({"_id": existing["_id"]})
+        following = False
+    else:
+        await db.follows.insert_one({"follower_id": user["id"], "following_id": uid,
+                                     "created_at": now_iso()})
+        await create_notification(uid, "follow", f"بدأ {user['name']} بمتابعتك 🤝", "",
+                                  f"/profile/{user['id']}")
+        following = True
+    count = await db.follows.count_documents({"following_id": uid})
+    return {"following": following, "followers_count": count}
+
+
+async def _user_cards(docs):
+    ids = [d["_id"] for d in docs]
+    return [{"id": str(u["_id"]), "name": u["name"], "avatar_url": u.get("avatar_url"),
+             "role": u.get("role"), "level": u.get("level", 1), "xp": u.get("xp", 0)} for u in docs]
+
+
+@router.get("/users/{uid}/followers")
+async def list_followers(uid: str, limit: int = 50):
+    rels = await db.follows.find({"following_id": uid}).sort("created_at", -1).limit(limit).to_list(limit)
+    users = []
+    for r in rels:
+        u = await db.users.find_one({"_id": oid(r["follower_id"])},
+                                    {"name": 1, "avatar_url": 1, "role": 1, "level": 1, "xp": 1})
+        if u:
+            users.append(u)
+    return {"items": await _user_cards(users)}
+
+
+@router.get("/users/{uid}/following")
+async def list_following(uid: str, limit: int = 50):
+    rels = await db.follows.find({"follower_id": uid}).sort("created_at", -1).limit(limit).to_list(limit)
+    users = []
+    for r in rels:
+        u = await db.users.find_one({"_id": oid(r["following_id"])},
+                                    {"name": 1, "avatar_url": 1, "role": 1, "level": 1, "xp": 1})
+        if u:
+            users.append(u)
+    return {"items": await _user_cards(users)}
+
+
+@router.get("/feed/following")
+async def following_feed(user: dict = Depends(get_current_user)):
+    rels = await db.follows.find({"follower_id": user["id"]}).to_list(500)
+    ids = [r["following_id"] for r in rels]
+    if not ids:
+        return {"items": []}
+    works = await db.works.find({"author_id": {"$in": ids}, "status": "published"}) \
+        .sort("published_at", -1).limit(20).to_list(20)
+    ventures = await db.ventures.find({"owner_id": {"$in": ids}}) \
+        .sort("created_at", -1).limit(20).to_list(20)
+    items = []
+    for w in works:
+        items.append({"kind": "work", "id": str(w["_id"]), "title": w["title"],
+                      "author_id": w.get("author_id"), "author_name": w.get("author_name"),
+                      "likes": w.get("likes", 0), "created_at": w.get("published_at") or w.get("created_at")})
+    for v in ventures:
+        items.append({"kind": "venture", "id": str(v["_id"]), "title": v["title"],
+                      "author_id": v.get("owner_id"), "author_name": v.get("owner_name"),
+                      "likes": v.get("votes_count", 0), "created_at": v.get("created_at")})
+    items.sort(key=lambda x: x.get("created_at") or "", reverse=True)
+    return {"items": items[:30]}
 
 
 # ---------------- Student dashboard aggregate ----------------

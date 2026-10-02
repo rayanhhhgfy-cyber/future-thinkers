@@ -3,7 +3,7 @@ from fastapi import APIRouter, HTTPException, Depends, Query, Request
 from pydantic import BaseModel, Field
 from db import db, ser, sers, oid, now_iso
 from auth import get_current_user, get_optional_user, require_permission, effective_permissions
-from services import award_xp, create_notification, audit_log
+from services import award_xp, create_notification, audit_log, track_quest
 
 router = APIRouter(prefix="/api/studio")
 
@@ -237,6 +237,7 @@ async def review_work(work_id: str, body: WorkReviewBody, user: dict = Depends(g
     await _recalc_work_rating(work_id)
     if not existing:
         await award_xp(user["id"], await _points("review_work", 10), "تقييم عمل أدبي", work_id)
+        await track_quest(user["id"], "review")
     return {"ok": True}
 
 

@@ -2,7 +2,7 @@ from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, HTTPException, Depends
 from db import db, oid
 from auth import get_current_user
-from services import award_xp, create_notification, level_title, level_for_xp
+from services import award_xp, create_notification, level_title, level_for_xp, track_quest
 
 router = APIRouter(prefix="/api")
 
@@ -157,6 +157,7 @@ async def daily_checkin(user: dict = Depends(get_current_user)):
         {"$set": {"last_checkin": today, "streak": streak, "stats.max_streak": max_streak}})
     s = await db.settings.find_one({"key": "points_config"})
     await award_xp(user["id"], (s or {}).get("value", {}).get("daily_checkin", 5), "تسجيل حضور يومي")
+    await track_quest(user["id"], "checkin")
     return {"already": False, "streak": streak}
 
 
