@@ -6,7 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
-import { Flame, Trophy, BookOpen, Crown, Calendar, Zap, Award, TrendingUp, Sparkles, MessagesSquare, Medal, PenLine, Rocket, Bell, Quote, ArrowLeft, Star } from "lucide-react";
+import { Flame, Trophy, BookOpen, Crown, Calendar, Zap, Award, TrendingUp, Sparkles, MessagesSquare, Medal, PenLine, Rocket, Bell, Quote, ArrowLeft, Star, Clock, ListMusic, FileText } from "lucide-react";
 import * as Icons from "lucide-react";
 import { FadeUp, Stagger, Item } from "@/components/anim";
 import { WeeklyGoals, ActivityHeatmap, UpcomingDeadlines, DailyChallenge, SavedItems, Suggestions, AchievementsShowcase } from "@/components/dashboard/widgets";
@@ -111,6 +111,67 @@ export default function Dashboard() {
           <Item><StatCard icon={BookOpen} label="كتب مقروءة" value={data.books_read} color="#2563EB" /></Item>
           <Item><StatCard icon={Crown} label="تصنيف الشطرنج" value={data.chess_rating} color="#0A192F" /></Item>
           <Item><StatCard icon={MessagesSquare} label="مشاركاتك" value={data.posts} color="#059669" /></Item>
+        </Stagger>
+
+        {/* my library: pages read + finish later + playlists */}
+        <Stagger className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+          <Item>
+            <div className="bg-white rounded-2xl p-5 border border-slate-100 ft-shadow h-full">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="w-9 h-9 rounded-xl grid place-items-center bg-indigo-50 text-indigo-600"><FileText className="w-5 h-5" /></span>
+                <h3 className="font-head font-bold text-slate-800">صفحاتي المقروءة</h3>
+              </div>
+              <div className="text-3xl font-extrabold font-head text-slate-900">{(data.pages_read || 0).toLocaleString("en-US")}</div>
+              <div className="text-xs text-slate-400 mt-1">صفحة قرأتها حتى اليوم · {data.books_read || 0} كتاب مكتمل</div>
+              <Link to="/library?tab=personal" className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 hover:text-blue-700 mt-3">افتح مكتبتي الشخصية <ArrowLeft className="w-3.5 h-3.5" /></Link>
+            </div>
+          </Item>
+          <Item>
+            <div className="bg-white rounded-2xl p-5 border border-slate-100 ft-shadow h-full">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <span className="w-9 h-9 rounded-xl grid place-items-center bg-amber-50 text-amber-600"><Clock className="w-5 h-5" /></span>
+                  <h3 className="font-head font-bold text-slate-800">أكمل لاحقاً</h3>
+                </div>
+                {data.later_count > 0 && <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">{data.later_count}</span>}
+              </div>
+              {(data.later_books || []).length === 0 ? (
+                <p className="text-sm text-slate-400">لا كتب بانتظارك — من صفحة أي كتاب اضغط «أكمل لاحقاً» وسيظهر هنا.</p>
+              ) : (
+                <div className="flex gap-2">
+                  {data.later_books.map((b) => (
+                    <Link key={b.id} to={`/books/${b.id}`} title={b.title} className="w-14 aspect-[3/4] rounded-lg overflow-hidden bg-slate-100 shrink-0 hover:scale-105 transition-transform">
+                      <BookCover book={b} className="w-full h-full" imgClassName="w-full h-full object-cover" />
+                    </Link>
+                  ))}
+                  {data.later_count > 4 && (
+                    <Link to="/library?tab=personal" className="w-14 aspect-[3/4] rounded-lg bg-amber-50 text-amber-700 grid place-items-center text-xs font-extrabold shrink-0">+{data.later_count - 4}</Link>
+                  )}
+                </div>
+              )}
+            </div>
+          </Item>
+          <Item>
+            <div className="bg-white rounded-2xl p-5 border border-slate-100 ft-shadow h-full">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="w-9 h-9 rounded-xl grid place-items-center bg-violet-50 text-violet-600"><ListMusic className="w-5 h-5" /></span>
+                <h3 className="font-head font-bold text-slate-800">قوائم كتبي</h3>
+              </div>
+              {(data.my_playlists || []).length === 0 ? (
+                <p className="text-sm text-slate-400">أنشئ قوائم كتبك الخاصة مثل قوائم سبوتيفاي من مكتبتك الشخصية.</p>
+              ) : (
+                <div className="space-y-2">
+                  {data.my_playlists.map((p) => (
+                    <Link key={p.id} to="/library?tab=personal" className="flex items-center gap-2.5 rounded-xl px-3 py-2 bg-slate-50 hover:bg-violet-50 transition-colors">
+                      <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: p.color }} />
+                      <span className="flex-1 font-semibold text-sm text-slate-700 truncate">{p.name}</span>
+                      <span className="text-[11px] text-slate-400">{p.count} كتاب</span>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+          </Item>
         </Stagger>
 
         {/* NEW: ventures + chess + daily quote */}

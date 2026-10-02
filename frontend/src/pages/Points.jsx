@@ -10,7 +10,7 @@ import { toast } from "sonner";
 import {
   Sparkles, Flame, Coins, Award, Medal, Crown, BookOpen, Star, Rocket, Heart,
   Trophy, Calendar, MessageSquare, Gamepad2, TrendingUp, TrendingDown, Gift,
-  Target, Zap, ChevronDown, LogIn,
+  Target, Zap, ChevronDown, LogIn, Library, GraduationCap,
 } from "lucide-react";
 
 /* Arabic labels for XP transaction reasons (falls back to the raw reason) */
@@ -54,7 +54,7 @@ const FALLBACK_EARN = [
   { key: "upload_book_approved", label: "اعتماد كتاب ترفعه", pts: 40, icon: BookOpen, tint: "bg-emerald-100 text-emerald-600" },
 ];
 
-const ACH_ICONS = { Award, Trophy, Medal, Star, Crown, Flame, BookOpen, Sparkles, Rocket, Target, Zap };
+const ACH_ICONS = { Award, Trophy, Medal, Star, Crown, Flame, BookOpen, Sparkles, Rocket, Target, Zap, Library, GraduationCap };
 
 export default function Points() {
   const { user, ready } = useAuth();

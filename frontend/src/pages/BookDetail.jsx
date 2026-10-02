@@ -6,10 +6,11 @@ import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Star, Heart, BookOpen, ArrowRight, Eye, Bookmark, BookmarkCheck } from "lucide-react";
+import { Star, Heart, BookOpen, ArrowRight, Eye, Bookmark, BookmarkCheck, Clock, Check, ListPlus } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useBookmarks } from "@/components/BookmarkButton";
 import BookCover from "@/components/BookCover";
+import { PlaylistPicker } from "@/components/library/PlaylistPicker";
 
 const BookReader = lazy(() => import("./reader/BookReader"));
 
@@ -33,6 +34,7 @@ export default function BookDetail() {
   const [reading, setReading] = useState(false);
   const [rating, setRating] = useState(0);
   const [reviewText, setReviewText] = useState("");
+  const [showPlaylists, setShowPlaylists] = useState(false);
   const { map: savedMap, toggle: toggleSaved } = useBookmarks();
   const isSaved = savedMap.has(`book:${id}`);
 
@@ -48,8 +50,17 @@ export default function BookDetail() {
     setBook((b) => ({ ...b, is_favorite: data.favorite, favorites_count: b.favorites_count + (data.favorite ? 1 : -1) }));
   };
 
-  const saveProgress = async (percent) => {
-    await api.post(`/books/${id}/progress`, { page: 1, percent });
+  const toggleLater = async () => {
+    if (!user) return nav("/login");
+    try {
+      const { data } = await api.post(`/books/${id}/later`);
+      setBook((b) => ({ ...b, is_later: data.later }));
+      toast.success(data.later ? "أُضيف إلى «أكمل لاحقاً» ⏰" : "أُزيل من «أكمل لاحقاً»");
+    } catch (e) { toast.error(apiErr(e)); }
+  };
+
+  const saveProgress = async (percent, page = 1) => {
+    await api.post(`/books/${id}/progress`, { page, percent });
     setBook((b) => ({ ...b, my_progress: percent }));
     if (percent >= 100) toast.success("أكملت الكتاب! +نقاط خبرة 🎉");
   };
@@ -72,6 +83,15 @@ export default function BookDetail() {
             <div className="mt-4 space-y-2">
               <Button data-testid="read-book-btn" onClick={() => (user ? setReading(true) : nav("/login"))} className="w-full rounded-xl bg-blue-600 hover:bg-blue-700 h-11"><BookOpen className="w-4 h-4 ml-1" /> {book.my_progress > 0 ? "متابعة القراءة" : "اقرأ الآن"}</Button>
               <Button data-testid="favorite-btn" onClick={toggleFav} variant="outline" className="w-full rounded-xl h-11"><Heart className={`w-4 h-4 ml-1 ${book.is_favorite ? "fill-rose-500 text-rose-500" : ""}`} /> {book.is_favorite ? "في المفضلة" : "أضف للمفضلة"}</Button>
+              <Button data-testid="later-btn" onClick={toggleLater} variant="outline" className={`w-full rounded-xl h-11 ${book.is_later ? "border-amber-300 bg-amber-50 text-amber-700" : ""}`}>
+                {book.is_later ? <Check className="w-4 h-4 ml-1 text-amber-600" /> : <Clock className="w-4 h-4 ml-1" />}
+                {book.is_later ? "في قائمة «أكمل لاحقاً»" : "أكمل لاحقاً"}
+              </Button>
+              {user && (
+                <Button data-testid="playlist-btn" onClick={() => setShowPlaylists(true)} variant="outline" className="w-full rounded-xl h-11">
+                  <ListPlus className="w-4 h-4 ml-1" /> أضف إلى قائمة
+                </Button>
+              )}
               {user && (
                 <Button onClick={() => toggleSaved("book", id, book.title)} variant="outline" className="w-full rounded-xl h-11">
                   {isSaved ? <BookmarkCheck className="w-4 h-4 ml-1 text-amber-500" /> : <Bookmark className="w-4 h-4 ml-1" />}
@@ -136,6 +156,9 @@ export default function BookDetail() {
             initialPercent={book.my_progress || 0}
           />
         </Suspense>
+      )}
+      {showPlaylists && (
+        <PlaylistPicker bookId={id} bookTitle={book.title} onClose={() => setShowPlaylists(false)} />
       )}
     </Layout>
   );

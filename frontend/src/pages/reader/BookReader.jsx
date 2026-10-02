@@ -2,7 +2,9 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   X, Download, ZoomIn, ZoomOut, Check, Loader2,
   AlertTriangle, ExternalLink, ChevronUp, BookOpen,
+  Bookmark, BookmarkCheck, Trash2,
 } from "lucide-react";
+import api from "@/lib/api";
 
 // pdf.js is loaded on demand from CDN (never bundled, never pushed through
 // the repo) — the reader chunk stays small and the main bundle is untouched.
@@ -100,6 +102,8 @@ export default function BookReader({ book, pdfUrl, onClose, onProgress, initialP
   const [currentPage, setCurrentPage] = useState(1);
   const [barsVisible, setBarsVisible] = useState(true);
   const [markingDone, setMarkingDone] = useState(false);
+  const [pageBookmarks, setPageBookmarks] = useState([]);
+  const [showBookmarks, setShowBookmarks] = useState(false);
 
   const scrollRef = useRef(null);
   const pageTops = useRef({});
@@ -234,12 +238,12 @@ export default function BookReader({ book, pdfUrl, onClose, onProgress, initialP
     return () => clearTimeout(t);
   }, [pdf, numPages, zoomIdx, measure, updateCurrent, initialPercent]);
 
-  // Persist reading progress (debounced).
+  // Persist reading progress (debounced) — percent + current page.
   useEffect(() => {
     if (!numPages || !onProgress) return;
     if (progressTimer.current) clearTimeout(progressTimer.current);
     progressTimer.current = setTimeout(() => {
-      onProgress(Math.min(99, Math.round((currentPage / numPages) * 100)));
+      onProgress(Math.min(99, Math.round((currentPage / numPages) * 100)), currentPage);
     }, 900);
     return () => { if (progressTimer.current) clearTimeout(progressTimer.current); };
   }, [currentPage, numPages, onProgress]);
@@ -250,6 +254,37 @@ export default function BookReader({ book, pdfUrl, onClose, onProgress, initialP
     if (el && top != null) el.scrollTop = Math.max(0, top - 12);
     setCurrentPage(n);
     pokeBars();
+  };
+
+  /* ---- page bookmarks ---- */
+  const bookId = book?.id;
+  useEffect(() => {
+    if (!bookId) return;
+    api.get(`/books/${bookId}/page-bookmarks`)
+      .then((r) => setPageBookmarks(r.data || []))
+      .catch(() => {});
+  }, [bookId]);
+
+  const currentBookmarked = pageBookmarks.some((b) => b.page === currentPage);
+
+  const togglePageBookmark = async () => {
+    if (!bookId) return;
+    pokeBars();
+    try {
+      const { data } = await api.post(`/books/${bookId}/page-bookmarks`, { page: currentPage });
+      if (data.bookmarked) {
+        setPageBookmarks((bs) => [...bs.filter((b) => b.page !== currentPage), data].sort((a, b) => a.page - b.page));
+      } else {
+        setPageBookmarks((bs) => bs.filter((b) => b.page !== currentPage));
+      }
+    } catch {}
+  };
+
+  const deletePageBookmark = async (bm) => {
+    try {
+      await api.delete(`/books/${bookId}/page-bookmarks/${bm.id}`);
+      setPageBookmarks((bs) => bs.filter((b) => b.id !== bm.id));
+    } catch {}
   };
 
   const markComplete = async () => {
@@ -288,6 +323,50 @@ export default function BookReader({ book, pdfUrl, onClose, onProgress, initialP
             </div>
             <div className="shrink-0 text-xs font-bold bg-white/10 backdrop-blur-md rounded-full px-3 py-1.5 tabular-nums">
               {numPages > 0 ? `${currentPage} / ${numPages}` : "…"}
+            </div>
+            <div className="relative shrink-0">
+              <button
+                onClick={togglePageBookmark}
+                data-testid="reader-bookmark-btn"
+                className={`w-10 h-10 rounded-full backdrop-blur-md flex items-center justify-center transition ${currentBookmarked ? "bg-amber-400 text-slate-950" : "bg-white/10 hover:bg-white/20"}`}
+                aria-label="إشارة مرجعية لهذه الصفحة"
+                title={currentBookmarked ? "إزالة الإشارة من هذه الصفحة" : "ضع إشارة على هذه الصفحة"}
+              >
+                {currentBookmarked ? <BookmarkCheck className="w-5 h-5" /> : <Bookmark className="w-5 h-5" />}
+              </button>
+              {pageBookmarks.length > 0 && (
+                <button
+                  onClick={() => { setShowBookmarks((s) => !s); pokeBars(); }}
+                  data-testid="reader-bookmarks-list-btn"
+                  className="absolute -bottom-1 -left-1 min-w-5 h-5 px-1 rounded-full bg-indigo-500 text-[10px] font-extrabold grid place-items-center border-2 border-[#0b1020]"
+                  aria-label="كل الإشارات"
+                >
+                  {pageBookmarks.length}
+                </button>
+              )}
+              {showBookmarks && (
+                <div className="absolute top-12 left-0 w-60 max-h-72 overflow-y-auto rounded-2xl bg-slate-900/95 border border-white/10 backdrop-blur-xl shadow-2xl p-2" dir="rtl">
+                  <div className="text-[11px] font-bold text-slate-400 px-2 py-1.5">إشاراتي في هذا الكتاب</div>
+                  {pageBookmarks.map((bm) => (
+                    <div key={bm.id} className="flex items-center gap-1 rounded-xl hover:bg-white/[0.07] px-2 py-1.5 group">
+                      <button
+                        onClick={() => { goToPage(bm.page); setShowBookmarks(false); }}
+                        className="flex-1 text-right text-sm flex items-center gap-2"
+                      >
+                        <Bookmark className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
+                        <span className={bm.page === currentPage ? "font-bold text-amber-300" : ""}>صفحة {bm.page}</span>
+                      </button>
+                      <button
+                        onClick={() => deletePageBookmark(bm)}
+                        className="w-7 h-7 grid place-items-center rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 opacity-0 group-hover:opacity-100 transition"
+                        aria-label="حذف الإشارة"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
             <a
               href={pdfUrl}
