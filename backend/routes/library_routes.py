@@ -1,4 +1,4 @@
-"""المكتبة الشخصية — قوائم كتب مخصصة مثل قوائم تشغيل سبوتيفاي."""
+"""المكتبة الشخصية · قوائم كتب مخصصة مثل قوائم تشغيل سبوتيفاي."""
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel, Field
 from db import db, ser, oid, now_iso

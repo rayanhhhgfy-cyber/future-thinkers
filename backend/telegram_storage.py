@@ -1,4 +1,4 @@
-"""Telegram file storage for book PDFs (stdlib only — no new dependencies).
+"""Telegram file storage for book PDFs (stdlib only · no new dependencies).
 
 Every book PDF lives on Telegram, regardless of size. Telegram's Bot API
 only lets bots *download* files up to 20MB, so PDFs bigger than that are
@@ -21,9 +21,9 @@ import urllib.request
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 
-# Bot getFile (download) caps at 20MB per file — stay comfortably under it.
+# Bot getFile (download) caps at 20MB per file · stay comfortably under it.
 TG_PART_BYTES = 19 * 1024 * 1024
-# Bot sendDocument caps at 50MB per file — parts are far below it.
+# Bot sendDocument caps at 50MB per file · parts are far below it.
 _SEND_WORKERS = 4
 
 
@@ -82,7 +82,7 @@ def _send_part_once(index, total, part_bytes, filename, tag=None) -> dict:
     boundary = uuid.uuid4().hex
     tag_suffix = f" · {tag}" if tag else ""
     if total > 1:
-        caption = f"📚 {filename or 'book.pdf'}{tag_suffix} — جزء {index + 1}/{total}"
+        caption = f"📚 {filename or 'book.pdf'}{tag_suffix} · جزء {index + 1}/{total}"
     else:
         caption = f"📚 {filename or 'book.pdf'}{tag_suffix}"
     body = b"".join([
@@ -180,7 +180,7 @@ def delete_telegram_messages(message_ids) -> None:
             pass
 
 
-# Backwards-compatible aliases (single-file era, minutes old — kept for safety)
+# Backwards-compatible aliases (single-file era, minutes old · kept for safety)
 def fetch_pdf_from_telegram_single(file_id: str) -> bytes:
     return fetch_pdf_from_telegram([file_id])
 

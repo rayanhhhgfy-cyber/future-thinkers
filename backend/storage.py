@@ -6,7 +6,7 @@ from motor.motor_asyncio import AsyncIOMotorGridFSBucket
 
 from db import get_db
 
-MAX_SIZE = 100 * 1024 * 1024  # 100MB — larger books go through chunked/resumable uploads (/api/uploads/*)
+MAX_SIZE = 100 * 1024 * 1024  # 100MB · larger books go through chunked/resumable uploads (/api/uploads/*)
 MIME_EXT = {
     "application/pdf": "pdf", "image/png": "png", "image/jpeg": "jpg",
     "image/jpg": "jpg", "image/webp": "webp", "video/mp4": "mp4",

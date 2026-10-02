@@ -1,5 +1,5 @@
 """Chunked/resumable PDF uploads (for files larger than what a single request
-can carry through the Vercel edge — up to 100MB).
+can carry through the Vercel edge · up to 100MB).
 
 Flow:
   1. POST /uploads/start   {filename, content_type, size}  -> {upload_id, chunk_size, total_parts}
@@ -178,7 +178,7 @@ async def complete_upload(body: CompleteBody, request: Request, user: dict = Dep
         }
         result = await _create_book_from_pdf(user, meta, pdf_bytes, up["filename"],
                                              cover_bytes, cover_filename, cover_ct, request)
-    else:  # book_replace — replicate the PATCH /books/{id} pdf-replace branch
+    else:  # book_replace · replicate the PATCH /books/{id} pdf-replace branch
         from storage import save_file, delete_file
         b = await db.books.find_one({"_id": oid(body.book_id)})
         if not b:
