@@ -48,8 +48,10 @@ export default function Library() {
   const [sort, setSort] = useState("recent");
   const [data, setData] = useState(null);
   const [page, setPage] = useState(1);
+  const [featured, setFeatured] = useState(null);
 
   useEffect(() => { api.get("/books/categories").then((r) => setCats(r.data)); }, []);
+  useEffect(() => { api.get("/books/featured").then((r) => setFeatured(r.data)).catch(() => {}); }, []);
 
   const load = useCallback(async () => {
     setData(null);
@@ -91,6 +93,21 @@ export default function Library() {
           )}
         </div>
       </div>
+
+      {featured && tab === "browse" && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
+          <Link to={`/books/${featured.id}`} className="group relative overflow-hidden rounded-[1.8rem] bg-gradient-to-l from-amber-500 via-orange-500 to-rose-500 p-5 sm:p-6 flex items-center gap-4 sm:gap-6 text-white ft-shadow block hover:scale-[1.005] transition-transform">
+            <span className="px-3 py-1 rounded-full bg-white/20 backdrop-blur text-[11px] font-extrabold shrink-0 absolute top-4 left-4">⭐ كتاب الأسبوع</span>
+            <BookCover book={featured} className="w-20 sm:w-24 shrink-0 rounded-xl shadow-2xl" />
+            <div className="min-w-0">
+              <div className="font-head font-extrabold text-xl sm:text-2xl truncate">{featured.title}</div>
+              <div className="text-white/85 text-sm mt-1">{featured.author}</div>
+              <div className="text-white/70 text-xs mt-1.5 line-clamp-2 max-w-xl">{featured.description}</div>
+              <span className="inline-flex items-center gap-1.5 mt-3 px-4 py-2 rounded-full bg-white text-orange-700 text-xs font-extrabold group-hover:gap-2.5 transition-all">ابدأ القراءة الآن <BookOpen className="w-4 h-4" /></span>
+            </div>
+          </Link>
+        </div>
+      )}
 
       {tab === "personal" && user ? (
         <PersonalLibrary />

@@ -83,13 +83,13 @@ export default function Landing() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 lg:py-32 relative">
           <div className="max-w-3xl">
             <div className="animate-fade-up inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/15 text-sm mb-6">
-              <Sparkles className="w-4 h-4 text-emerald-400" /> المنصة المعرفية الوطنية لطلاب الأردن
+              <Sparkles className="w-4 h-4 text-emerald-400" /> {cms?.hero_badge || "المنصة المعرفية الوطنية لطلاب الأردن"}
             </div>
             <h1 className="animate-fade-up d-1 font-head text-4xl sm:text-5xl lg:text-6xl font-extrabold leading-tight">
-              نقرأ أكثر، نفكّر أعمق،<br /><span className="text-transparent bg-clip-text bg-gradient-to-l from-emerald-300 via-emerald-400 to-teal-300 animate-gradient-text">ونصنع المستقبل.</span>
+              {cms?.hero_title || "نقرأ أكثر، نفكّر أعمق،"}<br /><span className="text-transparent bg-clip-text bg-gradient-to-l from-emerald-300 via-emerald-400 to-teal-300 animate-gradient-text">{cms?.hero_highlight || "ونصنع المستقبل."}</span>
             </h1>
             <p className="animate-fade-up d-2 mt-6 text-lg text-slate-300 leading-relaxed max-w-2xl">
-              بيئة معرفية وثقافية وعلمية تجمع طلاب المملكة الأردنية الهاشمية حول القراءة والحوار والشطرنج والبرمجة والابتكار والمنافسات في مجتمع طلابي واحد.
+              {cms?.hero_subtitle || "بيئة معرفية وثقافية وعلمية تجمع طلاب المملكة الأردنية الهاشمية حول القراءة والحوار والشطرنج والبرمجة والابتكار والمنافسات في مجتمع طلابي واحد."}
             </p>
             <div className="animate-fade-up d-3 mt-8 flex flex-wrap gap-3">
               <Button data-testid="hero-join-btn" onClick={() => nav(user ? "/dashboard" : "/register")} size="lg" className="pressable rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white h-12 px-7 text-base">
