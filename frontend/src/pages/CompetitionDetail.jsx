@@ -116,10 +116,10 @@ export default function CompetitionDetail() {
                     <div className="font-head text-4xl font-black text-white/95 sm:text-5xl">{c.my_entry.score}<span className="text-2xl">%</span></div>
                   </div>
                 </div>
-                <Button data-testid="download-cert-btn" onClick={downloadCert} variant="outline" className="pressable w-full rounded-xl h-12 font-bold border-emerald-200 text-emerald-700 hover:bg-emerald-50 sm:w-auto sm:px-6"><Award className="w-4 h-4 ml-1" /> تنزيل شهادة المشاركة</Button>
+                <Button data-testid="download-cert-btn" onClick={downloadCert} variant="outline" className="pressable w-full rounded-xl h-12 font-bold border-emerald-200 text-emerald-700 ft-hover-bg-soft sm:w-auto sm:px-6"><Award className="w-4 h-4 ml-1" /> تنزيل شهادة المشاركة</Button>
               </div>
             ) : !registered ? (
-              <Button data-testid="register-competition-btn" onClick={register} className="pressable mt-6 w-full rounded-2xl bg-gradient-to-l from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 h-12 px-8 font-bold shadow-lg shadow-emerald-600/25 sm:w-auto">سجّل في المسابقة</Button>
+              <Button data-testid="register-competition-btn" onClick={register} className="pressable mt-6 w-full rounded-2xl ft-btn-primary h-12 px-8 font-bold shadow-lg sm:w-auto">سجّل في المسابقة</Button>
             ) : !taking ? (
               c.question_count > 0 ? <Button data-testid="start-competition-btn" onClick={() => setTaking(true)} className="pressable mt-6 w-full rounded-2xl h-12 px-8 font-bold text-white shadow-lg sm:w-auto" style={{ background: `linear-gradient(135deg, ${m.color}, ${m.color}CC)`, boxShadow: `0 14px 26px -12px ${m.color}` }}>ابدأ الاختبار</Button>
                 : <div className="mt-6 rounded-[1.4rem] border border-slate-100 bg-slate-50 p-4 text-sm font-medium leading-relaxed text-slate-500 sm:p-5">أنت مسجّل. ستُتاح الأسئلة عند بدء المسابقة.</div>
@@ -165,7 +165,7 @@ export default function CompetitionDetail() {
 
             <div className="sticky bottom-4 z-10 flex flex-col gap-2.5 rounded-[1.4rem] border border-white/60 bg-white/90 p-2.5 shadow-2xl shadow-slate-900/10 ring-1 ring-slate-200/60 backdrop-blur-xl sm:flex-row sm:items-center">
               <span className="hidden items-center gap-1.5 px-2 text-sm font-bold text-slate-500 sm:inline-flex"><Sparkles className="h-4 w-4 text-amber-500" /> أجبت عن {answered} من {totalQ}</span>
-              <Button data-testid="submit-quiz-btn" onClick={submit} className="pressable w-full flex-1 rounded-2xl bg-gradient-to-l from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 h-12 font-bold shadow-xl shadow-emerald-600/25">إرسال الإجابات</Button>
+              <Button data-testid="submit-quiz-btn" onClick={submit} className="pressable ft-btn-primary w-full flex-1 rounded-2xl h-12 font-bold shadow-xl">إرسال الإجابات</Button>
             </div>
           </div>
         )}

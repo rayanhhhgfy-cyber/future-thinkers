@@ -70,7 +70,7 @@ export default function Calendar() {
           <p className="relative text-white/75 text-sm sm:text-base mt-2 max-w-xl">اضغط أي يوم لعرض فعالياته، وفعّل التذكير لتصلك رسالة قبلها بيوم.</p>
           {events !== null && (
             <div className="relative mt-5 flex flex-wrap gap-2 animate-fade-up">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 ring-1 ring-white/20 backdrop-blur text-white text-xs font-bold"><CalendarDays className="w-3.5 h-3.5 text-emerald-300" /> {events.length} فعالية</span>
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 ring-1 ring-white/20 backdrop-blur text-white text-xs font-bold"><CalendarDays className="w-3.5 h-3.5 ft-text-accent-bright" /> {events.length} فعالية</span>
               <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 ring-1 ring-white/20 backdrop-blur text-white text-xs font-bold"><Trophy className="w-3.5 h-3.5 text-amber-300" /> {comps.length} مسابقة</span>
               <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 ring-1 ring-white/20 backdrop-blur text-white text-xs font-bold"><Bell className="w-3.5 h-3.5 text-sky-300" /> {monthItems} هذا الشهر</span>
             </div>
@@ -85,13 +85,13 @@ export default function Calendar() {
               <div className="flex items-center justify-between gap-2 mb-5">
                 <button onClick={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1))} className="pressable w-10 h-10 sm:w-11 sm:h-11 grid place-items-center rounded-full bg-slate-900 text-white shadow-lg shadow-slate-900/20 hover:bg-slate-700 transition"><ChevronRight className="w-5 h-5" /></button>
                 <div className="text-center">
-                  <h2 className="font-head font-extrabold text-xl sm:text-2xl text-slate-900 leading-tight">{MONTH_AR[cursor.getMonth()]} <span className="text-emerald-600">{cursor.getFullYear()}</span></h2>
-                  <button onClick={() => { const t = new Date(); setCursor(new Date(t.getFullYear(), t.getMonth(), 1)); setSelected(todayKey); }} className="pressable mt-1 text-[11px] font-bold text-slate-400 hover:text-emerald-600 transition">العودة لليوم</button>
+                  <h2 className="font-head font-extrabold text-xl sm:text-2xl text-slate-900 leading-tight">{MONTH_AR[cursor.getMonth()]} <span className="ft-text-accent">{cursor.getFullYear()}</span></h2>
+                  <button onClick={() => { const t = new Date(); setCursor(new Date(t.getFullYear(), t.getMonth(), 1)); setSelected(todayKey); }} className="pressable mt-1 text-[11px] font-bold text-slate-400 ft-hover-text-accent transition">العودة لليوم</button>
                 </div>
-                <button onClick={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1))} className="pressable w-10 h-10 sm:w-11 sm:h-11 grid place-items-center rounded-full bg-white ring-1 ring-slate-200 text-slate-600 shadow-sm hover:ring-emerald-300 hover:text-emerald-700 transition"><ChevronLeft className="w-5 h-5" /></button>
+                <button onClick={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1))} className="pressable w-10 h-10 sm:w-11 sm:h-11 grid place-items-center rounded-full bg-white ring-1 ring-slate-200 text-slate-600 shadow-sm ft-hover-ring-accent ft-hover-text-accent transition"><ChevronLeft className="w-5 h-5" /></button>
               </div>
               <div className="grid grid-cols-7 gap-1 sm:gap-1.5 text-center text-[11px] sm:text-xs font-extrabold mb-2">
-                {WEEK_AR.map((w, wi) => <div key={w} className={`py-2 rounded-lg ${wi === 5 ? "text-emerald-600 bg-emerald-50/70" : "text-slate-400"}`}>{w}</div>)}
+                {WEEK_AR.map((w, wi) => <div key={w} className={`py-2 rounded-lg ${wi === 5 ? "ft-text-accent ft-bg-soft" : "text-slate-400"}`}>{w}</div>)}
               </div>
               <div className="grid grid-cols-7 gap-1 sm:gap-1.5">
                 {cells.map((d, i) => {
@@ -103,7 +103,7 @@ export default function Calendar() {
                   const first = items[0];
                   return (
                     <button key={i} onClick={() => setSelected(k)}
-                      className={`pressable relative rounded-xl sm:rounded-2xl min-h-[46px] sm:min-h-[68px] lg:min-h-[78px] px-1 py-1.5 text-sm font-bold transition flex flex-col items-center justify-start gap-1 ${isSel ? "ft-navy-gradient text-white shadow-lg shadow-slate-900/25 ring-2 ring-slate-900/10" : isToday ? "bg-emerald-50 text-emerald-700 ring-2 ring-emerald-400" : "text-slate-600 ring-1 ring-slate-100 hover:bg-slate-50 hover:ring-emerald-200"}`}>
+                      className={`pressable relative rounded-xl sm:rounded-2xl min-h-[46px] sm:min-h-[68px] lg:min-h-[78px] px-1 py-1.5 text-sm font-bold transition flex flex-col items-center justify-start gap-1 ${isSel ? "ft-navy-gradient text-white shadow-lg shadow-slate-900/25 ring-2 ring-slate-900/10" : isToday ? "bg-emerald-50 text-emerald-700 ring-2 ring-emerald-400" : "text-slate-600 ring-1 ring-slate-100 hover:bg-slate-50 ft-hover-ring-accent"}`}>
                       <span className={`leading-none ${isToday && !isSel ? "relative after:absolute after:-bottom-1.5 after:left-1/2 after:-translate-x-1/2 after:w-1 after:h-1 after:rounded-full after:bg-emerald-500" : ""}`}>{d.getDate()}</span>
                       {first && (
                         <span className={`hidden sm:block max-w-full truncate text-[9px] leading-tight font-bold px-1.5 py-0.5 rounded-md ${isSel ? "bg-white/20 text-white" : first._kind === "comp" ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"}`}>{first.title}</span>
@@ -139,13 +139,13 @@ export default function Calendar() {
               ) : (
                 <div className="space-y-3">
                   {dayItems.map((it, ix) => (
-                    <div key={it.id} className="animate-fade-up rounded-2xl bg-slate-50 border border-slate-100 p-3.5 hover:border-emerald-200 hover:bg-emerald-50/40 transition" style={{ animationDelay: `${ix * 70}ms` }}>
+                    <div key={it.id} className="animate-fade-up rounded-2xl bg-slate-50 border border-slate-100 p-3.5 ft-hover-border-accent ft-hover-bg-soft/40 transition" style={{ animationDelay: `${ix * 70}ms` }}>
                       <div className="flex items-start gap-2.5">
                         <span className={`w-10 h-10 rounded-2xl grid place-items-center shrink-0 shadow-md ${it._kind === "comp" ? "bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-amber-500/30" : "ft-navy-gradient text-white shadow-slate-900/20"}`}>
                           {it._kind === "comp" ? <Trophy className="w-5 h-5" /> : <CalendarDays className="w-5 h-5" />}
                         </span>
                         <div className="flex-1 min-w-0">
-                          <Link to={it._kind === "comp" ? `/competitions/${it.id}` : `/events/${it.id}`} className="font-bold text-sm text-slate-800 hover:text-emerald-700 block leading-snug">{it.title}</Link>
+                          <Link to={it._kind === "comp" ? `/competitions/${it.id}` : `/events/${it.id}`} className="font-bold text-sm text-slate-800 ft-hover-text-accent block leading-snug">{it.title}</Link>
                           <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
                             <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${it._kind === "comp" ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"}`}>{it._kind === "comp" ? "مسابقة" : "فعالية"}</span>
                             {it.time && <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-white ring-1 ring-slate-200 text-slate-500"><Clock className="w-3 h-3" />{it.time}</span>}

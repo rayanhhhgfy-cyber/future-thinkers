@@ -76,7 +76,7 @@ export default function EventDetail() {
           </div>
           <h1 className="font-head mt-4 max-w-3xl text-3xl font-extrabold leading-[1.2] animate-fade-up d-1 sm:text-4xl sm:leading-[1.2] lg:text-[3.4rem]">{e.title}</h1>
           <p className="mt-3.5 flex items-center gap-2 font-semibold text-slate-200 animate-fade-up d-2">
-            <Building2 className="h-5 w-5 shrink-0 text-emerald-300" />
+            <Building2 className="h-5 w-5 shrink-0 ft-text-accent-bright" />
             <span>تنظيم: {e.organizer}</span>
           </p>
         </div>
@@ -92,14 +92,14 @@ export default function EventDetail() {
                 <span className="font-head text-base text-blue-600 sm:text-lg">{Math.round(capacityPct)}%</span>
               </div>
               <div className="mt-2.5 h-3 overflow-hidden rounded-full bg-slate-100">
-                <div className="h-full rounded-full bg-gradient-to-l from-blue-600 via-cyan-500 to-emerald-500 transition-all duration-700" style={{ width: `${capacityPct}%` }} />
+                <div className="h-full rounded-full ft-grad-bar transition-all duration-700" style={{ width: `${capacityPct}%` }} />
               </div>
               <div className="mt-2 hidden text-[11px] font-semibold text-slate-400 sm:block">نسبة المقاعد المحجوزة حتى الآن</div>
             </div>
             {e.is_registered ? (
               <Button data-testid="unregister-event-btn" onClick={unregister} variant="outline" className="pressable h-12 w-full shrink-0 rounded-2xl px-7 text-base font-bold lg:w-auto">إلغاء التسجيل</Button>
             ) : (
-              <Button data-testid="register-event-btn" onClick={register} className="pressable h-12 w-full shrink-0 rounded-2xl bg-gradient-to-l from-emerald-600 to-teal-500 px-8 text-base font-bold shadow-lg shadow-emerald-600/25 hover:from-emerald-500 hover:to-teal-400 lg:w-auto">سجّل الآن</Button>
+              <Button data-testid="register-event-btn" onClick={register} className="pressable h-12 w-full shrink-0 rounded-2xl ft-btn-primary px-8 text-base font-bold shadow-lg lg:w-auto">سجّل الآن</Button>
             )}
           </div>
         </div>

@@ -40,11 +40,11 @@ export default function Events() {
           {data && (
             <div className="mt-7 flex flex-wrap items-center gap-2.5 animate-fade-up d-2">
               <span className="inline-flex min-h-[2.75rem] items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm font-bold backdrop-blur">
-                <Calendar className="h-4 w-4 text-emerald-200" />
+                <Calendar className="h-4 w-4 ft-text-accent-bright" />
                 {data.total} فعالية
               </span>
               <span className="inline-flex min-h-[2.75rem] items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm font-bold backdrop-blur">
-                <Globe className="h-4 w-4 text-emerald-200" />
+                <Globe className="h-4 w-4 ft-text-accent-bright" />
                 حضورية وعن بُعد
               </span>
             </div>
@@ -100,7 +100,7 @@ export default function Events() {
                           <span className="font-semibold">{e.date} {e.time}</span>
                         </div>
                         <div className="flex items-center gap-2.5">
-                          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-emerald-50 text-emerald-600">{e.mode === "online" ? <Globe className="h-4 w-4" /> : <MapPin className="h-4 w-4" />}</span>
+                          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-xl ft-bg-soft ft-text-accent">{e.mode === "online" ? <Globe className="h-4 w-4" /> : <MapPin className="h-4 w-4" />}</span>
                           <span className="font-semibold">{e.mode === "online" ? "عن بُعد" : e.location || "حضوري"}</span>
                         </div>
                       </div>
@@ -110,7 +110,7 @@ export default function Events() {
                           <span className="font-head text-sm text-blue-600">{Math.round(capacityPct)}%</span>
                         </div>
                         <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100">
-                          <div className="h-full rounded-full bg-gradient-to-l from-blue-600 via-cyan-500 to-emerald-500 transition-all duration-700" style={{ width: `${capacityPct}%` }} />
+                          <div className="h-full rounded-full ft-grad-bar transition-all duration-700" style={{ width: `${capacityPct}%` }} />
                         </div>
                       </div>
                     </div>

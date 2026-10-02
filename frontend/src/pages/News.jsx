@@ -42,7 +42,7 @@ export default function News() {
           <p className="text-emerald-50/80 mt-3 max-w-2xl leading-relaxed sm:text-lg animate-fade-up">أخبار المنصة والفعاليات وإنجازات الطلاب والمدارس والأندية.</p>
           {data && all.length > 0 && (
             <div className="mt-6 flex flex-wrap gap-2 text-xs font-bold animate-fade-up">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 ring-1 ring-white/15 backdrop-blur"><Newspaper className="h-3.5 w-3.5 text-emerald-300" /> {all.length} خبر منشور</span>
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 ring-1 ring-white/15 backdrop-blur"><Newspaper className="h-3.5 w-3.5 ft-text-accent-bright" /> {all.length} خبر منشور</span>
               {cats.length > 0 && <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 ring-1 ring-white/15 backdrop-blur"><LayoutGrid className="h-3.5 w-3.5 text-sky-300" /> {cats.length} تصنيف</span>}
             </div>
           )}
@@ -105,7 +105,7 @@ export default function News() {
                             <span className="inline-flex items-center gap-1.5 rounded-full bg-white/12 px-3.5 py-2 text-xs font-bold text-white ring-1 ring-white/20 backdrop-blur sm:text-sm"><CalendarDays className="h-4 w-4 text-sky-300" />{featured.date || String(featured.created_at).slice(0, 10)}</span>
                           )}
                           {featured.body?.length > 140 && (
-                            <button onClick={() => toggle(featured.id)} className="pressable inline-flex min-h-[40px] items-center gap-1.5 rounded-full bg-white px-4 text-xs font-extrabold text-slate-900 shadow-lg transition hover:bg-emerald-50 sm:text-sm">
+                            <button onClick={() => toggle(featured.id)} className="pressable inline-flex min-h-[40px] items-center gap-1.5 rounded-full bg-white px-4 text-xs font-extrabold text-slate-900 shadow-lg transition ft-hover-bg-soft sm:text-sm">
                               {expanded === featured.id ? "إظهار أقل" : "اقرأ المزيد"}
                               <ArrowLeft className={`h-4 w-4 transition-transform duration-300 ${expanded === featured.id ? "-rotate-90" : "group-hover:-translate-x-0.5"}`} />
                             </button>
