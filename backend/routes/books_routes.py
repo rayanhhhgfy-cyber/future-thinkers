@@ -480,6 +480,10 @@ async def save_progress(book_id: str, body: ProgressBody, user: dict = Depends(g
     pages_delta = max(0, body.page - old_furthest)
     if pages_delta > 0:
         await bump_stat(user["id"], "pages_read", pages_delta)
+        from datetime import datetime as _dt, timezone as _tz
+        await db.user_daily.update_one(
+            {"user_id": user["id"], "date": _dt.now(_tz.utc).date().isoformat()},
+            {"$inc": {"pages": pages_delta}, "$setOnInsert": {"created_at": now_iso()}}, upsert=True)
     if body.percent >= 95 and not completed_before:
         await bump_stat(user["id"], "books_read", 1)
         await award_xp(user["id"], await _points("read_book", 50), "إكمال قراءة كتاب", book_id)

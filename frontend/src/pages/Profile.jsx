@@ -5,8 +5,16 @@ import api from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 import * as Icons from "lucide-react";
-import { Trophy, Flame, BookOpen, Crown, MessageSquare, School, MapPin, Award, Sparkles, Medal, Download, UserPlus, UserCheck, Users, PenLine, Rocket, X, FileText } from "lucide-react";
-import { FadeUp } from "@/components/anim";
+import { Trophy, Flame, BookOpen, Crown, School, MapPin, Award, Sparkles, Medal, Download, UserPlus, UserCheck, Users, PenLine, Rocket, X, FileText, LayoutGrid, BadgeCheck, Swords } from "lucide-react";
+import { FadeUp, Stagger, Item } from "@/components/anim";
+import { coverCls, FRAME_RING } from "@/lib/cosmetics";
+import { ActivityHeatmap } from "@/components/dashboard/widgets";
+
+const TABS = [
+  { k: "works", l: "الأعمال والمشاريع", icon: LayoutGrid },
+  { k: "honors", l: "الشارات والشهادات", icon: BadgeCheck },
+  { k: "achievements", l: "الإنجازات", icon: Trophy },
+];
 
 export default function Profile() {
   const { id } = useParams();
@@ -14,16 +22,17 @@ export default function Profile() {
   const [p, setP] = useState(null);
   const [skillBadges, setSkillBadges] = useState([]);
   const [certs, setCerts] = useState([]);
-  const [listModal, setListModal] = useState(null); // "followers" | "following"
+  const [tab, setTab] = useState("works");
+  const [listModal, setListModal] = useState(null);
   const [listItems, setListItems] = useState([]);
   const isMine = user?.id === id;
 
-  const load = () => {
+  useEffect(() => {
+    setP(null);
     api.get(`/users/${id}/profile`).then((r) => setP(r.data));
     api.get(`/badges/user/${id}`).then((r) => setSkillBadges(r.data)).catch(() => {});
     api.get(`/certificates/user/${id}`).then((r) => setCerts(r.data)).catch(() => setCerts([]));
-  };
-  useEffect(() => { setP(null); load(); }, [id]);
+  }, [id]);
   if (!p) return <Layout><PageLoader /></Layout>;
 
   const downloadCert = async (certId) => {
@@ -58,136 +67,187 @@ export default function Profile() {
     { icon: BookOpen, label: "كتب مقروءة", value: p.stats?.books_read || 0, color: "#059669" },
     { icon: FileText, label: "صفحات مقروءة", value: (p.stats?.pages_read || 0).toLocaleString("en-US"), color: "#4F46E5" },
     { icon: Crown, label: "تصنيف الشطرنج", value: p.chess_rating, color: "#0A192F" },
+    { icon: Swords, label: "انتصارات الشطرنج", value: p.stats?.chess_wins || 0, color: "#B45309" },
     { icon: Flame, label: "سلسلة الأيام", value: p.streak, color: "#EA580C" },
   ];
+  const frameCls = FRAME_RING[p.frame] || "ring-white/25";
 
   return (
     <Layout>
-      <div className="ft-navy-gradient grain text-white relative overflow-hidden">
-        <div className="absolute -top-20 -left-20 w-72 h-72 bg-emerald-500/20 rounded-full blur-3xl animate-float" />
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12 relative">
-          <div className="flex items-center gap-5 flex-wrap">
-            <div className="relative shrink-0">
+      {/* cover hero */}
+      <div className={`relative overflow-hidden bg-gradient-to-l ${coverCls(p.cover_theme)} text-white`}>
+        <div className="absolute -top-24 -left-24 w-80 h-80 bg-white/10 rounded-full blur-3xl animate-float" />
+        <div className="absolute -bottom-28 -right-16 w-72 h-72 bg-black/20 rounded-full blur-3xl" />
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-20 sm:pb-24 relative">
+          <div className="flex flex-col sm:flex-row sm:items-end gap-5">
+            <div className="relative shrink-0 self-start">
               {p.avatar_url ? (
-                <img src={p.avatar_url} alt={p.name} className="w-24 h-24 rounded-3xl object-cover ring-4 ring-white/20" />
+                <img src={p.avatar_url} alt={p.name} className={`w-28 h-28 sm:w-32 sm:h-32 rounded-[28px] object-cover ring-4 ${frameCls}`} />
               ) : (
-                <div className="w-24 h-24 rounded-3xl bg-white/15 grid place-items-center text-4xl font-extrabold ring-4 ring-white/10">{p.name?.[0]}</div>
+                <div className={`w-28 h-28 sm:w-32 sm:h-32 rounded-[28px] bg-white/15 backdrop-blur grid place-items-center text-5xl font-extrabold ring-4 ${frameCls}`}>{p.name?.[0]}</div>
               )}
-              <span className="absolute -bottom-2 right-1/2 translate-x-1/2 px-2.5 py-0.5 rounded-full bg-amber-400 text-amber-950 text-[11px] font-extrabold whitespace-nowrap shadow">مستوى {p.level}</span>
+              <span className="absolute -bottom-2.5 right-1/2 translate-x-1/2 px-3 py-1 rounded-full bg-amber-400 text-amber-950 text-[11px] font-black whitespace-nowrap shadow-lg">⭐ مستوى {p.level}</span>
             </div>
-            <div className="flex-1 min-w-[220px]">
-              <h1 className="font-head text-3xl font-extrabold">{p.name}</h1>
-              {p.title_badge && <div className="mt-1 text-amber-300 text-sm font-bold">✦ {p.title_badge}</div>}
-              <div className="mt-2 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-sm">{p.level_title}</div>
-              <div className="mt-2 text-slate-300 text-sm flex items-center gap-4 flex-wrap">
-                {p.school_name && <span className="flex items-center gap-1"><School className="w-4 h-4" />{p.school_name}</span>}
-                {p.governorate_name && <span className="flex items-center gap-1"><MapPin className="w-4 h-4" />{p.governorate_name}</span>}
+            <div className="flex-1 min-w-0 pb-1">
+              <h1 className="font-head text-3xl sm:text-4xl font-black leading-tight">{p.name}</h1>
+              {p.title_badge && <div className="mt-1 text-amber-300 font-bold text-sm">✦ {p.title_badge}</div>}
+              <div className="mt-2 flex items-center gap-2 flex-wrap">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 backdrop-blur text-sm font-semibold"><Sparkles className="w-3.5 h-3.5" />{p.level_title}</span>
+                {p.school_name && <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-white/10 text-xs"><School className="w-3.5 h-3.5" />{p.school_name}</span>}
+                {p.governorate_name && <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-white/10 text-xs"><MapPin className="w-3.5 h-3.5" />{p.governorate_name}</span>}
               </div>
-              <div className="mt-3 flex items-center gap-4 text-sm">
-                <button onClick={() => openList("followers")} className="hover:text-emerald-300 transition-colors"><b className="font-head">{p.followers_count || 0}</b> متابِع</button>
-                <button onClick={() => openList("following")} className="hover:text-emerald-300 transition-colors"><b className="font-head">{p.following_count || 0}</b> يتابَع</button>
-                {!isMine && user && (
-                  <button onClick={toggleFollow} className={`pressable inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-bold ${p.is_following ? "bg-white/15 text-white" : "bg-emerald-500 text-white hover:bg-emerald-600"}`}>
-                    {p.is_following ? <><UserCheck className="w-4 h-4" /> تتابعه</> : <><UserPlus className="w-4 h-4" /> متابعة</>}
-                  </button>
-                )}
+            </div>
+            <div className="flex sm:flex-col items-center sm:items-end gap-3 shrink-0 pb-1">
+              <div className="flex items-center gap-4 text-sm bg-white/10 backdrop-blur rounded-2xl px-4 py-2.5">
+                <button onClick={() => openList("followers")} className="text-center hover:text-emerald-300 transition-colors">
+                  <div className="font-head font-extrabold text-base leading-none">{p.followers_count || 0}</div>
+                  <div className="text-[10px] text-white/70 mt-1">متابِع</div>
+                </button>
+                <span className="w-px h-8 bg-white/20" />
+                <button onClick={() => openList("following")} className="text-center hover:text-emerald-300 transition-colors">
+                  <div className="font-head font-extrabold text-base leading-none">{p.following_count || 0}</div>
+                  <div className="text-[10px] text-white/70 mt-1">يُتابَع</div>
+                </button>
               </div>
+              {!isMine && user && (
+                <button onClick={toggleFollow} className={`pressable inline-flex items-center gap-1.5 px-5 py-2.5 rounded-full text-sm font-extrabold shadow-lg ${p.is_following ? "bg-white/20 text-white backdrop-blur" : "bg-emerald-500 text-white hover:bg-emerald-400"}`}>
+                  {p.is_following ? <><UserCheck className="w-4 h-4" /> تتابعه</> : <><UserPlus className="w-4 h-4" /> متابعة</>}
+                </button>
+              )}
+              {isMine && (
+                <Link to="/settings" className="pressable px-5 py-2.5 rounded-full bg-white/15 backdrop-blur text-sm font-bold hover:bg-white/25">تعديل ملفي</Link>
+              )}
             </div>
           </div>
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {p.bio && <p className="text-slate-600 mb-6 bg-white rounded-2xl p-5 border border-slate-100 ft-shadow">{p.bio}</p>}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-8">
-          {stats.map((s) => (
-            <div key={s.label} className="bg-white rounded-2xl p-5 border border-slate-100 ft-shadow hover-lift">
-              <div className="w-10 h-10 rounded-xl grid place-items-center mb-3" style={{ background: `${s.color}15`, color: s.color }}><s.icon className="w-5 h-5" /></div>
-              <div className="text-2xl font-extrabold font-head text-slate-900">{s.value}</div>
-              <div className="text-xs text-slate-500">{s.label}</div>
-            </div>
-          ))}
-        </div>
-
-        {(p.works || []).length > 0 && (
-          <FadeUp>
-            <h2 className="font-head font-bold text-xl mb-4 flex items-center gap-2"><PenLine className="w-5 h-5 text-violet-600" /> الأعمال المنشورة</h2>
-            <div className="grid sm:grid-cols-2 gap-3 mb-8">
-              {p.works.map((w) => (
-                <Link key={w.id} to={`/studio/${w.id}`} className="flex items-center gap-3 bg-white rounded-2xl p-4 border border-slate-100 ft-shadow hover-lift">
-                  <div className="w-10 h-10 rounded-xl bg-violet-50 text-violet-600 grid place-items-center shrink-0"><PenLine className="w-5 h-5" /></div>
-                  <div className="min-w-0">
-                    <div className="font-semibold text-slate-800 text-sm truncate">{w.title}</div>
-                    <div className="text-xs text-slate-400">{w.likes || 0} إعجاب{w.rating_avg ? ` · ⭐ ${w.rating_avg}` : ""}</div>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </FadeUp>
-        )}
-
-        {(p.ventures || []).length > 0 && (
-          <FadeUp>
-            <h2 className="font-head font-bold text-xl mb-4 flex items-center gap-2"><Rocket className="w-5 h-5 text-rose-600" /> المشاريع</h2>
-            <div className="flex flex-wrap gap-2 mb-8">
-              {p.ventures.map((v) => (
-                <Link key={v.id} to={`/ventures/${v.id}`} className="px-3.5 py-2 rounded-full bg-rose-50 text-rose-700 text-sm font-semibold hover:bg-rose-100 transition-colors">{v.title}</Link>
-              ))}
-            </div>
-          </FadeUp>
-        )}
-
-        <h2 className="font-head font-bold text-xl mb-4 flex items-center gap-2"><Medal className="w-5 h-5 text-amber-600" /> شارات المهارات ({skillBadges.length})</h2>
-        {skillBadges.length === 0 ? <p className="text-slate-400 text-sm mb-8">لا شارات مهارات بعد — تُمنح من المشرفين للتميز في الخطابة والكتابة والقيادة وغيرها</p> : (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-8">
-            {skillBadges.map((b) => {
-              const Icon = Icons[b.icon] || Icons.Medal;
-              return (
-                <div key={b.key} className="flex items-center gap-3 bg-gradient-to-l from-amber-50 to-white rounded-2xl p-4 border border-amber-100 ft-shadow">
-                  <div className="w-12 h-12 rounded-2xl text-white grid place-items-center shrink-0" style={{ background: b.color }}><Icon className="w-6 h-6" /></div>
-                  <div><div className="font-bold text-slate-800 text-sm">{b.name}</div><div className="text-xs text-slate-400">{b.criteria || b.description}</div></div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        <h2 className="font-head font-bold text-xl mb-4 flex items-center gap-2"><Award className="w-5 h-5 text-emerald-600" /> الشهادات ({certs.length})</h2>
-        {certs.length === 0 ? (
-          <p className="text-slate-400 text-sm mb-8">لا شهادات بعد — تُمنح من لوحة الإدارة للتميز والمشاركة 🏅</p>
-        ) : (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-8">
-            {certs.map((c) => (
-              <div key={c.id} className="flex items-center gap-3 bg-gradient-to-l from-emerald-50 to-white rounded-2xl p-4 border border-emerald-100 ft-shadow">
-                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white grid place-items-center shrink-0"><Award className="w-6 h-6" /></div>
-                <div className="flex-1 min-w-0">
-                  <div className="font-bold text-slate-800 text-sm truncate">{c.title_line}</div>
-                  <div className="text-xs text-slate-400">{c.subtitle ? `${c.subtitle} · ` : ""}{String(c.created_at || "").slice(0, 10)}</div>
-                </div>
-                {isMine && (
-                  <button onClick={() => downloadCert(c.id)} className="pressable shrink-0 w-9 h-9 rounded-xl bg-emerald-600 text-white grid place-items-center" aria-label="تحميل الشهادة PDF">
-                    <Download className="w-4 h-4" />
-                  </button>
-                )}
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* floating stat band */}
+        <div className="-mt-12 sm:-mt-14 relative z-10">
+          <div className="flex gap-3 overflow-x-auto pb-2 snap-x md:grid md:grid-cols-7 md:overflow-visible [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {stats.map((s) => (
+              <div key={s.label} className="snap-start shrink-0 w-[118px] md:w-auto bg-white rounded-2xl p-3.5 border border-slate-100 ft-shadow hover-lift text-center">
+                <div className="w-9 h-9 mx-auto rounded-xl grid place-items-center mb-2" style={{ background: `${s.color}15`, color: s.color }}><s.icon className="w-4.5 h-4.5" /></div>
+                <div className="text-lg font-extrabold font-head text-slate-900 leading-none">{s.value}</div>
+                <div className="text-[10px] text-slate-500 mt-1.5">{s.label}</div>
               </div>
             ))}
           </div>
-        )}
+        </div>
 
-        <h2 className="font-head font-bold text-xl mb-4 flex items-center gap-2"><Award className="w-5 h-5 text-emerald-600" /> الإنجازات ({p.achievements.length})</h2>
-        {p.achievements.length === 0 ? <p className="text-slate-400 text-sm">لا إنجازات بعد</p> : (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {p.achievements.map((a) => {
-              const Icon = Icons[a.icon] || Icons.Award;
-              return (
-                <div key={a.key} className="flex items-center gap-3 bg-white rounded-2xl p-4 border border-slate-100 ft-shadow">
-                  <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-amber-400 to-yellow-600 text-white grid place-items-center"><Icon className="w-5 h-5" /></div>
-                  <div><div className="font-semibold text-slate-800 text-sm">{a.title}</div><div className="text-xs text-slate-400">{a.badge}</div></div>
-                </div>
-              );
-            })}
+        {p.bio && <FadeUp><p className="text-slate-600 mt-5 bg-white rounded-2xl p-5 border border-slate-100 ft-shadow leading-relaxed">{p.bio}</p></FadeUp>}
+
+        {/* tabs */}
+        <div className="sticky top-16 z-20 mt-6 -mx-1 px-1 py-2 bg-[#F8FAFC]/85 backdrop-blur-md">
+          <div className="flex gap-1.5 bg-white rounded-2xl p-1.5 border border-slate-100 ft-shadow overflow-x-auto">
+            {TABS.map((t) => (
+              <button key={t.k} onClick={() => setTab(t.k)}
+                className={`flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-bold whitespace-nowrap transition-all ${tab === t.k ? "bg-slate-900 text-white shadow" : "text-slate-500 hover:bg-slate-50"}`}>
+                <t.icon className="w-4 h-4" />{t.l}
+                {t.k === "honors" && (skillBadges.length + certs.length) > 0 && <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-black ${tab === t.k ? "bg-white/20" : "bg-slate-100"}`}>{skillBadges.length + certs.length}</span>}
+                {t.k === "achievements" && p.achievements.length > 0 && <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-black ${tab === t.k ? "bg-white/20" : "bg-slate-100"}`}>{p.achievements.length}</span>}
+              </button>
+            ))}
           </div>
-        )}
+        </div>
+
+        <div className="py-6">
+          {tab === "works" && (
+            <div className="space-y-8">
+              <div>
+                <h2 className="font-head font-bold text-lg mb-3 flex items-center gap-2"><PenLine className="w-5 h-5 text-violet-600" /> الأعمال المنشورة</h2>
+                {(p.works || []).length === 0 ? <p className="text-slate-400 text-sm bg-white rounded-2xl p-6 text-center border border-slate-100">لا أعمال منشورة بعد ✍️</p> : (
+                  <Stagger className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {p.works.map((w) => (
+                      <Item key={w.id}>
+                        <Link to={`/studio/${w.id}`} className="block bg-white rounded-2xl p-4 border border-slate-100 ft-shadow hover-lift h-full">
+                          <div className="w-10 h-10 rounded-xl bg-violet-50 text-violet-600 grid place-items-center mb-2.5"><PenLine className="w-5 h-5" /></div>
+                          <div className="font-semibold text-slate-800 text-sm line-clamp-2">{w.title}</div>
+                          <div className="text-xs text-slate-400 mt-1.5">{w.likes || 0} إعجاب{w.rating_avg ? ` · ⭐ ${w.rating_avg}` : ""}</div>
+                        </Link>
+                      </Item>
+                    ))}
+                  </Stagger>
+                )}
+              </div>
+              <div>
+                <h2 className="font-head font-bold text-lg mb-3 flex items-center gap-2"><Rocket className="w-5 h-5 text-rose-600" /> المشاريع</h2>
+                {(p.ventures || []).length === 0 ? <p className="text-slate-400 text-sm bg-white rounded-2xl p-6 text-center border border-slate-100">لا مشاريع بعد 🚀</p> : (
+                  <div className="flex flex-wrap gap-2">
+                    {p.ventures.map((v) => (
+                      <Link key={v.id} to={`/ventures/${v.id}`} className="px-4 py-2 rounded-full bg-rose-50 text-rose-700 text-sm font-semibold hover:bg-rose-100 transition-colors">{v.title}</Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {isMine && <ActivityHeatmap />}
+            </div>
+          )}
+
+          {tab === "honors" && (
+            <div className="space-y-8">
+              <div>
+                <h2 className="font-head font-bold text-lg mb-3 flex items-center gap-2"><Medal className="w-5 h-5 text-amber-600" /> شارات المهارات ({skillBadges.length})</h2>
+                {skillBadges.length === 0 ? <p className="text-slate-400 text-sm bg-white rounded-2xl p-6 text-center border border-slate-100">تُمنح من المشرفين للتميز في الخطابة والكتابة والقيادة 🏅</p> : (
+                  <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {skillBadges.map((b) => {
+                      const Icon = Icons[b.icon] || Icons.Medal;
+                      return (
+                        <div key={b.key} className="flex items-center gap-3 bg-gradient-to-l from-amber-50 to-white rounded-2xl p-4 border border-amber-100 ft-shadow">
+                          <div className="w-12 h-12 rounded-2xl text-white grid place-items-center shrink-0" style={{ background: b.color }}><Icon className="w-6 h-6" /></div>
+                          <div><div className="font-bold text-slate-800 text-sm">{b.name}</div><div className="text-xs text-slate-400">{b.criteria || b.description}</div></div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+              <div>
+                <h2 className="font-head font-bold text-lg mb-3 flex items-center gap-2"><Award className="w-5 h-5 text-emerald-600" /> الشهادات ({certs.length})</h2>
+                {certs.length === 0 ? <p className="text-slate-400 text-sm bg-white rounded-2xl p-6 text-center border border-slate-100">لا شهادات بعد — تُمنح للتميز والمشاركة 🏅</p> : (
+                  <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {certs.map((c) => (
+                      <div key={c.id} className="flex items-center gap-3 bg-gradient-to-l from-emerald-50 to-white rounded-2xl p-4 border border-emerald-100 ft-shadow">
+                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white grid place-items-center shrink-0"><Award className="w-6 h-6" /></div>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-bold text-slate-800 text-sm truncate">{c.title_line}</div>
+                          <div className="text-xs text-slate-400">{c.subtitle ? `${c.subtitle} · ` : ""}{String(c.created_at || "").slice(0, 10)}</div>
+                        </div>
+                        {isMine && (
+                          <button onClick={() => downloadCert(c.id)} className="pressable shrink-0 w-9 h-9 rounded-xl bg-emerald-600 text-white grid place-items-center" aria-label="تحميل الشهادة PDF">
+                            <Download className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {tab === "achievements" && (
+            <div>
+              <h2 className="font-head font-bold text-lg mb-3 flex items-center gap-2"><Trophy className="w-5 h-5 text-amber-600" /> الإنجازات ({p.achievements.length})</h2>
+              {p.achievements.length === 0 ? <p className="text-slate-400 text-sm bg-white rounded-2xl p-6 text-center border border-slate-100">لا إنجازات بعد — أول إنجاز أقرب مما تظن ✨</p> : (
+                <Stagger className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {p.achievements.map((a) => {
+                    const Icon = Icons[a.icon] || Icons.Award;
+                    return (
+                      <Item key={a.key}>
+                        <div className="flex items-center gap-3 bg-white rounded-2xl p-4 border border-slate-100 ft-shadow hover-lift h-full">
+                          <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-amber-400 to-yellow-600 text-white grid place-items-center shrink-0"><Icon className="w-5 h-5" /></div>
+                          <div><div className="font-semibold text-slate-800 text-sm">{a.title}</div><div className="text-xs text-slate-400">{a.badge}</div></div>
+                        </div>
+                      </Item>
+                    );
+                  })}
+                </Stagger>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       {listModal && (

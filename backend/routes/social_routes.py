@@ -108,6 +108,7 @@ async def public_profile(uid: str, viewer: dict = Depends(get_optional_user)):
         "is_following": is_following, "certificates_count": certs_count,
         "frame": (u.get("cosmetics") or {}).get("frame"),
         "title_badge": (u.get("cosmetics") or {}).get("title"),
+        "cover_theme": u.get("cover_theme") or "navy",
         "works": [{"id": str(w["_id"]), "title": w["title"], "likes": w.get("likes", 0),
                    "rating_avg": w.get("rating_avg", 0)} for w in works],
         "ventures": [{"id": str(v["_id"]), "title": v["title"], "status": v.get("status")} for v in ventures],
@@ -193,6 +194,9 @@ async def following_feed(user: dict = Depends(get_current_user)):
 @router.get("/dashboard")
 async def dashboard(user: dict = Depends(get_current_user)):
     uid = user["id"]
+    from datetime import datetime, timezone
+    today = datetime.now(timezone.utc).date().isoformat()
+    daily = await db.user_daily.find_one({"user_id": uid, "date": today})
     rank = await db.users.count_documents({"role": "student", "xp": {"$gt": user.get("xp", 0)}}) + 1
     school_rank = None
     if user.get("school_id"):
@@ -233,6 +237,8 @@ async def dashboard(user: dict = Depends(get_current_user)):
         "unread_notifications": unread,
         "books_read": user.get("stats", {}).get("books_read", 0),
         "pages_read": user.get("stats", {}).get("pages_read", 0),
+        "pages_today": (daily or {}).get("pages", 0),
+        "daily_goal": user.get("daily_goal_pages") or 20,
         "later_books": later_out,
         "later_count": later_count,
         "my_playlists": [{"id": str(p["_id"]), "name": p.get("name", ""), "color": p.get("color", "#2563EB"),

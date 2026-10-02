@@ -114,6 +114,27 @@ export default function Dashboard() {
               </div>
             </div>
             <div className="flex items-center gap-3">
+              {(() => {
+                const goal = data.daily_goal || 20;
+                const today = data.pages_today || 0;
+                const pct = Math.min(100, (today / goal) * 100);
+                const R = 26, C = 2 * Math.PI * R;
+                return (
+                  <div className="relative w-[72px] h-[72px] shrink-0" title={`هدف اليوم: ${today}/${goal} صفحة`}>
+                    <svg viewBox="0 0 64 64" className="w-full h-full -rotate-90">
+                      <circle cx="32" cy="32" r={R} fill="none" stroke="rgba(255,255,255,.15)" strokeWidth="6" />
+                      <circle cx="32" cy="32" r={R} fill="none" stroke={pct >= 100 ? "#34D399" : "#FBBF24"} strokeWidth="6" strokeLinecap="round"
+                        strokeDasharray={C} strokeDashoffset={C - (C * pct) / 100} className="transition-all duration-700" />
+                    </svg>
+                    <div className="absolute inset-0 grid place-items-center text-center">
+                      <div>
+                        <div className="text-sm font-extrabold font-head leading-none">{today}</div>
+                        <div className="text-[9px] text-slate-300 mt-0.5">من {goal} صفحة</div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
               <div className="text-center px-5 py-3 rounded-2xl bg-white/10">
                 <div className="text-2xl font-extrabold font-head flex items-center gap-1"><Flame className="w-5 h-5 text-orange-400" />{gam.streak}</div>
                 <div className="text-[11px] text-slate-300">سلسلة أيام</div>
