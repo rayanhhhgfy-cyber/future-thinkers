@@ -96,11 +96,11 @@ export default function ChessPractice() {
 
   const over = chess.isGameOver();
   const resultText = !over ? null
-    : chess.isCheckmate() ? (turn === "w" ? "كش مات — فاز الأسود 🏆" : "كش مات — فاز الأبيض 🏆")
-    : chess.isStalemate() ? "جمود — تعادل 🤝"
-    : chess.isThreefoldRepetition() ? "تكرار — تعادل 🤝"
-    : chess.isInsufficientMaterial() ? "مادة غير كافية — تعادل 🤝"
-    : "انتهت المباراة — تعادل 🤝";
+    : chess.isCheckmate() ? (turn === "w" ? "كش مات · فاز الأسود 🏆" : "كش مات · فاز الأبيض 🏆")
+    : chess.isStalemate() ? "جمود · تعادل 🤝"
+    : chess.isThreefoldRepetition() ? "تكرار · تعادل 🤝"
+    : chess.isInsufficientMaterial() ? "مادة غير كافية · تعادل 🤝"
+    : "انتهت المباراة · تعادل 🤝";
 
   const whiteCaps = capturedBy(chess, "w");
   const blackCaps = capturedBy(chess, "b");
@@ -127,28 +127,28 @@ export default function ChessPractice() {
             className="absolute top-1/3 left-1/2 w-[22rem] h-[22rem] bg-indigo-500/[0.05] rounded-full blur-3xl" />
         </div>
 
-        <div className="relative max-w-6xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
+        <div className="relative max-w-[1440px] mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
           <div className="flex items-center justify-between mb-4 gap-2 flex-wrap">
             <button onClick={() => nav("/clubs/chess")} className="text-slate-400 hover:text-white text-sm flex items-center gap-1.5 transition-colors">
               <ArrowRight className="w-4 h-4" /> عودة للحلبة
             </button>
             <div className="flex items-center gap-2">
               <Button onClick={undo} disabled={history.length === 0} variant="outline"
-                className="rounded-full h-9 px-3 text-xs border-white/15 text-slate-200 bg-white/5 hover:bg-white/10 disabled:opacity-40">
+                className="rounded-full h-11 px-4 text-xs border-white/15 text-slate-200 bg-white/5 hover:bg-white/10 disabled:opacity-40">
                 <Undo2 className="w-4 h-4 ml-1" /> تراجع
               </Button>
-              <Button onClick={newGame} className="rounded-full h-9 px-3 text-xs bg-gradient-to-b from-amber-400 to-amber-500 hover:from-amber-300 text-slate-950 font-bold">
+              <Button onClick={newGame} className="rounded-full h-11 px-4 text-xs bg-gradient-to-b from-amber-400 to-amber-500 hover:from-amber-300 text-slate-950 font-bold">
                 <Plus className="w-4 h-4 ml-1" /> مباراة جديدة
               </Button>
             </div>
           </div>
 
-          <div className="grid lg:grid-cols-[1fr_320px] gap-5 items-start">
+          <div className="grid lg:grid-cols-[minmax(0,1fr)_360px] xl:grid-cols-[minmax(0,1fr)_380px] gap-5 lg:gap-6 items-start">
             <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, ease: EASE }} className="min-w-0">
               <PlayerBar name={orientation === "w" ? `الأسود ♟` : `${youLabel} (الأبيض)`} rating={null}
                 active={turn === "b"} you={false}
                 caps={blackCaps} matAhead={matDiff < 0 ? -matDiff : 0} color="b" />
-              <div className="my-3 sm:my-4">
+              <div className="my-3 sm:my-4 lg:my-5">
                 <ChessBoardView
                   chess={chess} pieces={pieces} theme={theme} themeId={themeId} setTheme={setTheme}
                   orientation={orientation} flipped={flipped} setFlipped={setFlipped}
@@ -165,7 +165,7 @@ export default function ChessPractice() {
             </motion.div>
 
             <motion.div initial={{ opacity: 0, x: -24 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.6, delay: 0.15, ease: EASE }} className="space-y-4 min-w-0">
-              <div className="rounded-3xl p-4 sm:p-5 border border-white/10 bg-white/[0.05] backdrop-blur-xl shadow-[0_20px_50px_-20px_rgba(0,0,0,0.6)]">
+              <div className="rounded-3xl p-4 sm:p-5 lg:p-6 border border-white/10 bg-white/[0.05] backdrop-blur-xl shadow-[0_20px_50px_-20px_rgba(0,0,0,0.6)]">
                 <h3 className="font-head font-bold flex items-center gap-2 mb-3 text-amber-300">
                   <span className="w-8 h-8 rounded-xl grid place-items-center bg-gradient-to-br from-amber-300 to-orange-500 shadow-[0_6px_16px_-4px_rgba(245,158,11,0.6)]"><User className="w-4 h-4 text-slate-950" /></span>
                   تدريب فردي
@@ -184,18 +184,18 @@ export default function ChessPractice() {
                         transition={{ duration: 3, repeat: Infinity, ease: "easeInOut", repeatDelay: 1.6 }}
                         style={{ background: "linear-gradient(100deg, transparent 25%, rgba(255,255,255,0.12) 50%, transparent 75%)" }} />
                     )}
-                    <span className="relative">{over ? resultText : turn === "w" ? "دور الأبيض — حرّك أي قطعة بيضاء" : "دور الأسود — حرّك أي قطعة سوداء"}</span>
+                    <span className="relative">{over ? resultText : turn === "w" ? "دور الأبيض · حرّك أي قطعة بيضاء" : "دور الأسود · حرّك أي قطعة سوداء"}</span>
                   </motion.div>
                 </AnimatePresence>
                 {inCheck && !over && <div className="text-sm text-red-400 mt-2 font-bold animate-pulse">كش! 👑</div>}
-                <p className="text-xs text-slate-500 mt-3 leading-relaxed">العب باللونين بحرية — مثالي لتجربة الافتتاحيات والتكتيكات بدون خصم.</p>
+                <p className="text-xs text-slate-500 mt-3 leading-relaxed">العب باللونين بحرية · مثالي لتجربة الافتتاحيات والتكتيكات بدون خصم.</p>
               </div>
 
-              <div className="rounded-3xl p-4 sm:p-5 border border-white/10 bg-white/[0.05] backdrop-blur-xl shadow-[0_20px_50px_-20px_rgba(0,0,0,0.6)]">
+              <div className="rounded-3xl p-4 sm:p-5 lg:p-6 border border-white/10 bg-white/[0.05] backdrop-blur-xl shadow-[0_20px_50px_-20px_rgba(0,0,0,0.6)]">
                 <h4 className="font-semibold text-sm mb-3 text-slate-300">النقلات ({history.length})</h4>
-                <div ref={movesRef} className="max-h-40 sm:max-h-48 lg:max-h-64 overflow-y-auto pr-1" dir="ltr">
+                <div ref={movesRef} className="max-h-40 sm:max-h-48 lg:max-h-[380px] xl:max-h-[460px] overflow-y-auto pr-1" dir="ltr">
                   {movePairs.length === 0 ? (
-                    <div className="text-sm text-slate-500 text-center py-4">لا نقلات بعد — ابدأ اللعب!</div>
+                    <div className="text-sm text-slate-500 text-center py-4">لا نقلات بعد · ابدأ اللعب!</div>
                   ) : (
                     <div className="grid grid-cols-[2rem_1fr_1fr] gap-y-1 text-sm font-mono">
                       {movePairs.map((pair, i) => (
