@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { PageLoader } from "@/components/Layout";
 import { FadeUp } from "@/components/anim";
 import { timeAgo } from "@/components/NotificationsPanel";
-import { THEME_PRESETS, applyTheme, applyDesign, resolveColors } from "@/lib/theme";
+import { THEME_PRESETS, applyTheme, applyDesign, resolveColors, FONT_OPTIONS, RADIUS_OPTIONS, DENSITY_OPTIONS, SHADOW_OPTIONS, DESIGN_DEFAULTS } from "@/lib/theme";
 import { PythonEditor, PyErrorText } from "@/components/PythonCode";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { Code2, FlaskConical, Terminal, Palette, Flag, Activity, Globe2, Route as RouteIcon, Plus, Bug, Copy, Mail, CheckCircle2, Trash2 } from "lucide-react";
@@ -168,6 +168,7 @@ function ThemePanel() {
   const [colors, setColors] = useState({ a: "#052e26", b: "#065f46", c: "#043a2e", accent: "#10b981" });
   const [useCustom, setUseCustom] = useState(false);
   const [effects, setEffects] = useState({ grain: true, motion: true });
+  const [design, setDesign] = useState({ ...DESIGN_DEFAULTS });
   const [busy, setBusy] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
@@ -187,10 +188,13 @@ function ThemePanel() {
         setUseCustom(false);
       }
       if (d.effects) setEffects({ grain: d.effects.grain !== false, motion: d.effects.motion !== false });
+      if (d.design) setDesign({ ...DESIGN_DEFAULTS, ...d.design });
     }).catch(() => {}).finally(() => setLoaded(true));
   }, []);
 
   const eff = resolveColors({ preset, custom: useCustom ? colors : null });
+  const selFont = FONT_OPTIONS.find((f) => f.key === design.font) || FONT_OPTIONS[0];
+  const radiusCss = design.radius === "sharp" ? "6px" : design.radius === "round" ? "22px" : "12px";
   const setColor = (k, v) => setColors((c) => ({ ...c, [k]: v }));
   const pickPreset = (key) => { setPreset(key); setUseCustom(false); };
 
@@ -199,7 +203,7 @@ function ThemePanel() {
       return toast.error("راجع صيغة الألوان · يجب أن تكون بصيغة #RRGGBB مثل #10b981");
     }
     setBusy(true);
-    const cfg = { preset, custom: useCustom ? { ...colors } : null, effects };
+    const cfg = { preset, custom: useCustom ? { ...colors } : null, effects, design };
     try {
       await api.put("/admin/theme", cfg);
       applyDesign(cfg);
@@ -266,17 +270,74 @@ function ThemePanel() {
           <DesignToggle on={effects.motion} onChange={(v) => setEffects((e) => ({ ...e, motion: v }))} label="الحركات والانتقالات" desc="حركات الظهور والطفو والانتقالات في كل الموقع" />
         </div>
 
-        {/* ٤ · معاينة حية وحفظ */}
+        {/* ٤ · تصميم العناصر */}
+        <div className="bg-white rounded-3xl border border-slate-100 ft-shadow p-4 sm:p-5 mb-4">
+          <h3 className="font-head font-extrabold text-sm text-slate-700">تصميم العناصر</h3>
+          <p className="text-[11px] text-slate-400 mt-0.5 mb-4">الخطوط وشكل الزوايا وكثافة العرض وعمق الظلال · تنطبق على كل عناصر الموقع فوراً</p>
+
+          <div className="text-xs font-bold text-slate-500 mb-2">خط الموقع</div>
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 mb-5">
+            {FONT_OPTIONS.map((f) => (
+              <button key={f.key} onClick={() => setDesign((d) => ({ ...d, font: f.key }))}
+                className={`rounded-2xl border p-3.5 text-right transition-all min-h-[64px] ${design.font === f.key ? "border-slate-900 ring-2 ring-slate-900/15 bg-slate-50" : "border-slate-200 hover:border-slate-400 bg-white"}`}>
+                <span className="block font-extrabold text-slate-800" style={{ fontFamily: f.head }}>{f.name}</span>
+                <span className="block text-sm text-slate-600 mt-1" style={{ fontFamily: f.body }}>مفكرو المستقبل · أهلاً بكم ١٢٣</span>
+                <span className="block text-[10px] text-slate-400 mt-1">{f.desc}</span>
+              </button>
+            ))}
+          </div>
+
+          <div className="text-xs font-bold text-slate-500 mb-2">شكل الزوايا</div>
+          <div className="grid grid-cols-3 gap-3 mb-5">
+            {RADIUS_OPTIONS.map((r) => (
+              <button key={r.key} onClick={() => setDesign((d) => ({ ...d, radius: r.key }))}
+                className={`rounded-2xl border p-3.5 text-right transition-all min-h-[64px] ${design.radius === r.key ? "border-slate-900 ring-2 ring-slate-900/15 bg-slate-50" : "border-slate-200 hover:border-slate-400 bg-white"}`}>
+                <span className="block w-10 h-8 bg-gradient-to-br from-slate-700 to-slate-900 mb-2" style={{ borderRadius: r.key === "sharp" ? "4px" : r.key === "round" ? "16px" : "10px" }} />
+                <span className="block font-extrabold text-slate-800 text-sm">{r.name}</span>
+                <span className="block text-[10px] text-slate-400 mt-0.5">{r.desc}</span>
+              </button>
+            ))}
+          </div>
+
+          <div className="grid sm:grid-cols-2 gap-5">
+            <div>
+              <div className="text-xs font-bold text-slate-500 mb-2">كثافة العرض</div>
+              <div className="flex rounded-2xl bg-slate-100 p-1 ring-1 ring-slate-200/70">
+                {DENSITY_OPTIONS.map((o) => (
+                  <button key={o.key} onClick={() => setDesign((d) => ({ ...d, density: o.key }))} title={o.desc}
+                    className={`flex-1 rounded-xl px-2 min-h-[44px] text-xs font-extrabold transition-all ${design.density === o.key ? "bg-white text-slate-900 shadow ring-1 ring-slate-200" : "text-slate-500 hover:text-slate-800"}`}>
+                    {o.name}
+                  </button>
+                ))}
+              </div>
+              <p className="text-[10px] text-slate-400 mt-1.5">{DENSITY_OPTIONS.find((o) => o.key === design.density)?.desc}</p>
+            </div>
+            <div>
+              <div className="text-xs font-bold text-slate-500 mb-2">عمق الظلال</div>
+              <div className="flex rounded-2xl bg-slate-100 p-1 ring-1 ring-slate-200/70">
+                {SHADOW_OPTIONS.map((o) => (
+                  <button key={o.key} onClick={() => setDesign((d) => ({ ...d, shadow: o.key }))} title={o.desc}
+                    className={`flex-1 rounded-xl px-2 min-h-[44px] text-xs font-extrabold transition-all ${design.shadow === o.key ? "bg-white text-slate-900 shadow ring-1 ring-slate-200" : "text-slate-500 hover:text-slate-800"}`}>
+                    {o.name}
+                  </button>
+                ))}
+              </div>
+              <p className="text-[10px] text-slate-400 mt-1.5">{SHADOW_OPTIONS.find((o) => o.key === design.shadow)?.desc}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* ٥ · معاينة حية وحفظ */}
         <h3 className="font-head font-extrabold text-sm text-slate-700 mb-3">معاينة حية · هكذا سيبدو الموقع</h3>
         <div className={`relative overflow-hidden rounded-3xl text-white p-5 sm:p-6 ft-shadow-lg mb-4 ${effects.grain ? "grain" : ""}`}
-          style={{ background: `linear-gradient(135deg, ${eff.c} 0%, ${eff.b} 55%, ${eff.a} 130%)` }}>
+          style={{ background: `linear-gradient(135deg, ${eff.c} 0%, ${eff.b} 55%, ${eff.a} 130%)`, fontFamily: selFont.body }}>
           <div className="relative">
             <span className="inline-flex px-2.5 py-1 rounded-full bg-white/15 backdrop-blur text-[10px] font-bold">نادي مفكري المستقبل</span>
-            <div className="font-head font-black text-xl sm:text-2xl mt-3">صمم مستقبلك بنفسك</div>
+            <div className="font-black text-xl sm:text-2xl mt-3" style={{ fontFamily: selFont.head }}>صمم مستقبلك بنفسك</div>
             <p className="text-white/75 text-xs mt-1">منصة الطلاب المبدعين · قراءة وبرمجة وشطرنج ومشاريع</p>
             <div className="flex gap-2 mt-4 flex-wrap">
-              <span className="px-4 py-2 rounded-xl text-xs font-black text-white shadow-lg" style={{ background: eff.accent }}>ابدأ الآن</span>
-              <span className="px-4 py-2 rounded-xl text-xs font-bold bg-white/15 backdrop-blur">تصفح الأقسام</span>
+              <span className="px-4 py-2 text-xs font-black text-white shadow-lg" style={{ background: eff.accent, borderRadius: radiusCss }}>ابدأ الآن</span>
+              <span className="px-4 py-2 text-xs font-bold bg-white/15 backdrop-blur" style={{ borderRadius: radiusCss }}>تصفح الأقسام</span>
             </div>
           </div>
         </div>

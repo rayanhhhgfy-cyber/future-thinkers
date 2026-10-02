@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=Readex+Pro:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=Readex+Pro:wght@300;400;500;600;700;800&family=Cairo:wght@400;500;600;700;800;900&family=Tajawal:wght@400;500;700;800;900&family=Almarai:wght@300;400;700;800&family=JetBrains+Mono:wght@400;600&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -16,7 +16,7 @@ html { direction: rtl; }
 body {
   margin: 0;
   background: var(--ft-bg);
-  font-family: 'IBM Plex Sans Arabic', 'Readex Pro', sans-serif;
+  font-family: var(--ft-font-body, 'IBM Plex Sans Arabic', 'Readex Pro', sans-serif);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   letter-spacing: 0;
@@ -24,7 +24,7 @@ body {
   color: #0F172A;
 }
 
-h1, h2, h3, h4, .font-head { font-family: 'Readex Pro', sans-serif; }
+h1, h2, h3, h4, .font-head { font-family: var(--ft-font-head, 'Readex Pro', sans-serif); }
 .font-mono { font-family: 'JetBrains Mono', monospace; }
 
 @layer base {
@@ -180,3 +180,27 @@ html[data-motion="off"] .animate-scale-in { animation: none !important; }
 .ft-hover-ring-accent:hover { --tw-ring-color: color-mix(in srgb, var(--ft-accent, #10b981) 30%, white); }
 .ft-focus-border-accent:focus { border-color: color-mix(in srgb, var(--ft-accent, #10b981) 32%, white); }
 .ft-focus-ring-accent:focus { --tw-ring-color: color-mix(in srgb, var(--ft-accent, #10b981) 30%, white); }
+
+/* ---- Element design control (admin Design Control v3) ----
+   Activated from html[data-*] flags set by lib/theme.js from the server's
+   whitelisted config. Pure presentation overrides; no layout logic changes. */
+/* Corner shape */
+html[data-radius="sharp"] .rounded-xl, html[data-radius="sharp"] .rounded-t-xl { border-radius: 0.375rem; }
+html[data-radius="sharp"] .rounded-2xl, html[data-radius="sharp"] .rounded-t-2xl { border-radius: 0.5rem; }
+html[data-radius="sharp"] .rounded-3xl, html[data-radius="sharp"] .rounded-t-3xl,
+html[data-radius="sharp"] .rounded-\[1\.4rem\], html[data-radius="sharp"] .rounded-\[1\.6rem\],
+html[data-radius="sharp"] .rounded-\[2rem\] { border-radius: 0.625rem; }
+html[data-radius="round"] .rounded-xl, html[data-radius="round"] .rounded-t-xl { border-radius: 1.25rem; }
+html[data-radius="round"] .rounded-2xl, html[data-radius="round"] .rounded-t-2xl { border-radius: 1.5rem; }
+html[data-radius="round"] .rounded-3xl, html[data-radius="round"] .rounded-t-3xl { border-radius: 2rem; }
+html[data-radius="round"] .rounded-\[1\.4rem\] { border-radius: 1.9rem; }
+html[data-radius="round"] .rounded-\[1\.6rem\] { border-radius: 2.1rem; }
+html[data-radius="round"] .rounded-\[2rem\] { border-radius: 2.5rem; }
+/* Density (Tailwind spacing/type are rem-based, so the root size scales the UI) */
+html[data-density="compact"] { font-size: 15px; }
+html[data-density="spacious"] { font-size: 17px; }
+/* Shadow depth */
+html[data-shadow="soft"] .ft-shadow { box-shadow: 0 2px 12px -6px rgba(15, 23, 42, 0.08); }
+html[data-shadow="soft"] .ft-shadow-lg { box-shadow: 0 10px 28px -12px rgba(15, 23, 42, 0.14); }
+html[data-shadow="bold"] .ft-shadow { box-shadow: 0 8px 32px -8px rgba(15, 23, 42, 0.2); }
+html[data-shadow="bold"] .ft-shadow-lg { box-shadow: 0 28px 64px -16px rgba(15, 23, 42, 0.32); }
