@@ -6,7 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
-import { Flame, Trophy, BookOpen, Crown, Calendar, Zap, Award, TrendingUp, Sparkles, MessagesSquare, Medal, PenLine, Rocket, Bell, Quote, ArrowLeft, Star, Clock, ListMusic, FileText } from "lucide-react";
+import { Flame, Trophy, BookOpen, Crown, Calendar, Zap, Award, TrendingUp, Sparkles, MessagesSquare, Medal, PenLine, Rocket, Bell, Quote, ArrowLeft, Star, Clock, ListMusic, FileText, Target, Activity, Users } from "lucide-react";
 import * as Icons from "lucide-react";
 import { FadeUp, Stagger, Item } from "@/components/anim";
 import { WeeklyGoals, ActivityHeatmap, UpcomingDeadlines, DailyChallenge, SavedItems, Suggestions, AchievementsShowcase } from "@/components/dashboard/widgets";
@@ -47,6 +47,10 @@ export default function Dashboard() {
   const [myWorks, setMyWorks] = useState([]);
   const [trending, setTrending] = useState([]);
   const [checkedIn, setCheckedIn] = useState(false);
+  const [quests, setQuests] = useState([]);
+  const [feed, setFeed] = useState([]);
+  const [online, setOnline] = useState(0);
+  const [followFeed, setFollowFeed] = useState([]);
   const quote = QUOTES[new Date().getDate() % QUOTES.length];
 
   const load = async () => {
@@ -59,6 +63,18 @@ export default function Dashboard() {
     setData(d.data); setGam(g.data); setRecs(r.data);
     setMyBadges(b.data); setMyWorks(w.data);
     setTrending((t.data.items || []).sort((x, y) => (y.likes || 0) - (x.likes || 0)).slice(0, 3));
+    api.get("/quests/today").then((r) => setQuests(r.data.quests || [])).catch(() => {});
+    api.get("/activity/feed", { params: { limit: 8 } }).then((r) => setFeed(r.data.items || [])).catch(() => {});
+    api.get("/presence/online").then((r) => setOnline(r.data.online || 0)).catch(() => {});
+    api.get("/feed/following").then((r) => setFollowFeed(r.data.items || [])).catch(() => {});
+  };
+  const claimQuest = async (q) => {
+    try {
+      const { data: res } = await api.post("/quests/claim", { key: q.key });
+      toast.success(`أحسنت! +${res.xp} نقطة خبرة 🎉`);
+      setQuests((prev) => prev.map((x) => x.key === q.key ? { ...x, claimed: true } : x));
+      refresh();
+    } catch (e) { toast.error(e.response?.data?.detail || "تعذّرت المطالبة"); }
   };
   useEffect(() => { load(); }, []);
 
@@ -87,6 +103,11 @@ export default function Dashboard() {
               <div className="mt-2 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-sm">
                 <Sparkles className="w-4 h-4 text-emerald-400" /> {gam.level_title} · المستوى {gam.level}
               </div>
+              {online > 0 && (
+                <div className="mt-2 mr-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-200 text-xs font-semibold">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" /> {online} على المنصة الآن
+                </div>
+              )}
               <div className="mt-4 max-w-md">
                 <div className="flex justify-between text-xs text-slate-300 mb-1"><span>{gam.xp} نقطة خبرة</span><span>باقٍ {gam.xp_to_next} للمستوى التالي</span></div>
                 <div className="h-2 rounded-full bg-white/15 overflow-hidden"><div className="h-full bg-emerald-500 rounded-full transition-all duration-700" style={{ width: `${gam.level_progress}%` }} /></div>
@@ -112,6 +133,76 @@ export default function Dashboard() {
           <Item><StatCard icon={Crown} label="تصنيف الشطرنج" value={data.chess_rating} color="#0A192F" /></Item>
           <Item><StatCard icon={MessagesSquare} label="مشاركاتك" value={data.posts} color="#059669" /></Item>
         </Stagger>
+
+        {/* daily quests + live activity feed */}
+        <div className="grid lg:grid-cols-5 gap-4 mb-6">
+          <FadeUp className="lg:col-span-3">
+            <section className="bg-white rounded-2xl p-5 border border-slate-100 ft-shadow h-full">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-head font-bold text-slate-800 flex items-center gap-2">
+                  <span className="w-9 h-9 rounded-xl grid place-items-center bg-rose-50 text-rose-600"><Target className="w-5 h-5" /></span>
+                  مهام اليوم
+                </h3>
+                <span className="text-[11px] font-bold px-2 py-1 rounded-full bg-rose-100 text-rose-700">تتجدّد يومياً</span>
+              </div>
+              {quests.length === 0 ? (
+                <p className="text-sm text-slate-400 py-4 text-center">جارٍ تجهيز مهامك…</p>
+              ) : (
+                <div className="space-y-3">
+                  {quests.map((q) => {
+                    const Icon = Icons[q.icon] || Icons.Target;
+                    const pct = Math.min(100, ((q.progress || 0) / (q.target || 1)) * 100);
+                    return (
+                      <div key={q.key} className="flex items-center gap-3">
+                        <span className={`w-9 h-9 rounded-xl grid place-items-center shrink-0 ${q.done ? "bg-emerald-100 text-emerald-600" : "bg-slate-100 text-slate-500"}`}><Icon className="w-4.5 h-4.5" /></span>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-sm font-semibold text-slate-700 truncate">{q.title}</span>
+                            <span className="text-[11px] text-slate-400 shrink-0">{q.progress}/{q.target}</span>
+                          </div>
+                          <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden mt-1">
+                            <div className={`h-full rounded-full transition-all duration-700 ${q.done ? "bg-emerald-500" : "bg-rose-400"}`} style={{ width: `${pct}%` }} />
+                          </div>
+                        </div>
+                        {q.claimed ? (
+                          <span className="text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full shrink-0">تم ✓</span>
+                        ) : q.done ? (
+                          <button onClick={() => claimQuest(q)} className="pressable shrink-0 text-[11px] font-extrabold text-white bg-emerald-600 hover:bg-emerald-700 px-3 py-1.5 rounded-full">خذ +{q.reward}</button>
+                        ) : (
+                          <span className="text-[11px] font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded-full shrink-0">+{q.reward} XP</span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
+          </FadeUp>
+          <FadeUp className="lg:col-span-2">
+            <section className="bg-white rounded-2xl p-5 border border-slate-100 ft-shadow h-full">
+              <h3 className="font-head font-bold text-slate-800 flex items-center gap-2 mb-4">
+                <span className="w-9 h-9 rounded-xl grid place-items-center bg-sky-50 text-sky-600"><Activity className="w-5 h-5" /></span>
+                نشاط المنصة الآن
+              </h3>
+              {feed.length === 0 ? (
+                <p className="text-sm text-slate-400 py-4 text-center">كن أول من يصنع نشاطاً اليوم ✨</p>
+              ) : (
+                <div className="space-y-2.5">
+                  {feed.slice(0, 6).map((f) => (
+                    <div key={f.id} className="flex items-start gap-2.5 text-sm">
+                      <span className="w-7 h-7 rounded-full bg-gradient-to-br from-sky-400 to-indigo-500 text-white grid place-items-center text-[11px] font-bold shrink-0">{(f.user_name || "؟").slice(0, 1)}</span>
+                      <div className="min-w-0">
+                        <span className="font-semibold text-slate-700">{f.user_name}</span>{" "}
+                        <span className="text-slate-500">{f.text}</span>
+                        <div className="text-[11px] text-slate-400">{timeAgo(f.created_at)}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+          </FadeUp>
+        </div>
 
         {/* my library: pages read + finish later + playlists */}
         <Stagger className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
@@ -272,6 +363,27 @@ export default function Dashboard() {
                       <span>{w.author_name}</span>
                       <span className="flex items-center gap-1"><Star className="w-3 h-3 text-amber-400 fill-amber-400" />{(w.likes || 0)} إعجاب</span>
                     </div>
+                  </Link>
+                ))}
+              </div>
+            </section>
+            </FadeUp>
+            )}
+            {/* NEW: from people you follow */}
+            {followFeed.length > 0 && (
+            <FadeUp>
+            <section className="bg-white rounded-2xl p-6 border border-slate-100 ft-shadow">
+              <h2 className="font-head font-bold text-lg flex items-center gap-2 mb-4"><Users className="w-5 h-5 text-emerald-600" /> جديد ممن تتابعهم</h2>
+              <div className="space-y-2">
+                {followFeed.slice(0, 5).map((f) => (
+                  <Link key={`${f.kind}-${f.id}`} to={f.kind === "work" ? `/studio/${f.id}` : `/ventures/${f.id}`} className="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 bg-slate-50/50 transition-colors">
+                    <span className={`w-9 h-9 rounded-xl grid place-items-center shrink-0 ${f.kind === "work" ? "bg-violet-50 text-violet-600" : "bg-rose-50 text-rose-600"}`}>
+                      {f.kind === "work" ? <PenLine className="w-4.5 h-4.5" /> : <Rocket className="w-4.5 h-4.5" />}
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block font-medium text-sm text-slate-800 truncate">{f.title}</span>
+                      <span className="block text-[11px] text-slate-400">{f.author_name} · {f.kind === "work" ? "عمل جديد" : "مشروع"}</span>
+                    </span>
                   </Link>
                 ))}
               </div>
