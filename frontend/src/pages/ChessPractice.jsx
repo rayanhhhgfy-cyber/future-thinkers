@@ -9,6 +9,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { EASE } from "@/components/anim";
 import { FILES, useSyncedPieces, useChessTheme, capturedBy, materialOf, PlayerBar } from "@/components/chess/shared";
 import ChessBoardView from "@/components/chess/ChessBoardView";
+import { playChessSound } from "@/components/chess/sounds";
 
 /* Solo practice: play both sides on one device, no opponent needed. */
 export default function ChessPractice() {
@@ -44,6 +45,9 @@ export default function ChessPractice() {
   const doMove = (from, to, promotion) => {
     const move = chess.move({ from, to, promotion });
     if (!move) return;
+    if (chess.isGameOver()) playChessSound("end");
+    else if (chess.isCheck?.() || chess.inCheck?.()) playChessSound("check");
+    else playChessSound(move.captured ? "capture" : "move");
     setSel(null); setLegal([]); setPromo(null);
     refresh();
   };
@@ -60,6 +64,7 @@ export default function ChessPractice() {
       }
     }
     if (piece && piece.color === turn) {
+      if (sel !== square) playChessSound("select");
       setSel(square);
       setLegal(chess.moves({ square, verbose: true }).map((m) => m.to));
     } else { setSel(null); setLegal([]); }

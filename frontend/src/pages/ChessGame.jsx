@@ -11,6 +11,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { EASE } from "@/components/anim";
 import { FILES, pieceSrc, useSyncedPieces, useChessTheme, capturedBy, materialOf, PlayerBar, StatusPill } from "@/components/chess/shared";
 import ChessBoardView from "@/components/chess/ChessBoardView";
+import { playChessSound } from "@/components/chess/sounds";
 
 export default function ChessGame() {
   const { id } = useParams();
@@ -26,7 +27,9 @@ export default function ChessGame() {
   const [promo, setPromo] = useState(null);
   const [flipped, setFlipped] = useState(false);
   const [theme, themeId, setTheme] = useChessTheme();
+  const [showResign, setShowResign] = useState(false);
   const movesRef = useRef(null);
+  const prevMovesRef = useRef(0);
 
   const load = useCallback(async () => {
     try {
@@ -37,6 +40,13 @@ export default function ChessGame() {
       setChess(c);
       const hist = c.history({ verbose: true });
       if (hist.length) setLastMove({ from: hist[hist.length - 1].from, to: hist[hist.length - 1].to });
+      /* opponent just moved (game synced) → play the matching sound */
+      const n = (data.moves || []).length;
+      if (prevMovesRef.current && n > prevMovesRef.current && data.turn === data.my_color && data.status === "active") {
+        const san = data.moves[n - 1]?.san || "";
+        playChessSound(san.includes("#") ? "end" : san.includes("+") ? "check" : san.includes("x") ? "capture" : "move");
+      }
+      prevMovesRef.current = n;
     } catch (e) { toast.error(apiErr(e)); }
   }, [id]);
 
@@ -65,6 +75,9 @@ export default function ChessGame() {
     if (!move) return;
     const over = chess.isGameOver();
     const nextTurn = chess.turn();
+    if (over) playChessSound("end");
+    else if (chess.isCheck?.() || chess.inCheck?.()) playChessSound("check");
+    else playChessSound(move.captured ? "capture" : "move");
     setLastMove({ from: move.from, to: move.to });
     setTick((t) => t + 1);
     setSel(null); setLegal([]); setPromo(null);
@@ -93,13 +106,14 @@ export default function ChessGame() {
       }
     }
     if (piece && piece.color === myColor) {
+      if (sel !== square) playChessSound("select");
       setSel(square);
       setLegal(chess.moves({ square, verbose: true }).map((m) => m.to));
     } else { setSel(null); setLegal([]); }
   };
 
   const resign = async () => {
-    if (!window.confirm("متأكد من الانسحاب؟")) return;
+    setShowResign(false);
     try { await api.post(`/chess/games/${id}/resign`); toast.info("انسحبت من المباراة"); load(); }
     catch (e) { toast.error(apiErr(e)); }
   };
@@ -204,7 +218,7 @@ export default function ChessGame() {
                       </motion.div>
                     </AnimatePresence>
                     {inCheck && <div className="text-sm text-red-400 mt-2 font-bold animate-pulse">كش! الملك تحت التهديد 👑</div>}
-                    <Button data-testid="resign-btn" onClick={resign} variant="outline" className="w-full mt-3 rounded-2xl text-red-300 border-red-500/30 bg-transparent hover:bg-red-500/10">
+                    <Button data-testid="resign-btn" onClick={() => setShowResign(true)} variant="outline" className="w-full mt-3 rounded-2xl text-red-300 border-red-500/30 bg-transparent hover:bg-red-500/10">
                       <Flag className="w-4 h-4 ml-1" /> انسحاب
                     </Button>
                   </>
@@ -233,10 +247,38 @@ export default function ChessGame() {
           </div>
         </div>
 
+        {/* resign confirm */}
+        <AnimatePresence>
+          {showResign && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 grid place-items-center bg-black/70 backdrop-blur-sm p-4"
+              onClick={() => setShowResign(false)}>
+              <motion.div
+                initial={{ scale: 0.88, y: 24, opacity: 0 }}
+                animate={{ scale: 1, y: 0, opacity: 1 }}
+                exit={{ scale: 0.92, opacity: 0 }}
+                transition={{ type: "spring", stiffness: 300, damping: 24 }}
+                onClick={(e) => e.stopPropagation()}
+                className="bg-slate-900 border border-red-400/25 rounded-[26px] p-7 max-w-xs w-full text-center shadow-[0_40px_100px_-20px_rgba(0,0,0,0.9)]">
+                <div className="w-14 h-14 mx-auto mb-4 rounded-2xl grid place-items-center bg-red-500/15 border border-red-400/30">
+                  <Flag className="w-7 h-7 text-red-400" />
+                </div>
+                <h2 className="font-head text-xl font-extrabold mb-1">الانسحاب من المباراة؟</h2>
+                <p className="text-slate-400 text-sm mb-6">ستُحتسب خسارة وسيتأثر تصنيفك. لا يمكن التراجع.</p>
+                <div className="flex gap-2">
+                  <Button data-testid="resign-confirm-btn" onClick={resign} className="flex-1 rounded-2xl bg-gradient-to-b from-red-500 to-red-600 hover:from-red-400 text-white font-bold">نعم، انسحاب</Button>
+                  <Button onClick={() => setShowResign(false)} variant="outline" className="flex-1 rounded-2xl border-white/20 text-white bg-transparent hover:bg-white/10">متابعة اللعب</Button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         <AnimatePresence>
           {finished && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               className="fixed inset-0 z-50 grid place-items-center bg-black/70 backdrop-blur-sm p-4">
+              {iWon && <Confetti />}
               <motion.div
                 initial={{ scale: 0.85, y: 30, opacity: 0 }}
                 animate={{ scale: 1, y: 0, opacity: 1 }}
@@ -272,5 +314,40 @@ function MoveCell({ san, last }) {
     <span className={`px-1.5 py-0.5 -mx-1.5 rounded-lg w-fit ${last ? "bg-amber-400/25 text-amber-200 font-bold shadow-[0_0_12px_rgba(251,191,36,0.25)]" : "text-slate-200"}`}>
       {san}
     </span>
+  );
+}
+
+const CONFETTI_COLORS = ["#fbbf24", "#34d399", "#60a5fa", "#f472b6", "#f8fafc", "#a78bfa"];
+function Confetti() {
+  const parts = React.useMemo(
+    () =>
+      Array.from({ length: 30 }, (_, i) => ({
+        x: Math.random() * 100,
+        delay: Math.random() * 0.9,
+        dur: 2.6 + Math.random() * 2,
+        size: 5 + Math.random() * 8,
+        color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+        drift: -40 + Math.random() * 80,
+        round: Math.random() > 0.5,
+      })),
+    []
+  );
+  return (
+    <div className="pointer-events-none absolute inset-0 overflow-hidden">
+      {parts.map((p, i) => (
+        <motion.span key={i}
+          initial={{ x: 0, y: "-6vh", rotate: 0, opacity: 1 }}
+          animate={{ x: p.drift, y: "108vh", rotate: 540 + p.drift * 2, opacity: [1, 1, 0.9] }}
+          transition={{ duration: p.dur, delay: p.delay, ease: "easeIn", repeat: Infinity, repeatDelay: 1.5 }}
+          className="absolute top-0"
+          style={{
+            left: `${p.x}%`,
+            width: p.size,
+            height: p.round ? p.size : p.size * 0.45,
+            background: p.color,
+            borderRadius: p.round ? "50%" : "2px",
+          }} />
+      ))}
+    </div>
   );
 }

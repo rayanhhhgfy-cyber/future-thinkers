@@ -1,7 +1,8 @@
 import React, { useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Repeat } from "lucide-react";
+import { Repeat, Volume2, VolumeX } from "lucide-react";
 import { FILES, THEMES, pieceSrc } from "./shared";
+import { isMuted, setMuted as persistMuted } from "./sounds";
 
 /**
  * The beautiful chess board. Fully presentational — the parent owns the Chess
@@ -22,6 +23,12 @@ export default function ChessBoardView({
 }) {
   const boardRef = useRef(null);
   const [drag, setDrag] = useState(null); // {square, type, color, x, y, active}
+  const [soundOn, setSoundOn] = useState(() => !isMuted());
+  const toggleSound = () => {
+    const next = !soundOn;
+    setSoundOn(next);
+    persistMuted(!next);
+  };
 
   const ranks = (() => {
     const r = [8, 7, 6, 5, 4, 3, 2, 1];
@@ -83,6 +90,10 @@ export default function ChessBoardView({
           <button title="قلب الرقعة" onClick={() => setFlipped((f) => !f)}
             className="w-10 h-10 grid place-items-center rounded-full bg-white/[0.06] border border-white/10 backdrop-blur-xl text-slate-300 hover:text-white hover:bg-white/[0.12] hover:rotate-180 transition-all duration-300 shadow-[0_8px_24px_-10px_rgba(0,0,0,0.7)]">
             <Repeat className="w-4 h-4" />
+          </button>
+          <button title={soundOn ? "كتم الصوت" : "تشغيل الصوت"} onClick={toggleSound}
+            className={`w-10 h-10 grid place-items-center rounded-full border backdrop-blur-xl transition-all shadow-[0_8px_24px_-10px_rgba(0,0,0,0.7)] ${soundOn ? "bg-amber-400/20 border-amber-300/40 text-amber-300" : "bg-white/[0.06] border-white/10 text-slate-400 hover:text-white"}`}>
+            {soundOn ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
           </button>
         </div>
       )}
@@ -200,6 +211,31 @@ export default function ChessBoardView({
                 );
               })}
             </div>
+            {/* last-move arrow */}
+            {lastMove && (() => {
+              const a = posOf(lastMove.from);
+              const b = posOf(lastMove.to);
+              const x1 = a.x + 0.5, y1 = a.y + 0.5, x2 = b.x + 0.5, y2 = b.y + 0.5;
+              const dx = x2 - x1, dy = y2 - y1;
+              const len = Math.hypot(dx, dy) || 1;
+              const ux = dx / len, uy = dy / len;
+              return (
+                <svg viewBox="0 0 8 8" className="absolute inset-0 w-full h-full pointer-events-none z-[15]">
+                  <defs>
+                    <marker id="ft-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="3.2" markerHeight="3.2" orient="auto-start-reverse">
+                      <path d="M0,0 L10,5 L0,10 z" fill="rgba(245,158,11,0.85)" />
+                    </marker>
+                  </defs>
+                  <motion.line
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    x1={x1 + ux * 0.28} y1={y1 + uy * 0.28}
+                    x2={x2 - ux * 0.18} y2={y2 - uy * 0.18}
+                    stroke="rgba(245,158,11,0.75)" strokeWidth="0.16" strokeLinecap="round"
+                    markerEnd="url(#ft-arrow)" />
+                </svg>
+              );
+            })()}
             {/* drag ghost */}
             {drag && drag.active && (
               <div className="absolute pointer-events-none z-30"

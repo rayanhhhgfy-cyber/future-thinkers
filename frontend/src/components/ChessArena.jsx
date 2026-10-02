@@ -16,6 +16,7 @@ export function ChessArena() {
   const [challenges, setChallenges] = useState({ incoming: [], outgoing: [] });
   const [games, setGames] = useState([]);
   const [players, setPlayers] = useState([]);
+  const [top, setTop] = useState([]);
   const [q, setQ] = useState("");
   const [matching, setMatching] = useState(false);
 
@@ -26,6 +27,12 @@ export function ChessArena() {
   }, [user]);
 
   useEffect(() => { load(); const t = setInterval(load, 8000); return () => clearInterval(t); }, [load]);
+  useEffect(() => {
+    if (!user) return;
+    api.get("/leaderboard/chess", { params: { limit: 5 } })
+      .then((r) => setTop(r.data.items || []))
+      .catch(() => {});
+  }, [user]);
   useEffect(() => { if (!user) return; const t = setTimeout(() => api.get("/chess/players", { params: { q } }).then((r) => setPlayers(r.data)), 300); return () => clearTimeout(t); }, [q, user]);
 
   if (!user) return <div className="text-center py-16 text-slate-500">سجّل الدخول للعب الشطرنج. <button onClick={() => nav("/login")} className="text-blue-600">دخول</button></div>;
@@ -245,6 +252,38 @@ export function ChessArena() {
                       </span>
                     </div>
                   ))}
+                </div>
+              </motion.section>
+            )}
+
+            {top.length > 0 && (
+              <motion.section initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.45, ease: EASE }}>
+                <div className="rounded-3xl p-4 sm:p-5 bg-white/[0.06] border border-white/10 backdrop-blur-xl">
+                  <h3 className="font-head font-bold flex items-center gap-2 mb-3">
+                    <span className="w-8 h-8 rounded-xl grid place-items-center bg-gradient-to-br from-amber-300 to-orange-500 shadow-[0_6px_16px_-4px_rgba(245,158,11,0.6)]"><Trophy className="w-4 h-4 text-slate-950" /></span>
+                    أفضل اللاعبين
+                  </h3>
+                  <div className="space-y-1.5">
+                    {top.map((p, i) => {
+                      const isMe = p.user_id === user.id;
+                      return (
+                        <div key={p.user_id} className={`flex items-center gap-3 p-2.5 rounded-2xl ${isMe ? "bg-amber-400/[0.12] border border-amber-300/30" : "hover:bg-white/[0.05]"} transition-colors`}>
+                          <span className="text-base w-6 text-center shrink-0">{["🥇", "🥈", "🥉"][i] || <span className="text-slate-500 font-bold text-sm">{i + 1}</span>}</span>
+                          <div className="w-8 h-8 rounded-lg grid place-items-center font-extrabold text-xs shrink-0 bg-gradient-to-br from-slate-400 to-slate-700 text-white ring-1 ring-white/20">
+                            {(p.name || "?").trim()[0]}
+                          </div>
+                          <span className="font-medium text-sm text-white truncate flex-1 min-w-0">
+                            {p.name}
+                            {isMe && <span className="mr-1.5 text-[10px] px-1.5 py-0.5 rounded-md bg-amber-400 text-slate-950 font-extrabold">أنت</span>}
+                          </span>
+                          <span className="font-mono font-bold text-sm text-amber-200 shrink-0">{p.chess_rating}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <button onClick={() => nav("/leaderboard")} className="w-full mt-3 text-xs font-bold text-slate-300 hover:text-white flex items-center justify-center gap-1 py-2 rounded-xl bg-white/[0.05] hover:bg-white/[0.09] transition-colors">
+                    لوحة الترتيب الكاملة <ChevronLeft className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               </motion.section>
             )}
