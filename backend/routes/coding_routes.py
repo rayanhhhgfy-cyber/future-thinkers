@@ -1,4 +1,4 @@
-"""نادي البرمجة — code judge (hardened).
+"""نادي البرمجة · code judge (hardened).
 
 Security model for running untrusted student code:
 - isolated subprocess per run (python3 -I: ignores env & user site-packages)
@@ -96,7 +96,7 @@ def _check_user_rate(user_id: str):
     now = time.time()
     last = _user_lock.get(user_id, 0)
     if now - last < 1.0:
-        raise HTTPException(status_code=429, detail="مهلة قصيرة بين التشغيلات — انتظر ثانية")
+        raise HTTPException(status_code=429, detail="مهلة قصيرة بين التشغيلات · انتظر ثانية")
     _user_lock[user_id] = now
 
 
@@ -165,7 +165,7 @@ async def submit(pid: str, body: SubmitBody, user: dict = Depends(get_current_us
     if verdict == "accepted" and not already:
         await bump_stat(user["id"], "coding_solved", 1)
         await award_xp(user["id"], p.get("xp", 30), "حل مسألة برمجية", pid)
-        await create_notification(user["id"], "achievement", "حل مقبول! 💻", f"{p['title']} — +{p.get('xp', 30)} خبرة")
+        await create_notification(user["id"], "achievement", "حل مقبول! 💻", f"{p['title']} · +{p.get('xp', 30)} خبرة")
     return {"verdict": verdict, "passed": passed, "total": len(tests), "detail": detail}
 
 
@@ -177,7 +177,7 @@ class RunBody(BaseModel):
 
 @router.post("/run")
 async def playground_run(body: RunBody, user: dict = Depends(get_current_user)):
-    """Free run with custom stdin — the student debugger. No XP, fully sandboxed."""
+    """Free run with custom stdin · the student debugger. No XP, fully sandboxed."""
     _check_user_rate(user["id"])
     if len(body.code) > 20000:
         raise HTTPException(status_code=400, detail="الكود طويل جداً")

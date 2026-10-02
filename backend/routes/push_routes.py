@@ -60,7 +60,7 @@ class PendingSubBody(BaseModel):
 async def subscribe_pending(body: PendingSubBody):
     """Register this device for the approval push of a not-yet-approved teacher.
 
-    Authenticated by the single-purpose token issued at teacher registration —
+    Authenticated by the single-purpose token issued at teacher registration ·
     no login session needed (pending teachers cannot log in yet). The token is
     cleared on approval/rejection, so it cannot be reused afterwards.
     """

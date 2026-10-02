@@ -45,7 +45,7 @@ async def student_leaderboard(scope: str = "national", scope_id: str | None = No
         xp_map = await _period_xp_map(period)
         users = await db.users.find(query).to_list(5000)
         # only people who actually earned points in this period belong on a
-        # period board — otherwise it is just the all-time board with zeros
+        # period board · otherwise it is just the all-time board with zeros
         ranked = sorted(
             (u for u in users if xp_map.get(str(u["_id"]), 0) > 0),
             key=lambda u: xp_map[str(u["_id"])], reverse=True)[:limit]
@@ -91,7 +91,7 @@ async def governorates_leaderboard(limit: int = 20):
 
 @router.get("/leaderboard/my-standing")
 async def my_standing(user: dict = Depends(get_current_user)):
-    """The signed-in user's own numbers for the leaderboard page — shown for
+    """The signed-in user's own numbers for the leaderboard page · shown for
     every role, even though the public students board lists students only."""
     xp = user.get("xp", 0)
     stats = user.get("stats", {})

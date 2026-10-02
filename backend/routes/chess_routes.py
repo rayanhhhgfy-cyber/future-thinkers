@@ -225,7 +225,7 @@ async def _advance_tournament(tid: str, game: dict, winner_id):
                       "champion_id": champ["user_id"], "champion_name": champ["name"]}})
         await award_xp(champ["user_id"], 150, "بطل بطولة الشطرنج 🏆", tid)
         await create_notification(champ["user_id"], "chess", "بطل البطولة! 🏆",
-                                  f"فزت ببطولة {t['name']} — +150 خبرة", "/clubs/chess")
+                                  f"فزت ببطولة {t['name']} · +150 خبرة", "/clubs/chess")
         return
     rnd = cur_round + 1
     midx = len(matches)
@@ -313,7 +313,7 @@ async def start_tournament(tid: str, user: dict = Depends(get_current_user)):
         {"$set": {"matches": matches, "status": "running", "started_at": now_iso()}})
     for p in players:
         await create_notification(p["user_id"], "chess", "بدأت البطولة! ⚔️",
-                                  f"{t['name']} — العب مباراتك الآن", "/clubs/chess")
+                                  f"{t['name']} · العب مباراتك الآن", "/clubs/chess")
     return {"ok": True, "matches": len(matches)}
 
 
@@ -350,7 +350,7 @@ async def play_match(tid: str, idx: int, user: dict = Depends(get_current_user))
     await db.chess_tournaments.update_one({"_id": oid(tid)}, {"$set": {"matches": matches}})
     opp = m["b_id"] if user["id"] == m["a_id"] else m["a_id"]
     await create_notification(opp, "chess", "مباراة بطولة بانتظارك ⚔️",
-                              f"{t['name']} — ادخل للعب", f"/chess/{gid}")
+                              f"{t['name']} · ادخل للعب", f"/chess/{gid}")
     return {"game_id": gid}
 
 

@@ -53,7 +53,7 @@ async def create_event(body: EventBody, request: Request, user: dict = Depends(r
 
 @router.get("/events/mine")
 async def my_events(user: dict = Depends(get_current_user)):
-    """Events the current user registered for — upcoming first."""
+    """Events the current user registered for · upcoming first."""
     regs = await db.event_registrations.find({"user_id": user["id"]}).to_list(500)
     eids = {r["event_id"] for r in regs if r.get("event_id")}
     items = []
