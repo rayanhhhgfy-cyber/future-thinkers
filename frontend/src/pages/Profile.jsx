@@ -5,7 +5,7 @@ import api from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 import * as Icons from "lucide-react";
-import { Trophy, Flame, BookOpen, Crown, School, MapPin, Award, Sparkles, Medal, Download, UserPlus, UserCheck, Users, PenLine, Rocket, X, FileText, LayoutGrid, BadgeCheck, Swords } from "lucide-react";
+import { Trophy, Flame, BookOpen, Crown, School, MapPin, Award, Sparkles, Medal, Download, UserPlus, UserCheck, Users, PenLine, Rocket, X, FileText, LayoutGrid, BadgeCheck, Swords, Copy, ShieldCheck } from "lucide-react";
 import { FadeUp, Stagger, Item } from "@/components/anim";
 import { coverCls, FRAME_RING } from "@/lib/cosmetics";
 import { ActivityHeatmap } from "@/components/dashboard/widgets";
@@ -43,6 +43,11 @@ export default function Profile() {
       a.href = url; a.download = `certificate-${certId}.pdf`; a.click();
       URL.revokeObjectURL(url);
     } catch {}
+  };
+
+  const copyCertCode = async (code) => {
+    try { await navigator.clipboard.writeText(code); toast.success("نُسخ رمز التحقق ✓"); }
+    catch { toast.error("تعذّر النسخ · انسخ الرمز يدوياً"); }
   };
 
   const toggleFollow = async () => {
@@ -206,19 +211,44 @@ export default function Profile() {
               <div>
                 <h2 className="font-head font-bold text-lg mb-3 flex items-center gap-2"><Award className="w-5 h-5 ft-text-accent" /> الشهادات ({certs.length})</h2>
                 {certs.length === 0 ? <p className="text-slate-400 text-sm bg-white rounded-2xl p-6 text-center border border-slate-100">لا شهادات بعد · تُمنح للتميز والمشاركة 🏅</p> : (
-                  <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  <div className="grid sm:grid-cols-2 gap-4">
                     {certs.map((c) => (
-                      <div key={c.id} className="flex items-center gap-3 ft-bg-soft rounded-2xl p-4 border ft-border-accent ft-shadow">
-                        <div className="w-12 h-12 rounded-2xl ft-icon-tile grid place-items-center shrink-0"><Award className="w-6 h-6" /></div>
-                        <div className="flex-1 min-w-0">
-                          <div className="font-bold text-slate-800 text-sm truncate">{c.title_line}</div>
-                          <div className="text-xs text-slate-400">{c.subtitle ? `${c.subtitle} · ` : ""}{String(c.created_at || "").slice(0, 10)}</div>
+                      <div key={c.id} className="relative rounded-[22px] p-[3px] bg-gradient-to-br from-amber-300 via-yellow-500 to-amber-600 shadow-[0_14px_34px_-12px_rgba(217,119,6,0.5)] hover-lift">
+                        <div className="relative overflow-hidden rounded-[19px] bg-gradient-to-b from-[#FFFEF9] via-[#FFFDF4] to-[#FCF3DC] px-5 pt-6 pb-5 text-center h-full">
+                          <div className="pointer-events-none absolute inset-2 rounded-2xl border border-amber-300/60" />
+                          <div className="pointer-events-none absolute inset-[13px] rounded-[13px] border border-amber-200/50" />
+                          <div className="relative mx-auto w-16 h-16">
+                            <span className="absolute -bottom-2.5 right-[26px] w-4 h-8 rounded-b-lg bg-gradient-to-b from-rose-400 to-rose-600 rotate-[16deg]" />
+                            <span className="absolute -bottom-2.5 left-[26px] w-4 h-8 rounded-b-lg bg-gradient-to-b from-amber-400 to-amber-600 -rotate-[16deg]" />
+                            <span className="relative z-10 w-16 h-16 rounded-full bg-gradient-to-br from-amber-300 via-amber-500 to-yellow-600 ring-4 ring-amber-100 shadow-lg grid place-items-center text-white">
+                              <Award className="w-8 h-8" />
+                            </span>
+                          </div>
+                          <div className="relative mt-5 font-head font-extrabold text-slate-800 leading-snug">{c.title_line}</div>
+                          {c.subtitle && <div className="relative mt-1 text-xs text-slate-500 leading-relaxed">{c.subtitle}</div>}
+                          <div className="relative mt-3.5 flex items-center justify-center gap-2" aria-hidden="true">
+                            <span className="h-px w-10 bg-gradient-to-l from-transparent to-amber-400" />
+                            <span className="w-1.5 h-1.5 rotate-45 bg-amber-500" />
+                            <span className="h-px w-10 bg-gradient-to-r from-transparent to-amber-400" />
+                          </div>
+                          <div className="relative mt-3 flex items-center justify-center gap-2 flex-wrap">
+                            <span className="text-[11px] font-bold text-slate-400">{String(c.created_at || "").slice(0, 10)}</span>
+                            {c.code && (
+                              <button onClick={() => copyCertCode(c.code)} title="نسخ رمز التحقق"
+                                className="pressable inline-flex items-center gap-1.5 rounded-full bg-amber-50 border border-amber-200 px-2.5 py-1 text-[11px] font-bold text-amber-800 hover:bg-amber-100 transition-colors min-h-[32px]">
+                                <ShieldCheck className="w-3.5 h-3.5" />
+                                <span dir="ltr" className="font-mono tracking-wide">{c.code}</span>
+                                <Copy className="w-3 h-3" />
+                              </button>
+                            )}
+                          </div>
+                          {isMine && (
+                            <button onClick={() => downloadCert(c.id)}
+                              className="pressable relative mt-4 inline-flex items-center gap-2 rounded-xl ft-btn-primary px-4 py-2.5 text-sm font-bold min-h-[44px]">
+                              <Download className="w-4 h-4" /> تحميل الشهادة PDF
+                            </button>
+                          )}
                         </div>
-                        {isMine && (
-                          <button onClick={() => downloadCert(c.id)} className="pressable shrink-0 w-9 h-9 rounded-xl ft-btn-solid grid place-items-center" aria-label="تحميل الشهادة PDF">
-                            <Download className="w-4 h-4" />
-                          </button>
-                        )}
                       </div>
                     ))}
                   </div>

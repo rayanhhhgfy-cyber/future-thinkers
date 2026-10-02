@@ -42,6 +42,9 @@ import StudioWork from "@/pages/StudioWork";
 import Ventures from "@/pages/Ventures";
 import VentureDetail from "@/pages/VentureDetail";
 import Points from "@/pages/Points";
+import Stats from "@/pages/Stats";
+import ChessPuzzle from "@/pages/ChessPuzzle";
+import VerifyCertificate from "@/pages/VerifyCertificate";
 import BookReviews from "@/pages/BookReviews";
 import Admin from "@/pages/Admin";
 
@@ -86,6 +89,9 @@ function AnimatedRoutes() {
       <Route path="/competitions/:id" element={<CompetitionDetail />} />
       <Route path="/leaderboard" element={<Leaderboard />} />
       <Route path="/points" element={<Protected><Points /></Protected>} />
+      <Route path="/stats" element={<Protected><Stats /></Protected>} />
+      <Route path="/chess/puzzle" element={<Protected><ChessPuzzle /></Protected>} />
+      <Route path="/verify/:code" element={<VerifyCertificate />} />
       <Route path="/paths" element={<Protected><Paths /></Protected>} />
       <Route path="/community" element={<Protected><Community /></Protected>} />
       <Route path="/calendar" element={<Calendar />} />
