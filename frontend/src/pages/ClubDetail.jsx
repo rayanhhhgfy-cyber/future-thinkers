@@ -155,7 +155,7 @@ export default function ClubDetail() {
         <div className="absolute -bottom-28 right-16 w-80 h-80 sm:w-[26rem] sm:h-[26rem] rounded-full blur-3xl pointer-events-none" style={{ background: `${club.color}55` }} />
         <div className="absolute inset-0 opacity-[0.05] pointer-events-none" style={{ backgroundImage: "radial-gradient(rgba(255,255,255,0.9) 1px, transparent 1px)", backgroundSize: "22px 22px" }} />
         <Icon className="absolute -left-10 -bottom-12 w-56 h-56 sm:w-80 sm:h-80 text-white/[0.05] pointer-events-none -rotate-12" />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14 lg:py-16 relative">
+        <div className="max-w-7xl xl:max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14 lg:py-16 relative">
           <Link to="/clubs" className="pressable inline-flex items-center gap-1.5 text-xs sm:text-sm font-bold text-white/75 hover:text-white bg-white/10 hover:bg-white/15 border border-white/15 rounded-full px-3.5 py-2 backdrop-blur transition-colors mb-5 sm:mb-6"><ArrowRight className="w-4 h-4" /> كل الأندية</Link>
           <div className="flex items-start justify-between gap-4 flex-wrap animate-fade-up">
             <div className="flex items-start gap-4 sm:gap-5 min-w-0">
@@ -180,20 +180,67 @@ export default function ClubDetail() {
         <div className="h-px bg-gradient-to-l from-transparent via-white/30 to-transparent relative" />
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+      <div className="max-w-7xl xl:max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         <div className="sticky top-16 z-40 bg-white/90 backdrop-blur-md rounded-2xl sm:rounded-[1.4rem] border border-slate-100 ft-shadow p-1.5 mb-6 flex gap-1 overflow-x-auto whitespace-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {tabs.map(([v, l]) => (
             <button key={v} data-testid={`club-tab-${v}`} onClick={() => setTab(v)} className={`pressable shrink-0 min-h-[44px] px-4 sm:px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === v ? "text-white shadow-lg scale-[1.02]" : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"}`} style={activeTab === v ? { background: `linear-gradient(135deg, ${club.color}, ${club.color}B3)`, boxShadow: `0 8px 20px -8px ${club.color}` } : undefined}>{l}</button>
           ))}
         </div>
 
-        {slug === "chess" && activeTab === "main" && <ChessArena />}
-        {activeTab === "coding" && <CodingPanel />}
-        {activeTab === "projects" && <ProjectsPanel />}
-        {activeTab === "debates" && <DebatesPanel />}
-        {activeTab === "forum" && <DialogueForum slug={slug} />}
-        {activeTab === "leaderboard" && <ClubLeaderboard slug={slug} />}
-        {activeTab === "members" && <MembersList slug={slug} />}
+        <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-6 xl:gap-8 items-start">
+          <div className="min-w-0">
+            {slug === "chess" && activeTab === "main" && <ChessArena />}
+            {activeTab === "coding" && <CodingPanel />}
+            {activeTab === "projects" && <ProjectsPanel />}
+            {activeTab === "debates" && <DebatesPanel />}
+            {activeTab === "forum" && <DialogueForum slug={slug} />}
+            {activeTab === "leaderboard" && <ClubLeaderboard slug={slug} />}
+            {activeTab === "members" && <MembersList slug={slug} />}
+          </div>
+
+          <aside className="hidden lg:block lg:sticky lg:top-[9.5rem] space-y-4">
+            <div className="overflow-hidden rounded-[1.75rem] border border-slate-100 bg-white ft-shadow">
+              <div className="relative px-5 pb-5 pt-6 text-white" style={{ background: `linear-gradient(135deg, ${club.color}, #0A192F)` }}>
+                <Icon className="pointer-events-none absolute -left-6 -bottom-8 h-28 w-28 -rotate-12 text-white/10" />
+                <div className="relative flex items-center gap-3">
+                  <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-white/15 ring-1 ring-white/25 backdrop-blur"><Icon className="h-6 w-6" /></span>
+                  <div className="min-w-0">
+                    <div className="truncate font-head text-base font-extrabold">{club.name}</div>
+                    <div className="text-[11px] font-semibold text-white/70">{club.is_member ? "أنت عضو في هذا النادي" : "انضم وشارك في النشاطات"}</div>
+                  </div>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 text-center [&>*+*]:border-r [&>*+*]:border-slate-100">
+                <div className="px-3 py-4">
+                  <div className="flex items-center justify-center gap-1.5 font-head text-lg font-extrabold text-slate-900"><Users className="h-4 w-4" style={{ color: club.color }} />{club.members_count}</div>
+                  <div className="mt-0.5 text-[11px] font-semibold text-slate-400">عضو</div>
+                </div>
+                <div className="px-3 py-4">
+                  <div className="flex items-center justify-center gap-1.5 font-head text-lg font-extrabold text-slate-900"><MessageSquare className="h-4 w-4" style={{ color: club.color }} />{club.discussions_count}</div>
+                  <div className="mt-0.5 text-[11px] font-semibold text-slate-400">نقاش</div>
+                </div>
+              </div>
+              <p className="border-t border-slate-100 px-5 py-4 text-[13px] leading-relaxed text-slate-500 line-clamp-3">{club.description}</p>
+              <div className="px-5 pb-5">
+                <Button onClick={toggleMember} className={`pressable h-12 w-full rounded-2xl text-sm font-extrabold ${club.is_member ? "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50" : "text-white shadow-lg"}`} style={club.is_member ? undefined : { background: `linear-gradient(135deg, ${club.color}, ${club.color}B3)` }}>
+                  {club.is_member ? "مغادرة النادي" : "انضم للنادي الآن"}
+                </Button>
+              </div>
+            </div>
+
+            <div className="rounded-[1.75rem] border border-slate-100 bg-white p-4 ft-shadow">
+              <h3 className="px-1 font-head text-sm font-extrabold text-slate-800">أقسام النادي</h3>
+              <div className="mt-3 space-y-1.5">
+                {tabs.map(([v, l]) => (
+                  <button key={v} onClick={() => setTab(v)} className={`pressable flex min-h-[44px] w-full items-center justify-between rounded-2xl px-4 text-sm font-bold transition-all ${activeTab === v ? "text-white shadow-md" : "text-slate-600 hover:bg-slate-50"}`} style={activeTab === v ? { background: `linear-gradient(135deg, ${club.color}, ${club.color}B3)` } : undefined}>
+                    {l}
+                    <ArrowRight className={`h-4 w-4 rotate-180 ${activeTab === v ? "text-white/80" : "text-slate-300"}`} />
+                  </button>
+                ))}
+              </div>
+            </div>
+          </aside>
+        </div>
       </div>
     </Layout>
   );

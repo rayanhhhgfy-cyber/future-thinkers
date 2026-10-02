@@ -5,7 +5,7 @@ import { useAuth } from "@/context/AuthContext";
 import { Layout, PageLoader, EmptyState } from "@/components/Layout";
 import { timeAgo } from "@/components/NotificationsPanel";
 import { toast } from "sonner";
-import { Users, Heart, Send, Trash2, Sparkles, Swords, Handshake, MessageCircle, Flame } from "lucide-react";
+import { Users, Heart, Send, Trash2, Sparkles, Swords, Handshake, MessageCircle, Flame, BookOpen, Trophy, CalendarDays, LayoutDashboard } from "lucide-react";
 
 const ACT_ICON = { chess_win: Swords, badge: Sparkles, venture_joined: Handshake };
 const ACT_DEFAULT = Sparkles;
@@ -51,7 +51,7 @@ export default function Community() {
 
   return (
     <Layout>
-      <div className="max-w-6xl mx-auto px-4 py-6 sm:py-8">
+      <div className="max-w-6xl xl:max-w-[1400px] mx-auto px-4 lg:px-6 py-6 sm:py-8">
         {/* hero */}
         <div className="animate-fade-up relative overflow-hidden rounded-[2rem] ft-hero-gradient grain px-5 py-8 sm:px-10 sm:py-11 mb-6 sm:mb-8 ft-shadow-lg">
           <div className="pointer-events-none absolute -top-24 -left-24 w-72 h-72 rounded-full bg-emerald-400/25 blur-3xl" />
@@ -81,7 +81,47 @@ export default function Community() {
           </div>
         </div>
 
-        <div className="grid lg:grid-cols-[1fr_330px] gap-5 sm:gap-6 items-start">
+        <div className="grid lg:grid-cols-[1fr_330px] xl:grid-cols-[290px_minmax(0,1fr)_340px] gap-5 sm:gap-6 items-start">
+          {/* desktop profile rail */}
+          <aside className="hidden xl:block sticky top-24">
+            <div className="relative overflow-hidden bg-white rounded-[2rem] border border-slate-100 ft-shadow-lg p-6">
+              <span className="absolute inset-x-0 top-0 h-1 ft-grad-bar" />
+              {user ? (
+                <>
+                  <div className="flex flex-col items-center text-center">
+                    <span className="rounded-full p-[3px] ft-icon-tile shadow-lg">
+                      {user.avatar_url
+                        ? <img src={user.avatar_url} alt="" className="w-16 h-16 rounded-full object-cover ring-2 ring-white block" />
+                        : <span className="w-16 h-16 rounded-full ft-navy-gradient text-white grid place-items-center font-head text-xl font-extrabold ring-2 ring-white">{user.name?.[0]}</span>}
+                    </span>
+                    <div className="mt-3 font-head text-lg font-extrabold text-slate-900">{user.name}</div>
+                    <Link to={`/profile/${user.id}`} className="pressable mt-3 inline-flex min-h-[44px] items-center rounded-full ft-btn-primary px-5 text-xs font-bold text-white shadow-md">عرض ملفي الشخصي</Link>
+                  </div>
+                  <div className="mt-6 space-y-1.5 border-t border-slate-100 pt-5">
+                    {[
+                      { to: "/dashboard", label: "لوحتي", icon: LayoutDashboard },
+                      { to: "/library", label: "المكتبة", icon: BookOpen },
+                      { to: "/leaderboard", label: "المتصدرون", icon: Trophy },
+                      { to: "/clubs", label: "الأندية", icon: Users },
+                      { to: "/events", label: "الفعاليات", icon: CalendarDays },
+                    ].map((l) => (
+                      <Link key={l.to} to={l.to} className="pressable flex min-h-[44px] items-center gap-3 rounded-2xl px-4 text-sm font-bold text-slate-600 transition hover:bg-slate-50 ft-hover-text-accent">
+                        <l.icon className="h-4 w-4 ft-text-accent" /> {l.label}
+                      </Link>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <div className="text-center">
+                  <span className="mx-auto grid h-14 w-14 place-items-center rounded-full ft-icon-tile shadow-lg"><Users className="h-6 w-6" /></span>
+                  <div className="mt-3 font-head text-base font-extrabold text-slate-900">انضم إلى الساحة</div>
+                  <p className="mt-1.5 text-xs leading-relaxed text-slate-400">سجّل دخولك لتشارك أفكارك وتتفاعل مع زملائك.</p>
+                  <Link to="/login" className="pressable mt-4 inline-flex min-h-[44px] items-center rounded-full ft-btn-primary px-6 text-xs font-bold text-white shadow-md">تسجيل الدخول</Link>
+                </div>
+              )}
+            </div>
+          </aside>
+
           <div className="min-w-0">
             {/* composer */}
             <div className="relative overflow-hidden bg-white rounded-[1.75rem] sm:rounded-[2rem] border border-slate-100 ft-shadow-lg p-4 sm:p-6 mb-6">

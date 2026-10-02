@@ -23,7 +23,7 @@ export default function Clubs() {
         <div className="absolute -bottom-32 right-10 w-80 h-80 sm:w-[28rem] sm:h-[28rem] rounded-full bg-sky-400/20 blur-3xl pointer-events-none" />
         <div className="absolute inset-0 opacity-[0.05] pointer-events-none" style={{ backgroundImage: "radial-gradient(rgba(255,255,255,0.9) 1px, transparent 1px)", backgroundSize: "22px 22px" }} />
         <Users className="absolute -left-8 -bottom-10 w-52 h-52 sm:w-72 sm:h-72 text-white/[0.04] pointer-events-none -rotate-12" />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 lg:py-20 relative">
+        <div className="max-w-7xl xl:max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 lg:py-20 relative">
           <div className="animate-fade-up max-w-3xl">
             <span className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full bg-white/10 border border-white/15 ft-text-accent-bright backdrop-blur"><Users className="w-3.5 h-3.5" /> مجتمع الطلاب المبدعين</span>
             <h1 className="font-head text-[2rem] leading-[1.15] sm:text-4xl lg:text-[3.4rem] font-extrabold mt-4">الأندية <span className="ft-text-gradient">الطلابية</span></h1>
@@ -43,7 +43,7 @@ export default function Clubs() {
         </div>
         <div className="h-px bg-gradient-to-l from-transparent via-white/25 to-transparent relative" />
       </div>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10 lg:py-12">
+      <div className="max-w-7xl xl:max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10 lg:py-12">
         <div className="flex items-end justify-between gap-3 mb-5 sm:mb-6">
           <div>
             <h2 className="font-head font-extrabold text-xl sm:text-2xl lg:text-[1.7rem] text-slate-900">استكشف الأندية</h2>
@@ -55,19 +55,22 @@ export default function Clubs() {
           {clubs.map((c, idx) => {
             const Icon = Icons[c.icon] || Icons.Circle;
             return (
-              <Link key={c.id} to={`/clubs/${c.slug}`} data-testid={`club-${c.slug}`} className="group relative overflow-hidden bg-white rounded-3xl sm:rounded-[1.75rem] p-5 sm:p-6 border border-slate-100 ft-shadow hover-lift block animate-fade-up pressable focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 active:scale-[0.99]" style={{ animationDelay: `${Math.min(idx, 10) * 60}ms` }}>
-                <div className="absolute inset-x-0 top-0 h-1.5" style={{ background: `linear-gradient(90deg, ${c.color}, ${c.color}55)` }} />
-                <div className="absolute -top-12 -left-12 w-32 h-32 rounded-full opacity-[0.07] pointer-events-none transition-all duration-500 group-hover:scale-[1.35] group-hover:opacity-[0.12]" style={{ background: c.color }} />
-                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" style={{ background: `linear-gradient(160deg, ${c.color}0d, transparent 55%)` }} />
-                <div className="relative flex items-start justify-between gap-2">
-                  <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl grid place-items-center text-white shrink-0 transition-all duration-300 group-hover:scale-110 group-hover:-rotate-6" style={{ background: `linear-gradient(135deg, ${c.color}, ${c.color}B3)`, boxShadow: `0 14px 28px -10px ${c.color}90` }}><Icon className="w-7 h-7 sm:w-8 sm:h-8 drop-shadow" /></div>
-                  {c.is_member && <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full ft-chip shrink-0"><Check className="w-3 h-3" /> عضو</span>}
+              <Link key={c.id} to={`/clubs/${c.slug}`} data-testid={`club-${c.slug}`} className="group relative overflow-hidden bg-white rounded-3xl sm:rounded-[1.75rem] border border-slate-100 ft-shadow hover-lift block animate-fade-up pressable focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 active:scale-[0.99]" style={{ animationDelay: `${Math.min(idx, 10) * 60}ms` }}>
+                <div className="relative h-24 sm:h-28 overflow-hidden" style={{ background: `linear-gradient(130deg, ${c.color}, ${c.color}B3)` }}>
+                  <div className="absolute inset-0 opacity-[0.13] pointer-events-none" style={{ backgroundImage: "radial-gradient(rgba(255,255,255,0.95) 1px, transparent 1px)", backgroundSize: "18px 18px" }} />
+                  <Icon className="absolute -left-5 -bottom-8 w-32 h-32 sm:w-36 sm:h-36 text-white/15 -rotate-12 pointer-events-none transition-transform duration-500 group-hover:scale-110 group-hover:-rotate-6" />
+                  <div className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-black/20 to-transparent pointer-events-none" />
+                  {c.is_member && <span className="absolute left-3 top-3 inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full bg-white/90 text-slate-800 shadow backdrop-blur"><Check className="w-3 h-3" /> عضو</span>}
+                  <span className="absolute right-4 bottom-3 inline-flex items-center gap-1.5 text-[11px] font-bold text-white/90"><Users className="w-3.5 h-3.5" />{c.members_count} عضو</span>
                 </div>
-                <h3 className="relative font-head font-extrabold text-lg sm:text-xl text-slate-900 mt-4 transition-colors duration-300 group-hover:text-slate-950">{c.name}</h3>
-                <p className="relative mt-2 text-sm text-slate-500 line-clamp-2 leading-relaxed min-h-[2.75rem]">{c.description}</p>
-                <div className="relative mt-5 pt-4 border-t border-slate-100 flex items-center justify-between gap-2">
-                  <span className="text-xs font-semibold text-slate-500 inline-flex items-center gap-1.5 bg-slate-50 group-hover:bg-white px-2.5 py-1.5 rounded-full transition-colors"><Users className="w-3.5 h-3.5" style={{ color: c.color }} />{c.members_count} عضو</span>
-                  <span className="text-sm font-bold inline-flex items-center gap-1 transition-all duration-300 group-hover:gap-2.5 group-hover:-translate-x-0.5" style={{ color: c.color }}>ادخل <ArrowLeft className="w-4 h-4 transition-transform duration-300 group-hover:-translate-x-0.5" /></span>
+                <div className="relative p-5 sm:p-6 pt-0">
+                  <div className="relative z-10 -mt-10 mb-4 w-16 h-16 sm:w-[4.5rem] sm:h-[4.5rem] rounded-[1.35rem] grid place-items-center text-white shrink-0 ring-4 ring-white transition-all duration-300 group-hover:scale-110 group-hover:-rotate-6" style={{ background: `linear-gradient(135deg, ${c.color}, ${c.color}B3)`, boxShadow: `0 14px 28px -10px ${c.color}90` }}><Icon className="w-8 h-8 sm:w-9 sm:h-9 drop-shadow" /></div>
+                  <h3 className="relative font-head font-extrabold text-lg sm:text-xl text-slate-900 transition-colors duration-300 group-hover:text-slate-950">{c.name}</h3>
+                  <p className="relative mt-2 text-sm text-slate-500 line-clamp-2 leading-relaxed min-h-[2.75rem]">{c.description}</p>
+                  <div className="relative mt-5 pt-4 border-t border-slate-100 flex items-center justify-between gap-2">
+                    <span className="text-xs font-semibold text-slate-500 inline-flex items-center gap-1.5 bg-slate-50 group-hover:bg-white px-2.5 py-1.5 rounded-full transition-colors"><Users className="w-3.5 h-3.5" style={{ color: c.color }} />{c.members_count} عضو</span>
+                    <span className="text-sm font-bold inline-flex items-center gap-1 transition-all duration-300 group-hover:gap-2.5 group-hover:-translate-x-0.5" style={{ color: c.color }}>ادخل <ArrowLeft className="w-4 h-4 transition-transform duration-300 group-hover:-translate-x-0.5" /></span>
+                  </div>
                 </div>
               </Link>
             );

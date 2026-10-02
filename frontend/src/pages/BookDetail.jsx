@@ -93,13 +93,23 @@ export default function BookDetail() {
 
   return (
     <Layout>
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <button onClick={() => nav(-1)} className="text-slate-500 hover:text-slate-800 text-sm mb-6 flex items-center gap-1"><ArrowRight className="w-4 h-4" /> رجوع</button>
-        <div className="grid md:grid-cols-[280px_1fr] gap-8">
-          <div>
-            <BookCover book={book} className="w-full aspect-[3/4] rounded-3xl ft-shadow-lg" imgClassName="w-full aspect-[3/4] object-cover rounded-3xl ft-shadow-lg" />
+      <div className="max-w-6xl lg:max-w-7xl xl:max-w-[1360px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <button onClick={() => nav(-1)} className="pressable min-h-[44px] text-slate-500 hover:text-slate-800 text-sm mb-6 flex items-center gap-1"><ArrowRight className="w-4 h-4" /> رجوع</button>
+        <div className="grid md:grid-cols-[300px_minmax(0,1fr)] lg:grid-cols-[330px_minmax(0,1fr)] gap-8 xl:gap-12 items-start">
+          <div className="md:sticky md:top-24">
+            <div className="relative">
+              <div className="pointer-events-none absolute -inset-3 rounded-[2rem] ft-bg-soft blur-xl" aria-hidden />
+              <BookCover book={book} className="relative w-full aspect-[3/4] rounded-3xl ft-shadow-lg ring-1 ring-slate-900/10" imgClassName="w-full aspect-[3/4] object-cover rounded-3xl" />
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 rounded-b-3xl bg-gradient-to-t from-slate-950/35 to-transparent" />
+              {book.my_progress > 0 && (
+                <div className="absolute inset-x-4 bottom-4">
+                  <div className="flex items-center justify-between text-[11px] font-bold text-white"><span>تقدّمك</span><span>{book.my_progress}%</span></div>
+                  <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-white/30"><div className="h-full rounded-full ft-grad-bar" style={{ width: `${book.my_progress}%` }} /></div>
+                </div>
+              )}
+            </div>
             <div className="mt-4 space-y-2">
-              <Button data-testid="read-book-btn" onClick={() => (user ? setReading(true) : nav("/login"))} className="w-full rounded-xl bg-blue-600 hover:bg-blue-700 h-11"><BookOpen className="w-4 h-4 ml-1" /> {book.my_progress > 0 ? "متابعة القراءة" : "اقرأ الآن"}</Button>
+              <Button data-testid="read-book-btn" onClick={() => (user ? setReading(true) : nav("/login"))} className="w-full rounded-xl ft-btn-primary text-white shadow-lg h-12 text-base font-extrabold"><BookOpen className="w-4 h-4 ml-1" /> {book.my_progress > 0 ? "متابعة القراءة" : "اقرأ الآن"}</Button>
               <Button data-testid="favorite-btn" onClick={toggleFav} variant="outline" className="w-full rounded-xl h-11"><Heart className={`w-4 h-4 ml-1 ${book.is_favorite ? "fill-rose-500 text-rose-500" : ""}`} /> {book.is_favorite ? "في المفضلة" : "أضف للمفضلة"}</Button>
               <Button data-testid="later-btn" onClick={toggleLater} variant="outline" className={`w-full rounded-xl h-11 ${book.is_later ? "border-amber-300 bg-amber-50 text-amber-700" : ""}`}>
                 {book.is_later ? <Check className="w-4 h-4 ml-1 text-amber-600" /> : <Clock className="w-4 h-4 ml-1" />}
@@ -119,24 +129,25 @@ export default function BookDetail() {
             </div>
           </div>
 
-          <div>
-            <div className="flex items-center gap-2 text-sm ft-text-accent ft-bg-soft w-fit px-3 py-1 rounded-full mb-3">{book.category}</div>
-            <h1 className="font-head text-3xl font-extrabold text-slate-900">{book.title}</h1>
-            <p className="text-slate-500 mt-1">تأليف: {book.author}</p>
-            <div className="flex items-center gap-5 mt-4 text-sm text-slate-600">
-              <span className="flex items-center gap-1"><Star className="w-4 h-4 text-amber-500 fill-amber-500" />{book.rating_avg || "·"} ({book.rating_count})</span>
-              <span className="flex items-center gap-1"><Eye className="w-4 h-4" />{book.views} قراءة</span>
-              <span className="flex items-center gap-1"><Heart className="w-4 h-4" />{book.favorites_count}</span>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 text-sm ft-text-accent ft-bg-soft w-fit px-3 py-1 rounded-full mb-3 ring-1 ft-ring-accent font-bold">{book.category}</div>
+            <h1 className="font-head text-3xl sm:text-4xl xl:text-[2.8rem] font-extrabold text-slate-900 leading-[1.2]">{book.title}</h1>
+            <p className="text-slate-500 mt-2 lg:text-lg">تأليف: {book.author}</p>
+            <div className="mt-4 h-1 w-24 rounded-full ft-grad-bar" />
+            <div className="flex flex-wrap items-center gap-2.5 mt-5 text-sm text-slate-600">
+              <span className="inline-flex items-center gap-1.5 rounded-2xl border border-slate-100 bg-white px-4 py-2.5 font-bold ft-shadow"><Star className="w-4 h-4 text-amber-500 fill-amber-500" />{book.rating_avg || "·"} <span className="font-semibold text-slate-400">({book.rating_count})</span></span>
+              <span className="inline-flex items-center gap-1.5 rounded-2xl border border-slate-100 bg-white px-4 py-2.5 font-bold ft-shadow"><Eye className="w-4 h-4 ft-text-accent" />{book.views} قراءة</span>
+              <span className="inline-flex items-center gap-1.5 rounded-2xl border border-slate-100 bg-white px-4 py-2.5 font-bold ft-shadow"><Heart className="w-4 h-4 text-rose-500" />{book.favorites_count}</span>
             </div>
-            <p className="mt-5 text-slate-700 leading-relaxed">{book.description}</p>
-            <div className="mt-5 grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+            <p className="mt-6 text-slate-700 leading-relaxed lg:text-[1.05rem] lg:leading-loose">{book.description}</p>
+            <div className="mt-6 grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
               {[["الصفحات", book.pages || "·"], ["سنة النشر", book.year || "·"], ["اللغة", book.language], ["الفئة", book.age]].map(([k, v]) => (
-                <div key={k} className="bg-slate-50 rounded-xl p-3 border border-slate-100"><div className="text-slate-400 text-xs">{k}</div><div className="font-semibold text-slate-800">{v}</div></div>
+                <div key={k} className="bg-white rounded-2xl p-4 border border-slate-100 ft-shadow"><div className="text-slate-400 text-xs font-semibold">{k}</div><div className="font-bold text-slate-800 mt-1">{v}</div></div>
               ))}
             </div>
 
             {/* Reviews */}
-            <div className="mt-10">
+            <div className="mt-10 rounded-[1.75rem] border border-slate-100 bg-white p-5 ft-shadow sm:p-7">
               <h2 className="font-head font-bold text-xl mb-4">التقييمات والمراجعات</h2>
               {user && (
                 <div className="bg-slate-50 rounded-2xl p-5 border border-slate-100 mb-5">
@@ -144,7 +155,7 @@ export default function BookDetail() {
                     {[1, 2, 3, 4, 5].map((s) => <button key={s} data-testid={`rate-star-${s}`} onClick={() => setRating(s)}><Star className={`w-6 h-6 ${s <= rating ? "text-amber-500 fill-amber-500" : "text-slate-300"}`} /></button>)}
                   </div>
                   <Textarea data-testid="review-text" value={reviewText} onChange={(e) => setReviewText(e.target.value)} placeholder="شاركنا رأيك في الكتاب…" className="rounded-xl bg-white" />
-                  <Button data-testid="submit-review-btn" onClick={submitReview} className="mt-3 rounded-xl bg-blue-600 hover:bg-blue-700">أرسل التقييم</Button>
+                  <Button data-testid="submit-review-btn" onClick={submitReview} className="mt-3 rounded-xl ft-btn-primary text-white shadow-md">أرسل التقييم</Button>
                 </div>
               )}
               {reviews.length === 0 ? <p className="text-slate-400 text-sm">لا توجد مراجعات بعد. كن أول المقيّمين!</p> : (
@@ -163,8 +174,8 @@ export default function BookDetail() {
             </div>
 
             {/* Reader discussion */}
-            <div className="mt-10">
-              <h2 className="font-head font-bold text-xl mb-4 flex items-center gap-2"><MessageSquare className="w-5 h-5 text-blue-600" /> نقاش القرّاء ({comments.length})</h2>
+            <div className="mt-6 rounded-[1.75rem] border border-slate-100 bg-white p-5 ft-shadow sm:p-7">
+              <h2 className="font-head font-bold text-xl mb-4 flex items-center gap-2"><MessageSquare className="w-5 h-5 ft-text-accent" /> نقاش القرّاء ({comments.length})</h2>
               {user ? (
                 <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100 mb-5 flex items-start gap-3">
                   <Avatar className="w-9 h-9 shrink-0"><AvatarFallback className="bg-blue-100 text-blue-700 text-xs">{user.name?.[0]}</AvatarFallback></Avatar>
