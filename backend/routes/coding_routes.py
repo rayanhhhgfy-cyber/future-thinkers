@@ -92,6 +92,19 @@ async def _run(code: str, stdin: str) -> tuple[bool, str]:
             return True, out.decode(errors="replace")
 
 
+def _friendly_py_error(raw: str) -> str:
+    """Turn a Python traceback into one readable line for students."""
+    if not raw:
+        return "خطأ في التنفيذ"
+    lines = [ln.strip() for ln in raw.splitlines() if ln.strip()]
+    for ln in reversed(lines):
+        # keep the meaningful interpreter line, drop file paths and carets
+        if ln.startswith(("Traceback", "File ", "^", "~")):
+            continue
+        return ln[:220]
+    return "خطأ في التنفيذ"
+
+
 def _check_user_rate(user_id: str):
     now = time.time()
     last = _user_lock.get(user_id, 0)
@@ -149,7 +162,7 @@ async def submit(pid: str, body: SubmitBody, user: dict = Depends(get_current_us
         ok, output = await _run(body.code, t["input"])
         if not ok:
             verdict = "error"
-            detail = f"اختبار {i + 1}: {output}"
+            detail = f"اختبار {i + 1}: {_friendly_py_error(output)}"
             break
         if output.strip() != t["output"].strip():
             verdict = "wrong_answer"
@@ -182,7 +195,7 @@ async def playground_run(body: RunBody, user: dict = Depends(get_current_user)):
     if len(body.code) > 20000:
         raise HTTPException(status_code=400, detail="الكود طويل جداً")
     ok, out = await _run(body.code, body.stdin or "")
-    return {"ok": ok, "output": out[:8000]}
+    return {"ok": ok, "output": out[:8000] if ok else _friendly_py_error(out)}
 
 
 @router.post("/problems/{pid}/run")
@@ -197,7 +210,7 @@ async def problem_run(pid: str, body: SubmitBody, user: dict = Depends(get_curre
         ok, out = await _run(body.code, t["input"])
         results.append({
             "test": i + 1, "ran": ok,
-            "output": (out or "")[:2000],
+            "output": (out or "")[:2000] if ok else _friendly_py_error(out),
             "expected": t["output"],
             "passed": ok and out.strip() == t["output"].strip(),
         })

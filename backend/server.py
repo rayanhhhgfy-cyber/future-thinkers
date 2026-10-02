@@ -35,6 +35,7 @@ from routes.badges_routes import router as badges_router
 from routes.ventures_routes import router as ventures_router
 from routes.library_routes import router as library_router
 from routes.engage_routes import router as engage_router
+from routes.errors_routes import router as errors_router
 from routes.goals_routes import router as goals_router
 from routes.uploads_routes import router as uploads_router
 from ws import hub
@@ -52,7 +53,7 @@ for r in (auth_router, geo_router, books_router, files_router, community_router,
           chess_router, events_router, leaderboard_router, social_router,
           content_router, admin_router, coding_router, showcase_router, cert_router,
           push_router, studio_router, badges_router, ventures_router, goals_router,
-          uploads_router, library_router, engage_router):
+          uploads_router, library_router, engage_router, errors_router):
     app.include_router(r)
 
 
@@ -146,7 +147,33 @@ async def health():
 
 @app.exception_handler(Exception)
 async def global_error_handler(request: Request, exc: Exception):
+    """Every unexpected server error is stored in full (traceback included) in
+    error_reports so the admin sees the real failure; users only get a short
+    friendly message. Logging must never break the error response itself."""
     logger.error(f"Unhandled error on {request.url.path}: {exc}", exc_info=True)
+    try:
+        import traceback as _tb
+        from db import db as _db, now_iso as _now
+        uid = uname = uemail = None
+        authz = request.headers.get("authorization") or ""
+        if authz.lower().startswith("bearer "):
+            try:
+                payload = jwt.decode(authz[7:], get_secret(), algorithms=["HS256"])
+                u = await _db.users.find_one({"_id": ObjectId(payload.get("sub", ""))}, {"name": 1, "email": 1})
+                if u:
+                    uid, uname, uemail = str(u["_id"]), u.get("name"), u.get("email")
+            except Exception:
+                pass
+        await _db.error_reports.insert_one({
+            "message": (str(exc) or exc.__class__.__name__)[:300],
+            "detail": "".join(_tb.format_exception(type(exc), exc, exc.__traceback__))[:20000],
+            "page": f"{request.method} {request.url.path}"[:300],
+            "source": "server", "context": "fastapi",
+            "user_id": uid, "user_name": uname, "user_email": uemail,
+            "status": "open", "contacted_at": None, "created_at": _now(),
+        })
+    except Exception:
+        pass
     return JSONResponse(status_code=500, content={"detail": "حدث خطأ غير متوقع، يرجى المحاولة لاحقاً"})
 
 
