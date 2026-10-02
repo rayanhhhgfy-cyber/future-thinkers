@@ -1,18 +1,68 @@
 import axios from "axios";
+import { signHeaders, signUrl, setSigKey, clearSigKey } from "@/lib/signing";
 
 const BACKEND_URL = (process.env.REACT_APP_BACKEND_URL || "").replace(/\/$/, "");
 const API = `${BACKEND_URL}/api`;
 
 const api = axios.create({ baseURL: API, withCredentials: true });
 
+/* Resolve the signable /api path for an axios config (no origin, no query). */
+function signablePath(config) {
+  let url = String(config?.url || "").split("?")[0];
+  if (/^https?:\/\//i.test(url)) {
+    try { return new URL(url).pathname; } catch { return url; }
+  }
+  const base = String(config?.baseURL || API);
+  let basePath = base;
+  if (/^https?:\/\//i.test(base)) {
+    try { basePath = new URL(base).pathname; } catch { basePath = ""; }
+  }
+  basePath = basePath.replace(/\/$/, "");
+  const rel = url.startsWith("/") ? url : `/${url}`;
+  return `${basePath}${rel}`;
+}
+
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("ft_token");
   if (token) config.headers.Authorization = `Bearer ${token}`;
+  // Sign every request (HMAC-SHA256) so scripted API abuse is rejected.
+  try {
+    const method = (config.method || "get").toUpperCase();
+    let bodyStr = "";
+    const d = config.data;
+    if (typeof d === "string") {
+      bodyStr = d;
+    } else if (d != null && typeof d === "object") {
+      const isForm = typeof FormData !== "undefined" && d instanceof FormData;
+      const isBlob = typeof Blob !== "undefined" && d instanceof Blob;
+      if (isForm || isBlob || d instanceof ArrayBuffer) {
+        bodyStr = ""; // binary/multipart bodies sign with the empty-body hash
+      } else {
+        // Pin the exact bytes axios will send so the signature matches.
+        bodyStr = JSON.stringify(d);
+        config.data = bodyStr;
+        config.transformRequest = [(x) => x];
+        const ct = typeof config.headers?.get === "function"
+          ? config.headers.get("Content-Type")
+          : config.headers?.["Content-Type"];
+        if (!ct) config.headers["Content-Type"] = "application/json";
+      }
+    }
+    const sig = signHeaders(method, signablePath(config), bodyStr);
+    config.headers["X-Ft-Ts"] = sig["X-Ft-Ts"];
+    config.headers["X-Ft-Nonce"] = sig["X-Ft-Nonce"];
+    config.headers["X-Ft-Sig"] = sig["X-Ft-Sig"];
+  } catch {}
   return config;
 });
 
 api.interceptors.response.use(
   (response) => {
+    // The server rotates a per-session signing key in auth responses.
+    try {
+      const k = response?.data?.sig_key;
+      if (typeof k === "string" && k) setSigKey(k);
+    } catch {}
     const contentType = response.headers?.["content-type"] || "";
     if (contentType.includes("text/html")) {
       return Promise.reject(new Error("تعذر الوصول إلى واجهة المنصة. تحقق من مسارات API."));
@@ -23,6 +73,23 @@ api.interceptors.response.use(
     const original = error?.config;
     const status = error?.response?.status;
     const url = original?.url || "";
+    // Signature rejected (stale/rotated session key): drop the key, fetch a
+    // fresh one from /auth/me (signed with the public key), then retry once.
+    // The resend passes the request interceptor again, so it is re-signed.
+    const sigCode = error?.response?.data?.code;
+    if (
+      status === 401 &&
+      original &&
+      !original._sigRetry &&
+      typeof sigCode === "string" &&
+      sigCode.startsWith("SIG_") &&
+      !url.includes("/auth/me")
+    ) {
+      original._sigRetry = true;
+      clearSigKey();
+      try { await api.get("/auth/me"); } catch {}
+      return api(original);
+    }
     // Silent refresh: the access token (7 days) may expire while the
     // refresh cookie (30 days) is still valid. Try the refresh endpoint once,
     // then retry the original request with the new token.
@@ -116,7 +183,7 @@ export async function reportError({ message, detail, context, source = "manual" 
   } catch { return false; }
 }
 
-export const fileUrl = (path) => (!path ? null : (path.startsWith("http") ? path : `${API}/files/${path}`));
+export const fileUrl = (path) => (!path ? null : (path.startsWith("http") ? path : signUrl(`${API}/files/${path}`)));
 
 export const wsUrl = (path) => {
   const base = (BACKEND_URL || window.location.origin).replace(/^http/, "ws");
