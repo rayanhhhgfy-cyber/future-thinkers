@@ -103,6 +103,7 @@ async def get_book(book_id: str, request: Request):
     d = _book_out(b)
     if user:
         d["is_favorite"] = bool(await db.favorites.find_one({"user_id": user["id"], "book_id": book_id}))
+        d["is_later"] = bool(await db.later_books.find_one({"user_id": user["id"], "book_id": book_id}))
         prog = await db.reading_progress.find_one({"user_id": user["id"], "book_id": book_id})
         d["my_progress"] = prog.get("percent", 0) if prog else 0
         d["my_last_page"] = prog.get("page", 1) if prog else 1
@@ -362,6 +363,64 @@ async def toggle_favorite(book_id: str, user: dict = Depends(get_current_user)):
     return {"favorite": True}
 
 
+@router.post("/{book_id}/later")
+async def toggle_later(book_id: str, user: dict = Depends(get_current_user)):
+    """Finish-later list (أكمل لاحقاً)."""
+    existing = await db.later_books.find_one({"user_id": user["id"], "book_id": book_id})
+    if existing:
+        await db.later_books.delete_one({"_id": existing["_id"]})
+        return {"later": False}
+    await db.later_books.insert_one({"user_id": user["id"], "book_id": book_id, "created_at": now_iso()})
+    return {"later": True}
+
+
+@router.get("/me/later")
+async def my_later(user: dict = Depends(get_current_user)):
+    docs = await db.later_books.find({"user_id": user["id"]}).sort("created_at", -1).to_list(500)
+    ids = [oid(d["book_id"]) for d in docs if oid(d["book_id"])]
+    books = await db.books.find({"_id": {"$in": ids}}).to_list(500)
+    by_id = {str(b["_id"]): b for b in books}
+    return [_book_out(by_id[d["book_id"]]) for d in docs if d["book_id"] in by_id]
+
+
+class PageBookmarkBody(BaseModel):
+    page: int = Field(ge=1)
+
+
+@router.get("/{book_id}/page-bookmarks")
+async def list_page_bookmarks(book_id: str, user: dict = Depends(get_current_user)):
+    docs = await db.page_bookmarks.find(
+        {"user_id": user["id"], "book_id": book_id}).sort("page", 1).to_list(200)
+    return sers(docs)
+
+
+@router.post("/{book_id}/page-bookmarks")
+async def add_page_bookmark(book_id: str, body: PageBookmarkBody, user: dict = Depends(get_current_user)):
+    b = await db.books.find_one({"_id": oid(book_id)})
+    if not b:
+        raise HTTPException(status_code=404, detail="الكتاب غير موجود")
+    existing = await db.page_bookmarks.find_one(
+        {"user_id": user["id"], "book_id": book_id, "page": body.page})
+    if existing:
+        await db.page_bookmarks.delete_one({"_id": existing["_id"]})
+        return {"bookmarked": False, "page": body.page}
+    res = await db.page_bookmarks.insert_one(
+        {"user_id": user["id"], "book_id": book_id, "page": body.page, "created_at": now_iso()})
+    doc = await db.page_bookmarks.find_one({"_id": res.inserted_id})
+    out = ser(doc)
+    out["bookmarked"] = True
+    return out
+
+
+@router.delete("/{book_id}/page-bookmarks/{bookmark_id}")
+async def delete_page_bookmark(book_id: str, bookmark_id: str, user: dict = Depends(get_current_user)):
+    res = await db.page_bookmarks.delete_one(
+        {"_id": oid(bookmark_id), "user_id": user["id"], "book_id": book_id})
+    if not res.deleted_count:
+        raise HTTPException(status_code=404, detail="الإشارة غير موجودة")
+    return {"ok": True}
+
+
 class ProgressBody(BaseModel):
     page: int = 1
     percent: float = 0
@@ -371,10 +430,17 @@ class ProgressBody(BaseModel):
 async def save_progress(book_id: str, body: ProgressBody, user: dict = Depends(get_current_user)):
     existing = await db.reading_progress.find_one({"user_id": user["id"], "book_id": book_id})
     completed_before = existing and existing.get("percent", 0) >= 95
+    old_furthest = 0
+    if existing:
+        old_furthest = existing.get("furthest") or existing.get("page") or 0
     await db.reading_progress.update_one(
         {"user_id": user["id"], "book_id": book_id},
         {"$set": {"page": body.page, "percent": body.percent, "updated_at": now_iso()},
+         "$max": {"furthest": body.page},
          "$setOnInsert": {"created_at": now_iso()}}, upsert=True)
+    pages_delta = max(0, body.page - old_furthest)
+    if pages_delta > 0:
+        await bump_stat(user["id"], "pages_read", pages_delta)
     if body.percent >= 95 and not completed_before:
         await bump_stat(user["id"], "books_read", 1)
         await award_xp(user["id"], await _points("read_book", 50), "إكمال قراءة كتاب", book_id)

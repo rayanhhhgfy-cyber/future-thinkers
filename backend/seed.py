@@ -89,6 +89,18 @@ ACHIEVEMENTS = [
     {"key": "streak_7", "title": "أسبوع متواصل", "description": "حافظت على نشاطك 7 أيام", "metric": "max_streak", "threshold": 7, "badge": "مثابر", "icon": "Flame"},
     {"key": "level_5", "title": "مفكر ناشئ", "description": "وصلت للمستوى 5", "metric": "level", "threshold": 5, "badge": "مفكر ناشئ", "icon": "Star"},
     {"key": "xp_2000", "title": "جامع الخبرة", "description": "جمعت 2000 نقطة خبرة", "metric": "xp", "threshold": 2000, "badge": "خبير", "icon": "Sparkles"},
+    {"key": "pages_100", "title": "مئة صفحة", "description": "قرأت 100 صفحة", "metric": "pages_read", "threshold": 100, "badge": "قارئ صفحات", "icon": "BookOpen"},
+    {"key": "pages_500", "title": "خمسمئة صفحة", "description": "قرأت 500 صفحة", "metric": "pages_read", "threshold": 500, "badge": "قارئ مثابر", "icon": "Library"},
+    {"key": "pages_1000", "title": "ألف صفحة", "description": "قرأت 1000 صفحة", "metric": "pages_read", "threshold": 1000, "badge": "قارئ نهم", "icon": "GraduationCap"},
+    {"key": "pages_5000", "title": "مكتبة متنقلة", "description": "قرأت 5000 صفحة", "metric": "pages_read", "threshold": 5000, "badge": "مكتبة متنقلة", "icon": "Rocket"},
+    {"key": "books_30", "title": "قارئ أسطوري", "description": "أكملت قراءة 30 كتاباً", "metric": "books_read", "threshold": 30, "badge": "أسطورة القراءة", "icon": "Crown"},
+    {"key": "chess_first_win", "title": "أول انتصار", "description": "فزت بأول مباراة شطرنج", "metric": "chess_wins", "threshold": 1, "badge": "منتصر", "icon": "Zap"},
+    {"key": "chess_tactician", "title": "تكتيكي", "description": "فزت بـ 5 مباريات شطرنج", "metric": "chess_wins", "threshold": 5, "badge": "تكتيكي", "icon": "Target"},
+    {"key": "chess_champion", "title": "بطل الحلبة", "description": "فزت بـ 25 مباراة شطرنج", "metric": "chess_wins", "threshold": 25, "badge": "بطل الحلبة", "icon": "Crown"},
+    {"key": "chess_veteran", "title": "محارب الرقعة", "description": "لعبت 25 مباراة شطرنج", "metric": "chess_games", "threshold": 25, "badge": "محارب الرقعة", "icon": "Medal"},
+    {"key": "streak_30", "title": "شهر متواصل", "description": "حافظت على نشاطك 30 يوماً", "metric": "max_streak", "threshold": 30, "badge": "لا يُقهر", "icon": "Flame"},
+    {"key": "level_10", "title": "مفكر راسخ", "description": "وصلت للمستوى 10", "metric": "level", "threshold": 10, "badge": "مفكر راسخ", "icon": "Star"},
+    {"key": "xp_10000", "title": "أسطورة النقاط", "description": "جمعت 10000 نقطة خبرة", "metric": "xp", "threshold": 10000, "badge": "أسطورة", "icon": "Trophy"},
 ]
 
 # شارات المهارات — اعتمادات مصغّرة يمنحها المشرفون يدوياً

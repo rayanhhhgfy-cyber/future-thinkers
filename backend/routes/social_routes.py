@@ -120,6 +120,15 @@ async def dashboard(user: dict = Depends(get_current_user)):
     active_chess = await db.chess_games.count_documents(
         {"$or": [{"white_id": uid}, {"black_id": uid}], "status": "active"})
     recent_notifs = await db.notifications.find({"user_id": uid}).sort("created_at", -1).limit(5).to_list(5)
+    later_docs = await db.later_books.find({"user_id": uid}).sort("created_at", -1).limit(4).to_list(4)
+    later_out = []
+    for d in later_docs:
+        b = await db.books.find_one({"_id": oid(d["book_id"])})
+        if b:
+            later_out.append({"id": str(b["_id"]), "title": b["title"], "author": b["author"],
+                              "cover_url": b.get("cover_url") or b.get("cover_path")})
+    later_count = await db.later_books.count_documents({"user_id": uid})
+    my_playlists = await db.playlists.find({"user_id": uid}).sort("updated_at", -1).limit(4).to_list(4)
     return {
         "xp": user.get("xp", 0), "level": user.get("level", 1),
         "level_title": user.get("level_title", "قارئ مبتدئ"), "streak": user.get("streak", 0),
@@ -130,6 +139,12 @@ async def dashboard(user: dict = Depends(get_current_user)):
         "chess_challenges": chess_challenges,
         "unread_notifications": unread,
         "books_read": user.get("stats", {}).get("books_read", 0),
+        "pages_read": user.get("stats", {}).get("pages_read", 0),
+        "later_books": later_out,
+        "later_count": later_count,
+        "my_playlists": [{"id": str(p["_id"]), "name": p.get("name", ""), "color": p.get("color", "#2563EB"),
+                          "icon": p.get("icon", "ListMusic"), "count": len(p.get("book_ids", []))}
+                         for p in my_playlists],
         "posts": user.get("stats", {}).get("posts", 0),
         "chess_rating": user.get("chess_rating", 1200),
         "my_ventures": [{"id": str(v["_id"]), "title": v.get("title"), "status": v.get("status"),
