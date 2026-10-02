@@ -147,6 +147,7 @@ export default function ClubDetail() {
   const tabs = SPECIAL[slug] || [["forum", "النقاشات"], ["leaderboard", "الصدارة"], ["members", "الأعضاء"]];
   const defaultTab = tabs[0][0];
   const activeTab = tab === "main" && slug !== "chess" ? defaultTab : (tab === "main" ? "main" : tab);
+  const arenaWide = slug === "chess" && activeTab === "main";
 
   return (
     <Layout>
@@ -187,7 +188,7 @@ export default function ClubDetail() {
           ))}
         </div>
 
-        <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-6 xl:gap-8 items-start">
+        <div className={arenaWide ? "items-start" : "lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-6 xl:gap-8 items-start"}>
           <div className="min-w-0">
             {slug === "chess" && activeTab === "main" && <ChessArena />}
             {activeTab === "coding" && <CodingPanel />}
@@ -198,6 +199,7 @@ export default function ClubDetail() {
             {activeTab === "members" && <MembersList slug={slug} />}
           </div>
 
+          {!arenaWide && (
           <aside className="hidden lg:block lg:sticky lg:top-[9.5rem] space-y-4">
             <div className="overflow-hidden rounded-[1.75rem] border border-slate-100 bg-white ft-shadow">
               <div className="relative px-5 pb-5 pt-6 text-white" style={{ background: `linear-gradient(135deg, ${club.color}, #0A192F)` }}>
@@ -240,6 +242,7 @@ export default function ClubDetail() {
               </div>
             </div>
           </aside>
+          )}
         </div>
       </div>
     </Layout>
