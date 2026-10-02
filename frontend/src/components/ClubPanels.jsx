@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import { PageLoader, EmptyState } from "@/components/Layout";
 import {
   Code2, Play, CheckCircle2, Lightbulb, ThumbsUp, Scale, Plus, ArrowRight, Loader2,
-  Terminal as TerminalIcon, FlaskConical, Search, Zap, XCircle, Trophy, Sparkles, Target,
+  FlaskConical, Search, Zap, XCircle, Trophy, Sparkles, Target, Copy, Check, RotateCcw, Braces,
 } from "lucide-react";
 
 /* ============ نادي البرمجة · Coding challenges ============ */
@@ -40,7 +40,8 @@ export function CodingPanel() {
   return (
     <div>
       {/* hero strip */}
-      <div className="relative overflow-hidden rounded-[1.8rem] bg-slate-950 text-white px-5 py-6 sm:px-7 mb-5">
+      <div className="relative overflow-hidden rounded-[1.8rem] bg-slate-950 text-white px-5 py-6 sm:px-7 mb-5 grain">
+        <Braces className="pointer-events-none absolute -left-6 -bottom-10 w-44 h-44 text-white/[0.04] rotate-12" />
         <div className="pointer-events-none absolute -top-24 -left-24 w-72 h-72 rounded-full bg-emerald-500/20 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-28 right-10 w-72 h-72 rounded-full bg-sky-500/10 blur-3xl" />
         <div className="relative flex flex-wrap items-center gap-x-8 gap-y-4">
@@ -49,7 +50,7 @@ export function CodingPanel() {
               <Code2 className="w-6 h-6" />
             </span>
             <div>
-              <h3 className="font-head font-extrabold text-lg leading-tight">تحديات البرمجة</h3>
+              <h3 className="font-head font-extrabold text-lg leading-tight">تحديات البرمجة <span className="text-emerald-400">· {problems.length}</span></h3>
               <p className="text-slate-400 text-xs mt-0.5">حلّل، اكتب بـ Python، واجمع نقاط الخبرة</p>
             </div>
           </div>
@@ -92,9 +93,10 @@ export function CodingPanel() {
             const d = DIFF[p.difficulty] || DIFF[1];
             return (
               <button key={p.id} data-testid={`coding-problem-${p.id}`} onClick={() => setActive(p.id)}
-                className="animate-fade-up group relative text-right bg-white rounded-[1.4rem] p-5 border border-slate-100 ft-shadow hover-lift overflow-hidden"
+                className="animate-fade-up group relative text-right bg-white rounded-[1.4rem] p-5 border border-slate-100 ft-shadow hover-lift overflow-hidden hover:ring-1 hover:ring-emerald-200"
                 style={{ animationDelay: `${Math.min(i, 8) * 60}ms` }}>
                 <span className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-l ${d.grad} opacity-80`} />
+                <span className={`pointer-events-none absolute -bottom-10 -left-10 w-28 h-28 rounded-full bg-gradient-to-br ${d.grad} opacity-0 group-hover:opacity-10 blur-2xl transition-opacity duration-500`} />
                 <div className="flex items-start justify-between gap-2">
                   <span className={`w-11 h-11 rounded-2xl bg-gradient-to-br ${d.grad} text-white grid place-items-center shadow-md`}><Code2 className="w-5 h-5" /></span>
                   {p.solved
@@ -122,8 +124,7 @@ function ProblemView({ pid, onBack }) {
   const [result, setResult] = useState(null);
   const [runResults, setRunResults] = useState(null);
   const [running, setRunning] = useState("");
-  const [stdin, setStdin] = useState("");
-  const [consoleOut, setConsoleOut] = useState(null);
+  const [copied, setCopied] = useState(false);
   useEffect(() => { api.get(`/coding/problems/${pid}`).then((r) => setP(r.data)); }, [pid]);
   const submit = async () => {
     setRunning("submit"); setResult(null);
@@ -135,10 +136,8 @@ function ProblemView({ pid, onBack }) {
     try { const { data } = await api.post(`/coding/problems/${pid}/run`, { code }); setRunResults(data.results); }
     catch (e) { toast.error(apiErr(e)); } finally { setRunning(""); }
   };
-  const runCustom = async () => {
-    setRunning("play"); setConsoleOut(null);
-    try { const { data } = await api.post(`/coding/run`, { code, stdin }); setConsoleOut(data); }
-    catch (e) { toast.error(apiErr(e)); } finally { setRunning(""); }
+  const copyCode = async () => {
+    try { await navigator.clipboard.writeText(code); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch { /* clipboard unavailable */ }
   };
   if (!p) return <PageLoader />;
   const d = DIFF[p.difficulty] || DIFF[1];
@@ -159,23 +158,33 @@ function ProblemView({ pid, onBack }) {
 
       <div className="grid lg:grid-cols-2 gap-5 items-start">
         {/* statement */}
-        <div className="bg-white rounded-[1.6rem] p-5 sm:p-6 border border-slate-100 ft-shadow">
-          <h3 className="font-head font-extrabold text-xl sm:text-2xl text-slate-900 leading-snug">{p.title}</h3>
-          <p className="mt-3 text-slate-600 leading-loose whitespace-pre-wrap text-[15px]">{p.statement}</p>
+        <div className="relative overflow-hidden bg-white rounded-[1.6rem] p-5 sm:p-6 border border-slate-100 ft-shadow">
+          <span className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-l ${d.grad}`} />
+          <div className="flex items-start gap-3">
+            <span className={`w-12 h-12 shrink-0 rounded-2xl bg-gradient-to-br ${d.grad} text-white grid place-items-center shadow-lg`}><Code2 className="w-6 h-6" /></span>
+            <h3 className="font-head font-extrabold text-xl sm:text-2xl text-slate-900 leading-snug pt-2">{p.title}</h3>
+          </div>
+          <p className="mt-4 text-slate-600 leading-loose whitespace-pre-wrap text-[15px]">{p.statement}</p>
 
           {p.sample_tests?.length > 0 && (
             <div className="mt-6">
               <div className="text-sm font-head font-bold text-slate-700 mb-2.5 flex items-center gap-2"><Sparkles className="w-4 h-4 text-amber-500" /> أمثلة على الإدخال والإخراج</div>
               <div className="space-y-2.5">
                 {p.sample_tests.map((t, i) => (
-                  <div key={i} className="grid grid-cols-2 rounded-2xl overflow-hidden ring-1 ring-slate-800/60 font-mono text-xs" dir="ltr">
-                    <div className="bg-slate-950 text-left p-3">
-                      <div className="text-[10px] font-bold tracking-widest text-sky-400 mb-1.5">INPUT</div>
-                      <pre className="text-slate-200 whitespace-pre-wrap break-all">{t.input || " "}</pre>
+                  <div key={i} className="rounded-2xl overflow-hidden ring-1 ring-slate-800 shadow-md">
+                    <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-800/90" dir="ltr">
+                      <span className="text-[10px] font-bold tracking-widest text-slate-400">CASE {i + 1}</span>
+                      <span className="ml-auto flex gap-1"><span className="w-1.5 h-1.5 rounded-full bg-sky-400" /><span className="w-1.5 h-1.5 rounded-full bg-emerald-400" /></span>
                     </div>
-                    <div className="bg-slate-900 text-left p-3 border-l border-white/10">
-                      <div className="text-[10px] font-bold tracking-widest text-emerald-400 mb-1.5">OUTPUT</div>
-                      <pre className="text-emerald-200 whitespace-pre-wrap break-all">{t.output || " "}</pre>
+                    <div className="grid grid-cols-2 font-mono text-xs" dir="ltr">
+                      <div className="bg-slate-950 text-left p-3">
+                        <div className="text-[10px] font-bold tracking-widest text-sky-400 mb-1.5">INPUT</div>
+                        <pre className="text-slate-200 whitespace-pre-wrap break-all">{t.input || " "}</pre>
+                      </div>
+                      <div className="bg-slate-900 text-left p-3 border-l border-white/10">
+                        <div className="text-[10px] font-bold tracking-widest text-emerald-400 mb-1.5">OUTPUT</div>
+                        <pre className="text-emerald-200 whitespace-pre-wrap break-all">{t.output || " "}</pre>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -183,44 +192,43 @@ function ProblemView({ pid, onBack }) {
             </div>
           )}
 
-          {/* debugger */}
-          <div className="mt-7">
-            <div className="flex items-center justify-between mb-2.5">
-              <span className="flex items-center gap-2 text-sm font-head font-bold text-slate-700"><TerminalIcon className="w-4 h-4 text-emerald-600" /> المصحّح · جرّب بإدخال مخصص</span>
-              <button onClick={runCustom} disabled={!!running}
-                className="pressable inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-l from-emerald-600 to-teal-600 text-white text-xs font-bold shadow-md shadow-emerald-600/25 disabled:opacity-50">
-                {running === "play" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5" />} تشغيل
-              </button>
-            </div>
-            <textarea value={stdin} onChange={(e) => setStdin(e.target.value)} dir="ltr" spellCheck={false} autoCapitalize="off" autoCorrect="off"
-              placeholder={"stdin… e.g. 7"} rows={2}
-              className="w-full bg-slate-950 text-slate-200 font-mono text-xs p-3.5 rounded-2xl ring-1 ring-slate-800 outline-none resize-none placeholder:text-slate-600 focus:ring-emerald-500/50 transition text-left" />
-            <Terminal className="mt-3" title="debugger · stdout"
-              status={running === "play" ? "running" : consoleOut ? (consoleOut.ok ? "ok" : "error") : "idle"}
-              rawText={consoleOut?.output || ""}>
-              {consoleOut && <TermLines text={consoleOut.output || "(لا مخرجات)"} error={!consoleOut.ok} okClass="text-emerald-200" />}
-            </Terminal>
-          </div>
         </div>
 
         {/* editor + results */}
         <div>
-          <div className="rounded-[1.4rem] overflow-hidden ring-1 ring-slate-800 shadow-[0_24px_60px_-24px_rgba(2,6,23,0.55)]">
-            <div className="flex items-center gap-3 px-4 py-2.5 bg-slate-900 border-b border-white/[0.06]" dir="ltr">
+          <div className="rounded-[1.4rem] overflow-hidden ring-1 ring-slate-800/80 shadow-[0_24px_60px_-24px_rgba(2,6,23,0.55)]">
+            <div className="flex items-center gap-2.5 px-3.5 py-2 bg-slate-900 border-b border-white/[0.06]" dir="ltr">
               <span className="flex gap-1.5">
                 <span className="w-3 h-3 rounded-full bg-[#ff5f57]" /><span className="w-3 h-3 rounded-full bg-[#febc2e]" /><span className="w-3 h-3 rounded-full bg-[#28c840]" />
               </span>
               <span className="font-mono text-xs text-slate-300">main.py</span>
-              <span className="ml-auto inline-flex items-center gap-1.5 text-[10px] font-bold px-2 py-1 rounded-md bg-emerald-400/10 text-emerald-300 ring-1 ring-emerald-400/20"><Code2 className="w-3 h-3" /> Python 3 · بيئة معزولة آمنة</span>
+              <span className="hidden sm:inline-flex items-center gap-1.5 text-[10px] font-bold px-2 py-1 rounded-md bg-emerald-400/10 text-emerald-300 ring-1 ring-emerald-400/20"><Code2 className="w-3 h-3" /> Python 3 · معزول وآمن</span>
+              <div className="ml-auto flex items-center gap-1">
+                <button onClick={copyCode} title="نسخ الكود"
+                  className="pressable grid place-items-center w-8 h-8 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition">
+                  {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+                </button>
+                <button onClick={() => setCode("# اكتب حلك هنا\n")} title="إعادة تعيين"
+                  className="pressable grid place-items-center w-8 h-8 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition">
+                  <RotateCcw className="w-3.5 h-3.5" />
+                </button>
+              </div>
             </div>
             <PythonEditor testId="code-editor" value={code} onChange={(e) => setCode(e.target.value)} minHeight={300} />
-            <div className="px-4 py-2 bg-slate-900 border-t border-white/[0.06] flex items-center justify-between text-[11px] text-slate-500" dir="ltr">
-              <span className="font-mono">{code.length} chars · {code.split("\n").length} lines</span>
-              <span>Tab = مسافتان · Ctrl+Enter = إرسال</span>
+            <div className="px-3.5 py-2 bg-slate-900 border-t border-white/[0.06] flex items-center gap-2 text-[11px] text-slate-500" dir="ltr">
+              <span className="font-mono">{code.split("\n").length} lines</span>
+              <span className="w-1 h-1 rounded-full bg-slate-600" />
+              <span className="font-mono">{code.length} chars</span>
+              <span className="ml-auto hidden sm:inline-flex items-center gap-1.5">
+                <kbd className="px-1.5 py-0.5 rounded bg-white/[0.07] border border-white/10 font-mono text-[10px] text-slate-300">Tab</kbd>
+                <span>= مسافتان</span>
+                <kbd className="px-1.5 py-0.5 rounded bg-white/[0.07] border border-white/10 font-mono text-[10px] text-slate-300">Ctrl+Enter</kbd>
+                <span>= إرسال</span>
+              </span>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-2.5 mt-4">
+          <div className="sticky bottom-3 z-20 mt-4 grid grid-cols-2 gap-2.5 rounded-[1.4rem] border border-slate-200/80 bg-white/85 backdrop-blur-md p-2.5 shadow-[0_18px_40px_-18px_rgba(15,23,42,0.35)]">
             <Button data-testid="run-samples-btn" onClick={runSamples} disabled={!!running} variant="outline"
               className="rounded-2xl h-12 border-slate-300 bg-white font-bold hover:border-emerald-400 hover:text-emerald-700">
               {running === "samples" ? <Loader2 className="w-4 h-4 animate-spin" /> : <><FlaskConical className="w-4 h-4 ml-1.5" /> تجربة الأمثلة</>}
