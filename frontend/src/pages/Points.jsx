@@ -10,8 +10,79 @@ import { toast } from "sonner";
 import {
   Sparkles, Flame, Coins, Award, Medal, Crown, BookOpen, Star, Rocket, Heart,
   Trophy, Calendar, MessageSquare, Gamepad2, TrendingUp, TrendingDown, Gift,
-  Target, Zap, ChevronDown, LogIn, Library, GraduationCap,
+  Target, Zap, ChevronDown, LogIn, Library, GraduationCap, ShoppingBag, Check, Lock,
 } from "lucide-react";
+
+const FRAME_STYLES = {
+  frame_emerald: "ring-emerald-400 shadow-emerald-200",
+  frame_gold: "ring-amber-400 shadow-amber-200",
+  frame_galaxy: "ring-violet-500 shadow-violet-300",
+};
+
+function StoreSection() {
+  const { user, refresh } = useAuth();
+  const [data, setData] = useState(null);
+  const [busy, setBusy] = useState("");
+  useEffect(() => { api.get("/store").then((r) => setData(r.data)).catch(() => setData({ items: [], xp: 0 })); }, []);
+  if (!data) return null;
+  const frames = data.items.filter((i) => i.kind === "frame");
+  const titles = data.items.filter((i) => i.kind === "title");
+
+  const buy = async (item) => {
+    setBusy(item.key);
+    try {
+      await api.post("/store/buy", { key: item.key });
+      toast.success(`مبروك! اشتريت «${item.name}» 🎉`);
+      const r = await api.get("/store"); setData(r.data); refresh();
+    } catch (e) { toast.error(e.response?.data?.detail || "تعذّرت عملية الشراء"); }
+    setBusy("");
+  };
+  const equip = async (item, on) => {
+    setBusy(item.key);
+    try {
+      await api.post("/store/equip", { kind: item.kind, key: on ? item.key : null });
+      const r = await api.get("/store"); setData(r.data); refresh();
+      toast.success(on ? "تم التفعيل ✨" : "تمت الإزالة");
+    } catch (e) { toast.error(e.response?.data?.detail || "تعذّر التفعيل"); }
+    setBusy("");
+  };
+
+  const renderItem = (item) => (
+    <div key={item.key} className={`rounded-2xl border p-4 flex flex-col items-center text-center gap-2 transition-all ${item.equipped ? "border-emerald-300 bg-emerald-50/60" : "border-slate-100 bg-slate-50/60"}`}>
+      {item.kind === "frame" ? (
+        <span className={`w-14 h-14 rounded-full bg-white grid place-items-center text-xl font-extrabold text-slate-700 ring-4 shadow-lg ${FRAME_STYLES[item.key] || "ring-slate-200"}`}>{user?.name?.[0] || "؟"}</span>
+      ) : (
+        <span className="px-3 py-1.5 rounded-full bg-gradient-to-l from-amber-400 to-yellow-500 text-amber-950 text-xs font-extrabold shadow">✦ {item.name}</span>
+      )}
+      <div className="font-bold text-sm text-slate-800">{item.name}</div>
+      {!item.owned ? (
+        <button onClick={() => buy(item)} disabled={busy === item.key || data.xp < item.cost}
+          className={`pressable inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-extrabold ${data.xp >= item.cost ? "bg-slate-900 text-white hover:bg-slate-800" : "bg-slate-200 text-slate-400 cursor-not-allowed"}`}>
+          {data.xp >= item.cost ? <Coins className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />} {item.cost} XP
+        </button>
+      ) : item.equipped ? (
+        <button onClick={() => equip(item, false)} disabled={busy === item.key} className="pressable inline-flex items-center gap-1 px-4 py-1.5 rounded-full text-xs font-extrabold bg-emerald-600 text-white"><Check className="w-3.5 h-3.5" /> مفعّل</button>
+      ) : (
+        <button onClick={() => equip(item, true)} disabled={busy === item.key} className="pressable px-4 py-1.5 rounded-full text-xs font-extrabold bg-white border border-emerald-300 text-emerald-700 hover:bg-emerald-50">تفعيل</button>
+      )}
+    </div>
+  );
+
+  return (
+    <section>
+      <h2 className="font-head font-extrabold text-lg text-slate-800 mb-1 flex items-center gap-2">
+        <ShoppingBag className="w-5 h-5 text-violet-600" /> متجر النقاط
+      </h2>
+      <p className="text-xs text-slate-400 mb-3">رصيدك: <b className="text-slate-600">{(data.xp || 0).toLocaleString("en-US")} XP</b> — كافئ نفسك بإطار صورة ولقب يظهر في ملفك ولوحات الشرف</p>
+      <div className="bg-white rounded-3xl border border-slate-100 ft-shadow p-5">
+        <div className="text-xs font-bold text-slate-400 mb-2">إطارات الصورة</div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-5">{frames.map(renderItem)}</div>
+        <div className="text-xs font-bold text-slate-400 mb-2">ألقاب الملف</div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">{titles.map(renderItem)}</div>
+      </div>
+    </section>
+  );
+}
 
 /* Arabic labels for XP transaction reasons (falls back to the raw reason) */
 const REASON_LABELS = {
@@ -246,6 +317,9 @@ export default function Points() {
             </div>
           </section>
         )}
+
+        {/* points store */}
+        <StoreSection />
 
         {/* history */}
         <section>

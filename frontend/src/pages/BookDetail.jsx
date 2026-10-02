@@ -6,7 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Star, Heart, BookOpen, ArrowRight, Eye, Bookmark, BookmarkCheck, Clock, Check, ListPlus } from "lucide-react";
+import { Star, Heart, BookOpen, ArrowRight, Eye, Bookmark, BookmarkCheck, Clock, Check, ListPlus, MessageSquare, Send, Trash2 } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useBookmarks } from "@/components/BookmarkButton";
 import BookCover from "@/components/BookCover";
@@ -35,12 +35,29 @@ export default function BookDetail() {
   const [rating, setRating] = useState(0);
   const [reviewText, setReviewText] = useState("");
   const [showPlaylists, setShowPlaylists] = useState(false);
+  const [comments, setComments] = useState([]);
+  const [commentText, setCommentText] = useState("");
   const { map: savedMap, toggle: toggleSaved } = useBookmarks();
   const isSaved = savedMap.has(`book:${id}`);
 
   const load = async () => {
     const [b, r] = await Promise.all([api.get(`/books/${id}`), api.get(`/books/${id}/reviews`)]);
     setBook(b.data); setReviews(r.data);
+    api.get(`/books/${id}/comments`).then((res) => setComments(res.data.items || [])).catch(() => {});
+  };
+  const submitComment = async () => {
+    if (!commentText.trim()) return;
+    try {
+      const { data } = await api.post(`/books/${id}/comments`, { text: commentText.trim() });
+      setComments((prev) => [data, ...prev]);
+      setCommentText("");
+    } catch (e) { toast.error(apiErr(e)); }
+  };
+  const deleteComment = async (cid) => {
+    try {
+      await api.delete(`/books/${id}/comments/${cid}`);
+      setComments((prev) => prev.filter((c) => c.id !== cid));
+    } catch (e) { toast.error(apiErr(e)); }
   };
   useEffect(() => { load(); }, [id]);
 
@@ -137,6 +154,45 @@ export default function BookDetail() {
                       <div className="flex-1">
                         <div className="flex items-center gap-2"><span className="font-semibold text-sm text-slate-800">{r.user_name}</span><span className="flex">{[1,2,3,4,5].map((s)=><Star key={s} className={`w-3.5 h-3.5 ${s<=r.rating?"text-amber-500 fill-amber-500":"text-slate-200"}`}/>)}</span></div>
                         {r.text && <p className="text-sm text-slate-600 mt-1">{r.text}</p>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Reader discussion */}
+            <div className="mt-10">
+              <h2 className="font-head font-bold text-xl mb-4 flex items-center gap-2"><MessageSquare className="w-5 h-5 text-blue-600" /> نقاش القرّاء ({comments.length})</h2>
+              {user ? (
+                <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100 mb-5 flex items-start gap-3">
+                  <Avatar className="w-9 h-9 shrink-0"><AvatarFallback className="bg-blue-100 text-blue-700 text-xs">{user.name?.[0]}</AvatarFallback></Avatar>
+                  <div className="flex-1">
+                    <Textarea value={commentText} onChange={(e) => setCommentText(e.target.value)} placeholder="ماذا أعجبك في الكتاب؟ سؤال يراودك؟" className="rounded-xl bg-white" rows={2} />
+                    <Button onClick={submitComment} disabled={!commentText.trim()} className="mt-2 rounded-xl bg-slate-900 hover:bg-slate-800">
+                      <Send className="w-4 h-4 ml-1" /> انشر في النقاش
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-slate-400 mb-5">سجّل دخولك للانضمام إلى نقاش القرّاء.</p>
+              )}
+              {comments.length === 0 ? <p className="text-slate-400 text-sm">لا تعليقات بعد — ابدأ النقاش!</p> : (
+                <div className="space-y-4">
+                  {comments.map((c) => (
+                    <div key={c.id} className="flex gap-3 group">
+                      {c.avatar_url ? <img src={c.avatar_url} alt="" className="w-9 h-9 rounded-full object-cover shrink-0" /> : (
+                        <Avatar className="w-9 h-9 shrink-0"><AvatarFallback className="bg-blue-100 text-blue-700 text-xs">{c.user_name?.[0]}</AvatarFallback></Avatar>
+                      )}
+                      <div className="flex-1 bg-slate-50 rounded-2xl rounded-tr-sm px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-sm text-slate-800">{c.user_name}</span>
+                          <span className="text-[11px] text-slate-400">{String(c.created_at || "").slice(0, 10)}</span>
+                          {user && c.user_id === user.id && (
+                            <button onClick={() => deleteComment(c.id)} className="mr-auto opacity-0 group-hover:opacity-100 transition-opacity text-slate-300 hover:text-rose-500" aria-label="حذف التعليق"><Trash2 className="w-3.5 h-3.5" /></button>
+                          )}
+                        </div>
+                        <p className="text-sm text-slate-600 mt-0.5 whitespace-pre-wrap">{c.text}</p>
                       </div>
                     </div>
                   ))}
