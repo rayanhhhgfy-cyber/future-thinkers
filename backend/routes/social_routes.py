@@ -37,6 +37,13 @@ THEME_PRESETS = ("emerald", "royal", "sunset", "violet", "ocean", "gold", "rose"
 _HEX = __import__("re").compile(r"^#[0-9a-fA-F]{6}$")
 
 
+THEME_FONTS = ("plex", "cairo", "tajawal", "almarai", "readex")
+THEME_RADII = ("soft", "sharp", "round")
+THEME_DENSITIES = ("normal", "compact", "spacious")
+THEME_SHADOWS = ("normal", "soft", "bold")
+DESIGN_DEFAULTS = {"font": "plex", "radius": "soft", "density": "normal", "shadow": "normal"}
+
+
 def _design_config(stored: dict | None) -> dict:
     """الإعدادات الافتراضية + أي قيم محفوظة (تُطهَّر دائماً قبل الإرجاع)."""
     v = (stored or {}).get("value") or {}
@@ -49,9 +56,17 @@ def _design_config(stored: dict | None) -> dict:
             for k in ("a", "b", "c", "accent"))):
         custom = None
     eff = v.get("effects") or {}
+    raw_design = v.get("design") or {}
+    design = {
+        "font": raw_design.get("font") if raw_design.get("font") in THEME_FONTS else DESIGN_DEFAULTS["font"],
+        "radius": raw_design.get("radius") if raw_design.get("radius") in THEME_RADII else DESIGN_DEFAULTS["radius"],
+        "density": raw_design.get("density") if raw_design.get("density") in THEME_DENSITIES else DESIGN_DEFAULTS["density"],
+        "shadow": raw_design.get("shadow") if raw_design.get("shadow") in THEME_SHADOWS else DESIGN_DEFAULTS["shadow"],
+    }
     return {"preset": preset, "custom": custom,
             "effects": {"grain": bool(eff.get("grain", True)),
-                        "motion": bool(eff.get("motion", True))}}
+                        "motion": bool(eff.get("motion", True))},
+            "design": design}
 
 
 @router.get("/theme")

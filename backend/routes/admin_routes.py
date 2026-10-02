@@ -682,18 +682,31 @@ class EffectsBody(BaseModel):
     motion: bool = True
 
 
+class DesignBody(BaseModel):
+    font: str = "plex"
+    radius: str = "soft"
+    density: str = "normal"
+    shadow: str = "normal"
+
+
 class ThemeBody(BaseModel):
     preset: str
     custom: CustomColors | None = None
     effects: EffectsBody = EffectsBody()
+    design: DesignBody = DesignBody()
 
 
 @router.put("/theme")
 async def set_theme(body: ThemeBody, request: Request,
                     user: dict = Depends(require_permission("cms.manage"))):
-    from routes.social_routes import THEME_PRESETS
+    from routes.social_routes import (THEME_PRESETS, THEME_FONTS, THEME_RADII,
+                                      THEME_DENSITIES, THEME_SHADOWS)
     if body.preset not in THEME_PRESETS:
         raise HTTPException(status_code=400, detail="سمة غير معروفة")
+    d = body.design
+    if (d.font not in THEME_FONTS or d.radius not in THEME_RADII
+            or d.density not in THEME_DENSITIES or d.shadow not in THEME_SHADOWS):
+        raise HTTPException(status_code=400, detail="خيار تصميم غير صالح")
     custom = None
     if body.custom is not None:
         raw = body.custom.model_dump()
@@ -701,7 +714,9 @@ async def set_theme(body: ThemeBody, request: Request,
             raise HTTPException(status_code=400, detail="لون غير صالح · استخدم صيغة #RRGGBB")
         custom = {k: v.lower() for k, v in raw.items()}
     config = {"preset": body.preset, "custom": custom,
-              "effects": {"grain": bool(body.effects.grain), "motion": bool(body.effects.motion)}}
+              "effects": {"grain": bool(body.effects.grain), "motion": bool(body.effects.motion)},
+              "design": {"font": d.font, "radius": d.radius,
+                         "density": d.density, "shadow": d.shadow}}
     await db.settings.update_one({"key": "theme"},
                                  {"$set": {"value": config}}, upsert=True)
     await audit_log(user, "theme_change", "settings", "theme",
