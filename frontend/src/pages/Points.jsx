@@ -64,9 +64,9 @@ function StoreSection() {
           {data.xp >= item.cost ? <Coins className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />} {item.cost} XP
         </button>
       ) : item.equipped ? (
-        <button onClick={() => equip(item, false)} disabled={busy === item.key} className="pressable inline-flex items-center gap-1 px-4 py-1.5 rounded-full text-xs font-extrabold bg-emerald-600 text-white"><Check className="w-3.5 h-3.5" /> مفعّل</button>
+        <button onClick={() => equip(item, false)} disabled={busy === item.key} className="pressable inline-flex items-center gap-1 px-4 py-1.5 rounded-full text-xs font-extrabold ft-btn-solid"><Check className="w-3.5 h-3.5" /> مفعّل</button>
       ) : (
-        <button onClick={() => equip(item, true)} disabled={busy === item.key} className="pressable px-4 py-1.5 rounded-full text-xs font-extrabold bg-white border border-emerald-300 text-emerald-700 hover:bg-emerald-50">تفعيل</button>
+        <button onClick={() => equip(item, true)} disabled={busy === item.key} className="pressable px-4 py-1.5 rounded-full text-xs font-extrabold ft-chip">تفعيل</button>
       )}
     </div>
   );
@@ -128,7 +128,7 @@ const FALLBACK_EARN = [
   { key: "join_competition", label: "الانضمام لمسابقة", pts: 20, icon: Medal, tint: "bg-cyan-100 text-cyan-600" },
   { key: "win_competition", label: "الفوز بمسابقة", pts: 100, icon: Trophy, tint: "bg-amber-100 text-amber-700" },
   { key: "create_discussion", label: "بدء نقاش", pts: 15, icon: MessageSquare, tint: "bg-sky-100 text-sky-600" },
-  { key: "upload_book_approved", label: "اعتماد كتاب ترفعه", pts: 40, icon: BookOpen, tint: "bg-emerald-100 text-emerald-600" },
+  { key: "upload_book_approved", label: "اعتماد كتاب ترفعه", pts: 40, icon: BookOpen, tint: "ft-bg-soft-2 ft-text-accent" },
 ];
 
 const ACH_ICONS = { Award, Trophy, Medal, Star, Crown, Flame, BookOpen, Sparkles, Rocket, Target, Zap, Library, GraduationCap };
@@ -203,7 +203,7 @@ export default function Points() {
           icon={Coins}
           title="سجل الدخول لرؤية نقاطك"
           desc="نقاط الخبرة والمستويات وسجل النشاط بانتظارك."
-          action={<Link to="/login" className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-emerald-600 text-white font-bold"><LogIn className="w-4 h-4" />تسجيل الدخول</Link>}
+          action={<Link to="/login" className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl ft-btn-solid font-bold"><LogIn className="w-4 h-4" />تسجيل الدخول</Link>}
         />
       </Layout>
     );
@@ -330,7 +330,7 @@ export default function Points() {
         {/* history */}
         <section>
           <h2 className="font-head font-extrabold text-lg text-slate-800 mb-3 flex items-center gap-2">
-            <TrendingUp className="w-5 h-5 text-emerald-600" /> سجل النقاط
+            <TrendingUp className="w-5 h-5 ft-text-accent" /> سجل النقاط
           </h2>
           <div className="bg-white rounded-3xl border border-slate-100 ft-shadow overflow-hidden">
             {history.length === 0 ? (

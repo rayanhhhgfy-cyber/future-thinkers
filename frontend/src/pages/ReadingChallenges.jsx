@@ -24,7 +24,7 @@ export default function ReadingChallenges() {
     catch (e) { toast.error(apiErr(e)); }
   };
 
-  const inputCls = "rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm outline-none focus:border-emerald-500 focus:bg-white transition w-full";
+  const inputCls = "rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm outline-none ft-focus-border-accent focus:bg-white transition w-full";
   return (
     <Layout>
       <div className="max-w-6xl mx-auto px-4 py-8">
@@ -40,7 +40,7 @@ export default function ReadingChallenges() {
             {items && items.length > 0 && (
               <div className="mt-6 flex flex-wrap gap-2 text-xs font-bold">
                 <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 ring-1 ring-white/20 text-white backdrop-blur-sm"><Target className="w-3.5 h-3.5 text-amber-300" /> {items.length} تحدٍّ جارٍ</span>
-                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 ring-1 ring-white/20 text-white backdrop-blur-sm"><Users className="w-3.5 h-3.5 text-emerald-300" /> {items.reduce((s, c) => s + (c.member_count || 0), 0)} مشارك</span>
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 ring-1 ring-white/20 text-white backdrop-blur-sm"><Users className="w-3.5 h-3.5 ft-text-accent-bright" /> {items.reduce((s, c) => s + (c.member_count || 0), 0)} مشارك</span>
                 <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 ring-1 ring-white/20 text-white backdrop-blur-sm"><Flame className="w-3.5 h-3.5 text-orange-300" /> {items.reduce((s, c) => s + (c.target_pages || 0), 0)} صفحة هدف</span>
               </div>
             )}
@@ -49,7 +49,7 @@ export default function ReadingChallenges() {
 
         <div className="animate-fade-up relative overflow-hidden bg-white rounded-[1.8rem] border border-slate-100 ft-shadow hover-lift p-5 sm:p-6 mb-8">
           <span className="absolute inset-x-0 top-0 h-1 bg-gradient-to-l from-emerald-500 via-teal-400 to-amber-400" />
-          <h2 className="font-head font-extrabold text-slate-900 mb-5 flex items-center gap-2.5"><span className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white grid place-items-center shadow-md shadow-emerald-500/25"><Plus className="w-5 h-5" /></span> أطلق تحدّياً جديداً</h2>
+          <h2 className="font-head font-extrabold text-slate-900 mb-5 flex items-center gap-2.5"><span className="w-9 h-9 rounded-xl ft-icon-tile grid place-items-center shadow-md"><Plus className="w-5 h-5" /></span> أطلق تحدّياً جديداً</h2>
           <div className="grid sm:grid-cols-[1fr_150px_130px_auto] gap-3 items-end">
             <label className="block">
               <span className="block text-[11px] font-bold text-slate-400 mb-1.5">الاسم</span>
@@ -65,7 +65,7 @@ export default function ReadingChallenges() {
                 {[3, 7, 14, 30, 60, 90].map((d) => <option key={d} value={d}>{d} يوم</option>)}
               </select>
             </label>
-            <button onClick={create} disabled={creating} className="pressable h-[46px] px-7 rounded-xl bg-gradient-to-l from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 shadow-lg shadow-emerald-600/25 text-white text-sm font-bold disabled:opacity-50">{creating ? "…" : "إطلاق"}</button>
+            <button onClick={create} disabled={creating} className="pressable h-[46px] px-7 rounded-xl ft-btn-primary shadow-lg text-sm font-bold disabled:opacity-50">{creating ? "…" : "إطلاق"}</button>
           </div>
         </div>
 
@@ -119,10 +119,10 @@ export default function ReadingChallenges() {
                         return (
                           <div key={m.user_id} className={`flex items-center gap-2.5 rounded-2xl px-2 py-1.5 ${i === 0 ? "bg-amber-50/70 ring-1 ring-amber-100" : ""}`}>
                             <span className={`w-6 text-center text-xs font-black shrink-0 ${i === 0 ? "text-amber-500" : "text-slate-300"}`}>{i === 0 ? <Crown className="w-4 h-4 mx-auto" /> : i + 1}</span>
-                            <span className={`w-8 h-8 rounded-full grid place-items-center text-[11px] font-black text-white shrink-0 bg-gradient-to-br ${i === 0 ? "from-amber-400 to-orange-500" : i === 1 ? "from-slate-400 to-slate-500" : i === 2 ? "from-orange-300 to-amber-500" : "from-emerald-500 to-teal-600"}`}>{m.name?.[0] || "؟"}</span>
-                            <Link to={`/profile/${m.user_id}`} className="text-xs font-bold text-slate-600 w-24 sm:w-28 truncate hover:text-emerald-700 shrink-0">{m.name}</Link>
+                            <span className={`w-8 h-8 rounded-full grid place-items-center text-[11px] font-black text-white shrink-0 ${i === 0 ? "bg-gradient-to-br from-amber-400 to-orange-500" : i === 1 ? "bg-gradient-to-br from-slate-400 to-slate-500" : i === 2 ? "bg-gradient-to-br from-orange-300 to-amber-500" : "ft-icon-tile"}`}>{m.name?.[0] || "؟"}</span>
+                            <Link to={`/profile/${m.user_id}`} className="text-xs font-bold text-slate-600 w-24 sm:w-28 truncate ft-hover-text-accent shrink-0">{m.name}</Link>
                             <div className="flex-1 h-2 rounded-full bg-slate-100 overflow-hidden">
-                              <div className={`h-full rounded-full transition-all duration-500 bg-gradient-to-l ${i === 0 ? "from-amber-400 to-orange-400" : "from-emerald-500 to-teal-400"}`} style={{ width: `${pct}%` }} />
+                              <div className={`h-full rounded-full transition-all duration-500 ${i === 0 ? "bg-gradient-to-l from-amber-400 to-orange-400" : "ft-grad-bar"}`} style={{ width: `${pct}%` }} />
                             </div>
                             <span className="text-[11px] font-bold text-slate-400 w-14 text-left shrink-0">{m.pages} ص</span>
                           </div>
@@ -136,7 +136,7 @@ export default function ReadingChallenges() {
             </div>
           </>
         )}
-        <div className="mt-8 flex items-center gap-3 rounded-2xl bg-emerald-50/70 ring-1 ring-emerald-100 px-4 py-3.5 text-xs font-semibold text-emerald-800"><span className="w-8 h-8 rounded-xl bg-white text-emerald-600 grid place-items-center shrink-0 shadow-sm"><Clock className="w-4 h-4" /></span> تُحتسب الصفحات تلقائياً من قراءتك داخل الموقع · بدون أي إدخال يدوي.</div>
+        <div className="mt-8 flex items-center gap-3 rounded-2xl ft-bg-soft ring-1 ft-ring-accent px-4 py-3.5 text-xs font-semibold ft-text-accent"><span className="w-8 h-8 rounded-xl bg-white ft-text-accent grid place-items-center shrink-0 shadow-sm"><Clock className="w-4 h-4" /></span> تُحتسب الصفحات تلقائياً من قراءتك داخل الموقع · بدون أي إدخال يدوي.</div>
       </div>
     </Layout>
   );

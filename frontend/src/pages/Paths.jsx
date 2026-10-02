@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { Route, Map, BookOpen, Code2, Trophy, CheckCircle2, Check, Sparkles, Zap } from "lucide-react";
 
 const KIND = {
-  book: { icon: BookOpen, label: "كتاب", to: (r) => `/books/${r}`, c: "bg-emerald-50 text-emerald-600" },
+  book: { icon: BookOpen, label: "كتاب", to: (r) => `/books/${r}`, c: "ft-bg-soft ft-text-accent" },
   problem: { icon: Code2, label: "مسألة برمجة", to: () => "/clubs/programming", c: "bg-slate-900 text-white" },
   competition: { icon: Trophy, label: "مسابقة", to: (r) => `/competitions/${r}`, c: "bg-amber-50 text-amber-600" },
 };
@@ -48,10 +48,10 @@ export default function Paths() {
             {list.length > 0 && (
               <div className="flex flex-wrap gap-2 mt-6">
                 <span className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-white/10 ring-1 ring-white/20 backdrop-blur text-white text-xs font-bold">
-                  <Map className="w-4 h-4 text-emerald-300" /> {heroDonePaths}/{list.length} مسارات مكتملة
+                  <Map className="w-4 h-4 ft-text-accent-bright" /> {heroDonePaths}/{list.length} مسارات مكتملة
                 </span>
                 <span className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-white/10 ring-1 ring-white/20 backdrop-blur text-white text-xs font-bold">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-300" /> {heroDoneSteps}/{heroTotalSteps} خطوة منجزة
+                  <CheckCircle2 className="w-4 h-4 ft-text-accent-bright" /> {heroDoneSteps}/{heroTotalSteps} خطوة منجزة
                 </span>
                 <span className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-white/10 ring-1 ring-white/20 backdrop-blur text-white text-xs font-bold">
                   <Zap className="w-4 h-4 text-amber-300" /> حتى {heroTotalXp} XP
@@ -162,7 +162,7 @@ export default function Paths() {
                               <div className="flex gap-2 mt-3">
                                 <Link to={k.to(s.ref_id)} className="flex-1 inline-flex items-center justify-center h-11 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors">افتح</Link>
                                 <button onClick={() => claim(p, i)} disabled={claiming === `${p.id}:${i}`}
-                                  className="pressable flex-1 inline-flex items-center justify-center gap-1 h-11 rounded-xl bg-gradient-to-l from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold shadow-md shadow-emerald-600/25 disabled:opacity-50">
+                                  className="pressable flex-1 inline-flex items-center justify-center gap-1 h-11 rounded-xl ft-btn-primary text-xs font-bold shadow-md disabled:opacity-50">
                                   <CheckCircle2 className="w-4 h-4" /> {claiming === `${p.id}:${i}` ? "…" : "أنجزت"}
                                 </button>
                               </div>

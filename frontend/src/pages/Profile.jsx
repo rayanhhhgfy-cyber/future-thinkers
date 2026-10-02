@@ -99,18 +99,18 @@ export default function Profile() {
             </div>
             <div className="flex sm:flex-col items-center sm:items-end gap-3 shrink-0 pb-1">
               <div className="flex items-center gap-4 text-sm bg-white/10 backdrop-blur rounded-2xl px-4 py-2.5">
-                <button onClick={() => openList("followers")} className="text-center hover:text-emerald-300 transition-colors">
+                <button onClick={() => openList("followers")} className="text-center ft-hover-text-bright transition-colors">
                   <div className="font-head font-extrabold text-base leading-none">{p.followers_count || 0}</div>
                   <div className="text-[10px] text-white/70 mt-1">متابِع</div>
                 </button>
                 <span className="w-px h-8 bg-white/20" />
-                <button onClick={() => openList("following")} className="text-center hover:text-emerald-300 transition-colors">
+                <button onClick={() => openList("following")} className="text-center ft-hover-text-bright transition-colors">
                   <div className="font-head font-extrabold text-base leading-none">{p.following_count || 0}</div>
                   <div className="text-[10px] text-white/70 mt-1">يُتابَع</div>
                 </button>
               </div>
               {!isMine && user && (
-                <button onClick={toggleFollow} className={`pressable inline-flex items-center gap-1.5 px-5 py-2.5 rounded-full text-sm font-extrabold shadow-lg ${p.is_following ? "bg-white/20 text-white backdrop-blur" : "bg-emerald-500 text-white hover:bg-emerald-400"}`}>
+                <button onClick={toggleFollow} className={`pressable inline-flex items-center gap-1.5 px-5 py-2.5 rounded-full text-sm font-extrabold shadow-lg ${p.is_following ? "bg-white/20 text-white backdrop-blur" : "ft-btn-solid"}`}>
                   {p.is_following ? <><UserCheck className="w-4 h-4" /> تتابعه</> : <><UserPlus className="w-4 h-4" /> متابعة</>}
                 </button>
               )}
@@ -204,18 +204,18 @@ export default function Profile() {
                 )}
               </div>
               <div>
-                <h2 className="font-head font-bold text-lg mb-3 flex items-center gap-2"><Award className="w-5 h-5 text-emerald-600" /> الشهادات ({certs.length})</h2>
+                <h2 className="font-head font-bold text-lg mb-3 flex items-center gap-2"><Award className="w-5 h-5 ft-text-accent" /> الشهادات ({certs.length})</h2>
                 {certs.length === 0 ? <p className="text-slate-400 text-sm bg-white rounded-2xl p-6 text-center border border-slate-100">لا شهادات بعد · تُمنح للتميز والمشاركة 🏅</p> : (
                   <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
                     {certs.map((c) => (
-                      <div key={c.id} className="flex items-center gap-3 bg-gradient-to-l from-emerald-50 to-white rounded-2xl p-4 border border-emerald-100 ft-shadow">
-                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white grid place-items-center shrink-0"><Award className="w-6 h-6" /></div>
+                      <div key={c.id} className="flex items-center gap-3 ft-bg-soft rounded-2xl p-4 border ft-border-accent ft-shadow">
+                        <div className="w-12 h-12 rounded-2xl ft-icon-tile grid place-items-center shrink-0"><Award className="w-6 h-6" /></div>
                         <div className="flex-1 min-w-0">
                           <div className="font-bold text-slate-800 text-sm truncate">{c.title_line}</div>
                           <div className="text-xs text-slate-400">{c.subtitle ? `${c.subtitle} · ` : ""}{String(c.created_at || "").slice(0, 10)}</div>
                         </div>
                         {isMine && (
-                          <button onClick={() => downloadCert(c.id)} className="pressable shrink-0 w-9 h-9 rounded-xl bg-emerald-600 text-white grid place-items-center" aria-label="تحميل الشهادة PDF">
+                          <button onClick={() => downloadCert(c.id)} className="pressable shrink-0 w-9 h-9 rounded-xl ft-btn-solid grid place-items-center" aria-label="تحميل الشهادة PDF">
                             <Download className="w-4 h-4" />
                           </button>
                         )}
@@ -254,13 +254,13 @@ export default function Profile() {
         <div className="fixed inset-0 z-50 grid place-items-center p-4 bg-slate-900/50 backdrop-blur-sm" onClick={() => setListModal(null)}>
           <div className="bg-white rounded-3xl w-full max-w-md max-h-[70vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between p-4 border-b border-slate-100">
-              <h3 className="font-head font-bold flex items-center gap-2"><Users className="w-5 h-5 text-emerald-600" />{listModal === "followers" ? "المتابِعون" : "يتابَعهم"}</h3>
+              <h3 className="font-head font-bold flex items-center gap-2"><Users className="w-5 h-5 ft-text-accent" />{listModal === "followers" ? "المتابِعون" : "يتابَعهم"}</h3>
               <button onClick={() => setListModal(null)} className="w-8 h-8 grid place-items-center rounded-full hover:bg-slate-100"><X className="w-4 h-4" /></button>
             </div>
             <div className="overflow-y-auto p-3 space-y-1">
               {listItems.length === 0 ? <p className="text-sm text-slate-400 text-center py-8">لا أحد هنا بعد</p> : listItems.map((u) => (
                 <Link key={u.id} to={`/profile/${u.id}`} onClick={() => setListModal(null)} className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-slate-50">
-                  {u.avatar_url ? <img src={u.avatar_url} alt="" className="w-10 h-10 rounded-full object-cover" /> : <span className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-700 grid place-items-center font-bold">{u.name?.[0]}</span>}
+                  {u.avatar_url ? <img src={u.avatar_url} alt="" className="w-10 h-10 rounded-full object-cover" /> : <span className="w-10 h-10 rounded-full ft-bg-soft-2 ft-text-accent grid place-items-center font-bold">{u.name?.[0]}</span>}
                   <div className="flex-1 min-w-0">
                     <div className="font-semibold text-sm text-slate-800 truncate">{u.name}</div>
                     <div className="text-[11px] text-slate-400">المستوى {u.level} · {u.xp} XP</div>

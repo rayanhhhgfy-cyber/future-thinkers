@@ -308,7 +308,7 @@ export default function Leaderboard() {
                 >
                   {period === p.v && (
                     <motion.span layoutId="lb-period-pill" transition={{ type: "spring", stiffness: 420, damping: 34 }}
-                      className="absolute inset-0 rounded-full bg-emerald-600" />
+                      className="absolute inset-0 rounded-full ft-btn-solid" />
                   )}
                   <span className="relative">{p.l}</span>
                 </button>
@@ -321,7 +321,7 @@ export default function Leaderboard() {
               value={q} onChange={(e) => setQ(e.target.value)}
               placeholder="ابحث بالاسم…"
               data-testid="lb-search"
-              className="w-full bg-white border border-slate-200 rounded-full py-2.5 pr-10 pl-4 text-sm font-medium text-slate-700 placeholder:text-slate-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-400 transition"
+              className="w-full bg-white border border-slate-200 rounded-full py-2.5 pr-10 pl-4 text-sm font-medium text-slate-700 placeholder:text-slate-400 shadow-sm focus:outline-none focus:ring-2 ft-ring-accent ft-focus-border-accent transition"
             />
           </div>
         </div>
@@ -400,7 +400,7 @@ function MyStandingCard({ standing, user }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: EASE }}
-      className="relative overflow-hidden rounded-[28px] p-5 sm:p-6 mb-6 text-white bg-gradient-to-bl from-emerald-600 via-teal-600 to-emerald-700 ft-shadow"
+      className="relative overflow-hidden rounded-[28px] p-5 sm:p-6 mb-6 text-white ft-hero-gradient ft-shadow"
       data-testid="lb-my-standing"
     >
       <div className="absolute -top-14 -left-14 w-48 h-48 rounded-full bg-white/10 blur-2xl" />
@@ -414,34 +414,34 @@ function MyStandingCard({ standing, user }) {
           </span>
         )}
         <div className="flex-1 min-w-[180px]">
-          <div className="text-[11px] font-bold text-emerald-100/90 flex items-center gap-1.5">
+          <div className="text-[11px] font-bold text-white/90 flex items-center gap-1.5">
             <Medal className="w-3.5 h-3.5" /> ترتيبك الحالي
           </div>
           <div className="font-head text-xl font-extrabold mt-0.5 leading-snug">
-            {rank ? <>المركز <span className="text-amber-300">#{rank}</span> <span className="text-sm font-bold text-emerald-100/80">من {total} {isStudent ? "طالب" : "عضو"}</span></> : "·"}
+            {rank ? <>المركز <span className="text-amber-300">#{rank}</span> <span className="text-sm font-bold text-white/80">من {total} {isStudent ? "طالب" : "عضو"}</span></> : "·"}
           </div>
-          <div className="text-xs text-emerald-100/85 mt-0.5">{standing.level_title} · المستوى {standing.level}</div>
+          <div className="text-xs text-white/85 mt-0.5">{standing.level_title} · المستوى {standing.level}</div>
         </div>
         <div className="flex items-center gap-2 sm:gap-3">
           <div className="text-center bg-white/10 ring-1 ring-white/20 rounded-2xl px-3.5 py-2">
             <div className="font-extrabold text-lg leading-none"><CountUp value={standing.xp} /></div>
-            <div className="text-[10px] text-emerald-100/80 mt-1">نقطة خبرة</div>
+            <div className="text-[10px] text-white/80 mt-1">نقطة خبرة</div>
           </div>
           {(standing.streak || 0) > 0 && (
             <div className="text-center bg-white/10 ring-1 ring-white/20 rounded-2xl px-3.5 py-2">
               <div className="font-extrabold text-lg leading-none flex items-center gap-1 justify-center">
                 <Flame className="w-4 h-4 text-orange-300" />{standing.streak}
               </div>
-              <div className="text-[10px] text-emerald-100/80 mt-1">يوم متتالٍ</div>
+              <div className="text-[10px] text-white/80 mt-1">يوم متتالٍ</div>
             </div>
           )}
           {standing.chess_rank && (
             <div className="text-center bg-white/10 ring-1 ring-white/20 rounded-2xl px-3.5 py-2">
               <div className="font-extrabold text-lg leading-none text-amber-300">#{standing.chess_rank}</div>
-              <div className="text-[10px] text-emerald-100/80 mt-1">في الشطرنج · {standing.chess_rating}</div>
+              <div className="text-[10px] text-white/80 mt-1">في الشطرنج · {standing.chess_rating}</div>
             </div>
           )}
-          <Link to="/points" className="hidden sm:inline-flex px-4 py-2.5 rounded-full bg-white text-emerald-700 text-xs font-extrabold shadow hover:bg-emerald-50 transition">
+          <Link to="/points" className="hidden sm:inline-flex px-4 py-2.5 rounded-full bg-white ft-text-accent text-xs font-extrabold shadow ft-hover-bg-soft transition">
             نقاطي
           </Link>
         </div>
@@ -519,7 +519,7 @@ function RowItem({ r, i, tab, accent, maxScore, meId }) {
     <motion.div
       initial={{ opacity: 0, x: 26 }} animate={{ opacity: 1, x: 0 }}
       transition={{ delay: Math.min(i * 0.045, 0.45), duration: 0.32, ease: EASE }}
-      className={`relative flex items-center gap-3 px-4 sm:px-5 py-3.5 border-b border-slate-50 last:border-0 transition-colors ${isMe ? "bg-emerald-50/80 hover:bg-emerald-50" : "hover:bg-slate-50 active:bg-slate-100"}`}
+      className={`relative flex items-center gap-3 px-4 sm:px-5 py-3.5 border-b border-slate-50 last:border-0 transition-colors ${isMe ? "bg-emerald-50/80 ft-hover-bg-soft" : "hover:bg-slate-50 active:bg-slate-100"}`}
     >
       {isMe && <span className="absolute inset-y-0 right-0 w-1 bg-gradient-to-b from-emerald-400 to-teal-500" />}
       <span className={`w-9 h-9 rounded-xl grid place-items-center text-sm font-extrabold shrink-0 ${medal || "bg-slate-100 text-slate-500"}`}>{r.rank}</span>

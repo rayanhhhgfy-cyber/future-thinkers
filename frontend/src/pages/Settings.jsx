@@ -22,7 +22,7 @@ const NOTIF_KINDS = [
 function Toggle({ on, onClick, disabled }) {
   return (
     <button type="button" onClick={onClick} disabled={disabled} role="switch" aria-checked={!!on}
-      className={`relative w-12 h-7 rounded-full transition-colors shrink-0 disabled:opacity-40 ${on ? "bg-emerald-500" : "bg-slate-300"}`}>
+      className={`relative w-12 h-7 rounded-full transition-colors shrink-0 disabled:opacity-40 ${on ? "ft-btn-solid" : "bg-slate-300"}`}>
       <span className={`absolute top-1 w-5 h-5 rounded-full bg-white shadow transition-all ${on ? "left-1" : "right-1"}`} />
     </button>
   );
@@ -41,7 +41,7 @@ function Card({ icon: Icon, color, title, desc, children }) {
   );
 }
 
-const inputCls = "w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 focus:bg-white transition";
+const inputCls = "w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 outline-none ft-focus-border-accent focus:ring-2 ft-ring-accent focus:bg-white transition";
 
 export default function Settings() {
   const { user, refresh } = useAuth();
@@ -209,13 +209,13 @@ export default function Settings() {
             </div>
             <span className="text-sm text-slate-500">صفحة يومياً</span>
             <button onClick={() => save("goal", { daily_goal_pages: goal }, "حُفظ هدفك اليومي 🎯")} disabled={saving === "goal"}
-              className="pressable px-5 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-bold disabled:opacity-50">
+              className="pressable px-5 py-2.5 rounded-xl ft-btn-solid text-sm font-bold disabled:opacity-50">
               {saving === "goal" ? "…" : "حفظ الهدف"}
             </button>
           </div>
           <div className="flex gap-1.5 mt-4">
             {[10, 20, 30, 50, 100].map((n) => (
-              <button key={n} onClick={() => setGoal(n)} className={`px-3 py-1.5 rounded-full text-xs font-bold ${goal === n ? "bg-emerald-600 text-white" : "bg-slate-100 text-slate-600 hover:bg-emerald-50"}`}>{n}</button>
+              <button key={n} onClick={() => setGoal(n)} className={`px-3 py-1.5 rounded-full text-xs font-bold ${goal === n ? "ft-btn-solid" : "bg-slate-100 text-slate-600 ft-hover-bg-soft"}`}>{n}</button>
             ))}
           </div>
         </Card>
@@ -279,7 +279,7 @@ export default function Settings() {
             </div>
             <input type={show ? "text" : "password"} value={next} onChange={(e) => setNext(e.target.value)} className={inputCls} required minLength={6} placeholder="كلمة المرور الجديدة" autoComplete="new-password" data-testid="new-password" />
             <input type={show ? "text" : "password"} value={confirm} onChange={(e) => setConfirm(e.target.value)} className={inputCls} required minLength={6} placeholder="تأكيد كلمة المرور الجديدة" autoComplete="new-password" data-testid="confirm-password" />
-            <button type="submit" disabled={pwSaving} data-testid="change-password-submit" className="pressable w-full rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold py-2.5 transition-colors">
+            <button type="submit" disabled={pwSaving} data-testid="change-password-submit" className="pressable w-full rounded-xl ft-btn-solid disabled:opacity-50 font-bold py-2.5 transition-colors">
               {pwSaving ? "جارٍ الحفظ…" : "حفظ كلمة المرور الجديدة"}
             </button>
           </form>
