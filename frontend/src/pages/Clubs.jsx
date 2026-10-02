@@ -25,8 +25,8 @@ export default function Clubs() {
         <Users className="absolute -left-8 -bottom-10 w-52 h-52 sm:w-72 sm:h-72 text-white/[0.04] pointer-events-none -rotate-12" />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 lg:py-20 relative">
           <div className="animate-fade-up max-w-3xl">
-            <span className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full bg-white/10 border border-white/15 text-emerald-200 backdrop-blur"><Users className="w-3.5 h-3.5" /> مجتمع الطلاب المبدعين</span>
-            <h1 className="font-head text-[2rem] leading-[1.15] sm:text-4xl lg:text-[3.4rem] font-extrabold mt-4">الأندية <span className="text-transparent bg-clip-text bg-gradient-to-l from-emerald-300 via-teal-200 to-sky-300">الطلابية</span></h1>
+            <span className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full bg-white/10 border border-white/15 ft-text-accent-bright backdrop-blur"><Users className="w-3.5 h-3.5" /> مجتمع الطلاب المبدعين</span>
+            <h1 className="font-head text-[2rem] leading-[1.15] sm:text-4xl lg:text-[3.4rem] font-extrabold mt-4">الأندية <span className="ft-text-gradient">الطلابية</span></h1>
             <p className="text-slate-300 mt-3 max-w-2xl text-[15px] leading-relaxed sm:text-base sm:leading-loose">مساحات تفاعلية للقراءة والحوار والشطرنج والبرمجة والعلوم والابتكار والمناظرات والأدب وريادة الأعمال.</p>
           </div>
           <div className="grid grid-cols-1 min-[430px]:grid-cols-3 gap-3 mt-8 sm:mt-10 animate-fade-up" style={{ animationDelay: "120ms" }}>
@@ -47,7 +47,7 @@ export default function Clubs() {
         <div className="flex items-end justify-between gap-3 mb-5 sm:mb-6">
           <div>
             <h2 className="font-head font-extrabold text-xl sm:text-2xl lg:text-[1.7rem] text-slate-900">استكشف الأندية</h2>
-            <div className="mt-2 h-1 w-14 rounded-full bg-gradient-to-l from-emerald-500 to-sky-500" />
+            <div className="mt-2 h-1 w-14 rounded-full ft-grad-bar" />
           </div>
           <span className="text-xs sm:text-sm text-slate-400 whitespace-nowrap">{clubs.length} نادٍ متاح</span>
         </div>
@@ -61,7 +61,7 @@ export default function Clubs() {
                 <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" style={{ background: `linear-gradient(160deg, ${c.color}0d, transparent 55%)` }} />
                 <div className="relative flex items-start justify-between gap-2">
                   <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl grid place-items-center text-white shrink-0 transition-all duration-300 group-hover:scale-110 group-hover:-rotate-6" style={{ background: `linear-gradient(135deg, ${c.color}, ${c.color}B3)`, boxShadow: `0 14px 28px -10px ${c.color}90` }}><Icon className="w-7 h-7 sm:w-8 sm:h-8 drop-shadow" /></div>
-                  {c.is_member && <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100 shrink-0"><Check className="w-3 h-3" /> عضو</span>}
+                  {c.is_member && <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full ft-chip shrink-0"><Check className="w-3 h-3" /> عضو</span>}
                 </div>
                 <h3 className="relative font-head font-extrabold text-lg sm:text-xl text-slate-900 mt-4 transition-colors duration-300 group-hover:text-slate-950">{c.name}</h3>
                 <p className="relative mt-2 text-sm text-slate-500 line-clamp-2 leading-relaxed min-h-[2.75rem]">{c.description}</p>

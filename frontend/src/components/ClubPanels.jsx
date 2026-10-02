@@ -46,11 +46,11 @@ export function CodingPanel() {
         <div className="pointer-events-none absolute -bottom-28 right-10 w-72 h-72 rounded-full bg-sky-500/10 blur-3xl" />
         <div className="relative flex flex-wrap items-center gap-x-8 gap-y-4">
           <div className="flex items-center gap-3.5">
-            <span className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-600 grid place-items-center shadow-lg shadow-emerald-500/30">
+            <span className="w-12 h-12 rounded-2xl ft-icon-tile grid place-items-center shadow-lg">
               <Code2 className="w-6 h-6" />
             </span>
             <div>
-              <h3 className="font-head font-extrabold text-lg leading-tight">تحديات البرمجة <span className="text-emerald-400">· {problems.length}</span></h3>
+              <h3 className="font-head font-extrabold text-lg leading-tight">تحديات البرمجة <span className="ft-text-accent-bright">· {problems.length}</span></h3>
               <p className="text-slate-400 text-xs mt-0.5">حلّل، اكتب بـ Python، واجمع نقاط الخبرة</p>
             </div>
           </div>
@@ -62,7 +62,7 @@ export function CodingPanel() {
           <div className="w-full sm:w-56 mr-auto">
             <div className="flex justify-between text-[11px] text-slate-400 mb-1.5"><span>تقدّمك</span><span>{problems.length ? Math.round((solved / problems.length) * 100) : 0}%</span></div>
             <div className="h-2 rounded-full bg-white/10 overflow-hidden">
-              <div className="h-full rounded-full bg-gradient-to-l from-emerald-400 to-teal-400 transition-all duration-700" style={{ width: `${problems.length ? (solved / problems.length) * 100 : 0}%` }} />
+              <div className="h-full rounded-full ft-grad-bar transition-all duration-700" style={{ width: `${problems.length ? (solved / problems.length) * 100 : 0}%` }} />
             </div>
           </div>
         </div>
@@ -73,7 +73,7 @@ export function CodingPanel() {
         <div className="relative flex-1">
           <Search className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="ابحث عن مسألة…"
-            className="w-full rounded-2xl border border-slate-200 bg-white py-2.5 pr-10 pl-4 text-sm outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 transition" />
+            className="w-full rounded-2xl border border-slate-200 bg-white py-2.5 pr-10 pl-4 text-sm outline-none focus:ring-2 ft-ring-accent transition" />
         </div>
         <div className="flex gap-1.5 overflow-x-auto pb-0.5">
           {[[0, "الكل"], [1, "سهلة"], [2, "متوسطة"], [3, "صعبة"]].map(([v, l]) => (
@@ -93,7 +93,7 @@ export function CodingPanel() {
             const d = DIFF[p.difficulty] || DIFF[1];
             return (
               <button key={p.id} data-testid={`coding-problem-${p.id}`} onClick={() => setActive(p.id)}
-                className="animate-fade-up group relative text-right bg-white rounded-[1.4rem] p-5 border border-slate-100 ft-shadow hover-lift overflow-hidden hover:ring-1 hover:ring-emerald-200"
+                className="animate-fade-up group relative text-right bg-white rounded-[1.4rem] p-5 border border-slate-100 ft-shadow hover-lift overflow-hidden hover:ring-1 ft-ring-accent"
                 style={{ animationDelay: `${Math.min(i, 8) * 60}ms` }}>
                 <span className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-l ${d.grad} opacity-80`} />
                 <span className={`pointer-events-none absolute -bottom-10 -left-10 w-28 h-28 rounded-full bg-gradient-to-br ${d.grad} opacity-0 group-hover:opacity-10 blur-2xl transition-opacity duration-500`} />
@@ -103,7 +103,7 @@ export function CodingPanel() {
                     ? <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200"><CheckCircle2 className="w-3.5 h-3.5" /> محلولة</span>
                     : <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full ring-1 ${d.chip}`}>{d.label}</span>}
                 </div>
-                <h3 className="font-head font-bold text-slate-900 mt-3.5 leading-snug group-hover:text-emerald-700 transition-colors">{p.title}</h3>
+                <h3 className="font-head font-bold text-slate-900 mt-3.5 leading-snug ft-group-hover-text-accent transition-colors">{p.title}</h3>
                 <div className="mt-3 flex items-center gap-2 flex-wrap text-[11px] font-bold">
                   <span className={`${d.star} tracking-tight`}>{"★".repeat(p.difficulty)}<span className="text-slate-200">{"★".repeat(3 - p.difficulty)}</span></span>
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-50 text-amber-700"><Zap className="w-3 h-3" /> +{p.xp} خبرة</span>
@@ -230,11 +230,11 @@ function ProblemView({ pid, onBack }) {
 
           <div className="sticky bottom-3 z-20 mt-4 grid grid-cols-2 gap-2.5 rounded-[1.4rem] border border-slate-200/80 bg-white/85 backdrop-blur-md p-2.5 shadow-[0_18px_40px_-18px_rgba(15,23,42,0.35)]">
             <Button data-testid="run-samples-btn" onClick={runSamples} disabled={!!running} variant="outline"
-              className="rounded-2xl h-12 border-slate-300 bg-white font-bold hover:border-emerald-400 hover:text-emerald-700">
+              className="rounded-2xl h-12 border-slate-300 bg-white font-bold ft-hover-border-accent ft-hover-text-accent">
               {running === "samples" ? <Loader2 className="w-4 h-4 animate-spin" /> : <><FlaskConical className="w-4 h-4 ml-1.5" /> تجربة الأمثلة</>}
             </Button>
             <Button data-testid="run-code-btn" onClick={submit} disabled={!!running}
-              className="rounded-2xl h-12 font-bold bg-gradient-to-l from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 shadow-lg shadow-emerald-600/25">
+              className="rounded-2xl h-12 font-bold ft-btn-primary shadow-lg">
               {running === "submit" ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Play className="w-4 h-4 ml-1.5" /> إرسال الحل</>}
             </Button>
           </div>
@@ -311,12 +311,12 @@ export function ProjectsPanel() {
     <div>
       <div className="flex justify-end mb-4">
         <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild><Button data-testid="new-project-btn" className="rounded-xl bg-emerald-600 hover:bg-emerald-700"><Plus className="w-4 h-4 ml-1" /> مشروع جديد</Button></DialogTrigger>
+          <DialogTrigger asChild><Button data-testid="new-project-btn" className="rounded-xl ft-btn-solid"><Plus className="w-4 h-4 ml-1" /> مشروع جديد</Button></DialogTrigger>
           <DialogContent>
             <DialogHeader><DialogTitle>نشر مشروع ابتكاري</DialogTitle></DialogHeader>
             <Input data-testid="project-title" placeholder="عنوان المشروع" value={f.title} onChange={(e) => setF((x) => ({ ...x, title: e.target.value }))} className="rounded-xl" />
             <Textarea data-testid="project-desc" placeholder="اشرح فكرتك…" value={f.description} onChange={(e) => setF((x) => ({ ...x, description: e.target.value }))} className="rounded-xl min-h-[120px]" />
-            <DialogFooter><Button data-testid="project-submit" onClick={create} className="rounded-xl bg-emerald-600">نشر</Button></DialogFooter>
+            <DialogFooter><Button data-testid="project-submit" onClick={create} className="rounded-xl ft-btn-solid">نشر</Button></DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
@@ -328,7 +328,7 @@ export function ProjectsPanel() {
               <h3 className="font-head font-bold text-slate-900">{p.title}</h3>
               <p className="text-sm text-slate-500 line-clamp-3 mt-1">{p.description}</p>
               <div className="mt-3 text-xs text-slate-400">{p.author_name} · {p.school_name || "·"}</div>
-              <Button data-testid={`vote-project-${p.id}`} onClick={() => vote(p.id)} variant={p.voted ? "default" : "outline"} size="sm" className={`mt-3 rounded-xl ${p.voted ? "bg-emerald-600 hover:bg-emerald-700" : ""}`}><ThumbsUp className="w-4 h-4 ml-1" /> {p.votes_count} تصويت</Button>
+              <Button data-testid={`vote-project-${p.id}`} onClick={() => vote(p.id)} variant={p.voted ? "default" : "outline"} size="sm" className={`mt-3 rounded-xl ${p.voted ? "ft-btn-solid" : ""}`}><ThumbsUp className="w-4 h-4 ml-1" /> {p.votes_count} تصويت</Button>
             </div>
           ))}
         </div>
@@ -351,7 +351,7 @@ export function DebatesPanel() {
     <div>
       <div className="flex justify-end mb-4">
         <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild><Button data-testid="new-debate-btn" className="rounded-xl bg-emerald-600 hover:bg-emerald-700"><Plus className="w-4 h-4 ml-1" /> موضوع مناظرة</Button></DialogTrigger>
+          <DialogTrigger asChild><Button data-testid="new-debate-btn" className="rounded-xl ft-btn-solid"><Plus className="w-4 h-4 ml-1" /> موضوع مناظرة</Button></DialogTrigger>
           <DialogContent>
             <DialogHeader><DialogTitle>طرح موضوع مناظرة</DialogTitle></DialogHeader>
             <Input data-testid="debate-title" placeholder="عنوان المناظرة (مثال: التعلّم عن بُعد أفضل من الحضوري)" value={f.title} onChange={(e) => setF((x) => ({ ...x, title: e.target.value }))} className="rounded-xl" />
@@ -360,7 +360,7 @@ export function DebatesPanel() {
               <Input placeholder="الطرف الأول" value={f.side_a} onChange={(e) => setF((x) => ({ ...x, side_a: e.target.value }))} className="rounded-xl" />
               <Input placeholder="الطرف الثاني" value={f.side_b} onChange={(e) => setF((x) => ({ ...x, side_b: e.target.value }))} className="rounded-xl" />
             </div>
-            <DialogFooter><Button data-testid="debate-submit" onClick={create} className="rounded-xl bg-emerald-600">نشر</Button></DialogFooter>
+            <DialogFooter><Button data-testid="debate-submit" onClick={create} className="rounded-xl ft-btn-solid">نشر</Button></DialogFooter>
           </DialogContent>
         </Dialog>
       </div>

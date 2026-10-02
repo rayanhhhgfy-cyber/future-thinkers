@@ -47,7 +47,7 @@ function DialogueForum({ slug }) {
           {cats.map((c) => <button key={c} onClick={() => setCat(c)} className={`pressable shrink-0 min-h-[40px] px-4 py-1.5 rounded-full text-sm font-semibold transition-colors ${cat === c ? "bg-blue-600 text-white shadow-lg shadow-blue-600/25" : "bg-white border border-slate-200 text-slate-600 hover:border-blue-300 hover:text-blue-700"}`}>{c}</button>)}
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild><Button data-testid="new-discussion-btn" className="pressable shrink-0 min-h-[44px] rounded-xl bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-600/25"><Plus className="w-4 h-4 ml-1" /> نقاش جديد</Button></DialogTrigger>
+          <DialogTrigger asChild><Button data-testid="new-discussion-btn" className="pressable shrink-0 min-h-[44px] rounded-xl ft-btn-solid shadow-lg"><Plus className="w-4 h-4 ml-1" /> نقاش جديد</Button></DialogTrigger>
           <DialogContent>
             <DialogHeader><DialogTitle>إنشاء نقاش جديد</DialogTitle></DialogHeader>
             <div className="space-y-3">
@@ -210,7 +210,7 @@ function MembersList({ slug }) {
         <Link key={m.id} to={`/profile/${m.id}`} className="group flex items-center gap-3 bg-white rounded-3xl p-4 sm:p-5 border border-slate-100 ft-shadow hover-lift pressable animate-fade-up" style={{ animationDelay: `${Math.min(idx, 10) * 50}ms` }}>
           <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white grid place-items-center font-head font-extrabold shrink-0 shadow-lg shadow-blue-500/25 ring-4 ring-blue-50/60 transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-3">{m.name?.[0]}</div>
           <div className="flex-1 min-w-0"><div className="font-bold text-slate-800 truncate group-hover:text-blue-700 transition-colors">{m.name}</div><div className="text-xs text-slate-400 truncate">{m.school_name}</div></div>
-          <div className="text-[11px] text-emerald-700 font-extrabold bg-emerald-50 border border-emerald-100 px-2.5 py-1 rounded-full shrink-0">مستوى {m.level}</div>
+          <div className="text-[11px] ft-text-accent font-extrabold ft-bg-soft border ft-border-accent px-2.5 py-1 rounded-full shrink-0">مستوى {m.level}</div>
         </Link>
       ))}
     </div>
