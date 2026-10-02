@@ -14,7 +14,7 @@ const CLUB_ICON = (name) => Icons[name] || Icons.Circle;
 const CLAMP_CLASSES = { 2: "line-clamp-2", 3: "line-clamp-3", 4: "line-clamp-4" };
 
 // Collapsible "read more" wrapper: shows a preview, expands to full text on arrow tap.
-// Nothing is excluded — all content stays, just collapsed by default.
+// Nothing is excluded · all content stays, just collapsed by default.
 function ReadMore({ children, lines = 3 }) {
   const [expanded, setExpanded] = useState(false);
   return (

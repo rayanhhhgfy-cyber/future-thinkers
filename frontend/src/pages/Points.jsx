@@ -76,13 +76,13 @@ function StoreSection() {
       <h2 className="font-head font-extrabold text-lg text-slate-800 mb-1 flex items-center gap-2">
         <ShoppingBag className="w-5 h-5 text-violet-600" /> متجر النقاط
       </h2>
-      <p className="text-xs text-slate-400 mb-3">رصيدك: <b className="text-slate-600">{(data.xp || 0).toLocaleString("en-US")} XP</b> — كافئ نفسك بإطار صورة ولقب يظهر في ملفك ولوحات الشرف</p>
+      <p className="text-xs text-slate-400 mb-3">رصيدك: <b className="text-slate-600">{(data.xp || 0).toLocaleString("en-US")} XP</b> · كافئ نفسك بإطار صورة ولقب يظهر في ملفك ولوحات الشرف</p>
       <div className="bg-white rounded-3xl border border-slate-100 ft-shadow p-5">
         <div className="text-xs font-bold text-slate-400 mb-2">إطارات الصورة</div>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-5">{frames.map(renderItem)}</div>
         <div className="text-xs font-bold text-slate-400 mb-2">ألقاب الملف</div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">{titles.map(renderItem)}</div>
-        <div className="text-xs font-bold text-slate-400 mb-2">أدوات تحمي تقدمك — تملك {data.streak_freezes || 0} حماية سلسلة</div>
+        <div className="text-xs font-bold text-slate-400 mb-2">أدوات تحمي تقدمك · تملك {data.streak_freezes || 0} حماية سلسلة</div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">{tools.map(renderItem)}</div>
         <p className="text-[11px] text-slate-300 mt-3">حماية السلسلة تُستخدم تلقائياً عندما تغيب يوماً واحداً فتحافظ على سلسلة أيامك.</p>
       </div>
@@ -149,7 +149,7 @@ export default function Points() {
     if (!user) return;
     api.get("/gamification/me").then((r) => setGam(r.data)).catch(() => {});
     api.get("/gamification/achievements").then((r) => setAchievements(r.data || [])).catch(() => {});
-    // points table — may not exist yet; fall back to built-in defaults
+    // points table · may not exist yet; fall back to built-in defaults
     api.get("/gamification/points-table")
       .then((r) => {
         const pts = r.data?.points;
@@ -334,7 +334,7 @@ export default function Points() {
           </h2>
           <div className="bg-white rounded-3xl border border-slate-100 ft-shadow overflow-hidden">
             {history.length === 0 ? (
-              <div className="p-10 text-center text-slate-400 text-sm">لا نشاط بعد — ابدأ بجمع النقاط اليوم! ✨</div>
+              <div className="p-10 text-center text-slate-400 text-sm">لا نشاط بعد · ابدأ بجمع النقاط اليوم! ✨</div>
             ) : (
               history.map((t, i) => {
                 const pos = (t.amount || 0) >= 0;

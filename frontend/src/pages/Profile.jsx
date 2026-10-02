@@ -205,7 +205,7 @@ export default function Profile() {
               </div>
               <div>
                 <h2 className="font-head font-bold text-lg mb-3 flex items-center gap-2"><Award className="w-5 h-5 text-emerald-600" /> الشهادات ({certs.length})</h2>
-                {certs.length === 0 ? <p className="text-slate-400 text-sm bg-white rounded-2xl p-6 text-center border border-slate-100">لا شهادات بعد — تُمنح للتميز والمشاركة 🏅</p> : (
+                {certs.length === 0 ? <p className="text-slate-400 text-sm bg-white rounded-2xl p-6 text-center border border-slate-100">لا شهادات بعد · تُمنح للتميز والمشاركة 🏅</p> : (
                   <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
                     {certs.map((c) => (
                       <div key={c.id} className="flex items-center gap-3 bg-gradient-to-l from-emerald-50 to-white rounded-2xl p-4 border border-emerald-100 ft-shadow">
@@ -230,7 +230,7 @@ export default function Profile() {
           {tab === "achievements" && (
             <div>
               <h2 className="font-head font-bold text-lg mb-3 flex items-center gap-2"><Trophy className="w-5 h-5 text-amber-600" /> الإنجازات ({p.achievements.length})</h2>
-              {p.achievements.length === 0 ? <p className="text-slate-400 text-sm bg-white rounded-2xl p-6 text-center border border-slate-100">لا إنجازات بعد — أول إنجاز أقرب مما تظن ✨</p> : (
+              {p.achievements.length === 0 ? <p className="text-slate-400 text-sm bg-white rounded-2xl p-6 text-center border border-slate-100">لا إنجازات بعد · أول إنجاز أقرب مما تظن ✨</p> : (
                 <Stagger className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
                   {p.achievements.map((a) => {
                     const Icon = Icons[a.icon] || Icons.Award;

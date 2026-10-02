@@ -28,7 +28,7 @@ const PERIODS = [
 ];
 const VENTURE_STATUS = { open: "مفتوح", in_progress: "قيد التنفيذ", completed: "مكتمل", draft: "مسودة" };
 const EMPTY_HINTS = {
-  students: { t: "لا أبطال بعد", d: "كن أول من يتصدّر القائمة — اقرأ كتاباً أو سجّل حضورك اليومي واجمع النقاط." },
+  students: { t: "لا أبطال بعد", d: "كن أول من يتصدّر القائمة · اقرأ كتاباً أو سجّل حضورك اليومي واجمع النقاط." },
   schools: { t: "لا مدارس على القائمة بعد", d: "ستظهر المدارس هنا بمجرد أن يبدأ طلابها بجمع النقاط." },
   directorates: { t: "لا مديريات بعد", d: "تتنافس المديريات بمجموع نقاط طلابها." },
   governorates: { t: "لا محافظات بعد", d: "تتنافس المحافظات بمجموع نقاط طلابها." },
@@ -50,7 +50,7 @@ function SeasonsBoard() {
       <div className="relative overflow-hidden rounded-[1.8rem] bg-gradient-to-l from-amber-500 via-orange-500 to-rose-500 p-6 sm:p-8 text-white ft-shadow mb-5">
         <Crown className="absolute -left-4 -bottom-8 w-40 h-40 text-white/15" />
         <h3 className="font-head font-extrabold text-2xl relative">قاعة مشاهير المواسم 🏆</h3>
-        <p className="text-white/85 text-sm mt-1.5 relative max-w-lg">كل شهر يُتوَّج أبطال جديدون — أفضل 3 جامعي نقاط يخلّدون أسماءهم هنا للأبد. الشهر الحالي يُحسم مع نهايته.</p>
+        <p className="text-white/85 text-sm mt-1.5 relative max-w-lg">كل شهر يُتوَّج أبطال جديدون · أفضل 3 جامعي نقاط يخلّدون أسماءهم هنا للأبد. الشهر الحالي يُحسم مع نهايته.</p>
       </div>
       <div className="grid sm:grid-cols-3 gap-4">
         {seasons.map((s) => {
@@ -149,7 +149,7 @@ function BattleCard() {
         <div className="relative">
           <div className="flex items-center justify-center gap-2 mb-4">
             <Swords className="w-5 h-5 text-amber-400" />
-            <h3 className="font-head font-extrabold">معركة المدارس — هذا الأسبوع</h3>
+            <h3 className="font-head font-extrabold">معركة المدارس · هذا الأسبوع</h3>
             <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-400/30">مباشر</span>
           </div>
           <div className="flex items-end justify-between gap-3 mb-2">
@@ -246,7 +246,7 @@ export default function Leaderboard() {
             initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1, duration: 0.5, ease: EASE }}
             className="text-slate-300 mt-3 max-w-2xl"
           >
-            من يتألق الآن؟ ترتيب الطلاب والمدارس وأبطال الشطرنج وأجمل أعمال الاستوديو وأقوى المشاريع — كلها في مكان واحد، وتُحدَّث مع كل نقطة تُكتسب.
+            من يتألق الآن؟ ترتيب الطلاب والمدارس وأبطال الشطرنج وأجمل أعمال الاستوديو وأقوى المشاريع · كلها في مكان واحد، وتُحدَّث مع كل نقطة تُكتسب.
           </motion.p>
           <motion.div
             initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2, duration: 0.5, ease: EASE }}
@@ -361,7 +361,7 @@ export default function Leaderboard() {
                       accent={tabMeta.hex} maxScore={maxScore} meId={user?.id} />
                   ))}
                   {rest.length === 0 && !searching && (
-                    <div className="px-5 py-4 text-center text-xs text-slate-400 font-medium">المنافسة بدأت للتو — كن التالي على القائمة ✨</div>
+                    <div className="px-5 py-4 text-center text-xs text-slate-400 font-medium">المنافسة بدأت للتو · كن التالي على القائمة ✨</div>
                   )}
                 </div>
               </>
@@ -381,7 +381,7 @@ export default function Leaderboard() {
             </span>
             <div className="flex-1 min-w-[200px]">
               <div className="font-head font-extrabold">تريد الصعود في الترتيب؟</div>
-              <div className="text-xs text-slate-400 mt-0.5">كل كتاب تُنهيه، وكل مباراة تفوزها، وكل يوم تحضر فيه — نقاط حقيقية تصعد بك هنا.</div>
+              <div className="text-xs text-slate-400 mt-0.5">كل كتاب تُنهيه، وكل مباراة تفوزها، وكل يوم تحضر فيه · نقاط حقيقية تصعد بك هنا.</div>
             </div>
             <Link to="/points" className="px-5 py-2.5 rounded-full bg-gradient-to-l from-amber-400 to-yellow-500 text-slate-900 text-sm font-extrabold shadow-lg hover:brightness-110 transition">
               جدولي النقاطي
@@ -418,7 +418,7 @@ function MyStandingCard({ standing, user }) {
             <Medal className="w-3.5 h-3.5" /> ترتيبك الحالي
           </div>
           <div className="font-head text-xl font-extrabold mt-0.5 leading-snug">
-            {rank ? <>المركز <span className="text-amber-300">#{rank}</span> <span className="text-sm font-bold text-emerald-100/80">من {total} {isStudent ? "طالب" : "عضو"}</span></> : "—"}
+            {rank ? <>المركز <span className="text-amber-300">#{rank}</span> <span className="text-sm font-bold text-emerald-100/80">من {total} {isStudent ? "طالب" : "عضو"}</span></> : "·"}
           </div>
           <div className="text-xs text-emerald-100/85 mt-0.5">{standing.level_title} · المستوى {standing.level}</div>
         </div>

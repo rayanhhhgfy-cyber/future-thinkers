@@ -31,7 +31,7 @@ export function BookCard({ b }) {
         <h3 className="font-semibold text-slate-800 line-clamp-1 group-hover:text-blue-700 transition-colors">{b.title}</h3>
         <p className="text-xs text-slate-400 line-clamp-1">{b.author}</p>
         <div className="mt-1.5 flex items-center gap-3 text-xs text-slate-400">
-          <span className="flex items-center gap-1"><Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />{b.rating_avg || "—"}</span>
+          <span className="flex items-center gap-1"><Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />{b.rating_avg || "·"}</span>
           <span className="flex items-center gap-1"><Eye className="w-3.5 h-3.5" />{b.views || 0}</span>
         </div>
       </div>
@@ -236,8 +236,8 @@ function PersonalLibrary() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-10">
-      <Shelf title="متابعة القراءة" icon={<BookOpen className="w-5 h-5 text-blue-600" />} books={reading} empty="لم تبدأ أي كتاب بعد — تصفح المكتبة وابدأ القراءة" />
-      <Shelf title="أكمل لاحقاً" icon={<Clock className="w-5 h-5 text-amber-500" />} books={later} empty="لا كتب محفوظة للإكمال لاحقاً — من صفحة أي كتاب اضغط «أكمل لاحقاً»" testid="later-shelf" />
+      <Shelf title="متابعة القراءة" icon={<BookOpen className="w-5 h-5 text-blue-600" />} books={reading} empty="لم تبدأ أي كتاب بعد · تصفح المكتبة وابدأ القراءة" />
+      <Shelf title="أكمل لاحقاً" icon={<Clock className="w-5 h-5 text-amber-500" />} books={later} empty="لا كتب محفوظة للإكمال لاحقاً · من صفحة أي كتاب اضغط «أكمل لاحقاً»" testid="later-shelf" />
       <Shelf title="المفضلة" icon={<Heart className="w-5 h-5 text-rose-500" />} books={favs} empty="لا كتب مفضلة بعد" />
 
       <section>

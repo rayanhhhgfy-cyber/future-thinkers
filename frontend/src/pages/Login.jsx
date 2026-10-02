@@ -60,7 +60,7 @@ export default function Login() {
       const { data } = await api.get("/auth/teacher-application-status", { params: { email: statusEmail.trim() } });
       setStatusResult(data);
       if (data.status === "approved" || data.status === "rejected") {
-        // Application resolved — drop the stored pending token.
+        // Application resolved · drop the stored pending token.
         try { localStorage.removeItem("ft_teacher_pending"); } catch {}
         setPendingInfo(null);
       }
@@ -159,14 +159,14 @@ export default function Login() {
                           {pushBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : (<><BellRing className="w-4 h-4 ml-2" /> أخبرني فور الموافقة (إشعار هاتف)</>)}
                         </Button>
                         <p className="mt-2 text-[11px] text-slate-500 leading-relaxed">
-                          سيصلك إشعار على هذا الجهاز لحظة اعتماد حسابك — حتى قبل تسجيل الدخول.
+                          سيصلك إشعار على هذا الجهاز لحظة اعتماد حسابك · حتى قبل تسجيل الدخول.
                           على الآيفون يجب تثبيت التطبيق على الشاشة الرئيسية أولاً.
                         </p>
                       </div>
                     )}
                     {statusResult?.status === "pending" && pendingInfo?.push_enabled && (
                       <p className="mt-3 text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2">
-                        🔔 إشعار الموافقة مفعّل على هذا الجهاز — سيصلك فور اعتماد حسابك.
+                        🔔 إشعار الموافقة مفعّل على هذا الجهاز · سيصلك فور اعتماد حسابك.
                       </p>
                     )}
                   </>

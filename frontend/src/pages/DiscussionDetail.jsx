@@ -40,7 +40,7 @@ export default function DiscussionDetail() {
           <div className="mt-1"><ReportButton entityType="discussion" entityId={d.id} /></div>
           <div className="flex items-center gap-2 mt-3 text-sm text-slate-500">
             <Avatar className="w-7 h-7"><AvatarFallback className="bg-slate-200 text-xs">{d.author_name?.[0]}</AvatarFallback></Avatar>
-            {d.author_name} · {d.author_school || "—"}
+            {d.author_name} · {d.author_school || "·"}
           </div>
           <p className="mt-4 text-slate-700 leading-relaxed whitespace-pre-wrap">{d.body}</p>
           <div className="mt-5 flex items-center gap-2 flex-wrap">
