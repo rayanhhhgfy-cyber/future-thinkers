@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import api from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import * as Icons from "lucide-react";
-import { BookOpen, Crown, MessagesSquare, Users, GraduationCap, Building2, Calendar, ArrowLeft, Sparkles, Target, Flag, Trophy, Rocket, Mic, Users2, ChevronDown } from "lucide-react";
+import { BookOpen, Crown, MessagesSquare, Users, GraduationCap, Building2, Calendar, ArrowLeft, Sparkles, Target, Flag, Trophy, Rocket, Mic, Users2, ChevronDown, Flame, Zap, TrendingUp, UserPlus, Route, Quote } from "lucide-react";
 
 const CLUB_ICON = (name) => Icons[name] || Icons.Circle;
 
@@ -27,6 +27,19 @@ function ReadMore({ children, lines = 3 }) {
         {expanded ? "عرض أقل" : "اقرأ المزيد"}
         <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${expanded ? "rotate-180" : ""}`} />
       </button>
+    </div>
+  );
+}
+
+const AR_NUMS = ["٠١", "٠٢", "٠٣", "٠٤", "٠٥", "٠٦", "٠٧", "٠٨", "٠٩", "١٠", "١١", "١٢"];
+
+// Numbered editorial section label (desktop only)
+function SectionTag({ num, label, center = false, dark = false }) {
+  return (
+    <div className={`hidden lg:flex items-center gap-3 mb-10 ${center ? "justify-center" : ""}`} aria-hidden="true">
+      <span className={`font-head text-sm font-extrabold ${dark ? "ft-text-accent-bright" : "ft-text-accent"}`}>{num}</span>
+      <span className={`h-px w-14 ${dark ? "bg-white/30" : "ft-grad-bar opacity-70"}`} />
+      <span className={`text-sm font-bold ${dark ? "text-slate-300" : "text-slate-500"}`}>{label}</span>
     </div>
   );
 }
@@ -82,18 +95,23 @@ export default function Landing() {
         <div className="absolute bottom-0 -right-24 w-96 h-96 bg-emerald-500/20 rounded-full blur-3xl" />
         <div className="pointer-events-none absolute -top-24 right-1/4 w-[28rem] h-[28rem] rounded-full blur-3xl" style={{ background: "color-mix(in srgb, var(--ft-accent) 26%, transparent)" }} />
         <div className="pointer-events-none absolute inset-0 opacity-[0.05]" style={{ backgroundImage: "linear-gradient(to left, rgba(255,255,255,.7) 1px, transparent 1px), linear-gradient(to top, rgba(255,255,255,.7) 1px, transparent 1px)", backgroundSize: "54px 54px" }} />
-        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-24 lg:py-36 2xl:py-40 relative">
-          <div className="max-w-3xl lg:max-w-4xl xl:max-w-5xl">
+        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-24 lg:py-28 relative lg:min-h-[94vh] lg:flex lg:items-center">
+          <div className="grid lg:grid-cols-12 gap-12 xl:gap-16 items-center w-full">
+          <div className="max-w-3xl lg:max-w-none lg:col-span-7">
             <div className="animate-fade-up inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/15 text-sm mb-6">
               <Sparkles className="w-4 h-4 ft-text-accent-bright" /> {cms?.hero_badge || "المنصة المعرفية الوطنية لطلاب الأردن"}
             </div>
-            <h1 className="animate-fade-up d-1 font-head text-4xl sm:text-5xl lg:text-6xl xl:text-7xl 2xl:text-[5.25rem] font-extrabold leading-tight">
-              {cms?.hero_title || "نقرأ أكثر، نفكّر أعمق،"}<br /><span className="ft-text-gradient animate-gradient-text">{cms?.hero_highlight || "ونصنع المستقبل."}</span>
+            <div className="hidden lg:flex items-center gap-3 mb-6" aria-hidden="true">
+              <span className="h-px w-16 ft-grad-bar" />
+              <span className="text-xs font-extrabold tracking-wide text-slate-300">حيث يجتمع قرّاء الأردن ومفكروه</span>
+            </div>
+            <h1 className="animate-fade-up d-1 font-head text-4xl sm:text-5xl lg:text-6xl font-extrabold leading-[1.15]">
+              {cms?.hero_title || "نقرأ أكثر، نفكّر أعمق،"}<br /><span className="relative inline-block"><span className="ft-text-gradient animate-gradient-text">{cms?.hero_highlight || "ونصنع المستقبل."}</span><span className="hidden lg:block absolute -bottom-2 right-0 h-1.5 w-3/4 rounded-full ft-grad-bar opacity-80" aria-hidden="true" /></span>
             </h1>
             <p className="animate-fade-up d-2 mt-6 text-lg lg:text-xl text-slate-300 leading-relaxed max-w-2xl">
               {cms?.hero_subtitle || "بيئة معرفية وثقافية وعلمية تجمع طلاب المملكة الأردنية الهاشمية حول القراءة والحوار والشطرنج والبرمجة والابتكار والمنافسات في مجتمع طلابي واحد."}
             </p>
-            <div className="animate-fade-up d-3 mt-8 flex flex-wrap gap-3">
+            <div className="animate-fade-up d-3 mt-8 lg:mt-10 flex flex-wrap gap-3">
               <Button data-testid="hero-join-btn" onClick={() => nav(user ? "/dashboard" : "/register")} size="lg" className="pressable rounded-2xl ft-btn-solid h-12 px-7 text-base">
                 {user ? "اذهب إلى لوحتي" : "انضم إلى مفكري المستقبل"} <ArrowLeft className="w-5 h-5 mr-1" />
               </Button>
@@ -101,6 +119,109 @@ export default function Landing() {
                 تصفّح المكتبة
               </Button>
             </div>
+            {/* desktop social proof row */}
+            <div className="hidden lg:flex animate-fade-up d-3 mt-10 items-center gap-4">
+              <div className="flex -space-x-3 space-x-reverse">
+                {["أ", "ل", "ع", "س", "م"].map((ch, i) => (
+                  <span key={i} className="w-11 h-11 rounded-full border-2 border-white/25 grid place-items-center text-sm font-bold text-white shadow-lg" style={{ background: ["#059669", "#2563EB", "#7C3AED", "#D97706", "#0D9488"][i] }}>{ch}</span>
+                ))}
+              </div>
+              <div>
+                <div className="flex items-center gap-1 text-amber-300">
+                  {[0, 1, 2, 3, 4].map((i) => (<span key={i} className="text-base leading-none">★</span>))}
+                </div>
+                <p className="text-sm text-slate-300 mt-1">مجتمع طلابي نشط من مختلف مدارس المملكة ومديرياتها</p>
+              </div>
+            </div>
+          </div>
+
+          {/* desktop hero visual · platform mosaic collage */}
+          <div className="hidden lg:block lg:col-span-5 relative h-[580px] xl:h-[600px]" aria-hidden="true">
+            <div className="pointer-events-none absolute top-2 left-8 w-80 h-80 rounded-full border-2 border-dashed border-white/15" />
+            <div className="pointer-events-none absolute bottom-28 -left-10 w-72 h-16 rotate-[24deg] rounded-full opacity-25" style={{ background: "linear-gradient(90deg, var(--ft-grad-a, #052e26), var(--ft-accent, #0d9488))" }} />
+            <div className="pointer-events-none absolute top-44 right-2 w-36 h-20 opacity-30" style={{ backgroundImage: "radial-gradient(rgba(255,255,255,.55) 1.5px, transparent 1.6px)", backgroundSize: "14px 14px" }} />
+            <div className="pointer-events-none absolute -inset-6 rounded-[3rem] blur-3xl opacity-60" style={{ background: "color-mix(in srgb, var(--ft-accent) 18%, transparent)" }} />
+
+            {/* book card */}
+            <div className="absolute top-0 right-0 w-60 rotate-[-4deg] rounded-3xl bg-white text-slate-800 shadow-2xl p-4 z-10">
+              <div className="relative h-32 rounded-2xl overflow-hidden grid place-items-center" style={{ background: "linear-gradient(160deg,#059669,#065F46)" }}>
+                <BookOpen className="w-14 h-14 text-white/90" />
+                <span className="absolute top-2.5 right-2.5 text-[10px] font-bold bg-white/20 border border-white/25 rounded-full px-2 py-0.5 text-white">رواية</span>
+                <span className="absolute -bottom-4 -left-2 text-[92px] leading-none font-head font-extrabold text-white/10 select-none">ق</span>
+              </div>
+              <div className="mt-3 font-head font-bold">رحلتي مع القراءة</div>
+              <div className="text-[11px] text-slate-500 mt-0.5">من مختارات نادي القراءة</div>
+              <div className="mt-3 h-2 rounded-full bg-slate-100 overflow-hidden">
+                <div className="h-full w-[72%] rounded-full ft-grad-bar" />
+              </div>
+              <div className="mt-2 flex items-center justify-between text-[11px] font-bold">
+                <span className="ft-text-accent">72٪ من الكتاب</span>
+                <span className="inline-flex items-center gap-1 text-orange-500"><Flame className="w-3.5 h-3.5" /> سلسلة 21 يوماً</span>
+              </div>
+            </div>
+
+            {/* chess card */}
+            <div className="absolute top-[300px] lg:right-[105px] xl:right-[135px] w-52 rotate-[3deg] rounded-3xl bg-white/10 backdrop-blur-md border border-white/15 shadow-2xl p-4 text-white z-10">
+              <div className="flex items-center justify-between mb-3">
+                <span className="inline-flex items-center gap-1.5 text-xs font-bold"><Crown className="w-4 h-4 text-amber-300" /> مباراة مباشرة</span>
+                <span className="relative flex w-2.5 h-2.5"><span className="absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75 animate-ping" /><span className="relative inline-flex rounded-full w-2.5 h-2.5 bg-rose-400" /></span>
+              </div>
+              <div className="grid grid-cols-8 rounded-xl overflow-hidden border border-white/20">
+                {Array.from({ length: 64 }).map((_, i) => {
+                  const pieces = { 10: "♟", 18: "♞", 27: "♟", 36: "♞", 45: "♝", 54: "♜" };
+                  const light = (Math.floor(i / 8) + i) % 2 === 0;
+                  return (
+                    <span key={i} className={`aspect-square grid place-items-center text-[13px] leading-none ${light ? "bg-[#EBECD0] text-slate-800" : "bg-[#779952] text-white"}`}>{pieces[i] || ""}</span>
+                  );
+                })}
+              </div>
+              <div className="mt-3 flex items-center justify-between text-[11px] font-bold">
+                <span className="text-slate-200">أحمد م. × ليان ع.</span>
+                <span className="rounded-full bg-white/15 border border-white/15 px-2 py-0.5">3 دقائق</span>
+              </div>
+            </div>
+
+            {/* leaderboard card */}
+            <div className="absolute bottom-0 left-0 w-64 rotate-[-2deg] rounded-3xl bg-white text-slate-800 shadow-2xl p-4 z-10">
+              <div className="flex items-center gap-2 mb-2.5">
+                <span className="w-8 h-8 rounded-xl bg-amber-100 grid place-items-center"><Zap className="w-4 h-4 text-amber-500" /></span>
+                <span className="text-sm font-extrabold font-head">لوحة الصدارة الوطنية</span>
+              </div>
+              {[["أحمد م.", "12,450", "#F59E0B"], ["ليان ع.", "11,980", "#94A3B8"], ["عمر خ.", "11,205", "#B45309"]].map(([name, xp, medal], i) => (
+                <div key={name} className="flex items-center gap-2.5 py-1.5 border-t border-slate-100 first:border-t-0">
+                  <span className="w-6 h-6 rounded-lg grid place-items-center text-[11px] font-extrabold text-white shrink-0" style={{ background: medal }}>{i + 1}</span>
+                  <span className="w-7 h-7 rounded-full bg-slate-100 grid place-items-center text-[11px] font-bold shrink-0">{name[0]}</span>
+                  <span className="text-[13px] font-bold flex-1">{name}</span>
+                  <span className="text-[11px] text-slate-500 font-bold">{xp} XP</span>
+                </div>
+              ))}
+            </div>
+
+            {/* club card */}
+            <div className="absolute top-24 left-0 w-56 rotate-[5deg] rounded-3xl bg-white/10 backdrop-blur-md border border-white/15 shadow-2xl p-4 text-white z-10">
+              <div className="flex items-center gap-3">
+                <span className="w-11 h-11 rounded-2xl bg-rose-500 grid place-items-center shrink-0 shadow-lg"><MessagesSquare className="w-5 h-5" /></span>
+                <div>
+                  <div className="text-sm font-extrabold font-head leading-tight">نادي الحوار</div>
+                  <div className="text-[11px] text-slate-300 mt-0.5">والمناظرات الفكرية</div>
+                </div>
+              </div>
+              <div className="mt-3.5 flex items-center justify-between">
+                <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-slate-200"><Users className="w-3.5 h-3.5" /> 124 عضواً</span>
+                <span className="text-[11px] font-extrabold rounded-full bg-white text-slate-800 px-2.5 py-1">انضم الآن</span>
+              </div>
+            </div>
+
+            <Float className="absolute top-[248px] left-6 z-20">
+              <div className="flex items-center gap-2.5 rounded-2xl bg-white/95 text-slate-800 shadow-2xl px-4 py-3 rotate-[-3deg]">
+                <span className="w-9 h-9 rounded-xl bg-orange-100 grid place-items-center shrink-0"><TrendingUp className="w-5 h-5 text-orange-500" /></span>
+                <div>
+                  <div className="text-xs font-extrabold leading-tight">+340 نقطة خبرة</div>
+                  <div className="text-[11px] text-slate-500 leading-tight mt-0.5">تقدّمك هذا الأسبوع</div>
+                </div>
+              </div>
+            </Float>
+          </div>
           </div>
         </div>
         {/* stats ribbon */}
@@ -118,14 +239,22 @@ export default function Landing() {
       </section>
 
       {/* About Us */}
-      <section className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-24 bg-white">
+      <section className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-28 bg-white">
         <FadeUp>
-        <div className="bg-gradient-to-r from-emerald-50 to-blue-50 rounded-3xl p-8 lg:p-14 border ft-border-accent lg:grid lg:grid-cols-3 lg:gap-12">
-          <div className="flex items-center gap-3 mb-6 lg:flex-col lg:items-start lg:justify-center lg:mb-0">
-            <div className="w-12 h-12 lg:w-16 lg:h-16 rounded-2xl ft-bg-soft-2 grid place-items-center"><Users2 className="w-6 h-6 lg:w-8 lg:h-8 ft-text-accent" /></div>
-            <h2 className="font-head text-3xl lg:text-4xl xl:text-5xl font-extrabold text-slate-900">من نحن</h2>
+        <SectionTag num="٠١" label="من نحن" />
+        <div className="lg:grid lg:grid-cols-12 lg:gap-14">
+          <div className="lg:col-span-4">
+            <div className="flex items-center gap-3 mb-6 lg:flex-col lg:items-start lg:mb-0">
+              <div className="w-12 h-12 lg:w-16 lg:h-16 rounded-2xl ft-bg-soft-2 grid place-items-center"><Users2 className="w-6 h-6 lg:w-8 lg:h-8 ft-text-accent" /></div>
+              <h2 className="font-head text-3xl lg:text-4xl font-extrabold text-slate-900">من نحن</h2>
+            </div>
+            <figure className="hidden lg:block mt-12 border-r-4 pr-6" style={{ borderColor: "var(--ft-accent)" }}>
+              <Quote className="w-7 h-7 ft-text-accent mb-3" />
+              <blockquote className="font-head text-xl leading-relaxed text-slate-700 font-bold">{aboutText.split("\n\n")[0].slice(0, 117)}…</blockquote>
+              <figcaption className="mt-3 text-sm text-slate-400 font-bold">من كلمة النادي</figcaption>
+            </figure>
           </div>
-          <div className="text-slate-700 leading-relaxed text-base lg:text-lg font-body max-w-none lg:col-span-2">
+          <div className="bg-gradient-to-r from-emerald-50 to-blue-50 rounded-3xl p-8 lg:p-12 border ft-border-accent text-slate-700 leading-relaxed text-base lg:text-lg font-body max-w-none lg:col-span-8">
             <ReadMore lines={3}>
               {aboutText.split('\n\n').map((paragraph, i) => (
                 <p key={i} className="text-slate-600 leading-relaxed mb-4 last:mb-0">{paragraph}</p>
@@ -137,26 +266,50 @@ export default function Landing() {
       </section>
 
       {/* Vision / Mission / Goals */}
-      <section className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-24">
-        <Stagger className="grid lg:grid-cols-2 gap-6 xl:gap-8 mb-6">
-          <Item className="bg-white rounded-3xl p-8 lg:p-10 xl:p-12 ft-shadow border border-slate-100 hover-lift">
-            <div className="w-12 h-12 lg:w-14 lg:h-14 rounded-2xl ft-bg-soft grid place-items-center mb-4"><Flag className="w-6 h-6 lg:w-7 lg:h-7 ft-text-accent" /></div>
-            <h2 className="font-head text-2xl lg:text-3xl font-bold text-slate-900">رؤيتنا</h2>
-            <div className="mt-3"><ReadMore lines={3}><p className="text-slate-600 leading-relaxed">{visionText}</p></ReadMore></div>
-          </Item>
-          <Item className="bg-white rounded-3xl p-8 lg:p-10 xl:p-12 ft-shadow border border-slate-100 hover-lift">
-            <div className="w-12 h-12 lg:w-14 lg:h-14 rounded-2xl ft-bg-soft grid place-items-center mb-4"><Target className="w-6 h-6 lg:w-7 lg:h-7 ft-text-accent" /></div>
-            <h2 className="font-head text-2xl lg:text-3xl font-bold text-slate-900">رسالتنا</h2>
-            <div className="mt-3"><ReadMore lines={3}><p className="text-slate-600 leading-relaxed">{missionText}</p></ReadMore></div>
-          </Item>
-        </Stagger>
+      <section className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-28">
+        <SectionTag num="٠٢" label="رؤيتنا ورسالتنا وأهدافنا" />
+        <div className="space-y-6 lg:space-y-12 mb-14 lg:mb-16">
+          <FadeUp>
+          <div className="lg:grid lg:grid-cols-12 lg:gap-12 items-start">
+            <div className="flex items-center gap-3 mb-4 lg:mb-0 lg:col-span-4 lg:flex-col lg:items-start lg:gap-4">
+              <div className="w-12 h-12 lg:w-16 lg:h-16 rounded-2xl ft-bg-soft grid place-items-center"><Flag className="w-6 h-6 lg:w-8 lg:h-8 ft-text-accent" /></div>
+              <div>
+                <h2 className="font-head text-2xl lg:text-4xl font-extrabold text-slate-900">رؤيتنا</h2>
+                <p className="hidden lg:block mt-2 text-sm text-slate-400 font-bold">إلى أين نتجه خلال خمس سنوات؟</p>
+              </div>
+            </div>
+            <div className="bg-white rounded-3xl p-8 lg:p-10 ft-shadow border border-slate-100 lg:col-span-8">
+              <ReadMore lines={3}><p className="text-slate-600 leading-relaxed lg:text-lg">{visionText}</p></ReadMore>
+            </div>
+          </div>
+          </FadeUp>
+          <FadeUp>
+          <div className="lg:grid lg:grid-cols-12 lg:gap-12 items-start">
+            <div className="flex items-center gap-3 mb-4 lg:mb-0 lg:col-span-4 lg:flex-col lg:items-start lg:gap-4 lg:order-2">
+              <div className="w-12 h-12 lg:w-16 lg:h-16 rounded-2xl ft-bg-soft grid place-items-center"><Target className="w-6 h-6 lg:w-8 lg:h-8 ft-text-accent" /></div>
+              <div>
+                <h2 className="font-head text-2xl lg:text-4xl font-extrabold text-slate-900">رسالتنا</h2>
+                <p className="hidden lg:block mt-2 text-sm text-slate-400 font-bold">لماذا نوجد كل يوم؟</p>
+              </div>
+            </div>
+            <div className="bg-white rounded-3xl p-8 lg:p-10 ft-shadow border border-slate-100 lg:col-span-8 lg:order-1">
+              <ReadMore lines={3}><p className="text-slate-600 leading-relaxed lg:text-lg">{missionText}</p></ReadMore>
+            </div>
+          </div>
+          </FadeUp>
+        </div>
 
-        <FadeUp><h2 className="font-head text-2xl lg:text-3xl font-bold text-slate-900 mb-5">أهدافنا</h2></FadeUp>
-        <Stagger className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 xl:gap-5">
+        <FadeUp>
+          <div className="flex items-end justify-between gap-4 mb-5">
+            <h2 className="font-head text-2xl lg:text-3xl font-bold text-slate-900">أهدافنا</h2>
+            <span className="hidden lg:block text-sm font-bold text-slate-400">{goalsList.length} أهداف نعمل عليها كل يوم</span>
+          </div>
+        </FadeUp>
+        <Stagger className="grid sm:grid-cols-2 gap-4 lg:gap-x-14 lg:gap-y-0">
           {(goalsExpanded ? goalsList : goalsList.slice(0, 3)).map((g, i) => (
-            <Item key={i} className="flex items-start gap-3 bg-white rounded-2xl p-5 lg:p-6 border border-slate-100 ft-shadow hover-lift">
-              <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-lg ft-icon-tile grid place-items-center text-sm font-bold shrink-0">{i + 1}</div>
-              <p className="text-slate-700 text-sm lg:text-base leading-relaxed">{g}</p>
+            <Item key={i} className="flex items-start gap-3 lg:gap-5 bg-white rounded-2xl p-5 border border-slate-100 shadow-[0_4px_24px_-8px_rgba(15,23,42,0.12)] lg:bg-transparent lg:border-0 lg:border-b lg:border-dashed lg:border-slate-200 lg:rounded-none lg:shadow-none lg:p-0 lg:py-6">
+              <div className="w-8 h-8 lg:w-12 lg:h-12 rounded-lg lg:rounded-2xl ft-icon-tile grid place-items-center text-sm lg:text-base font-bold shrink-0">{AR_NUMS[i] || i + 1}</div>
+              <p className="text-slate-700 text-sm lg:text-base leading-relaxed lg:pt-2.5">{g}</p>
             </Item>
           ))}
         </Stagger>
@@ -173,10 +326,39 @@ export default function Landing() {
         )}
       </section>
 
+      {/* How it works · desktop journey */}
+      <section className="hidden lg:block max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 pb-28">
+        <SectionTag num="٠٣" label="كيف تبدأ رحلتك؟" center />
+        <FadeUp className="text-center">
+          <h2 className="font-head text-4xl font-extrabold text-slate-900">ثلاث خطوات ويبدأ مشوارك</h2>
+          <p className="mt-3 text-slate-500">من إنشاء الحساب إلى صدارة القوائم الوطنية في رحلة واحدة واضحة</p>
+        </FadeUp>
+        <div className="relative mt-16">
+          <div className="absolute top-10 right-[17%] left-[17%] border-t-2 border-dashed" style={{ borderColor: "color-mix(in srgb, var(--ft-accent) 40%, transparent)" }} aria-hidden="true" />
+          <Stagger className="grid grid-cols-3 gap-10 relative">
+            {[
+              { icon: UserPlus, title: "أنشئ حسابك وانضم", desc: "سجّل خلال دقيقة واحدة وفعّل حسابك لتصلك كل فعاليات النادي ومسابقاته." },
+              { icon: Route, title: "اختر أنديتك ومساراتك", desc: "انضم إلى أندية القراءة والحوار والشطرنج والبرمجة، وابدأ مسار تعلم يناسب اهتماماتك." },
+              { icon: Trophy, title: "اقرأ ونافس وتصدّر", desc: "اجمع نقاط الخبرة من القراءة والفعاليات والبطولات، واصعد قوائم الصدارة الوطنية." },
+            ].map((s, i) => (
+              <Item key={s.title} className="text-center">
+                <div className="relative mx-auto w-20 h-20 rounded-full bg-white ft-shadow border ft-border-accent grid place-items-center">
+                  <s.icon className="w-8 h-8 ft-text-accent" />
+                  <span className="absolute -top-2 -right-2 w-8 h-8 rounded-full ft-icon-tile grid place-items-center text-[11px] font-extrabold">{AR_NUMS[i]}</span>
+                </div>
+                <h3 className="mt-6 font-head text-xl font-bold text-slate-900">{s.title}</h3>
+                <p className="mt-2 text-slate-500 leading-relaxed max-w-xs mx-auto">{s.desc}</p>
+              </Item>
+            ))}
+          </Stagger>
+        </div>
+      </section>
+
       {/* Activities / Projects */}
       {cms?.activities && cms.activities.length > 0 && (
-        <section className="bg-white py-20 lg:py-24 border-y border-slate-100">
+        <section className="bg-white py-20 lg:py-28 border-y border-slate-100">
           <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
+            <SectionTag num="٠٤" label="نشاطاتنا ومشاريعنا" center />
             <div className="text-center mb-12">
               <h2 className="font-head text-3xl lg:text-4xl xl:text-[2.75rem] font-extrabold text-slate-900">نشاطاتنا وفعالياتنا ومشاريعنا</h2>
               <p className="mt-3 text-slate-500 max-w-2xl mx-auto">مبادرات نوعية تستهدف بناء الطالب المبدع والمفكر الناقد والريادي الواعي</p>
@@ -187,7 +369,8 @@ export default function Landing() {
                 const featured = index === 0;
                 const wide = index === 1;
                 return (
-                  <div key={index} className={`group bg-white rounded-3xl p-6 border border-slate-100 ft-shadow hover-lift ft-hover-border-accent transition-all duration-300 ${featured ? "lg:col-span-2 lg:row-span-2 lg:p-10" : ""} ${wide ? "lg:col-span-2" : ""}`}>
+                  <div key={index} className={`group relative bg-white rounded-3xl p-6 border border-slate-100 ft-shadow hover-lift ft-hover-border-accent transition-all duration-300 ${featured ? "lg:col-span-2 lg:row-span-2 lg:p-10" : ""} ${wide ? "lg:col-span-2" : ""}`}>
+                    <span className="hidden lg:grid absolute top-5 left-5 w-8 h-8 rounded-full bg-slate-50 border border-slate-100 place-items-center text-[11px] font-extrabold text-slate-400 font-head" aria-hidden="true">{AR_NUMS[index] || index + 1}</span>
                     <div className={`w-14 h-14 rounded-2xl grid place-items-center mb-5 text-white ${featured ? "lg:w-[4.5rem] lg:h-[4.5rem]" : ""}`} style={{ background: activity.color }}>
                       <Icon className={`w-7 h-7 ${featured ? "lg:w-9 lg:h-9" : ""}`} />
                     </div>
@@ -202,17 +385,19 @@ export default function Landing() {
       )}
 
       {/* Clubs showcase */}
-      <section className="bg-slate-50 py-20 lg:py-24">
+      <section className="bg-slate-50 py-20 lg:py-28">
         <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
           <FadeUp className="text-center mb-12">
+            <SectionTag num="٠٥" label="أنديتنا الطلابية" center />
             <h2 className="font-head text-3xl lg:text-4xl xl:text-[2.75rem] font-extrabold text-slate-900">اكتشف الأندية</h2>
             <p className="mt-3 text-slate-500 max-w-2xl mx-auto">مساحات تفاعلية حقيقية للقراءة، الحوار، الشطرنج، البرمجة، العلوم، الابتكار والمزيد.</p>
+            <p className="hidden lg:block mt-3 text-xs font-bold text-slate-400">مرّر أفقياً لاستكشاف جميع الأندية</p>
           </FadeUp>
-          <Stagger className="grid sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-5">
+          <Stagger className="grid sm:grid-cols-2 lg:flex lg:flex-nowrap lg:overflow-x-auto lg:snap-x lg:snap-mandatory lg:gap-5 lg:pb-6 lg:[scrollbar-width:thin]">
             {clubs.map((c) => {
               const Icon = CLUB_ICON(c.icon);
               return (
-                <Item key={c.id}>
+                <Item key={c.id} className="lg:snap-start lg:shrink-0 lg:w-[320px] xl:w-[340px]">
                 <Link to={`/clubs/${c.slug}`} data-testid={`club-card-${c.slug}`} className="group bg-white hover:bg-slate-50 rounded-2xl p-6 border border-slate-100 hover-lift block h-full">
                   <div className="w-12 h-12 rounded-2xl grid place-items-center mb-4 text-white" style={{ background: c.color }}><Icon className="w-6 h-6" /></div>
                   <h3 className="font-head font-bold text-lg text-slate-900">{c.name}</h3>
@@ -226,18 +411,54 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* Voices of the community · desktop band */}
+      <section className="hidden lg:block relative overflow-hidden ft-hero-gradient grain text-white">
+        <div className="pointer-events-none absolute -top-20 right-1/4 w-[26rem] h-44 rotate-[18deg] rounded-full opacity-20" style={{ background: "linear-gradient(90deg, var(--ft-grad-a, #052e26), var(--ft-accent, #0d9488))" }} />
+        <div className="pointer-events-none absolute -bottom-24 -left-16 w-96 h-96 rounded-full blur-3xl" style={{ background: "color-mix(in srgb, var(--ft-accent) 20%, transparent)" }} />
+        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-28 relative">
+          <SectionTag num="٠٦" label="ماذا يقول مفكرونا؟" center dark />
+          <FadeUp className="text-center">
+            <h2 className="font-head text-4xl font-extrabold">أصوات من المجتمع</h2>
+            <p className="mt-3 text-slate-300">طلاب من مدارس ومديريات مختلفة يشاركونك تجربتهم</p>
+          </FadeUp>
+          <Stagger className="grid grid-cols-3 gap-6 mt-14">
+            {[
+              { q: "غيّرت المنصة طريقة قراءتي بالكامل؛ صرت أقرأ كل يوم وأتنافس مع أصدقائي من مدارس أخرى على إنهاء الكتب.", n: "سارة ع.", r: "طالبة · نادي القراءة" },
+              { q: "مسابقات الشطرنج والبرمجة رفعت مستواي كثيراً، واليوم أبني مع فريقي مشروعاً ريادياً حقيقياً داخل المنصة.", n: "عمر خ.", r: "طالب · نادي الشطرنج والبرمجة" },
+              { q: "غرف التركيز ومهام اليوم ساعدتني أنظّم وقتي، وحافظت على سلسلة قراءة تجاوزت ستين يوماً متواصلاً.", n: "ليان م.", r: "طالبة · تحديات القراءة" },
+            ].map((t) => (
+              <Item key={t.n} className="rounded-3xl bg-white/10 border border-white/15 backdrop-blur-md p-8">
+                <Quote className="w-8 h-8 ft-text-accent-bright mb-4" />
+                <p className="leading-loose text-slate-100">{t.q}</p>
+                <div className="mt-6 flex items-center gap-3 border-t border-white/10 pt-5">
+                  <span className="w-11 h-11 rounded-full ft-icon-tile grid place-items-center font-bold">{t.n[0]}</span>
+                  <div>
+                    <div className="font-bold">{t.n}</div>
+                    <div className="text-xs text-slate-400 mt-0.5">{t.r}</div>
+                  </div>
+                </div>
+              </Item>
+            ))}
+          </Stagger>
+        </div>
+      </section>
+
       {/* CTA */}
-      <section className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-24">
+      <section className="max-w-[1440px] lg:max-w-none mx-auto px-4 sm:px-6 lg:px-0 py-20 lg:py-0">
         <FadeUp>
-        <div className="ft-hero-gradient grain relative overflow-hidden rounded-[2rem] p-10 lg:p-20 text-center text-white">
+        <div className="ft-hero-gradient grain relative overflow-hidden rounded-[2rem] lg:rounded-none p-10 lg:py-28 lg:px-8 text-center text-white">
+          <div className="pointer-events-none absolute inset-0 opacity-[0.05]" style={{ backgroundImage: "linear-gradient(to left, rgba(255,255,255,.7) 1px, transparent 1px), linear-gradient(to top, rgba(255,255,255,.7) 1px, transparent 1px)", backgroundSize: "54px 54px" }} />
           <div className="pointer-events-none absolute -top-20 -right-20 w-80 h-80 rounded-full blur-3xl" style={{ background: "color-mix(in srgb, var(--ft-accent) 30%, transparent)" }} />
           <div className="pointer-events-none absolute -bottom-24 -left-16 w-80 h-80 rounded-full blur-3xl" style={{ background: "color-mix(in srgb, var(--ft-accent) 18%, transparent)" }} />
+          <div className="pointer-events-none absolute top-10 left-1/4 w-56 h-12 rotate-[24deg] rounded-full opacity-20 hidden lg:block" style={{ background: "linear-gradient(90deg, var(--ft-grad-a, #052e26), var(--ft-accent, #0d9488))" }} />
+          <div className="relative max-w-3xl mx-auto">
           <Float className="inline-block relative"><Trophy className="w-14 h-14 lg:w-[4.5rem] lg:h-[4.5rem] ft-text-accent-bright mx-auto mb-5" /></Float>
           <h2 className="relative font-head text-3xl lg:text-5xl font-extrabold">جاهز لتكون من مفكري المستقبل؟</h2>
           <p className="relative mt-4 text-slate-300 max-w-xl lg:max-w-2xl lg:text-lg mx-auto">انضم إلى آلاف الطلاب في رحلة معرفية تنافسية، واجمع نقاط الخبرة، وتصدّر قوائم الصدارة الوطنية.</p>
           <Button data-testid="cta-join-btn" onClick={() => nav(user ? "/dashboard" : "/register")} size="lg" className="pressable relative mt-8 rounded-2xl ft-btn-solid h-12 px-8 text-base">
             <Rocket className="w-5 h-5 ml-2" /> {user ? "لوحتي" : "ابدأ الآن مجاناً"}
           </Button>
+          </div>
         </div>
         </FadeUp>
       </section>
