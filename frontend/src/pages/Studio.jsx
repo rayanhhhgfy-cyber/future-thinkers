@@ -97,13 +97,13 @@ export default function Studio() {
 
   return (
     <Layout>
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10">
+      <div className="max-w-6xl xl:max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10 lg:py-14">
         {/* hero */}
         <FadeUp>
-          <div className="relative overflow-hidden rounded-[2rem] sm:rounded-[2.5rem] px-6 py-9 sm:px-12 sm:py-14 mb-6 sm:mb-8 text-white ft-shadow-lg grain bg-gradient-to-br from-violet-700 via-indigo-800 to-fuchsia-900">
-            <PenLine className="absolute -left-10 -bottom-16 w-64 h-64 sm:w-[26rem] sm:h-[26rem] text-white/[0.07] -rotate-12 pointer-events-none" />
-            <Feather className="absolute left-[16%] top-8 w-14 h-14 sm:w-20 sm:h-20 text-white/10 rotate-12 pointer-events-none animate-float" />
-            <Sparkles className="absolute right-[10%] bottom-10 w-10 h-10 text-fuchsia-300/30 pointer-events-none animate-float" />
+          <div className="relative overflow-hidden rounded-[2rem] sm:rounded-[2.5rem] px-6 py-9 sm:px-12 sm:py-14 lg:px-16 lg:py-20 xl:px-20 mb-6 sm:mb-8 text-white ft-shadow-lg grain bg-gradient-to-br from-violet-700 via-indigo-800 to-fuchsia-900">
+            <PenLine className="absolute -left-10 -bottom-16 w-64 h-64 sm:w-[26rem] sm:h-[26rem] lg:w-[32rem] lg:h-[32rem] text-white/[0.07] -rotate-12 pointer-events-none" />
+            <Feather className="absolute left-[16%] top-8 w-14 h-14 sm:w-20 sm:h-20 lg:w-24 lg:h-24 text-white/10 rotate-12 pointer-events-none animate-float" />
+            <Sparkles className="absolute right-[10%] bottom-10 w-10 h-10 lg:w-14 lg:h-14 text-fuchsia-300/30 pointer-events-none animate-float" />
             <div className="absolute -top-24 right-[8%] w-72 h-72 bg-violet-500/40 rounded-full blur-3xl pointer-events-none" />
             <div className="absolute top-1/3 -left-16 w-64 h-64 bg-fuchsia-500/30 rounded-full blur-3xl pointer-events-none" />
             <div className="absolute -bottom-28 right-1/3 w-72 h-72 bg-indigo-400/25 rounded-full blur-3xl pointer-events-none" />
@@ -112,20 +112,20 @@ export default function Studio() {
               <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white/15 backdrop-blur-md ring-1 ring-white/25 text-xs font-bold mb-5">
                 <Sparkles className="w-3.5 h-3.5 text-amber-300" /> منصة إبداع الطلاب
               </span>
-              <h1 className="font-head text-4xl sm:text-5xl lg:text-6xl font-extrabold flex items-center gap-3 sm:gap-4 leading-tight">
-                <span className="w-14 h-14 sm:w-16 sm:h-16 rounded-[1.3rem] bg-white/15 backdrop-blur-md ring-1 ring-white/25 grid place-items-center shrink-0 shadow-lg shadow-black/10"><PenLine className="w-7 h-7 sm:w-8 sm:h-8" /></span>
+              <h1 className="font-head text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-extrabold flex items-center gap-3 sm:gap-4 leading-tight relative z-10">
+                <span className="w-14 h-14 sm:w-16 sm:h-16 lg:w-20 lg:h-20 lg:rounded-[1.5rem] rounded-[1.3rem] bg-white/15 backdrop-blur-md ring-1 ring-white/25 grid place-items-center shrink-0 shadow-lg shadow-black/10"><PenLine className="w-7 h-7 sm:w-8 sm:h-8 lg:w-10 lg:h-10" /></span>
                 استوديو النشر
               </h1>
-              <p className="text-white/85 mt-4 text-base sm:text-lg leading-relaxed max-w-xl">انشر مقالاتك وأشعارك وخواطرك · تُراجع تحريرياً قبل النشر</p>
-              <div className="flex flex-wrap items-center gap-2 mt-6">
+              <p className="text-white/85 mt-4 lg:mt-5 text-base sm:text-lg lg:text-xl leading-relaxed max-w-xl lg:max-w-2xl relative z-10">انشر مقالاتك وأشعارك وخواطرك · تُراجع تحريرياً قبل النشر</p>
+              <div className="flex flex-wrap items-center gap-2 mt-6 lg:mt-8 relative z-10">
                 {TYPES.map((t) => (
-                  <span key={t.v} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 backdrop-blur ring-1 ring-white/15 text-xs font-bold">
-                    <t.icon className="w-3.5 h-3.5" />{t.l}
+                  <span key={t.v} className="inline-flex items-center gap-1.5 px-3 lg:px-4 lg:py-2 py-1.5 rounded-full bg-white/10 backdrop-blur ring-1 ring-white/15 text-xs lg:text-sm font-bold">
+                    <t.icon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />{t.l}
                   </span>
                 ))}
               </div>
-              <div className="flex flex-wrap items-center gap-3 mt-7">
-                {user && <Button onClick={startNew} className="pressable min-h-[48px] px-6 rounded-2xl bg-gradient-to-l from-fuchsia-500 to-violet-500 hover:from-fuchsia-400 hover:to-violet-400 ring-1 ring-white/40 text-white font-extrabold text-base shadow-xl shadow-fuchsia-950/40"><Plus className="w-5 h-5 ml-1" /> عمل جديد</Button>}
+              <div className="flex flex-wrap items-center gap-3 mt-7 lg:mt-9 relative z-10">
+                {user && <Button onClick={startNew} className="pressable min-h-[48px] lg:min-h-[54px] px-6 lg:px-8 lg:text-lg rounded-2xl bg-gradient-to-l from-fuchsia-500 to-violet-500 hover:from-fuchsia-400 hover:to-violet-400 ring-1 ring-white/40 text-white font-extrabold text-base shadow-xl shadow-fuchsia-950/40"><Plus className="w-5 h-5 ml-1" /> عمل جديد</Button>}
                 {gallery.total > 0 && (
                   <span className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-white/15 backdrop-blur-md ring-1 ring-white/25 text-xs font-bold">
                     <BookOpen className="w-3.5 h-3.5" /> {gallery.total} عمل منشور
@@ -169,16 +169,16 @@ export default function Studio() {
                 <Button variant="outline" onClick={loadGallery} className="pressable rounded-full h-11 px-5 bg-white">بحث</Button>
               </div>
             </div>
-            {gallery.items.length === 0 ? <EmptyState icon={BookOpen} title="لا أعمال منشورة بعد" hint="كن أول من ينشر في الاستوديو!" /> : (
-              <Stagger className="columns-1 min-[480px]:columns-2 lg:columns-3 gap-5">
+            {gallery.items.length === 0 ? <div className="lg:max-w-3xl lg:mx-auto"><EmptyState icon={BookOpen} title="لا أعمال منشورة بعد" hint="كن أول من ينشر في الاستوديو!" /></div> : (
+              <Stagger className="columns-1 min-[480px]:columns-2 lg:columns-3 xl:columns-4 gap-5 xl:gap-6">
                 {gallery.items.map((w, i) => {
                   const meta = TYPE_META[w.type] || TYPE_META.article;
                   const TIcon = (TYPES.find((x) => x.v === w.type) || TYPES[0]).icon;
                   return (
-                  <Item key={w.id} className="relative w-full mb-5 break-inside-avoid">
-                  <button onClick={() => nav(`/studio/${w.id}`)} className="group w-full text-right bg-white rounded-[1.6rem] border border-slate-100 ft-shadow hover-lift overflow-hidden flex flex-col">
+                  <Item key={w.id} className="relative w-full mb-5 xl:mb-6 break-inside-avoid">
+                  <button onClick={() => nav(`/studio/${w.id}`)} className="group w-full text-right bg-white rounded-[1.6rem] border border-slate-100 ft-shadow hover-lift overflow-hidden flex flex-col lg:transition-all lg:duration-300 lg:hover:-translate-y-1.5 lg:hover:shadow-2xl lg:hover:shadow-violet-200/60 lg:hover:border-violet-200">
                     <div className={`relative bg-gradient-to-l ${meta.g} ${BAND_H[i % 3]} shrink-0 overflow-hidden`}>
-                      <TIcon className="absolute -left-3 -bottom-6 w-28 h-28 text-white/15 -rotate-12 transition-transform duration-500 group-hover:scale-110 group-hover:-rotate-6" />
+                      <TIcon className="absolute -left-3 -bottom-6 w-28 h-28 lg:w-32 lg:h-32 text-white/15 -rotate-12 transition-transform duration-500 group-hover:scale-110 group-hover:-rotate-6" />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-white/10" />
                       <span className="absolute top-3 right-3 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/20 backdrop-blur-md ring-1 ring-white/25 text-white text-xs font-bold">
                         <TIcon className="w-3.5 h-3.5" />{w.type_label}
@@ -189,7 +189,7 @@ export default function Studio() {
                       </span>
                     </div>
                     <div className="p-5 sm:p-6 flex flex-col flex-1">
-                      <div className="font-head font-extrabold text-lg text-slate-900 mb-2 line-clamp-2 leading-snug group-hover:text-violet-700 transition-colors">{w.title}</div>
+                      <div className="font-head font-extrabold text-lg lg:text-xl text-slate-900 mb-2 line-clamp-2 leading-snug group-hover:text-violet-700 transition-colors">{w.title}</div>
                       <p className={`text-sm text-slate-500 ${EXCERPT_CLAMP[i % 3]} leading-relaxed flex-1`}>{w.excerpt}</p>
                       <div className="mt-5 pt-4 border-t border-slate-100 flex items-center gap-2.5 text-xs text-slate-400">
                         <span className={`w-8 h-8 rounded-full bg-gradient-to-br ${meta.avatar} ring-2 ring-white shadow text-white grid place-items-center font-extrabold text-xs shrink-0`}>{w.author_name?.trim()?.[0]}</span>
@@ -207,9 +207,9 @@ export default function Studio() {
         )}
 
         {tab === "mine" && (
-          !user ? <EmptyState icon={PenLine} title="سجّل الدخول" hint="تحتاج حساباً لنشر أعمالك" /> :
-          mine.length === 0 ? <EmptyState icon={PenLine} title="لم تنشر شيئاً بعد" hint="ابدأ بكتابة أول عمل لك" action={<Button onClick={startNew} className="rounded-xl bg-violet-600">عمل جديد</Button>} /> : (
-            <div className="space-y-3 sm:space-y-4">
+          !user ? <div className="lg:max-w-3xl lg:mx-auto"><EmptyState icon={PenLine} title="سجّل الدخول" hint="تحتاج حساباً لنشر أعمالك" /></div> :
+          mine.length === 0 ? <div className="lg:max-w-3xl lg:mx-auto"><EmptyState icon={PenLine} title="لم تنشر شيئاً بعد" hint="ابدأ بكتابة أول عمل لك" action={<Button onClick={startNew} className="rounded-xl bg-violet-600">عمل جديد</Button>} /></div> : (
+            <div className="grid gap-3 sm:gap-4 xl:grid-cols-2 xl:gap-5">
               {mine.map((w, i) => {
                 const meta = TYPE_META[w.type] || TYPE_META.article;
                 const TIcon = (TYPES.find((x) => x.v === w.type) || TYPES[0]).icon;
@@ -253,7 +253,7 @@ export default function Studio() {
 
         {/* Editor dialog */}
         <Dialog open={!!editing} onOpenChange={(v) => !v && setEditing(null)}>
-          <DialogContent className="max-w-2xl max-h-[92vh] overflow-y-auto rounded-[2rem] p-0 gap-0" dir="rtl">
+          <DialogContent className="max-w-2xl lg:max-w-3xl max-h-[92vh] overflow-y-auto rounded-[2rem] p-0 gap-0" dir="rtl">
             <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-md pl-6 pr-14 pt-6 pb-4 border-b border-slate-100">
               <DialogHeader>
                 <DialogTitle className="font-head text-xl font-extrabold flex items-center gap-2.5">
@@ -265,7 +265,7 @@ export default function Studio() {
             <div className="space-y-5 px-6 py-5">
               <div>
                 <Label>العنوان</Label>
-                <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="عنوان جذّاب لعملك..." className="rounded-2xl mt-1.5 h-12" maxLength={120} />
+                <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="عنوان جذّاب لعملك..." className="rounded-2xl mt-1.5 h-12" />
               </div>
               <div>
                 <Label>النوع</Label>
@@ -283,7 +283,7 @@ export default function Studio() {
               </div>
               <div>
                 <Label>النص</Label>
-                <Textarea value={form.content} onChange={(e) => setForm({ ...form, content: e.target.value })} placeholder="اكتب إبداعك هنا..." className="rounded-2xl mt-1.5 min-h-[240px] leading-loose bg-slate-50/60 focus:bg-white text-base" maxLength={20000} />
+                <Textarea value={form.content} onChange={(e) => setForm({ ...form, content: e.target.value })} placeholder="اكتب إبداعك هنا..." className="rounded-2xl mt-1.5 min-h-[240px] lg:min-h-[320px] leading-loose bg-slate-50/60 focus:bg-white text-base" />
                 <div className="flex items-center justify-between mt-2">
                   <div className="h-2 flex-1 ml-3 rounded-full bg-slate-100 overflow-hidden">
                     <div className="h-full rounded-full bg-gradient-to-l from-violet-500 via-purple-500 to-fuchsia-500 transition-all duration-300" style={{ width: `${Math.min(100, (form.content.length / 20000) * 100)}%` }} />

@@ -109,14 +109,14 @@ export default function StudioWork() {
         {/* hero */}
         <div className={`bg-gradient-to-l ${t.g} relative overflow-hidden grain`}>
           <div className="absolute inset-0 bg-black/25" />
-          <TIcon className="absolute -left-10 -bottom-14 w-64 h-64 sm:w-80 sm:h-80 text-white/10 -rotate-12 pointer-events-none" />
-          <TIcon className="absolute right-[6%] top-8 w-16 h-16 sm:w-24 sm:h-24 text-white/10 rotate-12 pointer-events-none animate-float" />
-          <Sparkles className="absolute left-[22%] top-10 w-8 h-8 text-white/25 pointer-events-none animate-float" />
+          <TIcon className="absolute -left-10 -bottom-14 w-64 h-64 sm:w-80 sm:h-80 lg:w-[26rem] lg:h-[26rem] text-white/10 -rotate-12 pointer-events-none" />
+          <TIcon className="absolute right-[6%] top-8 w-16 h-16 sm:w-24 sm:h-24 lg:w-28 lg:h-28 text-white/10 rotate-12 pointer-events-none animate-float" />
+          <Sparkles className="absolute left-[22%] top-10 w-8 h-8 lg:w-10 lg:h-10 text-white/25 pointer-events-none animate-float" />
           <div className="absolute top-0 left-1/4 w-72 h-72 bg-white/10 rounded-full blur-3xl pointer-events-none" />
           <div className="absolute -bottom-20 right-0 w-64 h-64 bg-black/10 rounded-full blur-3xl pointer-events-none" />
           <div className="absolute top-1/3 right-1/4 w-48 h-48 bg-white/[0.07] rounded-full blur-3xl pointer-events-none" />
           <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, ease: EASE }}
-            className="relative max-w-4xl mx-auto px-4 sm:px-6 pt-10 pb-16 sm:pb-20 text-white">
+            className="relative max-w-4xl xl:max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 xl:px-10 pt-10 pb-16 sm:pb-20 lg:pt-14 lg:pb-24 text-white">
             <button onClick={() => nav("/studio")} className="pressable inline-flex min-h-[44px] items-center text-white/80 hover:text-white text-sm gap-1.5 mb-5 px-3 -mr-3 rounded-full hover:bg-white/10 transition-colors">
               <ArrowRight className="w-4 h-4" /> عودة للاستوديو
             </button>
@@ -132,7 +132,7 @@ export default function StudioWork() {
               <BookmarkButton kind="work" refId={work.id} title={work.title} dark />
               <ReportButton entityType="work" entityId={work.id} className="text-white/50 hover:text-rose-300" />
             </div>
-            <h1 className="font-head text-3xl sm:text-5xl lg:text-[3.4rem] font-extrabold leading-[1.2] mb-6">{work.title}</h1>
+            <h1 className="font-head text-3xl sm:text-5xl lg:text-[3.4rem] xl:text-6xl font-extrabold leading-[1.2] xl:leading-[1.15] mb-6">{work.title}</h1>
             <div className="flex flex-wrap items-center gap-2.5 text-sm">
               <span className="inline-flex items-center gap-2.5 pl-4 pr-1.5 py-1.5 rounded-full bg-white/15 backdrop-blur-md ring-1 ring-white/25">
                 <span className="w-9 h-9 rounded-full bg-white/25 grid place-items-center font-extrabold">{work.author_name?.trim()?.[0]}</span>
@@ -147,11 +147,11 @@ export default function StudioWork() {
           </div>
         </div>
 
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
+        <div className="max-w-4xl xl:max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-10 py-8 sm:py-10 lg:py-12 xl:grid xl:grid-cols-[minmax(0,1fr)_340px] xl:gap-10 xl:items-start">
           {/* like bar */}
-          <FadeUp>
-            <div className="sticky top-20 z-30 flex flex-wrap items-center justify-between gap-3 glass rounded-[1.6rem] border border-white/70 ft-shadow-lg p-4 sm:px-5 mb-6">
-              <div className="flex items-center gap-3">
+          <FadeUp className="xl:col-start-2 xl:row-start-1">
+            <div className="sticky top-20 z-30 flex flex-wrap items-center justify-between gap-3 glass rounded-[1.6rem] border border-white/70 ft-shadow-lg p-4 sm:px-5 mb-6 xl:sticky xl:top-24 xl:mb-0 xl:p-5">
+              <div className="flex items-center gap-3 min-w-0">
                 <div className="relative">
                   <motion.button
                     whileTap={{ scale: 0.8 }}
@@ -179,7 +179,7 @@ export default function StudioWork() {
                 </div>
               </div>
               {myStars > 0 && (
-                <div className="flex items-center gap-2 text-sm text-slate-500">
+                <div className="flex items-center gap-2 text-sm text-slate-500 flex-wrap">
                   <span>تقييمك:</span>
                   <Stars value={myStars} readonly size="w-5 h-5" />
                 </div>
@@ -187,13 +187,15 @@ export default function StudioWork() {
             </div>
           </FadeUp>
 
+          <main className="min-w-0 xl:col-start-1 xl:row-start-1">
+
           {/* content */}
           <FadeUp delay={0.05}>
-            <article className="relative bg-white rounded-[2rem] sm:rounded-[2.5rem] border border-slate-100 ft-shadow-lg p-6 sm:p-10 lg:p-12 mb-8 overflow-hidden">
+            <article className="relative bg-white rounded-[2rem] sm:rounded-[2.5rem] border border-slate-100 ft-shadow-lg p-6 sm:p-10 lg:p-14 xl:px-16 xl:py-14 mb-8 overflow-hidden">
               <div className={`absolute top-0 right-0 left-0 h-1.5 bg-gradient-to-l ${t.g}`} />
-              <TIcon className="absolute -left-6 -bottom-8 w-36 h-36 text-slate-900/[0.035] -rotate-12 pointer-events-none" />
-              <div className="relative prose prose-slate prose-lg max-w-none whitespace-pre-wrap leading-[2.2] text-slate-700 font-medium">
-                {work.content}
+              <TIcon className="absolute -left-6 -bottom-8 w-36 h-36 lg:w-44 lg:h-44 text-slate-900/[0.035] -rotate-12 pointer-events-none" />
+              <div className="relative prose prose-slate prose-lg lg:prose-xl max-w-none whitespace-pre-wrap leading-[2.2] lg:leading-[2.3] text-slate-700 font-medium">
+                <span className={`float-right ml-4 mb-2 font-head text-[3.4rem] lg:text-6xl leading-[0.9] font-extrabold bg-gradient-to-br ${t.g} bg-clip-text text-transparent select-none`} aria-hidden="true">{work.content?.trim()?.[0] || ""}</span>{(work.content || "").trimStart().slice(1) || work.content}
               </div>
               <div className="relative mt-10 pt-6 border-t border-slate-100 flex flex-wrap items-center gap-3">
                 <span className={`w-11 h-11 rounded-2xl bg-gradient-to-br ${t.g} text-white grid place-items-center font-extrabold shadow-lg shrink-0`}>{work.author_name?.trim()?.[0]}</span>
@@ -211,7 +213,7 @@ export default function StudioWork() {
           {/* rating + reviews */}
           <FadeUp>
             <section className="bg-white rounded-[2rem] sm:rounded-[2.5rem] border border-slate-100 ft-shadow-lg p-6 sm:p-8 lg:p-10 mb-8">
-              <h2 className="font-head text-xl sm:text-2xl font-extrabold mb-1 flex items-center gap-2.5 flex-wrap">
+              <h2 className="font-head text-xl sm:text-2xl lg:text-[1.7rem] font-extrabold mb-1 flex items-center gap-2.5 flex-wrap">
                 <span className="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 grid place-items-center shadow-lg shadow-amber-200"><Star className="w-5 h-5 text-white fill-white" /></span> التقييمات والمراجعات
                 {reviews.length > 0 && <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-slate-100 text-slate-500">{reviews.length} مراجعة</span>}
               </h2>
@@ -226,7 +228,7 @@ export default function StudioWork() {
                   <div className="font-extrabold text-sm mb-3 text-slate-800">قيّم هذا العمل</div>
                   <Stars value={revStars} onRate={setRevStars} />
                   <Textarea value={revText} onChange={(e) => setRevText(e.target.value)}
-                    placeholder="شارك رأيك بالعمل... ما الذي أعجبك؟" className="rounded-2xl mt-3 bg-white" rows={3} maxLength={1000} />
+                    placeholder="شارك رأيك بالعمل... ما الذي أعجبك؟" className="rounded-2xl mt-3 bg-white" rows={3} />
                   <Button onClick={submitReview} disabled={sending} className="pressable rounded-full min-h-[48px] px-6 mt-3 bg-gradient-to-l from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-lg shadow-amber-200">
                     <Send className="w-4 h-4 ml-1" /> {sending ? "جارٍ النشر..." : "نشر التقييم"}
                   </Button>
@@ -237,7 +239,7 @@ export default function StudioWork() {
               {reviews.length === 0 ? (
                 <div className="text-center py-6 text-slate-400 text-sm">لا مراجعات بعد · رأيك يهم الكاتب!</div>
               ) : (
-                <Stagger className="space-y-3">
+                <Stagger className="space-y-3 xl:space-y-0 xl:grid xl:grid-cols-2 xl:gap-4">
                   {reviews.map((r) => (
                     <Item key={r.id}>
                       <div className="flex gap-3 p-4 rounded-[1.4rem] border border-slate-100 bg-white hover:border-amber-200 hover:shadow-lg hover:shadow-amber-100/70 transition-all">
@@ -265,22 +267,23 @@ export default function StudioWork() {
               )}
             </section>
           </FadeUp>
+          </main>
 
           {/* related */}
           {related.length > 0 && (
-            <FadeUp>
-              <section className="mb-8">
+            <FadeUp className="xl:col-span-2">
+              <section className="mb-8 xl:mt-12">
                 <h2 className="font-head text-xl sm:text-2xl font-extrabold mb-5 flex items-center gap-2.5">
                   <span className={`w-10 h-10 rounded-2xl bg-gradient-to-br ${t.g} grid place-items-center shadow-lg`}><TIcon className="w-5 h-5 text-white" /></span> أعمال مشابهة
                 </h2>
-                <div className="grid sm:grid-cols-3 gap-4 sm:gap-5">
+                <div className="grid sm:grid-cols-3 gap-4 sm:gap-5 xl:gap-6">
                   {related.map((w) => {
                     const rt = TYPES[w.type] || TYPES.article;
                     const RIcon = rt.icon;
                     return (
-                    <Link key={w.id} to={`/studio/${w.id}`} className="group pressable bg-white rounded-[1.6rem] border border-slate-100 ft-shadow hover-lift overflow-hidden flex flex-col">
-                      <div className={`relative h-20 bg-gradient-to-l ${rt.g} shrink-0 overflow-hidden`}>
-                        <RIcon className="absolute -left-2 -bottom-5 w-20 h-20 text-white/15 -rotate-12 transition-transform duration-500 group-hover:scale-110 group-hover:-rotate-6" />
+                    <Link key={w.id} to={`/studio/${w.id}`} className="group pressable bg-white rounded-[1.6rem] border border-slate-100 ft-shadow hover-lift overflow-hidden flex flex-col lg:transition-all lg:duration-300 lg:hover:-translate-y-1.5 lg:hover:shadow-2xl lg:hover:shadow-violet-200/60 lg:hover:border-violet-200">
+                      <div className={`relative h-20 lg:h-24 bg-gradient-to-l ${rt.g} shrink-0 overflow-hidden`}>
+                        <RIcon className="absolute -left-2 -bottom-5 w-20 h-20 lg:w-24 lg:h-24 text-white/15 -rotate-12 transition-transform duration-500 group-hover:scale-110 group-hover:-rotate-6" />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
                         <span className="absolute top-3 right-3 inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/20 backdrop-blur-md ring-1 ring-white/25 text-white text-[11px] font-bold">
                           <RIcon className="w-3 h-3" />{rt.l}

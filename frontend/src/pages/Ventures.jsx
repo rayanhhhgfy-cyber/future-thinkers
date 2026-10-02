@@ -138,9 +138,9 @@ export default function Ventures() {
 
   return (
     <Layout>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6">
-        <div className="ft-hero-gradient grain relative overflow-hidden rounded-[2rem] text-white px-6 py-10 sm:px-10 sm:py-14 ft-shadow-lg">
-          <Rocket className="pointer-events-none absolute -left-6 -bottom-8 w-44 h-44 sm:w-64 sm:h-64 text-white/10 -rotate-12" />
+      <div className="max-w-7xl xl:max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6">
+        <div className="ft-hero-gradient grain relative isolate overflow-hidden rounded-[2rem] text-white px-6 py-10 sm:px-10 sm:py-14 lg:py-16 ft-shadow-lg">
+          <Rocket className="pointer-events-none absolute -left-6 -bottom-8 w-44 h-44 sm:w-64 sm:h-64 lg:w-80 lg:h-80 text-white/10 -rotate-12" />
           <Sparkles className="pointer-events-none absolute left-[38%] top-8 w-8 h-8 text-white/15 hidden sm:block" />
           <div className="pointer-events-none absolute -top-20 right-[15%] w-56 h-56 rounded-full bg-[color:color-mix(in_srgb,var(--ft-accent)_20%,transparent)] blur-3xl animate-pulse [animation-duration:4s]" />
           <div className="pointer-events-none absolute -bottom-24 left-[30%] w-56 h-56 rounded-full bg-[color:color-mix(in_srgb,var(--ft-accent)_15%,transparent)] blur-3xl animate-pulse [animation-duration:5.5s]" />
@@ -148,7 +148,7 @@ export default function Ventures() {
             <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 border border-white/25 px-3.5 py-1.5 text-xs font-bold backdrop-blur-md shadow-inner">
               <Sparkles className="w-3.5 h-3.5 ft-text-accent-bright" /> مشاريع طلابية
             </span>
-            <h1 className="font-head text-4xl sm:text-5xl font-extrabold mt-5 leading-tight">
+            <h1 className="font-head text-4xl sm:text-5xl lg:text-6xl font-extrabold mt-5 leading-tight">
               مساحة <span className="ft-text-gradient">المشاريع</span> 🚀
             </h1>
             <p className="text-slate-200/90 mt-3 max-w-2xl leading-relaxed text-base sm:text-lg">
@@ -181,8 +181,8 @@ export default function Ventures() {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div id="ventures-toolbar" className="sticky top-[calc(4rem+env(safe-area-inset-top))] z-30 scroll-mt-28">
+      <div className="max-w-7xl xl:max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-8 relative isolate">
+        <div id="ventures-toolbar" className="sticky top-[calc(4rem+env(safe-area-inset-top))] z-40 isolate scroll-mt-28">
           <div className="bg-white/85 backdrop-blur-xl rounded-[1.4rem] sm:rounded-3xl border border-white/60 ring-1 ring-slate-200/60 ft-shadow-lg p-4 sm:p-5 space-y-4">
             <div className="relative">
               <Search className="w-5 h-5 absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
@@ -226,10 +226,10 @@ export default function Ventures() {
             <ErrorState message="تعذّر تحميل المشاريع" onRetry={load} context="ventures-list" className="max-w-xl mx-auto shadow-sm" />
           </div>
         ) : !ventures ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 mt-6" aria-hidden="true">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-5 mt-6 isolate" aria-hidden="true">
             {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="bg-white rounded-[1.6rem] border border-slate-100 ft-shadow overflow-hidden animate-pulse flex flex-col">
-                <div className="h-28 sm:h-32 bg-slate-200/80 shrink-0" />
+              <div key={i} className="bg-white rounded-[1.6rem] border border-slate-100 ft-shadow overflow-hidden animate-pulse flex flex-col isolate">
+                <div className="h-28 sm:h-32 lg:h-36 bg-slate-200/80 shrink-0" />
                 <div className="px-5 pb-5 flex flex-col flex-1">
                   <div className="-mt-8 w-14 h-14 rounded-2xl bg-slate-200 ring-4 ring-white" />
                   <div className="flex gap-2 mt-3.5">
@@ -274,14 +274,14 @@ export default function Ventures() {
               <Sparkles className="w-4 h-4 ft-text-accent" />
               عرض {ventures.length} مشروع
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-5 isolate">
               {ventures.map((v, i) => {
                 const meta = CATEGORY_META[v.category] || CATEGORY_DEFAULT;
                 const CatIcon = meta.icon;
                 return (
                   <div key={v.id} style={{ animationDelay: `${Math.min(i, 11) * 60}ms` }}
-                    className="group relative bg-white rounded-[1.6rem] border border-slate-100 ft-shadow hover-lift flex flex-col overflow-hidden animate-fade-up transition-shadow duration-300 hover:shadow-[0_24px_50px_-16px_color-mix(in_srgb,var(--ft-accent)_35%,transparent)]">
-                    <div className={`relative h-28 sm:h-32 shrink-0 overflow-hidden bg-gradient-to-l ${meta.grad}`}>
+                    className="group relative isolate z-0 bg-white rounded-[1.6rem] border border-slate-100 ft-shadow hover-lift flex flex-col overflow-hidden animate-fade-up transition-shadow duration-300 hover:shadow-[0_24px_50px_-16px_color-mix(in_srgb,var(--ft-accent)_35%,transparent)]">
+                    <div className={`relative isolate h-28 sm:h-32 lg:h-36 shrink-0 overflow-hidden bg-gradient-to-l ${meta.grad}`}>
                       <CatIcon className="pointer-events-none absolute -left-4 -bottom-7 w-32 h-32 text-white/20 -rotate-12 transition-transform duration-500 group-hover:scale-110 group-hover:-rotate-6" />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-white/10" />
                       <div className="absolute top-3 inset-x-3 flex items-start justify-between gap-2">

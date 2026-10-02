@@ -53,7 +53,7 @@ export default function VentureDetail() {
     if (loadError) {
       return (
         <Layout>
-          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+          <div className="max-w-5xl xl:max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
             <ErrorState error={loadError} message="تعذّر تحميل هذا المشروع" onRetry={load} context="venture-detail-load" />
             <div className="mt-5 flex justify-center">
               <Button onClick={() => nav("/ventures")} className="rounded-2xl ft-btn-primary font-extrabold min-h-[48px] px-6 pressable shadow-lg">
@@ -167,9 +167,9 @@ export default function VentureDetail() {
 
   return (
     <Layout>
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6">
-        <div className="ft-hero-gradient grain relative overflow-hidden rounded-[2rem] text-white px-6 py-10 sm:px-10 sm:py-14 ft-shadow-lg">
-          <CategoryIcon className="pointer-events-none absolute -left-8 -bottom-10 w-48 h-48 sm:w-72 sm:h-72 text-white/10 -rotate-12" />
+      <div className="max-w-5xl xl:max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6">
+        <div className="ft-hero-gradient grain relative isolate overflow-hidden rounded-[2rem] text-white px-6 py-10 sm:px-10 sm:py-14 lg:py-16 ft-shadow-lg">
+          <CategoryIcon className="pointer-events-none absolute -left-8 -bottom-10 w-48 h-48 sm:w-72 sm:h-72 lg:w-96 lg:h-96 text-white/10 -rotate-12" />
           <div className="pointer-events-none absolute -top-24 right-[20%] w-64 h-64 rounded-full bg-[color:color-mix(in_srgb,var(--ft-accent)_20%,transparent)] blur-3xl" />
           <div className="pointer-events-none absolute -bottom-28 left-[35%] w-64 h-64 rounded-full bg-[color:color-mix(in_srgb,var(--ft-accent)_15%,transparent)] blur-3xl" />
           <div className="relative">
@@ -187,7 +187,7 @@ export default function VentureDetail() {
               </Badge>
               <BookmarkButton kind="venture" refId={v.id} title={v.title} dark />
             </div>
-            <h1 className="font-head text-3xl sm:text-[2.6rem] font-extrabold leading-snug mt-4">{v.title}</h1>
+            <h1 className="font-head text-3xl sm:text-[2.6rem] lg:text-6xl font-extrabold leading-snug mt-4">{v.title}</h1>
             <div className="mt-4 inline-flex items-center gap-2.5 rounded-full bg-white/10 border border-white/20 backdrop-blur-md py-1.5 pr-1.5 pl-4 max-w-full">
               <span className="w-8 h-8 rounded-full ft-icon-tile text-white text-sm font-extrabold flex items-center justify-center shrink-0 ring-2 ring-white/40 shadow">
                 {(v.owner_name || "؟").trim().charAt(0)}
@@ -220,8 +220,8 @@ export default function VentureDetail() {
         </div>
       </div>
 
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-28 lg:pb-10 space-y-6">
-        <div className="bg-white rounded-[1.4rem] sm:rounded-3xl border border-slate-100 ft-shadow p-6 sm:p-8 animate-fade-up">
+      <div className="max-w-5xl xl:max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-28 lg:pb-10 grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
+        <div className="bg-white rounded-[1.4rem] sm:rounded-3xl border border-slate-100 ft-shadow p-6 sm:p-8 animate-fade-up isolate min-w-0 xl:col-start-1">
           <div className="flex items-start justify-between gap-4 flex-wrap">
             <h2 className="font-head font-extrabold text-xl flex items-center gap-2.5">
               <span className="w-10 h-10 rounded-2xl ft-icon-tile text-white flex items-center justify-center shadow-lg shrink-0"><Info className="w-5 h-5" /></span>
@@ -248,7 +248,8 @@ export default function VentureDetail() {
           )}
         </div>
 
-        <div className="bg-white rounded-[1.4rem] sm:rounded-3xl border border-slate-100 ft-shadow p-6 sm:p-8 animate-fade-up" style={{ animationDelay: "60ms" }}>
+        <div className="min-w-0 isolate xl:col-start-2 xl:row-start-1 xl:row-span-3">
+        <div className="bg-white rounded-[1.4rem] sm:rounded-3xl border border-slate-100 ft-shadow p-6 sm:p-8 animate-fade-up isolate xl:sticky xl:top-24" style={{ animationDelay: "60ms" }}>
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <h2 className="font-head font-extrabold text-xl flex items-center gap-2.5">
               <span className="w-10 h-10 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-500 text-white flex items-center justify-center shadow-lg shadow-blue-200 shrink-0"><Users className="w-5 h-5" /></span>
@@ -313,9 +314,10 @@ export default function VentureDetail() {
             )}
           </div>
         </div>
+        </div>
 
         {v.is_owner && (v.join_requests || []).length > 0 && (
-          <div className="relative overflow-hidden bg-gradient-to-b from-amber-50/80 to-white rounded-[1.4rem] sm:rounded-3xl border border-amber-200 ft-shadow p-6 sm:p-8 animate-fade-up" style={{ animationDelay: "120ms" }}>
+          <div className="relative isolate overflow-hidden bg-gradient-to-b from-amber-50/80 to-white rounded-[1.4rem] sm:rounded-3xl border border-amber-200 ft-shadow p-6 sm:p-8 animate-fade-up min-w-0 xl:col-start-1" style={{ animationDelay: "120ms" }}>
             <h2 className="font-head font-extrabold text-xl flex items-center gap-2.5 flex-wrap">
               <span className="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 text-white flex items-center justify-center shadow-lg shadow-amber-200 shrink-0"><UserPlus className="w-5 h-5" /></span>
               طلبات الانضمام
@@ -356,7 +358,7 @@ export default function VentureDetail() {
         )}
 
         {(v.updates || []).length > 0 && (
-          <div className="bg-white rounded-[1.4rem] sm:rounded-3xl border border-slate-100 ft-shadow p-6 sm:p-8 animate-fade-up" style={{ animationDelay: "180ms" }}>
+          <div className="bg-white rounded-[1.4rem] sm:rounded-3xl border border-slate-100 ft-shadow p-6 sm:p-8 animate-fade-up isolate min-w-0 xl:col-start-1" style={{ animationDelay: "180ms" }}>
             <h2 className="font-head font-extrabold text-xl flex items-center gap-2.5">
               <span className="w-10 h-10 rounded-2xl ft-icon-tile text-white flex items-center justify-center shadow-lg shrink-0"><Megaphone className="w-5 h-5" /></span>
               آخر التحديثات
@@ -394,7 +396,7 @@ export default function VentureDetail() {
       </div>
 
       {/* Mobile sticky action bar · mirrors the in-card logic, phones only */}
-      <div className="fixed bottom-0 inset-x-0 z-40 lg:hidden pointer-events-none" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
+      <div className="fixed bottom-0 inset-x-0 z-[45] lg:hidden pointer-events-none" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
         <div className="pointer-events-auto mx-3 mb-3 rounded-[1.75rem] border border-white/60 bg-white/85 backdrop-blur-xl shadow-[0_18px_40px_-12px_rgba(15,23,42,0.35)] p-2 flex items-center gap-2">
           <button onClick={vote} disabled={voting} aria-label="التصويت للمشروع"
             className={`pressable shrink-0 flex items-center gap-1.5 font-extrabold rounded-2xl px-4 min-h-[48px] text-base transition-all disabled:opacity-60 disabled:pointer-events-none ${v.voted ? "bg-gradient-to-l from-rose-500 to-pink-500 text-white shadow-lg shadow-rose-200" : "bg-rose-50 text-rose-500 border border-rose-100"}`}>
