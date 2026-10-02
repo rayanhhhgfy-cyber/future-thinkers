@@ -14,7 +14,7 @@ import { Send, Clock, Trash2, Pencil, Plus, BellRing, XCircle, CheckCircle2, Sma
 
 const inputCls = "w-full text-base"; // text-base prevents iOS auto-zoom on focus
 
-// Where a tapped notification can take the user — picked from a dropdown,
+// Where a tapped notification can take the user · picked from a dropdown,
 // never typed by hand.
 const LINK_DESTINATIONS = [
   { path: "/", label: "الصفحة الرئيسية" },
@@ -369,7 +369,7 @@ export default function NotifyPanel() {
             </div>
             {(channel === "push" || channel === "both") && stats.push_devices === 0 && (
               <p className="text-xs text-amber-600 mt-2 bg-amber-50 border border-amber-100 rounded-lg p-2">
-                ⚠️ لا توجد أجهزة مفعّلة للدفع بعد — لن يصل إشعار الهاتف لأحد حتى يفعّل المستخدمون الإشعارات من أجهزتهم.
+                ⚠️ لا توجد أجهزة مفعّلة للدفع بعد · لن يصل إشعار الهاتف لأحد حتى يفعّل المستخدمون الإشعارات من أجهزتهم.
               </p>
             )}
           </div>
@@ -420,7 +420,7 @@ export default function NotifyPanel() {
             <div>
               <Label>تاريخ ووقت الإرسال</Label>
               <Input type="datetime-local" className={`${inputCls} mt-1.5 min-h-[48px]`} value={sendAt} onChange={(e) => setSendAt(e.target.value)} />
-              <p className="text-[11px] text-slate-400 mt-1">بتوقيت جهازك — سيُرسل تلقائياً عند حلول الموعد.</p>
+              <p className="text-[11px] text-slate-400 mt-1">بتوقيت جهازك · سيُرسل تلقائياً عند حلول الموعد.</p>
             </div>
           )}
 
@@ -455,7 +455,7 @@ export default function NotifyPanel() {
                   <div className="text-xs text-amber-700 mt-1">⏰ {fmtDT(c.send_at)}</div>
                   <div className="flex flex-wrap gap-1.5 mt-1.5">
                     <span className="text-[10px] px-2 py-0.5 rounded-full bg-white border border-amber-200 text-amber-700 font-bold">{channelLabel(c.channel)}</span>
-                    {isOverdue(c) && <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500 text-white font-bold">حان موعده — يُرسل الآن…</span>}
+                    {isOverdue(c) && <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500 text-white font-bold">حان موعده · يُرسل الآن…</span>}
                   </div>
                 </div>
                 <div className="flex flex-col gap-1.5 shrink-0">
@@ -522,7 +522,7 @@ export default function NotifyPanel() {
                 </div>
                 {c.body && <div className="text-xs text-slate-600 mt-0.5 line-clamp-2">{c.body}</div>}
                 <div className="text-[11px] text-slate-400 mt-1">
-                  {c.recipient_count ?? "—"} مستلم
+                  {c.recipient_count ?? "·"} مستلم
                   {c.inapp_count != null && c.channel !== "push" ? ` • ${c.inapp_count} داخل التطبيق` : ""}
                   {c.push_count != null && c.channel !== "inapp" ? ` • ${c.push_count} دفع للهاتف` : ""}
                   {" • "}{channelLabel(c.channel)}

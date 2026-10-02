@@ -1,4 +1,4 @@
-/* Free built-in chess robot — minimax with alpha-beta pruning.
+/* Free built-in chess robot · minimax with alpha-beta pruning.
    No APIs, no credits, no trials. Difficulty = search depth + blunder rate. */
 import { Chess } from "chess.js";
 
@@ -123,14 +123,14 @@ function search(chess, depth, alpha, beta) {
 }
 
 export const DIFFICULTIES = [
-  { id: "easy", label: "سهلة 🌱", depth: 1, blunder: 0.35, desc: "مناسبة للمبتدئين — الروبوت يخطئ أحياناً" },
+  { id: "easy", label: "سهلة 🌱", depth: 1, blunder: 0.35, desc: "مناسبة للمبتدئين · الروبوت يخطئ أحياناً" },
   { id: "medium", label: "متوسطة ⚔️", depth: 2, blunder: 0.12, desc: "تحدٍّ متوازن لأغلب اللاعبين" },
-  { id: "hard", label: "صعبة 🔥", depth: 3, blunder: 0, desc: "أقوى مستوى — فكّر جيداً قبل كل نقلة" },
+  { id: "hard", label: "صعبة 🔥", depth: 3, blunder: 0, desc: "أقوى مستوى · فكّر جيداً قبل كل نقلة" },
 ];
 
 /**
  * Pick the robot's move for the given difficulty.
- * Returns a chess.js move object (already applied? no — caller applies it).
+ * Returns a chess.js move object (already applied? no · caller applies it).
  */
 export function pickRobotMove(chess, difficultyId) {
   const diff = DIFFICULTIES.find((d) => d.id === difficultyId) || DIFFICULTIES[1];

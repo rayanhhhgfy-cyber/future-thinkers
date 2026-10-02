@@ -25,7 +25,7 @@ const roleLabel = (r) => (ROLES.find(([v]) => v === r) || [r, r])[1];
 
 const fmtDate = (iso) => {
   try { return new Date(iso).toLocaleDateString("ar-EG", { dateStyle: "medium" }); }
-  catch { return "—"; }
+  catch { return "·"; }
 };
 
 /** Grouped checkbox picker for the permission catalog. */
@@ -130,7 +130,7 @@ export default function UsersPanel() {
   };
   const loadPending = async () => {
     try { const { data } = await api.get("/admin/users/pending-teachers"); setPending(data.items); }
-    catch { /* no permission — section stays hidden */ }
+    catch { /* no permission · section stays hidden */ }
   };
   const loadCatalog = async () => {
     try { const { data } = await api.get("/admin/permissions"); setCatalog(data); }
@@ -254,7 +254,7 @@ export default function UsersPanel() {
       {importOpen && (
         <div className="mb-5 bg-white border border-slate-200 rounded-2xl p-4">
           <h3 className="font-bold text-slate-800 mb-1">استيراد طلاب (CSV)</h3>
-          <p className="text-xs text-slate-400 mb-3">كل سطر: الاسم، البريد، كلمة المرور (اختياري — افتراضي Student123!)، الصف، اسم المدرسة. تُتخطى الحسابات الموجودة مسبقاً.</p>
+          <p className="text-xs text-slate-400 mb-3">كل سطر: الاسم، البريد، كلمة المرور (اختياري · افتراضي Student123!)، الصف، اسم المدرسة. تُتخطى الحسابات الموجودة مسبقاً.</p>
           <Textarea value={csv} onChange={(e) => setCsv(e.target.value)} rows={6} dir="ltr" spellCheck={false}
             placeholder={"سارة أحمد, sara@school.jo, , 9, مدرسة الأمير حسن\nمحمد علي, mohammad@school.jo, Pass1234, 8, "}
             className="rounded-xl font-mono text-xs" />
@@ -281,7 +281,7 @@ export default function UsersPanel() {
                   {u.status === "pending_approval" && <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">بانتظار الموافقة</span>}
                   {u.status === "rejected" && <span className="text-[10px] px-2 py-0.5 rounded-full bg-rose-100 text-rose-700">مرفوض</span>}
                 </div>
-                <div className="text-xs text-slate-400">{u.email} · {u.school_name || "—"}</div>
+                <div className="text-xs text-slate-400">{u.email} · {u.school_name || "·"}</div>
               </div>
               {hasPerm("role.manage") ? (
                 <Select value={u.role} onValueChange={(v) => setUserRole(u.id, v)}>
@@ -333,7 +333,7 @@ export default function UsersPanel() {
               <div>
                 <Label className="mb-1 block">
                   {form.role === "custom"
-                    ? "صلاحيات الحساب — هذا الدور يبدأ من الصفر، فكل ما تحدده هنا هو كل ما يستطيع الحساب فعله"
+                    ? "صلاحيات الحساب · هذا الدور يبدأ من الصفر، فكل ما تحدده هنا هو كل ما يستطيع الحساب فعله"
                     : `صلاحيات إضافية فوق صلاحيات دور «${roleLabel(form.role)}» الأساسية (${roleBaseCount(form.role)} صلاحية)`}
                 </Label>
                 <div className="mt-1.5">
@@ -364,8 +364,8 @@ export default function UsersPanel() {
           <p className="text-xs text-slate-500">
             الدور: <b>{roleLabel(permEdit?.user.role)}</b>
             {permEdit?.user.role === "custom"
-              ? " — هذه القائمة هي كل صلاحيات الحساب."
-              : ` (${roleBaseCount(permEdit?.user.role)} صلاحية أساسية) — ما تحدده هنا يُضاف فوقها.`}
+              ? " · هذه القائمة هي كل صلاحيات الحساب."
+              : ` (${roleBaseCount(permEdit?.user.role)} صلاحية أساسية) · ما تحدده هنا يُضاف فوقها.`}
           </p>
           {catalog ? (
             <PermissionPicker groups={catalog.groups} labels={catalog.labels}

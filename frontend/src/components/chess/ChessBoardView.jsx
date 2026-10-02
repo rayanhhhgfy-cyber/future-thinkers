@@ -5,7 +5,7 @@ import { FILES, THEMES, pieceSrc } from "./shared";
 import { isMuted, setMuted as persistMuted } from "./sounds";
 
 /**
- * The beautiful chess board. Fully presentational — the parent owns the Chess
+ * The beautiful chess board. Fully presentational · the parent owns the Chess
  * instance and passes position/selection state.
  *
  * Props:

@@ -53,7 +53,7 @@ export function PlaylistPicker({ bookId, bookTitle, onClose }) {
         {!lists ? (
           <div className="py-8 grid place-items-center"><Loader2 className="w-6 h-6 animate-spin text-slate-400" /></div>
         ) : lists.length === 0 ? (
-          <p className="text-sm text-slate-400 text-center py-3">لا قوائم بعد — أنشئ أول قائمة لك تحت</p>
+          <p className="text-sm text-slate-400 text-center py-3">لا قوائم بعد · أنشئ أول قائمة لك تحت</p>
         ) : (
           <div className="space-y-1.5 max-h-56 overflow-y-auto mb-4">
             {lists.map((p) => {

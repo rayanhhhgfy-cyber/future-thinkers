@@ -84,7 +84,7 @@ export default function ClubsPanel() {
       </FadeUp>
 
       {clubs.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-slate-100 ft-shadow"><Empty t="لا أندية بعد — أنشئ أول نادٍ 🌱" /></div>
+        <div className="bg-white rounded-2xl border border-slate-100 ft-shadow"><Empty t="لا أندية بعد · أنشئ أول نادٍ 🌱" /></div>
       ) : (
         <Stagger className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
           {clubs.map((c) => {
@@ -128,12 +128,12 @@ export default function ClubsPanel() {
             <div><Label>اسم النادي *</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="مثال: نادي القراءة" className="rounded-xl mt-1" /></div>
             {dialog?.mode === "create" ? (
               <div>
-                <Label>المعرّف (slug) <span className="text-slate-400 font-normal">— اختياري، يُولّد تلقائياً</span></Label>
+                <Label>المعرّف (slug) <span className="text-slate-400 font-normal">· اختياري، يُولّد تلقائياً</span></Label>
                 <Input value={form.slug} onChange={(e) => setForm({ ...form, slug: e.target.value })} placeholder="reading-club" className="rounded-xl mt-1" dir="ltr" />
               </div>
             ) : (
               <div>
-                <Label>المعرّف (slug) <span className="text-slate-400 font-normal">— ثابت لا يمكن تغييره</span></Label>
+                <Label>المعرّف (slug) <span className="text-slate-400 font-normal">· ثابت لا يمكن تغييره</span></Label>
                 <Input value={form.slug} disabled className="rounded-xl mt-1 bg-slate-50" dir="ltr" />
               </div>
             )}

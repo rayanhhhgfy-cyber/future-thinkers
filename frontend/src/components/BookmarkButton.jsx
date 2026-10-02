@@ -66,7 +66,7 @@ export function useBookmarks() {
 }
 
 /**
- * Small bookmark toggle. Safe to drop inside cards — call e.stopPropagation
+ * Small bookmark toggle. Safe to drop inside cards · call e.stopPropagation
  * yourself when the parent is a link/button.
  */
 export default function BookmarkButton({ kind, refId, title, className = "", iconClass = "w-4 h-4", dark = false }) {

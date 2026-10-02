@@ -1,4 +1,4 @@
-/* Tiny synthesized chess sounds — no audio files needed. */
+/* Tiny synthesized chess sounds · no audio files needed. */
 let ctx = null;
 let muted = false;
 try { muted = localStorage.getItem("ft-chess-muted") === "1"; } catch {}

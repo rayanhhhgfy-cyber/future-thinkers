@@ -256,7 +256,7 @@ export function DailyChallenge({ onXp }) {
       if (data.was_correct) {
         toast.success(`إجابة صحيحة! +${data.xp_awarded} نقطة خبرة 🎉`);
         onXp && onXp();
-      } else toast.error("إجابة خاطئة — حاول غداً 💪");
+      } else toast.error("إجابة خاطئة · حاول غداً 💪");
     } catch (e) { toast.error(apiErr(e)); }
     setBusy(false);
   };
@@ -359,7 +359,7 @@ export function Suggestions() {
   return (
     <Section icon={Sparkles} title="مقترح لك" color="#db2777">
       {!s ? <div className="text-sm text-slate-400 text-center py-6">جارٍ التحميل…</div>
-        : empty ? <div className="text-sm text-slate-400 text-center py-6">لا اقتراحات حالياً — واصل نشاطك ✨</div> : (
+        : empty ? <div className="text-sm text-slate-400 text-center py-6">لا اقتراحات حالياً · واصل نشاطك ✨</div> : (
         <div className="grid md:grid-cols-3 gap-5">
           {(s.clubs || []).length > 0 && (
             <div>
