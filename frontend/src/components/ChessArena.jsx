@@ -123,7 +123,7 @@ export function ChessArena() {
                   <User className="w-5 h-5 text-emerald-300" />
                   تدريب فردي
                 </div>
-                <p className="text-sm text-slate-400 mt-1">العب باللونين وحدك — جرّب الافتتاحيات والتكتيكات</p>
+                <p className="text-sm text-slate-400 mt-1">العب باللونين وحدك · جرّب الافتتاحيات والتكتيكات</p>
               </div>
             </motion.button>
             <motion.button onClick={() => nav("/chess/robot")}
@@ -138,7 +138,7 @@ export function ChessArena() {
                   <Bot className="w-5 h-5 text-indigo-300" />
                   ضد الروبوت 🤖
                 </div>
-                <p className="text-sm text-indigo-200/70 mt-1">مجاني بالكامل · 3 مستويات صعوبة</p>
+                <p className="text-sm text-indigo-200/70 mt-1">3 مستويات صعوبة</p>
               </div>
             </motion.button>
           </div>
@@ -364,7 +364,7 @@ function TournamentsSection() {
   const create = async () => {
     if (name.trim().length < 3) return toast.error("اسم البطولة قصير");
     setBusy("create");
-    try { await api.post("/chess/tournaments", { name: name.trim(), max_players: 8 }); setName(""); load(); toast.success("أُنشئت البطولة — شارك الرابط مع اللاعبين 🏆"); }
+    try { await api.post("/chess/tournaments", { name: name.trim(), max_players: 8 }); setName(""); load(); toast.success("أُنشئت البطولة · شارك الرابط مع اللاعبين 🏆"); }
     catch (e) { toast.error(apiErr(e)); }
     setBusy("");
   };
@@ -391,7 +391,7 @@ function TournamentsSection() {
           </Button>
         </div>
         {!items ? <div className="text-slate-500 text-sm py-4 text-center">جارٍ التحميل…</div> : items.length === 0 ? (
-          <p className="text-slate-500 text-sm py-4 text-center">لا بطولات بعد — أنشئ أول بطولة ودعُ زملاءك</p>
+          <p className="text-slate-500 text-sm py-4 text-center">لا بطولات بعد · أنشئ أول بطولة ودعُ زملاءك</p>
         ) : (
           <div className="space-y-4">
             {items.map((t) => (
@@ -403,7 +403,7 @@ function TournamentsSection() {
                     <div className="text-[11px] text-slate-400">{(t.players || []).length}/{t.max_players} لاعب · منشئ: {t.creator_name}</div>
                   </div>
                   <span className={`px-2.5 py-1 rounded-full text-[11px] font-extrabold ${t.status === "registration" ? "bg-sky-500/15 text-sky-300" : t.status === "running" ? "bg-emerald-500/15 text-emerald-300" : "bg-amber-500/15 text-amber-300"}`}>
-                    {t.status === "registration" ? "التسجيل مفتوح" : t.status === "running" ? "جارية ⚔️" : `انتهت — البطل: ${t.champion_name || ""} 🏆`}
+                    {t.status === "registration" ? "التسجيل مفتوح" : t.status === "running" ? "جارية ⚔️" : `انتهت · البطل: ${t.champion_name || ""} 🏆`}
                   </span>
                   {t.status === "registration" && !t.joined && (
                     <button onClick={() => act(`/chess/tournaments/${t.id}/join`, "انضممت للبطولة ✓")} className="pressable px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold">انضم</button>
@@ -421,7 +421,7 @@ function TournamentsSection() {
                         <div key={m.idx} className="flex items-center gap-2 rounded-xl bg-white/[0.04] border border-white/[0.06] px-3 py-2 text-sm">
                           <span className={`flex-1 truncate ${m.winner_id === m.a_id ? "text-amber-300 font-extrabold" : "text-slate-200"}`}>{m.a_name}</span>
                           <span className="text-slate-600 text-xs font-bold">ضد</span>
-                          <span className={`flex-1 truncate text-left ${m.winner_id === m.b_id ? "text-amber-300 font-extrabold" : "text-slate-200"}`}>{m.b_name || "— (تأهل تلقائي)"}</span>
+                          <span className={`flex-1 truncate text-left ${m.winner_id === m.b_id ? "text-amber-300 font-extrabold" : "text-slate-200"}`}>{m.b_name || "· (تأهل تلقائي)"}</span>
                           {m.status === "done" && m.winner_id && <Crown className="w-4 h-4 text-amber-400 shrink-0" />}
                           {(m.status === "pending" || m.status === "playing") && (
                             <button onClick={() => act(`/chess/tournaments/${t.id}/matches/${m.idx}/play`, "")}

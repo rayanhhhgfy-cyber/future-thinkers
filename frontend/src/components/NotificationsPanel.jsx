@@ -66,7 +66,7 @@ export function NotificationsPanel({ onClose }) {
 
   return (
     <>
-      {/* desktop dropdown — absolute, so it stays anchored to the bell */}
+      {/* desktop dropdown · absolute, so it stays anchored to the bell */}
       <motion.div
         initial={{ opacity: 0, y: -12, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -12, scale: 0.98 }}
         transition={{ duration: 0.25, ease: EASE }}
@@ -77,7 +77,7 @@ export function NotificationsPanel({ onClose }) {
       </motion.div>
       {createPortal(
         <>
-          {/* overlay — z-40 sits below the header (z-50) so the desktop dropdown
+          {/* overlay · z-40 sits below the header (z-50) so the desktop dropdown
               stays clickable, and below the mobile sheet (z-[100]) */}
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}

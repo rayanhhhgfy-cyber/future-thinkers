@@ -19,7 +19,7 @@ function AnnouncementBar() {
         let dismissed = [];
         try { dismissed = JSON.parse(sessionStorage.getItem(DISMISSED_KEY) || "[]"); } catch {}
         setBanners((data.banners || []).filter((b) => !dismissed.includes(b.id)));
-      } catch { /* silent — banner is non-critical */ }
+      } catch { /* silent · banner is non-critical */ }
     })();
   }, []);
   const dismiss = (id) => {

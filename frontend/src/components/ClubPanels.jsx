@@ -10,7 +10,7 @@ import { toast } from "sonner";
 import { PageLoader, EmptyState } from "@/components/Layout";
 import { Code2, Play, CheckCircle2, Lightbulb, ThumbsUp, Scale, Plus, ArrowRight, Loader2, Terminal, FlaskConical } from "lucide-react";
 
-/* ============ نادي البرمجة — Coding challenges ============ */
+/* ============ نادي البرمجة · Coding challenges ============ */
 export function CodingPanel() {
   const [problems, setProblems] = useState(null);
   const [active, setActive] = useState(null);
@@ -80,12 +80,12 @@ function ProblemView({ pid, onBack }) {
           {/* debugger console */}
           <div className="mt-6 bg-slate-950 rounded-2xl overflow-hidden">
             <div className="px-4 py-2.5 text-slate-400 text-xs border-b border-slate-800 flex items-center justify-between">
-              <span className="flex items-center gap-2"><Terminal className="w-4 h-4 text-emerald-400" /> المصحّح — إدخال مخصص</span>
+              <span className="flex items-center gap-2"><Terminal className="w-4 h-4 text-emerald-400" /> المصحّح · إدخال مخصص</span>
               <button onClick={runCustom} disabled={!!running} className="pressable inline-flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-600 text-white text-[11px] font-bold disabled:opacity-50">
                 {running === "play" ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3" />} تشغيل
               </button>
             </div>
-            <textarea value={stdin} onChange={(e) => setStdin(e.target.value)} dir="ltr" spellCheck={false}
+            <textarea value={stdin} onChange={(e) => setStdin(e.target.value)} dir="ltr" spellCheck={false} autoCapitalize="off" autoCorrect="off"
               placeholder={"stdin… e.g. 7"} className="w-full bg-slate-900 text-slate-200 font-mono text-xs p-3 min-h-[64px] outline-none resize-none" />
             {consoleOut && (
               <pre dir="ltr" className={`text-left font-mono text-xs p-3 whitespace-pre-wrap max-h-48 overflow-auto ${consoleOut.ok ? "text-emerald-300" : "text-rose-300"}`}>{consoleOut.output || "(لا مخرجات)"}</pre>
@@ -94,8 +94,8 @@ function ProblemView({ pid, onBack }) {
         </div>
         <div>
           <div className="bg-slate-900 rounded-2xl overflow-hidden ft-shadow">
-            <div className="px-4 py-2 text-slate-400 text-xs border-b border-slate-700 flex items-center gap-2"><Code2 className="w-4 h-4" /> Python 3 — بيئة معزولة آمنة</div>
-            <Textarea data-testid="code-editor" value={code} onChange={(e) => setCode(e.target.value)} dir="ltr" spellCheck={false} className="min-h-[280px] bg-slate-900 text-emerald-300 font-mono border-0 rounded-none focus-visible:ring-0 resize-none" />
+            <div className="px-4 py-2 text-slate-400 text-xs border-b border-slate-700 flex items-center gap-2"><Code2 className="w-4 h-4" /> Python 3 · بيئة معزولة آمنة</div>
+            <Textarea data-testid="code-editor" value={code} onChange={(e) => setCode(e.target.value)} dir="ltr" spellCheck={false} autoCapitalize="off" autoCorrect="off" className="min-h-[280px] bg-slate-900 text-emerald-300 font-mono border-0 rounded-none focus-visible:ring-0 resize-none" />
           </div>
           <div className="grid grid-cols-2 gap-2 mt-3">
             <Button data-testid="run-samples-btn" onClick={runSamples} disabled={!!running} variant="outline" className="rounded-xl h-11 border-slate-300">
@@ -129,7 +129,7 @@ function ProblemView({ pid, onBack }) {
   );
 }
 
-/* ============ نادي الابتكار — Projects + voting ============ */
+/* ============ نادي الابتكار · Projects + voting ============ */
 export function ProjectsPanel() {
   const { user } = useAuth();
   const [items, setItems] = useState(null);
@@ -160,7 +160,7 @@ export function ProjectsPanel() {
               <div className="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 grid place-items-center mb-3"><Lightbulb className="w-5 h-5" /></div>
               <h3 className="font-head font-bold text-slate-900">{p.title}</h3>
               <p className="text-sm text-slate-500 line-clamp-3 mt-1">{p.description}</p>
-              <div className="mt-3 text-xs text-slate-400">{p.author_name} · {p.school_name || "—"}</div>
+              <div className="mt-3 text-xs text-slate-400">{p.author_name} · {p.school_name || "·"}</div>
               <Button data-testid={`vote-project-${p.id}`} onClick={() => vote(p.id)} variant={p.voted ? "default" : "outline"} size="sm" className={`mt-3 rounded-xl ${p.voted ? "bg-emerald-600 hover:bg-emerald-700" : ""}`}><ThumbsUp className="w-4 h-4 ml-1" /> {p.votes_count} تصويت</Button>
             </div>
           ))}
@@ -170,7 +170,7 @@ export function ProjectsPanel() {
   );
 }
 
-/* ============ نادي المناظرات — Debate topics + side voting ============ */
+/* ============ نادي المناظرات · Debate topics + side voting ============ */
 export function DebatesPanel() {
   const [items, setItems] = useState(null);
   const [open, setOpen] = useState(false);
