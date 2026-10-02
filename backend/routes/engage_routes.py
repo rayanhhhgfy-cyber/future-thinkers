@@ -403,7 +403,7 @@ async def toggle_remind(body: RemindBody, user: dict = Depends(get_current_user)
     return {"remind": True}
 
 
-@router.get("/events/my-reminders")
+@router.get("/events/reminders/mine")
 async def my_reminders(user: dict = Depends(get_current_user)):
     docs = await db.event_reminders.find({"user_id": user["id"]}).to_list(100)
     return [d["event_id"] for d in docs]

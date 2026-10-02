@@ -20,7 +20,7 @@ export default function Community() {
   const loadPosts = () => api.get("/feed/posts").then((r) => setPosts(r.data)).catch(() => setPosts([]));
   useEffect(() => {
     loadPosts();
-    api.get("/activity/feed", { params: { limit: 25 } }).then((r) => setFeed(r.data || [])).catch(() => {});
+    api.get("/activity/feed", { params: { limit: 25 } }).then((r) => setFeed(r.data?.items || [])).catch(() => {});
   }, []);
 
   const post = async () => {
@@ -77,13 +77,13 @@ export default function Community() {
                 {posts.map((p) => (
                   <article key={p.id} className="animate-fade-up bg-white rounded-3xl border border-slate-100 ft-shadow p-4 sm:p-5">
                     <div className="flex items-center gap-3">
-                      <Link to={`/users/${p.user_id}`} className="shrink-0">
+                      <Link to={`/profile/${p.user_id}`} className="shrink-0">
                         {p.user_avatar
                           ? <img src={p.user_avatar} alt="" className="w-10 h-10 rounded-full object-cover" />
                           : <span className="w-10 h-10 rounded-full ft-navy-gradient text-white grid place-items-center font-head font-bold">{p.user_name?.[0]}</span>}
                       </Link>
                       <div className="flex-1 min-w-0">
-                        <Link to={`/users/${p.user_id}`} className="font-bold text-sm text-slate-800 hover:text-emerald-700">{p.user_name}</Link>
+                        <Link to={`/profile/${p.user_id}`} className="font-bold text-sm text-slate-800 hover:text-emerald-700">{p.user_name}</Link>
                         <div className="text-[11px] text-slate-400">{timeAgo(p.created_at)}</div>
                       </div>
                       {(p.user_id === user?.id) && (
@@ -110,7 +110,7 @@ export default function Community() {
                     <div key={a.id} className="flex gap-2.5 text-sm">
                       <span className="w-8 h-8 rounded-lg bg-slate-50 grid place-items-center shrink-0"><Icon className="w-4 h-4 text-emerald-600" /></span>
                       <div className="min-w-0">
-                        <p className="text-slate-600 leading-snug"><Link to={`/users/${a.user_id}`} className="font-bold text-slate-800 hover:text-emerald-700">{a.user_name}</Link> {a.text}</p>
+                        <p className="text-slate-600 leading-snug"><Link to={`/profile/${a.user_id}`} className="font-bold text-slate-800 hover:text-emerald-700">{a.user_name}</Link> {a.text}</p>
                         <span className="text-[11px] text-slate-300">{timeAgo(a.created_at)}</span>
                       </div>
                     </div>

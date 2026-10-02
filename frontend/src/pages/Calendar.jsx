@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { CalendarDays, Trophy, ChevronLeft, ChevronRight, Bell, BellRing, MapPin } from "lucide-react";
 
 const MONTH_AR = ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"];
-const WEEK_AR = ["أحد", "اثنين", "أربعاء", "خميس", "جمعة", "سبت"];
+const WEEK_AR = ["أحد", "اثنين", "ثلاثاء", "أربعاء", "خميس", "جمعة", "سبت"];
 
 function fmtKey(d) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -20,9 +20,9 @@ export default function Calendar() {
   const [selected, setSelected] = useState(fmtKey(new Date()));
 
   useEffect(() => {
-    api.get("/events").then((r) => setEvents(r.data || [])).catch(() => setEvents([]));
+    api.get("/events", { params: { limit: 100 } }).then((r) => setEvents(r.data?.items || [])).catch(() => setEvents([]));
     api.get("/competitions").then((r) => { const d = r.data; setComps(Array.isArray(d) ? d : (d?.items || [])); }).catch(() => {});
-    api.get("/events/my-reminders").then((r) => setReminds(r.data || [])).catch(() => {});
+    api.get("/events/reminders/mine").then((r) => setReminds(r.data || [])).catch(() => {});
   }, []);
 
   const byDay = useMemo(() => {
