@@ -54,6 +54,11 @@ class ChangePasswordBody(BaseModel):
     new_password: str = Field(min_length=6, max_length=128)
 
 
+class DeviceKeyBody(BaseModel):
+    device_id: str = Field(min_length=1, max_length=128)
+    public_key: dict | None = None
+
+
 def _set_cookies(response: Response, access: str, refresh: str):
     response.set_cookie("access_token", access, httponly=True, secure=True,
                         samesite="none", max_age=7 * 24 * 3600, path="/")
@@ -63,6 +68,7 @@ def _set_cookies(response: Response, access: str, refresh: str):
 
 def _public_user(user: dict) -> dict:
     u = ser(user)
+    u.pop("sig_devices", None)  # device registry is internal signing state
     u["permissions"] = sorted(effective_permissions(user))
     return u
 
@@ -189,6 +195,42 @@ async def login(body: LoginBody, request: Request, response: Response):
         # toast, then calls /auth/ack-approval-notice so it only shows once.
         resp["just_approved"] = True
     return resp
+
+
+@router.post("/device-key")
+async def register_device_key(body: DeviceKeyBody,
+                              user: dict = Depends(get_current_user)):
+    """Register (or replace) a v2 signing device for this account.
+
+    Unlimited devices per account: re-registering the same device_id
+    replaces its entry. Once a user has any registered device, v2
+    session-signed requests must present one of them in X-Ft-Dev, and
+    devices with a public key additionally require ECDSA proof (X-Ft-Esig).
+    """
+    x = y = ""
+    if body.public_key:
+        x = (body.public_key.get("x") or "").strip()
+        y = (body.public_key.get("y") or "").strip()
+    if bool(x) != bool(y):
+        raise HTTPException(status_code=400, detail="مفتاح عام غير صالح")
+    if x:
+        import base64
+        for v in (x, y):
+            try:
+                raw = base64.urlsafe_b64decode(v + "=" * (-len(v) % 4))
+            except Exception:
+                raise HTTPException(status_code=400, detail="مفتاح عام غير صالح")
+            if len(raw) != 32:
+                raise HTTPException(status_code=400, detail="مفتاح عام غير صالح")
+    devices = [d for d in (user.get("sig_devices") or [])
+               if d.get("device_id") != body.device_id]
+    devices.append({"device_id": body.device_id, "x": x, "y": y,
+                    "at": now_iso()})
+    await db.users.update_one({"_id": user["_id"]},
+                              {"$set": {"sig_devices": devices}})
+    from security_signing import invalidate_user_devices
+    invalidate_user_devices(str(user["_id"]))
+    return {"ok": True}
 
 
 @router.post("/ack-approval-notice")

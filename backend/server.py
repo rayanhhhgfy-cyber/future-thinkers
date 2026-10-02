@@ -91,7 +91,9 @@ async def opportunistic_dispatch_middleware(request: Request, call_next):
 async def signing_middleware(request: Request, call_next):
     """HMAC request signing (see security_signing.py). Modes off|warn|enforce
     come from the api_signing settings doc; warn (default) never rejects, it
-    only reports the outcome in the X-Ft-Sig response header."""
+    only reports the outcome in the X-Ft-Sig response header. Requests with
+    header X-Ft-V: "2" use the hardened v2 protocol (rotating keys, device
+    binding, ECDSA device proof, proof-of-work on auth paths)."""
     path = request.url.path
     if (not path.startswith("/api")) or path == "/api/health" or request.method == "OPTIONS":
         return await call_next(request)
@@ -103,17 +105,6 @@ async def signing_middleware(request: Request, call_next):
         return await call_next(request)
     if mode == "off":
         return await call_next(request)
-    ts = request.headers.get("x-ft-ts")
-    nonce = request.headers.get("x-ft-nonce")
-    sig = request.headers.get("x-ft-sig")
-    query_signed = False
-    if request.method == "GET" and not (ts and nonce and sig):
-        q_ts = request.query_params.get("fts")
-        q_nonce = request.query_params.get("fnonce")
-        q_sig = request.query_params.get("fsig")
-        if q_ts and q_nonce and q_sig:
-            ts, nonce, sig = q_ts, q_nonce, q_sig
-            query_signed = True
     auth_token = None
     authz = request.headers.get("authorization") or ""
     if authz.lower().startswith("bearer "):
@@ -128,6 +119,41 @@ async def signing_middleware(request: Request, call_next):
             body = await request.body()
         except Exception:
             body = b""
+    if (request.headers.get("x-ft-v") or "") == "2":
+        from security_signing import canonical_query, verify_request_v2
+        try:
+            ok, key_used, reason = await verify_request_v2(
+                request.method, path, canonical_query(request.query_params),
+                request.headers.get("x-ft-ts"), request.headers.get("x-ft-nonce"),
+                request.headers.get("x-ft-dev"), request.headers.get("x-ft-sig"),
+                request.headers.get("x-ft-esig"), body,
+                request.headers.get("content-type") or "", auth_token,
+                request.headers.get("x-ft-pow"))
+        except Exception:
+            ok, key_used, reason = (False, None, "error")
+        if ok:
+            response = await call_next(request)
+            response.headers["X-Ft-Sig"] = key_used or "app2"
+            return response
+        if mode == "enforce":
+            return JSONResponse(
+                status_code=401,
+                content={"detail": "طلب غير موقّع",
+                         "code": f"SIG_{(reason or 'invalid').upper()}"})
+        response = await call_next(request)
+        response.headers["X-Ft-Sig"] = f"fail-{reason or 'invalid'}"
+        return response
+    ts = request.headers.get("x-ft-ts")
+    nonce = request.headers.get("x-ft-nonce")
+    sig = request.headers.get("x-ft-sig")
+    query_signed = False
+    if request.method == "GET" and not (ts and nonce and sig):
+        q_ts = request.query_params.get("fts")
+        q_nonce = request.query_params.get("fnonce")
+        q_sig = request.query_params.get("fsig")
+        if q_ts and q_nonce and q_sig:
+            ts, nonce, sig = q_ts, q_nonce, q_sig
+            query_signed = True
     try:
         ok, key_used, reason = await verify_request(
             request.method, path, ts, nonce, sig, body, auth_token,
