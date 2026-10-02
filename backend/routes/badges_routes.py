@@ -1,4 +1,4 @@
-"""شارات المهارات — اعتمادات مصغّرة يمنحها المشرفون (خطابة، كتابة إبداعية، قيادة...)."""
+"""شارات المهارات · اعتمادات مصغّرة يمنحها المشرفون (خطابة، كتابة إبداعية، قيادة...)."""
 from fastapi import APIRouter, HTTPException, Depends, Request
 from pydantic import BaseModel, Field
 from db import db, ser, sers, oid, now_iso
@@ -16,7 +16,7 @@ def _badge_out(b, earned=False, awarded_at=None):
 
 
 async def award_badge(user_id: str, badge_key: str, awarded_by: str, auto: bool = False):
-    """Internal helper — awards a badge if not already earned. Returns True if newly awarded."""
+    """Internal helper · awards a badge if not already earned. Returns True if newly awarded."""
     badge = await db.skill_badges.find_one({"key": badge_key})
     if not badge:
         return False

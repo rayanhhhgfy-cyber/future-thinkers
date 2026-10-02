@@ -106,7 +106,7 @@ async def register(body: RegisterBody, request: Request, response: Response):
     uid = str(res.inserted_id)
     await audit_log({"id": uid, "email": email}, "register", "user", uid, request=request)
     if body.role == "teacher":
-        # No session yet — the account activates only after admin approval.
+        # No session yet · the account activates only after admin approval.
         # Issue a single-purpose token so this device can subscribe for a
         # phone push the moment the account gets approved.
         push_token = secrets.token_urlsafe(32)
@@ -124,7 +124,7 @@ async def register(body: RegisterBody, request: Request, response: Response):
 async def teacher_application_status(email: str = ""):
     """Public: let a teacher applicant check whether their account was approved.
 
-    Only reveals the application state of teacher-role accounts — nothing else.
+    Only reveals the application state of teacher-role accounts · nothing else.
     """
     email = (email or "").lower().strip()
     if not email:
@@ -135,7 +135,7 @@ async def teacher_application_status(email: str = ""):
     st = user.get("status")
     if st == "pending_approval":
         return {"status": "pending",
-                "message": "طلبك قيد المراجعة من قبل الإدارة. تحقق مجدداً لاحقاً — ستظهر لك هنا رسالة الموافقة فور اعتمادها."}
+                "message": "طلبك قيد المراجعة من قبل الإدارة. تحقق مجدداً لاحقاً · ستظهر لك هنا رسالة الموافقة فور اعتمادها."}
     if st == "rejected":
         reason = user.get("rejection_reason") or "لم يتم قبول الطلب"
         return {"status": "rejected",
@@ -167,7 +167,7 @@ async def login(body: LoginBody, request: Request, response: Response):
     if user.get("status") == "banned":
         raise HTTPException(status_code=403, detail="تم حظر هذا الحساب")
     if user.get("status") == "deactivated":
-        raise HTTPException(status_code=403, detail="هذا الحساب معطّل — تواصل مع الإدارة لإعادة تفعيله")
+        raise HTTPException(status_code=403, detail="هذا الحساب معطّل · تواصل مع الإدارة لإعادة تفعيله")
     if user.get("status") == "pending_approval":
         raise HTTPException(status_code=403, detail="حسابك كمعلم قيد المراجعة من قبل الإدارة. سيصلك إشعار عند الموافقة.")
     if user.get("status") == "rejected":
@@ -181,7 +181,7 @@ async def login(body: LoginBody, request: Request, response: Response):
     await audit_log({"id": uid, "email": email}, "login", "user", uid, request=request)
     resp = {"user": _public_user(user), "access_token": access, "refresh_token": refresh}
     if user.get("approval_notice"):
-        # First login after a teacher approval — the frontend shows a celebration
+        # First login after a teacher approval · the frontend shows a celebration
         # toast, then calls /auth/ack-approval-notice so it only shows once.
         resp["just_approved"] = True
     return resp

@@ -248,10 +248,10 @@ async def approve_teacher(uid: str, request: Request,
         "/dashboard",
     )
     # Phone push for teachers who enabled the approval alert while pending.
-    # (No-op when they never subscribed — send_push_to_user returns 0 then.)
+    # (No-op when they never subscribed · send_push_to_user returns 0 then.)
     try:
         await send_push_to_user(uid, "تمت الموافقة على حسابك 🎉",
-                                "تم تفعيل حسابك كمعلم — سجل الدخول الآن للبدء.",
+                                "تم تفعيل حسابك كمعلم · سجل الدخول الآن للبدء.",
                                 "/login")
     except Exception:
         pass
@@ -372,13 +372,13 @@ NOTIFY_PERM = "notification.broadcast"
 
 DEFAULT_PRESETS = [
     {"name": "📚 كتاب جديد", "title": "📚 كتاب جديد في المكتبة",
-     "body": "تمت إضافة كتاب جديد إلى مكتبة المنصة — تصفحه الآن!",
+     "body": "تمت إضافة كتاب جديد إلى مكتبة المنصة · تصفحه الآن!",
      "link": "/books"},
     {"name": "📅 فعالية قادمة", "title": "📅 فعالية قادمة",
-     "body": "لا تفوّت فعاليتنا القادمة — سجّل الآن!",
+     "body": "لا تفوّت فعاليتنا القادمة · سجّل الآن!",
      "link": "/events"},
     {"name": "🏆 مسابقة جديدة", "title": "🏆 مسابقة جديدة",
-     "body": "انطلقت مسابقة جديدة بجوائز قيّمة — شارك الآن!",
+     "body": "انطلقت مسابقة جديدة بجوائز قيّمة · شارك الآن!",
      "link": "/competitions"},
     {"name": "🔧 صيانة مجدولة", "title": "🔧 صيانة مجدولة",
      "body": "ستكون المنصة في وضع الصيانة لفترة قصيرة. شكراً لتفهمكم.",
@@ -657,7 +657,7 @@ async def send_weekly_digest(request: Request,
         if not u or u.get("status") != "active":
             continue
         await create_notification(r["_id"], "achievement", "ملخص أسبوعك 📊",
-            f"أحرزت {r['xp']} نقطة خبرة هذا الأسبوع — ترتيبك {i + 1} من {len(rows)}. واصل التقدّم!",
+            f"أحرزت {r['xp']} نقطة خبرة هذا الأسبوع · ترتيبك {i + 1} من {len(rows)}. واصل التقدّم!",
             "/points")
         sent += 1
     await audit_log(user, "weekly_digest", "system", "", {"sent": sent}, request)

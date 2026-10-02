@@ -168,7 +168,7 @@ ROLE_PERMISSIONS = {
     "moderator": _MODERATOR,
     "admin": set(ALL_PERMISSIONS),
     "super_admin": set(ALL_PERMISSIONS),
-    # "custom" starts with zero base permissions — everything it can do comes
+    # "custom" starts with zero base permissions · everything it can do comes
     # from hand-picked extra_permissions assigned by an admin.
     "custom": set(),
 }
