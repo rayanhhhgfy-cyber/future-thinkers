@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends, Request, Query
+from fastapi import APIRouter, HTTPException, Depends, Request, Query, Response
 from datetime import datetime, timezone, timedelta
 from pydantic import BaseModel, EmailStr, Field
 from db import db, ser, sers, oid, now_iso
@@ -124,6 +124,29 @@ async def adjust_xp(uid: str, body: AdjustXpBody, request: Request, user: dict =
     await award_xp(uid, body.amount, body.reason)
     await audit_log(user, "xp_adjust", "user", uid, {"amount": body.amount}, request)
     return {"ok": True}
+
+
+@router.get("/users/{uid}/360")
+async def user_360(uid: str, user: dict = Depends(require_permission("user.view"))):
+    target = await db.users.find_one({"_id": oid(uid)})
+    if not target:
+        raise HTTPException(status_code=404, detail="المستخدم غير موجود")
+    counts = {
+        "certificates": await db.certificates.count_documents({"user_id": uid}),
+        "xp_transactions": await db.xp_transactions.count_documents({"user_id": uid}),
+        "books_finished": await db.reading_progress.count_documents(
+            {"user_id": uid, "percent": {"$gte": 95}}),
+        "ventures": await db.ventures.count_documents(
+            {"$or": [{"owner_id": uid}, {"members.id": uid}]}),
+        "studio_works": await db.works.count_documents({"author_id": uid}),
+        "push_devices": await db.push_subscriptions.count_documents({"user_id": uid}),
+    }
+    activity = await db.activity_events.find(
+        {"user_id": uid}).sort("created_at", -1).limit(10).to_list(10)
+    certs = await db.certificates.find(
+        {"user_id": uid}).sort("created_at", -1).limit(5).to_list(5)
+    return {"user": ser(target), "counts": counts,
+            "recent_activity": sers(activity), "certificates": sers(certs)}
 
 
 def _may_grant(creator: dict, role: str, perms: list[str]) -> bool:
@@ -832,6 +855,7 @@ async def finalize_competition(cid: str, request: Request,
             "subtitle": f"المركز {places[i]}",
             "meta_lines": [f"النتيجة: {e.get('score', 0)}%"],
             "template": tpl, "awarded_by": user["id"],
+            "code": __import__("secrets").token_hex(3).upper(),
             "awarded_by_name": user["name"], "created_at": now_iso(),
         }
         await db.certificates.insert_one(doc)
@@ -844,3 +868,60 @@ async def finalize_competition(cid: str, request: Request,
     await audit_log(user, "competition_finalize", "competition", cid,
                     {"awarded": len(awarded)}, request)
     return {"ok": True, "awarded": awarded}
+
+
+# ---------------- Live platform activity (admin monitor) ----------------
+@router.get("/activity/recent")
+async def admin_recent_activity(limit: int = 25,
+                                user: dict = Depends(require_permission("analytics.view"))):
+    limit = max(1, min(100, limit))
+    docs = await db.activity_events.find({}).sort("created_at", -1).to_list(limit)
+    return {"items": sers(docs)}
+
+_EXPORT_PERMS = {"users": "user.view", "books": "book.view",
+                 "certificates": "certificate.manage"}
+
+
+@router.get("/export/{kind}.csv")
+async def export_csv(kind: str, user: dict = Depends(get_current_user)):
+    perm = _EXPORT_PERMS.get(kind)
+    if perm is None:
+        raise HTTPException(status_code=404, detail="نوع التصدير غير معروف")
+    if perm not in effective_permissions(user):
+        raise HTTPException(status_code=403, detail="ليس لديك صلاحية للقيام بهذا الإجراء")
+    import csv
+    import io
+    buf = io.StringIO()
+    w = csv.writer(buf)
+    if kind == "users":
+        w.writerow(["id", "name", "email", "role", "status", "xp", "level",
+                    "school_name", "directorate_name", "governorate_name", "created_at"])
+        docs = await db.users.find({}).sort("created_at", -1).limit(5000).to_list(5000)
+        for d in docs:
+            w.writerow([str(d.get("_id", "")), d.get("name", ""), d.get("email", ""),
+                        d.get("role", ""), d.get("status", ""), d.get("xp", 0),
+                        d.get("level", ""), d.get("school_name", "") or "",
+                        d.get("directorate_name", "") or "",
+                        d.get("governorate_name", "") or "", d.get("created_at", "")])
+    elif kind == "books":
+        w.writerow(["id", "title", "author", "category", "status", "pages",
+                    "rating_avg", "rating_count", "views", "downloads",
+                    "uploader_name", "created_at"])
+        docs = await db.books.find({}).sort("created_at", -1).limit(5000).to_list(5000)
+        for d in docs:
+            w.writerow([str(d.get("_id", "")), d.get("title", ""), d.get("author", ""),
+                        d.get("category", ""), d.get("status", ""), d.get("pages", 0),
+                        d.get("rating_avg", 0), d.get("rating_count", 0),
+                        d.get("views", 0), d.get("downloads", 0),
+                        d.get("uploader_name", ""), d.get("created_at", "")])
+    else:
+        w.writerow(["id", "user_id", "user_name", "title", "subtitle",
+                    "awarded_by_name", "created_at"])
+        docs = await db.certificates.find({}).sort("created_at", -1).limit(5000).to_list(5000)
+        for d in docs:
+            w.writerow([str(d.get("_id", "")), d.get("user_id", ""),
+                        d.get("user_name", ""), d.get("title_line", ""),
+                        d.get("subtitle", "") or "",
+                        d.get("awarded_by_name", "") or "", d.get("created_at", "")])
+    return Response(content=buf.getvalue(), media_type="text/csv; charset=utf-8",
+                    headers={"Content-Disposition": f'attachment; filename="{kind}.csv"'})
