@@ -803,6 +803,9 @@ function CertificatesPanelV2() {
   const [q, setQ] = useState("");
   const [results, setResults] = useState([]);
   const [selUser, setSelUser] = useState(null);
+  const [mode, setMode] = useState("single"); // single | bulk
+  const [selUsers, setSelUsers] = useState([]);
+  const [bulkResult, setBulkResult] = useState(null);
   const [aTitle, setATitle] = useState("");
   const [aSub, setASub] = useState("");
   const [aMeta, setAMeta] = useState("");
@@ -845,6 +848,40 @@ function CertificatesPanelV2() {
     setBusy("");
   };
 
+  const switchMode = (m) => { setMode(m); setResults([]); setQ(""); setBulkResult(null); };
+
+  const pickUser = (u) => {
+    if (mode === "bulk") {
+      if (!selUsers.some((x) => x.id === u.id)) {
+        if (selUsers.length >= 50) return toast.error("الحد الأقصى ٥٠ طالباً في المنح الجماعي الواحد");
+        setSelUsers((prev) => [...prev, u]);
+      }
+      setQ(""); setResults([]);
+    } else {
+      setSelUser(u); setResults([]);
+    }
+  };
+
+  const removeSelUser = (id) => setSelUsers((prev) => prev.filter((x) => x.id !== id));
+
+  const awardBulk = async () => {
+    if (selUsers.length === 0) return toast.error("أضف طالباً واحداً على الأقل من نتائج البحث");
+    if (!aTitle.trim()) return toast.error("اكتب سطر عنوان الشهادة");
+    setBusy("award");
+    try {
+      const { data } = await api.post("/certificates/admin/award-bulk", {
+        user_ids: selUsers.map((u) => u.id),
+        title_line: aTitle.trim(),
+        subtitle: aSub.trim(),
+      });
+      setBulkResult(data);
+      toast.success(`مُنحت ${data.awarded} شهادة جماعياً 🏅`);
+      setSelUsers([]); setQ(""); setResults([]); setATitle(""); setASub(""); setAMeta("");
+      loadAwarded();
+    } catch (e) { toast.error(apiErr(e)); }
+    setBusy("");
+  };
+
   const saveTpl = async () => {
     if (!tpl) return;
     setBusy("tpl");
@@ -878,11 +915,18 @@ function CertificatesPanelV2() {
   const pc = tpl?.color_primary || "#059669";
   const dc = tpl?.color_dark || "#0A192F";
   const mc = tpl?.color_muted || "#64748B";
+  const gc = tpl?.color_gold || "#C6A15B";
   const bgc = tpl?.bg_color || "#F6FBF9";
+  const INK = "#1E293B";
+  const previewName = mode === "bulk"
+    ? (selUsers.length ? `${selUsers[0].name}${selUsers.length > 1 ? ` و${selUsers.length - 1} آخرون` : ""}` : "أسماء الطلاب")
+    : (selUser?.name || "اسم الطالب");
+  const previewMeta = aMeta.split("\n").map((s) => s.trim()).filter(Boolean).slice(0, 3);
   const colorRows = [
     ["color_primary", "اللون الأساسي", "العناوين والأختام والإطارات"],
-    ["color_dark", "اللون الداكن", "اسم الطالب والنصوص القوية"],
+    ["color_dark", "اللون الداكن", "شريط الترويسة والنصوص القوية"],
     ["color_muted", "اللون الهادئ", "النصوص الفرعية والتواريخ"],
+    ["color_gold", "اللون الذهبي", "الزخارف والختم وخطوط الاسم"],
     ["bg_color", "لون الخلفية", "خلفية ورقة الشهادة"],
   ];
 
@@ -896,10 +940,19 @@ function CertificatesPanelV2() {
       {/* منح شهادة */}
       <div className="bg-white rounded-3xl border border-slate-100 ft-shadow p-4 sm:p-5 mb-4">
         <h3 className="font-head font-extrabold text-sm text-slate-700 mb-3">منح شهادة جديدة</h3>
+        <div className="flex items-center gap-2.5 mb-4 flex-wrap">
+          <div className="inline-flex rounded-2xl bg-slate-100 p-1">
+            <button onClick={() => switchMode("single")} className={`pressable rounded-xl px-4 py-2 text-xs font-extrabold min-h-[40px] transition ${mode === "single" ? "bg-white text-slate-800 shadow" : "text-slate-500 hover:text-slate-700"}`}>فردي</button>
+            <button onClick={() => switchMode("bulk")} className={`pressable rounded-xl px-4 py-2 text-xs font-extrabold min-h-[40px] transition ${mode === "bulk" ? "bg-white text-slate-800 shadow" : "text-slate-500 hover:text-slate-700"}`}>
+              جماعي{selUsers.length > 0 ? ` · ${selUsers.length}` : ""}
+            </button>
+          </div>
+          {mode === "bulk" && <span className="text-[11px] text-slate-400">ابحث وأضف حتى ٥٠ طالباً · تُمنح الشهادة نفسها للجميع دفعة واحدة</span>}
+        </div>
         <div className="grid lg:grid-cols-2 gap-4">
           <div className="relative">
-            <label className="text-xs font-bold text-slate-500 block mb-1.5">الطالب</label>
-            {selUser ? (
+            <label className="text-xs font-bold text-slate-500 block mb-1.5">{mode === "bulk" ? "الطلاب المستلمون" : "الطالب"}</label>
+            {mode === "single" && selUser ? (
               <div className="flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-2.5 min-h-[48px]">
                 <span className="w-9 h-9 rounded-full bg-gradient-to-br from-amber-400 to-yellow-600 text-white grid place-items-center font-black shrink-0">{(selUser.name || "؟").charAt(0)}</span>
                 <span className="flex-1 min-w-0">
@@ -912,6 +965,20 @@ function CertificatesPanelV2() {
               </div>
             ) : (
               <>
+                {mode === "bulk" && selUsers.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-1.5 mb-2">
+                    {selUsers.map((u) => (
+                      <span key={u.id} className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 py-1 pr-1 pl-1.5 text-xs font-bold text-slate-700 max-w-full">
+                        <span className="w-6 h-6 rounded-full bg-gradient-to-br from-amber-400 to-yellow-600 text-white grid place-items-center text-[10px] font-black shrink-0">{(u.name || "؟").charAt(0)}</span>
+                        <span className="truncate max-w-[140px]">{u.name}</span>
+                        <button onClick={() => removeSelUser(u.id)} aria-label={`إزالة ${u.name}`} className="pressable w-6 h-6 grid place-items-center rounded-full hover:bg-amber-100 text-slate-500 shrink-0">
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    ))}
+                    <button onClick={() => setSelUsers([])} className="pressable text-[11px] font-bold text-rose-500 hover:text-rose-600 px-1.5 py-1">مسح الكل</button>
+                  </div>
+                )}
                 <div className="relative">
                   <Search className="w-4.5 h-4.5 absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input value={q} onChange={(e) => onSearch(e.target.value)} placeholder="ابحث بالاسم أو البريد..."
@@ -919,20 +986,26 @@ function CertificatesPanelV2() {
                 </div>
                 {results.length > 0 && (
                   <div className="absolute z-20 right-0 left-0 top-full mt-1.5 bg-white rounded-2xl border border-slate-100 ft-shadow-lg overflow-hidden max-h-64 overflow-y-auto">
-                    {results.map((u) => (
-                      <button key={u.id} onClick={() => { setSelUser(u); setResults([]); }}
-                        className="w-full flex items-center gap-3 px-3.5 py-2.5 hover:bg-amber-50/60 text-right transition-colors min-h-[52px]">
-                        <span className="w-9 h-9 rounded-full ft-bg-soft-2 ft-text-accent grid place-items-center font-black shrink-0">{(u.name || "؟").charAt(0)}</span>
-                        <span className="flex-1 min-w-0">
-                          <span className="block font-bold text-sm text-slate-800 truncate">{u.name}</span>
-                          <span className="block text-[11px] text-slate-400 truncate" dir="ltr">{u.email}</span>
-                        </span>
-                        {u.school_name && <span className="text-[10px] font-bold text-slate-400 shrink-0 hidden sm:block">{u.school_name}</span>}
-                      </button>
-                    ))}
+                    {results.map((u) => {
+                      const picked = mode === "bulk" && selUsers.some((x) => x.id === u.id);
+                      return (
+                        <button key={u.id} onClick={() => pickUser(u)}
+                          className="w-full flex items-center gap-3 px-3.5 py-2.5 hover:bg-amber-50/60 text-right transition-colors min-h-[52px]">
+                          <span className="w-9 h-9 rounded-full ft-bg-soft-2 ft-text-accent grid place-items-center font-black shrink-0">{(u.name || "؟").charAt(0)}</span>
+                          <span className="flex-1 min-w-0">
+                            <span className="block font-bold text-sm text-slate-800 truncate">{u.name}</span>
+                            <span className="block text-[11px] text-slate-400 truncate" dir="ltr">{u.email}</span>
+                          </span>
+                          {picked
+                            ? <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-emerald-600 shrink-0"><CheckCircle2 className="w-3.5 h-3.5" /> مُضاف</span>
+                            : (u.school_name && <span className="text-[10px] font-bold text-slate-400 shrink-0 hidden sm:block">{u.school_name}</span>)}
+                        </button>
+                      );
+                    })}
                   </div>
                 )}
                 {q.trim().length >= 2 && results.length === 0 && <p className="text-[11px] text-slate-400 mt-1.5">اكتب حرفين على الأقل وانتظر نتائج البحث</p>}
+                {mode === "bulk" && <p className="text-[11px] text-slate-400 mt-1.5">المحددون: {selUsers.length} من ٥٠ كحد أقصى · اختر طالباً من النتائج لإضافته</p>}
               </>
             )}
           </div>
@@ -950,10 +1023,24 @@ function CertificatesPanelV2() {
               className={`${inputCls} resize-y`} />
           </div>
         </div>
-        <button onClick={award} disabled={busy === "award"}
+        <button onClick={mode === "bulk" ? awardBulk : award} disabled={busy === "award"}
           className="pressable mt-4 inline-flex items-center gap-2 rounded-2xl ft-btn-primary px-6 py-3 text-sm font-extrabold min-h-[48px] disabled:opacity-50">
-          <Award className="w-4.5 h-4.5" /> {busy === "award" ? "جارٍ المنح..." : "منح الشهادة"}
+          <Award className="w-4.5 h-4.5" /> {busy === "award" ? "جارٍ المنح..." : mode === "bulk" ? `منح جماعي${selUsers.length ? ` · ${selUsers.length} طالب` : ""}` : "منح الشهادة"}
         </button>
+        {bulkResult && (
+          <div className="mt-3 flex items-start gap-2.5 rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3">
+            <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+            <div className="flex-1 text-sm text-emerald-900 min-w-0">
+              <span className="font-extrabold">مُنحت {bulkResult.awarded} شهادة بنجاح 🏅</span>
+              {bulkResult.skipped?.length > 0 && (
+                <span className="block text-xs mt-1 text-emerald-700">تعذّر منح {bulkResult.skipped.length} شهادة · مستخدم غير موجود: <span dir="ltr" className="font-mono break-all">{bulkResult.skipped.join(", ")}</span></span>
+              )}
+            </div>
+            <button onClick={() => setBulkResult(null)} aria-label="إغلاق نتيجة المنح الجماعي" className="pressable w-8 h-8 grid place-items-center rounded-full hover:bg-emerald-100 text-emerald-700 shrink-0">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
       </div>
 
       {/* القالب + المعاينة */}
@@ -1000,46 +1087,87 @@ function CertificatesPanelV2() {
           <h3 className="font-head font-extrabold text-sm text-slate-700 mb-3 flex items-center gap-2">
             معاينة حية <span className="text-[10px] font-bold text-slate-400">· هكذا ستُطبع الشهادة</span>
           </h3>
-          <div className="rounded-2xl p-2 shadow-xl" style={{ background: `linear-gradient(135deg, ${pc}, ${dc})` }}>
-            <div className="relative overflow-hidden rounded-xl text-center flex flex-col justify-between px-4 py-4 sm:px-6 sm:py-5" style={{ background: bgc, aspectRatio: "1.414 / 1" }}>
-              <div className="pointer-events-none absolute inset-2 rounded-lg border-2" style={{ borderColor: pc }} />
-              <div className="pointer-events-none absolute inset-[15px] rounded-md border" style={{ borderColor: `${pc}59` }} />
-              <div className="relative">
-                <div className="font-head font-extrabold text-[11px] sm:text-xs" style={{ color: dc }}>{tpl?.org_name || "منصة مفكري المستقبل"}</div>
-                <div className="text-[8px] sm:text-[9px] mt-0.5" style={{ color: mc }}>{tpl?.country_line || "المملكة الأردنية الهاشمية"}</div>
-                <div className="flex items-center justify-center gap-1.5 mt-1.5" aria-hidden="true">
-                  <span className="h-px w-8" style={{ background: pc }} />
-                  <span className="w-1 h-1 rotate-45" style={{ background: pc }} />
-                  <span className="h-px w-8" style={{ background: pc }} />
+          <div className="rounded-[20px] shadow-xl p-[5px]" style={{ background: pc }}>
+            <div className="rounded-[15px] p-[2px]" style={{ background: `linear-gradient(135deg, ${gc}, ${pc} 55%, ${gc})` }}>
+              <div className="relative overflow-hidden rounded-[13px] flex flex-col" style={{ background: bgc, aspectRatio: "1.414 / 1" }}>
+                <div className="pointer-events-none absolute inset-[7px] rounded-[9px] border z-[5]" style={{ borderColor: `${dc}38` }} />
+                {/* شريط الترويسة الداكن */}
+                <div className="relative text-center px-3 pt-2 pb-1.5 shrink-0" style={{ background: dc, borderBottom: `3px solid ${gc}` }}>
+                  <span className="absolute bottom-[3px] right-2.5 w-1 h-1 rotate-45" style={{ background: gc }} aria-hidden="true" />
+                  <span className="absolute bottom-[3px] left-2.5 w-1 h-1 rotate-45" style={{ background: gc }} aria-hidden="true" />
+                  <div className="font-head font-extrabold text-white text-[11px] sm:text-sm leading-tight truncate px-3">{tpl?.org_name || "منصة مفكري المستقبل"}</div>
+                  <div className="text-[8px] sm:text-[9px] mt-0.5" style={{ color: gc }}>{tpl?.country_line || "المملكة الأردنية الهاشمية"}</div>
                 </div>
-              </div>
-              <div className="relative">
-                <div className="font-head font-black text-lg sm:text-2xl" style={{ color: pc }}>{tpl?.main_title || "شهادة تقدير"}</div>
-                <div className="text-[9px] sm:text-[10px] mt-1" style={{ color: mc }}>{tpl?.award_label || "تُمنح هذه الشهادة إلى"}</div>
-                <div className="font-head font-black text-base sm:text-xl mt-0.5" style={{ color: dc }}>{selUser?.name || "اسم الطالب"}</div>
-                <div className="mx-auto mt-1 h-[3px] w-24 rounded-full" style={{ background: `linear-gradient(to left, transparent, ${pc}, transparent)` }} />
-                <div className="text-[9px] sm:text-[11px] font-bold mt-1.5 leading-relaxed" style={{ color: dc }}>{aTitle.trim() || "سطر عنوان الشهادة يظهر هنا"}</div>
-                {aSub.trim() && <div className="text-[8px] sm:text-[10px] mt-0.5" style={{ color: mc }}>{aSub.trim()}</div>}
-              </div>
-              <div className="relative flex items-end justify-between gap-2">
-                <div className="text-right">
-                  <div className="text-[9px] sm:text-[10px] font-extrabold" style={{ color: dc }}>{tpl?.footer_right || "منصة مفكري المستقبل"}</div>
-                  <div className="text-[8px] mt-0.5" style={{ color: mc }}>التوقيع والختم الرسمي</div>
+                {/* جسم الشهادة */}
+                <div className="relative flex-1 flex flex-col items-center justify-center text-center px-3 sm:px-5 py-1 min-h-0">
+                  <svg viewBox="0 0 24 24" className="absolute right-1.5 sm:right-3 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-6 sm:h-6 opacity-[0.13] pointer-events-none" fill={gc} aria-hidden="true"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" /></svg>
+                  <svg viewBox="0 0 24 24" className="absolute left-1.5 sm:left-3 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-6 sm:h-6 opacity-[0.13] pointer-events-none" fill={gc} aria-hidden="true"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" /></svg>
+                  <div className="flex items-center justify-center gap-1.5">
+                    <span className="h-px w-6 sm:w-10" style={{ background: gc }} aria-hidden="true" />
+                    <span className="w-1 h-1 rotate-45 shrink-0" style={{ background: gc }} aria-hidden="true" />
+                    <span className="w-[5px] h-[5px] rotate-45 shrink-0" style={{ background: pc }} aria-hidden="true" />
+                    <span className="font-head font-black text-base sm:text-[22px] leading-none px-0.5" style={{ color: pc }}>{tpl?.main_title || "شهادة تقدير"}</span>
+                    <span className="w-[5px] h-[5px] rotate-45 shrink-0" style={{ background: pc }} aria-hidden="true" />
+                    <span className="w-1 h-1 rotate-45 shrink-0" style={{ background: gc }} aria-hidden="true" />
+                    <span className="h-px w-6 sm:w-10" style={{ background: gc }} aria-hidden="true" />
+                  </div>
+                  <div className="text-[8px] sm:text-[10px] mt-1" style={{ color: mc }}>{tpl?.award_label || "تُمنح هذه الشهادة إلى"}</div>
+                  <div className="font-head font-black text-sm sm:text-xl mt-0.5 leading-snug max-w-full truncate" style={{ color: INK }}>{previewName}</div>
+                  <div className="relative mx-auto mt-1 w-24 sm:w-36 shrink-0" aria-hidden="true">
+                    <div className="h-[2px] rounded-full" style={{ background: gc }} />
+                    <div className="h-px mt-[3px] mx-3 rounded-full" style={{ background: gc }} />
+                    <span className="absolute left-1/2 -translate-x-1/2 -top-[3px] w-[7px] h-[7px] rotate-45" style={{ background: gc }} />
+                  </div>
+                  <div className="text-[9px] sm:text-[11px] font-bold mt-1.5 leading-relaxed" style={{ color: "#334155" }}>{aTitle.trim() || "سطر عنوان الشهادة يظهر هنا"}</div>
+                  {aSub.trim() && <div className="text-[8px] sm:text-[10px] font-bold mt-0.5" style={{ color: pc }}>{aSub.trim()}</div>}
+                  {previewMeta.map((l, i) => (
+                    <div key={i} className="text-[7px] sm:text-[8px] mt-0.5 leading-snug" style={{ color: mc }}>{l}</div>
+                  ))}
                 </div>
-                <div className="relative w-11 h-11 sm:w-14 sm:h-14 shrink-0">
-                  <span className="absolute -bottom-2 right-[18px] w-3 h-6 rounded-b bg-rose-500 rotate-[16deg]" />
-                  <span className="absolute -bottom-2 left-[18px] w-3 h-6 rounded-b bg-amber-500 -rotate-[16deg]" />
-                  <span className="relative z-10 w-11 h-11 sm:w-14 sm:h-14 rounded-full grid place-items-center text-white shadow-md ring-2 ring-white/70" style={{ background: `linear-gradient(135deg, ${pc}, ${dc})` }}>
-                    <Award className="w-5 h-5 sm:w-7 sm:h-7" />
-                  </span>
-                </div>
-                <div className="text-left">
-                  <div className="text-[8px] sm:text-[9px]" style={{ color: mc }}>تاريخ الإصدار</div>
-                  <div className="text-[9px] sm:text-[10px] font-bold" style={{ color: dc }} dir="ltr">{new Date().toISOString().slice(0, 10)}</div>
-                  <div className="flex items-center gap-1 text-[7px] sm:text-[8px] mt-0.5" style={{ color: mc }}>
-                    <ShieldCheck className="w-2.5 h-2.5" /> رمز تحقق على كل شهادة
+                {/* المنطقة السفلية: توقيع · ختم · معلومات */}
+                <div className="relative px-3 sm:px-4 pb-3 shrink-0">
+                  <div className="flex items-center gap-1.5 mb-1.5" aria-hidden="true">
+                    <span className="w-1 h-1 rotate-45 shrink-0" style={{ background: pc }} />
+                    <span className="h-px flex-1" style={{ background: gc }} />
+                    <span className="w-[5px] h-[5px] rotate-45 shrink-0" style={{ background: gc }} />
+                    <span className="h-px flex-1" style={{ background: gc }} />
+                    <span className="w-1 h-1 rotate-45 shrink-0" style={{ background: pc }} />
+                  </div>
+                  <div className="flex items-end justify-between gap-2 sm:gap-3">
+                    <div className="text-right flex-1 min-w-0">
+                      <div className="text-[8px] sm:text-[10px] font-extrabold truncate" style={{ color: INK }}>{tpl?.org_name || "منصة مفكري المستقبل"}</div>
+                      <div className="h-px w-16 sm:w-24 mt-1" style={{ background: mc }} />
+                      <div className="text-[7px] sm:text-[8px] mt-0.5" style={{ color: mc }}>إدارة المنصة</div>
+                      <div className="text-[7px] sm:text-[8px] mt-0.5 truncate" style={{ color: mc }}>{tpl?.footer_right || "منصة مفكري المستقبل"}</div>
+                    </div>
+                    <div className="relative shrink-0">
+                      <span className="absolute -bottom-1.5 right-[10px] w-2 h-4 rounded-b-sm rotate-[14deg]" style={{ background: pc }} aria-hidden="true" />
+                      <span className="absolute -bottom-1.5 left-[10px] w-2 h-4 rounded-b-sm -rotate-[14deg]" style={{ background: pc }} aria-hidden="true" />
+                      <span className="relative z-10 w-10 h-10 sm:w-12 sm:h-12 rounded-full grid place-items-center" style={{ background: bgc, border: `2px solid ${gc}`, boxShadow: `inset 0 0 0 2px ${bgc}, inset 0 0 0 3px ${pc}` }}>
+                        <svg viewBox="0 0 24 24" className="w-4 h-4 sm:w-5 sm:h-5" fill={gc} aria-hidden="true"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" /></svg>
+                      </span>
+                    </div>
+                    <div className="flex-1 min-w-0 rounded-md px-2 py-1.5 space-y-1" style={{ background: "rgba(255,255,255,0.65)", border: `1px solid ${gc}` }}>
+                      <div>
+                        <div className="text-[6.5px] sm:text-[7.5px] leading-none" style={{ color: mc }}>رمز التحقق</div>
+                        <div className="text-[8px] sm:text-[9.5px] font-bold leading-tight font-mono" style={{ color: INK }} dir="ltr">A1B2C3</div>
+                      </div>
+                      <div>
+                        <div className="text-[6.5px] sm:text-[7.5px] leading-none" style={{ color: mc }}>تاريخ الإصدار</div>
+                        <div className="text-[8px] sm:text-[9.5px] font-bold leading-tight" style={{ color: INK }} dir="ltr">{new Date().toISOString().slice(0, 10)}</div>
+                      </div>
+                      <div>
+                        <div className="text-[6.5px] sm:text-[7.5px] leading-none" style={{ color: mc }}>الجهة المانحة</div>
+                        <div className="text-[8px] sm:text-[9.5px] font-bold leading-tight truncate" style={{ color: INK }}>{tpl?.org_name || "منصة مفكري المستقبل"}</div>
+                      </div>
+                    </div>
                   </div>
                 </div>
+                {/* معيّنات الزوايا */}
+                <span className="absolute top-[5px] right-[5px] w-[7px] h-[7px] rotate-45 z-20" style={{ background: gc, boxShadow: `inset 0 0 0 2px ${dc}` }} aria-hidden="true" />
+                <span className="absolute top-[5px] left-[5px] w-[7px] h-[7px] rotate-45 z-20" style={{ background: gc, boxShadow: `inset 0 0 0 2px ${dc}` }} aria-hidden="true" />
+                <span className="absolute bottom-[5px] right-[5px] w-[7px] h-[7px] rotate-45 z-20" style={{ background: gc, boxShadow: `inset 0 0 0 2px ${bgc}` }} aria-hidden="true" />
+                <span className="absolute bottom-[5px] left-[5px] w-[7px] h-[7px] rotate-45 z-20" style={{ background: gc, boxShadow: `inset 0 0 0 2px ${bgc}` }} aria-hidden="true" />
               </div>
             </div>
           </div>
