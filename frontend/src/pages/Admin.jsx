@@ -14,7 +14,7 @@ import UsersPanel from "@/components/admin/UsersPanel";
 import ClubsPanel from "@/components/admin/ClubsPanel";
 import { toast } from "sonner";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area, CartesianGrid } from "recharts";
-import { LayoutDashboard, ShieldCheck, Users, BookOpen, Calendar, Trophy, Newspaper, Settings, ScrollText, Plus, Check, X, Megaphone, PenLine, Medal, Award, Upload, Trash2, Search, MessageSquare, MessagesSquare, Activity, Smartphone, UserPlus, FileCheck, Rocket, Zap, ArrowLeft, Star, Heart, ThumbsUp, Flag, CalendarCheck, Crown, Download, UserSearch, Link2, CalendarDays, Code2, FlaskConical, Terminal, Palette, Globe2, Route as RouteIcon, Bug } from "lucide-react";
+import { LayoutDashboard, ShieldCheck, Users, BookOpen, Calendar, Trophy, Newspaper, Settings, ScrollText, Plus, Check, X, Megaphone, PenLine, Medal, Award, Upload, Trash2, Search, MessageSquare, MessagesSquare, Activity, Smartphone, UserPlus, FileCheck, Rocket, Zap, ArrowLeft, Star, Heart, ThumbsUp, Flag, CalendarCheck, Crown, Download, UserSearch, Link2, CalendarDays, Code2, FlaskConical, Terminal, Palette, Globe2, Route as RouteIcon, Bug, Copy } from "lucide-react";
 import { THEME_PRESETS, applyTheme } from "@/lib/theme";
 import { timeAgo } from "@/components/NotificationsPanel";
 import { motion } from "framer-motion";
@@ -1533,6 +1533,7 @@ function BannersPanel() {
   const [dialog, setDialog] = useState(null); // null | "new" | banner obj
   const [f, setF] = useState({ text: "", link: "", bg: BG_PRESETS[0], starts_at: "", ends_at: "", active: true });
   const [saving, setSaving] = useState(false);
+  const [dupId, setDupId] = useState(null);
   const load = async () => {
     try { const { data } = await api.get("/admin/announcements"); setBanners(data.banners || []); }
     catch { setBanners([]); }
@@ -1564,6 +1565,21 @@ function BannersPanel() {
     try { await api.delete(`/admin/announcements/${b.id}`); toast.success("تم حذف اللافتة"); load(); }
     catch (e) { toast.error(apiErr(e)); }
   };
+  const duplicate = async (b) => {
+    setDupId(b.id);
+    try {
+      await api.post("/admin/announcements", {
+        text: `${b.text} (نسخة)`,
+        link: b.link || null,
+        bg: b.bg || BG_PRESETS[0],
+        starts_at: b.starts_at || null,
+        ends_at: b.ends_at || null,
+        active: b.active !== false,
+      });
+      toast.success("تم تكرار اللافتة 📢");
+      load();
+    } catch (e) { toast.error(apiErr(e)); } finally { setDupId(null); }
+  };
   if (!banners) return <PageLoader />;
   return (
     <div className="space-y-6">
@@ -1594,6 +1610,7 @@ function BannersPanel() {
                   </div>
                   <div className="flex gap-2 shrink-0">
                     <Button size="sm" variant="outline" onClick={() => openEdit(b)} className="rounded-xl h-10"><PenLine className="w-4 h-4 ml-1" /> تعديل</Button>
+                    <Button size="sm" variant="outline" onClick={() => duplicate(b)} disabled={dupId === b.id} className="rounded-xl h-10"><Copy className="w-4 h-4 ml-1" /> {dupId === b.id ? "جارٍ التكرار..." : "تكرار"}</Button>
                     <Button size="sm" variant="outline" onClick={() => del(b)} className="rounded-xl h-10 text-rose-600 border-rose-200"><Trash2 className="w-4 h-4 ml-1" /> حذف</Button>
                   </div>
                 </div>
