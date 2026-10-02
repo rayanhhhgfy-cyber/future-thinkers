@@ -7,6 +7,7 @@ import { AuthProvider } from "@/context/AuthContext";
 import { Protected } from "@/components/Layout";
 import InstallPWA from "@/components/InstallPWA";
 import PushBanner from "@/components/PushBanner";
+import { ThemeApplier } from "@/lib/theme";
 import { EASE } from "@/components/anim";
 
 import Landing from "@/pages/Landing";
@@ -22,6 +23,11 @@ import DiscussionDetail from "@/pages/DiscussionDetail";
 import ChessGame from "@/pages/ChessGame";
 import ChessPractice from "@/pages/ChessPractice";
 import ChessRobot from "@/pages/ChessRobot";
+import Paths from "@/pages/Paths";
+import Community from "@/pages/Community";
+import Calendar from "@/pages/Calendar";
+import ReadingChallenges from "@/pages/ReadingChallenges";
+import FocusRooms from "@/pages/FocusRooms";
 import Events from "@/pages/Events";
 import EventDetail from "@/pages/EventDetail";
 import Competitions from "@/pages/Competitions";
@@ -79,6 +85,11 @@ function AnimatedRoutes() {
       <Route path="/competitions/:id" element={<CompetitionDetail />} />
       <Route path="/leaderboard" element={<Leaderboard />} />
       <Route path="/points" element={<Protected><Points /></Protected>} />
+      <Route path="/paths" element={<Protected><Paths /></Protected>} />
+      <Route path="/community" element={<Protected><Community /></Protected>} />
+      <Route path="/calendar" element={<Calendar />} />
+      <Route path="/reading-challenges" element={<Protected><ReadingChallenges /></Protected>} />
+      <Route path="/focus" element={<Protected><FocusRooms /></Protected>} />
       <Route path="/news" element={<News />} />
       <Route path="/studio" element={<Studio />} />
       <Route path="/studio/:id" element={<StudioWork />} />
@@ -119,6 +130,7 @@ function App() {
         <AnimatedRoutes />
         <InstallPWA />
         <PushBanner />
+        <ThemeApplier />
       </BrowserRouter>
       <Toaster position="top-center" richColors />
     </AuthProvider>

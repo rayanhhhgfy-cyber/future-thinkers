@@ -4,7 +4,7 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import {
   Bell, Search, Menu, X, LogOut, User, LayoutDashboard, Shield, Settings,
   BookOpen, Sparkles, Users, Calendar, Trophy, Newspaper, Rocket, Crown,
-  Gamepad2, Flame, ChevronLeft,
+  Gamepad2, Flame, ChevronLeft, Route as RouteIcon, MessagesSquare, CalendarDays, Target, Timer,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { EASE } from "@/components/anim";
@@ -28,6 +28,11 @@ const DISCOVER_LINKS = [
   { to: "/competitions", label: "المسابقات", icon: Trophy, tint: "bg-amber-100 text-amber-600" },
   { to: "/leaderboard", label: "المتصدرون", icon: Crown, tint: "bg-yellow-100 text-yellow-600" },
   { to: "/news", label: "الأخبار", icon: Newspaper, tint: "bg-sky-100 text-sky-600" },
+  { to: "/paths", label: "مسارات التعلم", icon: RouteIcon, tint: "bg-emerald-100 text-emerald-700" },
+  { to: "/community", label: "ساحة المجتمع", icon: MessagesSquare, tint: "bg-rose-100 text-rose-600" },
+  { to: "/calendar", label: "التقويم", icon: CalendarDays, tint: "bg-indigo-100 text-indigo-600" },
+  { to: "/reading-challenges", label: "تحديات القراءة", icon: Target, tint: "bg-teal-100 text-teal-600" },
+  { to: "/focus", label: "غرف التركيز", icon: Timer, tint: "bg-slate-200 text-slate-700" },
 ];
 
 export function Navbar() {
@@ -39,6 +44,14 @@ export function Navbar() {
   const [notifOpen, setNotifOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [gam, setGam] = useState(null);
+
+  useEffect(() => {
+    const h = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") { e.preventDefault(); setSearchOpen(true); }
+    };
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, []);
 
   const loadUnread = useCallback(async () => {
     if (!user) return;

@@ -3,6 +3,7 @@ import api, { apiErr } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -96,6 +97,26 @@ export default function UsersPanel() {
   const [rejecting, setRejecting] = useState(null);
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const [csv, setCsv] = useState("");
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState(null);
+
+  const doImport = async () => {
+    const rows = csv.split("\n").map((l) => l.trim()).filter(Boolean).map((l) => {
+      const [name, email, password, grade, school_name] = l.split(",").map((s) => (s || "").trim());
+      return { name, email, password: password || undefined, grade: grade ? Number(grade) : undefined, school_name: school_name || undefined };
+    }).filter((r) => r.name && r.email);
+    if (!rows.length) return toast.error("الصق سطور CSV أولاً");
+    setImporting(true); setImportResult(null);
+    try {
+      const { data } = await api.post("/admin/users/bulk-import", { rows });
+      setImportResult(data);
+      toast.success(`أُنشئ ${data.created} حساب جديد 🎉`);
+      load();
+    } catch (e) { toast.error(apiErr(e)); }
+    setImporting(false);
+  };
 
   const canApproveTeachers = hasPerm("teacher.approve");
   const canCreate = hasPerm("user.create");
@@ -223,7 +244,32 @@ export default function UsersPanel() {
             <UserPlus className="w-4 h-4 ml-1.5" /> حساب جديد
           </Button>
         )}
+        {canCreate && (
+          <Button variant="outline" onClick={() => setImportOpen((v) => !v)} className="rounded-xl min-h-[44px]">
+            استيراد جماعي
+          </Button>
+        )}
       </div>
+
+      {importOpen && (
+        <div className="mb-5 bg-white border border-slate-200 rounded-2xl p-4">
+          <h3 className="font-bold text-slate-800 mb-1">استيراد طلاب (CSV)</h3>
+          <p className="text-xs text-slate-400 mb-3">كل سطر: الاسم، البريد، كلمة المرور (اختياري — افتراضي Student123!)، الصف، اسم المدرسة. تُتخطى الحسابات الموجودة مسبقاً.</p>
+          <Textarea value={csv} onChange={(e) => setCsv(e.target.value)} rows={6} dir="ltr" spellCheck={false}
+            placeholder={"سارة أحمد, sara@school.jo, , 9, مدرسة الأمير حسن\nمحمد علي, mohammad@school.jo, Pass1234, 8, "}
+            className="rounded-xl font-mono text-xs" />
+          <div className="flex items-center gap-3 mt-3 flex-wrap">
+            <Button onClick={doImport} disabled={importing} className="rounded-xl bg-slate-900 text-white min-h-[42px]">
+              {importing ? "يستورد…" : "ابدأ الاستيراد"}
+            </Button>
+            {importResult && (
+              <span className="text-xs font-bold text-slate-600">
+                أُنشئ {importResult.created} حساب{importResult.skipped?.length ? ` · تُخطي ${importResult.skipped.length} (${importResult.skipped.map((s) => s.email).slice(0, 3).join("، ")}…)` : ""}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
 
       {!data ? <PageLoader /> : (
         <div className="bg-white rounded-2xl border border-slate-100 ft-shadow overflow-x-auto">
