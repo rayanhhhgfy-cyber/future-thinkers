@@ -14,12 +14,13 @@ import UsersPanel from "@/components/admin/UsersPanel";
 import ClubsPanel from "@/components/admin/ClubsPanel";
 import { toast } from "sonner";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area, CartesianGrid } from "recharts";
-import { LayoutDashboard, ShieldCheck, Users, BookOpen, Calendar, Trophy, Newspaper, Settings, ScrollText, Plus, Check, X, Megaphone, PenLine, Medal, Award, Upload, Trash2, Search, MessageSquare, MessagesSquare, Activity, Smartphone, UserPlus, FileCheck, Rocket, Zap, ArrowLeft, Star, Heart, ThumbsUp, Flag, CalendarCheck, Crown, Download, Link2, CalendarDays, Code2, FlaskConical, Terminal, Palette, Globe2, Route as RouteIcon, Bug } from "lucide-react";
+import { LayoutDashboard, ShieldCheck, Users, BookOpen, Calendar, Trophy, Newspaper, Settings, ScrollText, Plus, Check, X, Megaphone, PenLine, Medal, Award, Upload, Trash2, Search, MessageSquare, MessagesSquare, Activity, Smartphone, UserPlus, FileCheck, Rocket, Zap, ArrowLeft, Star, Heart, ThumbsUp, Flag, CalendarCheck, Crown, Download, UserSearch, Link2, CalendarDays, Code2, FlaskConical, Terminal, Palette, Globe2, Route as RouteIcon, Bug } from "lucide-react";
 import { THEME_PRESETS, applyTheme } from "@/lib/theme";
 import { timeAgo } from "@/components/NotificationsPanel";
 import { motion } from "framer-motion";
 import { FadeUp, Stagger, Item } from "@/components/anim";
-import { CodingAdminPanel, ThemePanel, ReportsPanel, HealthPanel, LandingPanel, PathsAdminPanel, AnalyticsV2, ErrorsPanel } from "@/pages/AdminExtra";
+import { CodingAdminPanel, ThemePanel, ReportsPanel, HealthPanel, LandingPanel, PathsAdminPanel, AnalyticsV2, ErrorsPanel, CertificatesPanelV2 } from "@/pages/AdminExtra";
+import { OverviewPanel, ExportPanel, User360Panel } from "@/pages/AdminPanels2";
 import { startChunkedUpload, uploadChunks, completeChunkedUpload, fileToBase64, compressCoverImage, CHUNK_THRESHOLD, MAX_PDF_SIZE } from "@/lib/chunkedUpload";
 
 const NAV = [
@@ -30,6 +31,7 @@ const NAV = [
   { k: "badges", l: "شارات المهارات", icon: Medal, perm: "badge.award" },
   { k: "certificates", l: "الشهادات", icon: Award, perm: "certificate.manage" },
   { k: "users", l: "المستخدمون", icon: Users, perm: "user.view" },
+  { k: "user360", l: "ملف المستخدم 360", icon: UserSearch, perm: "user.view" },
   { k: "notify", l: "الإشعارات", icon: Megaphone, perm: "notification.broadcast" },
   { k: "content", l: "الفعاليات والمسابقات", icon: Calendar, perm: "event.create" },
   { k: "news", l: "الأخبار", icon: Newspaper, perm: "news.manage" },
@@ -82,13 +84,14 @@ export default function Admin() {
           </aside>
           <div className="min-w-0" key={tab}>
             <div className="animate-fade-in">
-            {tab === "overview" && <Overview />}
+            {tab === "overview" && <OverviewPanel onJump={goTab} />}
             {tab === "moderation" && <Moderation />}
             {tab === "studio" && <StudioPanel />}
             {tab === "books" && <BooksPanel />}
             {tab === "badges" && <BadgesPanel />}
-            {tab === "certificates" && <CertificatesPanel />}
+            {tab === "certificates" && <CertificatesPanelV2 />}
             {tab === "users" && <UsersPanel />}
+            {tab === "user360" && <User360Panel />}
             {tab === "notify" && <NotifyPanel />}
             {tab === "content" && <ContentPanel />}
             {tab === "news" && <NewsPanel />}
@@ -101,7 +104,7 @@ export default function Admin() {
             {tab === "calendar" && <CalendarPanel />}
             {tab === "coding" && <CodingAdminPanel />}
             {tab === "paths" && <PathsAdminPanel />}
-            {tab === "exports" && <ExportsPanel />}
+            {tab === "exports" && <ExportPanel />}
             {tab === "clubs" && <ClubsPanel />}
             {tab === "points" && <PointsPanel />}
             {tab === "audit" && <AuditPanel />}
