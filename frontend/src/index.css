@@ -147,3 +147,12 @@ h1, h2, h3, h4, .font-head { font-family: 'Readex Pro', sans-serif; }
 [data-sonner-toaster][data-y-position="top"] {
   top: calc(env(safe-area-inset-top, 0px) + 12px) !important;
 }
+
+/* Design-control v2 · effect toggles (flags are whitelisted booleans set
+   server-side; no raw CSS ever reaches the page). */
+html[data-grain="off"] .grain::before { display: none !important; }
+html[data-motion="off"] .animate-fade-up,
+html[data-motion="off"] .animate-float,
+html[data-motion="off"] .animate-pulse-soft,
+html[data-motion="off"] .animate-gradient-text,
+html[data-motion="off"] .animate-scale-in { animation: none !important; }

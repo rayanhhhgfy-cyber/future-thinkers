@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { PageLoader } from "@/components/Layout";
 import { FadeUp } from "@/components/anim";
 import { timeAgo } from "@/components/NotificationsPanel";
-import { THEME_PRESETS, applyTheme } from "@/lib/theme";
+import { THEME_PRESETS, applyTheme, applyDesign, resolveColors } from "@/lib/theme";
 import { PythonEditor, PyErrorText } from "@/components/PythonCode";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { Code2, FlaskConical, Terminal, Palette, Flag, Activity, Globe2, Route as RouteIcon, Plus, Bug, Copy, Mail, CheckCircle2, Trash2 } from "lucide-react";
@@ -139,44 +139,161 @@ function CodingAdminPanel() {
   );
 }
 
+const HEX_RE = /^#[0-9a-fA-F]{6}$/;
+
+function DesignToggle({ on, onChange, label, desc }) {
+  return (
+    <button type="button" role="switch" aria-checked={on} onClick={() => onChange(!on)}
+      className="flex items-center gap-3 w-full text-right min-h-[44px] py-1.5">
+      <span className={`relative w-12 h-7 rounded-full transition-colors shrink-0 ${on ? "bg-emerald-500" : "bg-slate-300"}`}>
+        <span className={`absolute top-1 w-5 h-5 rounded-full bg-white shadow transition-all ${on ? "right-6" : "right-1"}`} />
+      </span>
+      <span className="flex-1 min-w-0">
+        <span className="block text-sm font-bold text-slate-700">{label}</span>
+        {desc && <span className="block text-[11px] text-slate-400 mt-0.5">{desc}</span>}
+      </span>
+    </button>
+  );
+}
+
+const THEME_COLOR_ROWS = [
+  ["a", "البداية الداكنة", "أول لون في تدرجات الواجهات والأقسام الداكنة"],
+  ["b", "التدرج", "اللون الأوسط الذي يبني التدرج"],
+  ["c", "الأعمق", "أغمق درجة · قاعدة التدرج"],
+  ["accent", "لون الإبراز", "الأزرار واللمسات البارزة في الموقع"],
+];
+
 function ThemePanel() {
-  const [current, setCurrent] = useState(localStorage.getItem("ft-theme") || "emerald");
-  const [busy, setBusy] = useState("");
-  useEffect(() => { api.get("/theme").then((r) => setCurrent(r.data.preset || "emerald")).catch(() => {}); }, []);
-  const apply = async (key) => {
-    setBusy(key);
+  const [preset, setPreset] = useState("emerald");
+  const [colors, setColors] = useState({ a: "#052e26", b: "#065f46", c: "#043a2e", accent: "#10b981" });
+  const [useCustom, setUseCustom] = useState(false);
+  const [effects, setEffects] = useState({ grain: true, motion: true });
+  const [busy, setBusy] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    api.get("/theme").then((r) => {
+      const d = r.data || {};
+      const base = THEME_PRESETS.find((t) => t.key === d.preset) || THEME_PRESETS[0];
+      setPreset(base.key);
+      if (d.custom) {
+        setColors({
+          a: d.custom.a || base.a, b: d.custom.b || base.b,
+          c: d.custom.c || base.c, accent: d.custom.accent || base.accent,
+        });
+        setUseCustom(true);
+      } else {
+        setColors({ a: base.a, b: base.b, c: base.c, accent: base.accent });
+        setUseCustom(false);
+      }
+      if (d.effects) setEffects({ grain: d.effects.grain !== false, motion: d.effects.motion !== false });
+    }).catch(() => {}).finally(() => setLoaded(true));
+  }, []);
+
+  const eff = resolveColors({ preset, custom: useCustom ? colors : null });
+  const setColor = (k, v) => setColors((c) => ({ ...c, [k]: v }));
+  const pickPreset = (key) => { setPreset(key); setUseCustom(false); };
+
+  const save = async () => {
+    if (useCustom && ["a", "b", "c", "accent"].some((k) => !HEX_RE.test(colors[k] || ""))) {
+      return toast.error("راجع صيغة الألوان · يجب أن تكون بصيغة #RRGGBB مثل #10b981");
+    }
+    setBusy(true);
+    const cfg = { preset, custom: useCustom ? { ...colors } : null, effects };
     try {
-      await api.put("/admin/theme", { preset: key });
-      setCurrent(key);
-      localStorage.setItem("ft-theme", key);
-      applyTheme(key);
-      toast.success("طُبّقت السمة على الموقع كاملاً 🎨");
+      await api.put("/admin/theme", cfg);
+      applyDesign(cfg);
+      toast.success("طُبّق المظهر الجديد على الموقع كاملاً 🎨");
     } catch (e) { toast.error(apiErr(e)); }
-    setBusy("");
+    setBusy(false);
   };
+
   return (
     <div>
-      <h2 className="font-head font-extrabold text-lg flex items-center gap-2 mb-1"><Palette className="w-5 h-5 text-violet-600" /> مظهر الموقع</h2>
-      <p className="text-xs text-slate-400 mb-5">اختر سمة لونية واحدة · تتغير تدرجات البطولات والأقسام الداكنة في الموقع كاملاً فوراً لكل الزوار. آمن تماماً: القيم محفوظة كقائمة مغلقة.</p>
-      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {THEME_PRESETS.map((p) => (
-          <button key={p.key} onClick={() => apply(p.key)} disabled={!!busy}
-            className={`relative rounded-3xl overflow-hidden text-right transition-all ${current === p.key ? "ring-4 ring-emerald-500 scale-[1.02]" : "hover:scale-[1.02]"}`}>
-            <div className="h-32 p-4 flex flex-col justify-between text-white" style={{ background: `linear-gradient(135deg, ${p.c} 0%, ${p.b} 50%, ${p.accent} 130%)` }}>
-              <span className="w-8 h-8 rounded-lg bg-white/20 backdrop-blur grid place-items-center text-sm font-black">ف</span>
-              <span>
-                <span className="block font-head font-extrabold">{p.name}</span>
-                <span className="block text-[11px] text-white/70">لمسة: {p.accent}</span>
-              </span>
+      <h2 className="font-head font-extrabold text-lg flex items-center gap-2 mb-1"><Palette className="w-5 h-5 text-violet-600" /> مظهر الموقع · مركز التحكم بالتصميم</h2>
+      <p className="text-xs text-slate-400 mb-5">تحكم متقدم ببساطة: سمات جاهزة، ألوانك الخاصة، وتأثيرات · يصل التغيير كل الزوار فوراً وبأمان كامل.</p>
+
+      {!loaded ? <PageLoader /> : (<>
+        {/* ١ · السمات الجاهزة */}
+        <div className="bg-white rounded-3xl border border-slate-100 ft-shadow p-4 sm:p-5 mb-4">
+          <h3 className="font-head font-extrabold text-sm text-slate-700 mb-3">السمات الجاهزة</h3>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            {THEME_PRESETS.map((p) => (
+              <button key={p.key} onClick={() => pickPreset(p.key)}
+                className={`relative rounded-3xl overflow-hidden text-right transition-all ${preset === p.key ? "ring-4 ring-emerald-500 scale-[1.02]" : "hover:scale-[1.02]"}`}>
+                <div className="h-28 sm:h-32 p-4 flex flex-col justify-between text-white" style={{ background: `linear-gradient(135deg, ${p.c} 0%, ${p.b} 50%, ${p.accent} 130%)` }}>
+                  <span className="w-8 h-8 rounded-lg bg-white/20 backdrop-blur grid place-items-center text-sm font-black">ف</span>
+                  <span>
+                    <span className="block font-head font-extrabold">{p.name}</span>
+                    <span className="block text-[11px] text-white/70">لمسة: {p.accent}</span>
+                  </span>
+                </div>
+                {preset === p.key && !useCustom && <span className="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-white text-slate-900 text-[10px] font-black shadow">مفعّلة الآن ✓</span>}
+                {preset === p.key && useCustom && <span className="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-slate-900/80 text-white text-[10px] font-black shadow">قاعدة الألوان</span>}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* ٢ · ألوان مخصصة */}
+        <div className="bg-white rounded-3xl border border-slate-100 ft-shadow p-4 sm:p-5 mb-4">
+          <h3 className="font-head font-extrabold text-sm text-slate-700">ألوان مخصصة</h3>
+          <DesignToggle on={useCustom} onChange={setUseCustom} label="استخدام ألواني" desc="تجاوز ألوان السمة الجاهزة بألوان تختارها بنفسك" />
+          <div className={`space-y-4 mt-3 ${useCustom ? "" : "opacity-40 pointer-events-none"}`}>
+            {THEME_COLOR_ROWS.map(([k, label, hint]) => (
+              <div key={k}>
+                <div className="flex items-center gap-3 flex-wrap">
+                  <span className="w-10 h-10 rounded-xl ring-1 ring-slate-200 shrink-0" style={{ background: HEX_RE.test(colors[k]) ? colors[k] : "#000000" }} />
+                  <div className="flex-1 min-w-[130px]">
+                    <div className="text-sm font-bold text-slate-700">{label}</div>
+                    <div className="text-[11px] text-slate-400">{hint}</div>
+                  </div>
+                  <input type="color" value={HEX_RE.test(colors[k]) ? colors[k] : "#000000"} onChange={(e) => setColor(k, e.target.value)} aria-label={label}
+                    className="w-14 h-11 rounded-xl border border-slate-200 bg-white cursor-pointer p-1" />
+                  <input dir="ltr" value={colors[k]} onChange={(e) => setColor(k, e.target.value)} placeholder="#10b981" aria-label={`${label} · كود اللون`}
+                    className={`w-28 h-11 px-3 rounded-xl border text-left font-mono text-sm outline-none focus:ring-2 ${HEX_RE.test(colors[k]) ? "border-slate-200 focus:ring-emerald-200" : "border-rose-300 focus:ring-rose-200"}`} />
+                </div>
+                {!HEX_RE.test(colors[k]) && <p className="text-[11px] text-rose-500 ps-14 mt-1">صيغة غير صحيحة · مثال: #10b981</p>}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* ٣ · التأثيرات */}
+        <div className="bg-white rounded-3xl border border-slate-100 ft-shadow p-4 sm:p-5 mb-4">
+          <h3 className="font-head font-extrabold text-sm text-slate-700">التأثيرات</h3>
+          <DesignToggle on={effects.grain} onChange={(v) => setEffects((e) => ({ ...e, grain: v }))} label="حبيبات الخلفية" desc="ملمس خفيف فوق التدرجات يعطي عمقاً للأقسام الداكنة" />
+          <DesignToggle on={effects.motion} onChange={(v) => setEffects((e) => ({ ...e, motion: v }))} label="الحركات والانتقالات" desc="حركات الظهور والطفو والانتقالات في كل الموقع" />
+        </div>
+
+        {/* ٤ · معاينة حية وحفظ */}
+        <h3 className="font-head font-extrabold text-sm text-slate-700 mb-3">معاينة حية · هكذا سيبدو الموقع</h3>
+        <div className={`relative overflow-hidden rounded-3xl text-white p-5 sm:p-6 ft-shadow-lg mb-4 ${effects.grain ? "grain" : ""}`}
+          style={{ background: `linear-gradient(135deg, ${eff.c} 0%, ${eff.b} 55%, ${eff.a} 130%)` }}>
+          <div className="relative">
+            <span className="inline-flex px-2.5 py-1 rounded-full bg-white/15 backdrop-blur text-[10px] font-bold">نادي مفكري المستقبل</span>
+            <div className="font-head font-black text-xl sm:text-2xl mt-3">صمم مستقبلك بنفسك</div>
+            <p className="text-white/75 text-xs mt-1">منصة الطلاب المبدعين · قراءة وبرمجة وشطرنج ومشاريع</p>
+            <div className="flex gap-2 mt-4 flex-wrap">
+              <span className="px-4 py-2 rounded-xl text-xs font-black text-white shadow-lg" style={{ background: eff.accent }}>ابدأ الآن</span>
+              <span className="px-4 py-2 rounded-xl text-xs font-bold bg-white/15 backdrop-blur">تصفح الأقسام</span>
             </div>
-            {current === p.key && <span className="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-white text-slate-900 text-[10px] font-black shadow">مفعّلة الآن ✓</span>}
-            {busy === p.key && <span className="absolute inset-0 bg-black/30 grid place-items-center text-white text-sm font-bold">يُطبّق…</span>}
-          </button>
-        ))}
-      </div>
-      <div className="mt-5 bg-amber-50 border border-amber-100 rounded-2xl p-4 text-xs text-amber-700 leading-relaxed">
-        💡 تشمل السمة: تدرجات الواجهات الرئيسية (الصفحة الافتتاحية، اللوحات، النوادي) وعناصر الإبراز. أغطية الملفات الشخصية تبقى اختياراً فردياً لكل طالب من إعداداته.
-      </div>
+          </div>
+        </div>
+
+        <button onClick={save} disabled={busy}
+          className="pressable w-full min-h-[52px] rounded-2xl text-white font-head font-extrabold text-base disabled:opacity-50 shadow-xl mb-5"
+          style={{ background: `linear-gradient(120deg, ${eff.b}, ${eff.accent})` }}>
+          {busy ? "جارٍ التطبيق…" : "حفظ المظهر وتطبيقه"}
+        </button>
+
+        <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 text-xs text-amber-700 leading-relaxed mb-3">
+          🔒 آمن بتصميمه: لا توجد أي خانة CSS حرة · الخادم يقبل فقط أسماء سمات من قائمة مغلقة، وألواناً بصيغة #RRGGBB مفحوصة، ومفاتيح تأثيرات منطقية · أي قيمة غريبة تُرفض تلقائياً.
+        </div>
+        <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 text-xs text-slate-500 leading-relaxed">
+          💡 تشمل السمة: تدرجات الواجهات الرئيسية (الصفحة الافتتاحية، اللوحات، النوادي) وعناصر الإبراز. أغطية الملفات الشخصية تبقى اختياراً فردياً لكل طالب من إعداداته.
+        </div>
+      </>)}
     </div>
   );
 }
