@@ -60,6 +60,38 @@ async def presence_online(user: dict = Depends(get_current_user)):
     return {"online": len(ids), "user_ids": ids}
 
 
+# ---------------- My week (ISO week, Mon-Sun) ----------------
+@router.get("/stats/my-week")
+async def my_week(user: dict = Depends(get_current_user)):
+    today = datetime.now(timezone.utc).date()
+    monday = today - timedelta(days=today.weekday())
+    last_monday = monday - timedelta(days=7)
+    next_monday = monday + timedelta(days=7)
+    monday_s = monday.isoformat()
+    ws = datetime(monday.year, monday.month, monday.day, tzinfo=timezone.utc).isoformat()
+    daily = await db.user_daily.find(
+        {"user_id": user["id"],
+         "date": {"$gte": last_monday.isoformat(), "$lt": next_monday.isoformat()}}
+    ).to_list(14)
+    pages_this_week = sum(r.get("pages", 0) for r in daily if r.get("date", "") >= monday_s)
+    pages_last_week = sum(r.get("pages", 0) for r in daily if r.get("date", "") < monday_s)
+    active_days = min(7, sum(1 for r in daily
+                             if r.get("date", "") >= monday_s and r.get("pages", 0) > 0))
+    xp_rows = await db.xp_transactions.aggregate([
+        {"$match": {"user_id": user["id"], "created_at": {"$gte": ws}, "amount": {"$gt": 0}}},
+        {"$group": {"_id": None, "xp": {"$sum": "$amount"}}},
+    ]).to_list(1)
+    focus_rows = await db.focus_sessions.find(
+        {"user_id": user["id"], "at": {"$gte": ws}}).to_list(1000)
+    return {
+        "pages_this_week": int(pages_this_week),
+        "pages_last_week": int(pages_last_week),
+        "xp_this_week": int(xp_rows[0]["xp"]) if xp_rows else 0,
+        "focus_min_week": int(sum(r.get("minutes", 0) for r in focus_rows)),
+        "active_days": int(active_days),
+    }
+
+
 # ---------------- Learning paths ----------------
 async def _step_done(uid: str, step: dict) -> bool:
     k, ref = step.get("kind"), step.get("ref_id")
@@ -330,6 +362,29 @@ async def focus_stats_me(user: dict = Depends(get_current_user)):
                    if m.get("user_id") == user["id"])
     return {"today_min": int(today_min), "week_min": int(week_min),
             "sessions": len(rows), "best_min": int(best), "live_min": int(live_min)}
+
+
+@router.get("/focus/leaderboard")
+async def focus_leaderboard(user: dict = Depends(get_current_user)):
+    today = datetime.now(timezone.utc).date()
+    monday = today - timedelta(days=today.weekday())
+    ws = datetime(monday.year, monday.month, monday.day, tzinfo=timezone.utc).isoformat()
+    rows = await db.focus_sessions.aggregate([
+        {"$match": {"at": {"$gte": ws}}},
+        {"$group": {"_id": "$user_id", "minutes": {"$sum": "$minutes"}}},
+        {"$sort": {"minutes": -1}},
+        {"$limit": 25},
+    ]).to_list(25)
+    items = []
+    for r in rows:
+        u = await db.users.find_one({"_id": oid(r["_id"])}, {"name": 1})
+        if not u:
+            continue
+        items.append({"user_id": r["_id"], "name": u.get("name", ""),
+                      "minutes": int(r["minutes"])})
+        if len(items) >= 10:
+            break
+    return {"items": items}
 
 
 @router.get("/focus/rooms")

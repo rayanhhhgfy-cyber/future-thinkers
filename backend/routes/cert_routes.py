@@ -31,6 +31,7 @@ DEFAULT_TEMPLATE = {
     "color_primary": "#059669",
     "color_dark": "#0A192F",
     "color_muted": "#64748B",
+    "color_gold": "#C6A15B",
     "bg_color": "#F6FBF9",
 }
 
@@ -57,7 +58,28 @@ async def get_template() -> dict:
     return tpl
 
 
-def _build(name, title_line, subtitle, meta_lines, tpl=None):
+def _diamond(c, x, y, r, fill):
+    p = c.beginPath()
+    p.moveTo(x, y + r); p.lineTo(x + r, y); p.lineTo(x, y - r); p.lineTo(x - r, y)
+    p.close()
+    c.setFillColor(fill)
+    c.drawPath(p, fill=1, stroke=0)
+
+
+def _star(c, cx, cy, r_out, r_in, fill):
+    import math
+    p = c.beginPath()
+    for i in range(10):
+        r = r_out if i % 2 == 0 else r_in
+        a = math.pi / 2 + i * math.pi / 5
+        x, y = cx + r * math.cos(a), cy + r * math.sin(a)
+        p.moveTo(x, y) if i == 0 else p.lineTo(x, y)
+    p.close()
+    c.setFillColor(fill)
+    c.drawPath(p, fill=1, stroke=0)
+
+
+def _build(name, title_line, subtitle, meta_lines, tpl=None, code=None):
     tpl = tpl or DEFAULT_TEMPLATE
     _fonts()
     buf = io.BytesIO()
@@ -66,54 +88,98 @@ def _build(name, title_line, subtitle, meta_lines, tpl=None):
     P = colors.HexColor(tpl["color_primary"])
     D = colors.HexColor(tpl["color_dark"])
     M = colors.HexColor(tpl["color_muted"])
-    # background + border
+    G = colors.HexColor(tpl.get("color_gold") or "#C6A15B")
+    # background + triple frame (primary · dark hairline · gold hairline)
     c.setFillColor(colors.HexColor(tpl["bg_color"]))
     c.rect(0, 0, W, H, fill=1, stroke=0)
-    c.setStrokeColor(P)
-    c.setLineWidth(6)
+    c.setStrokeColor(P); c.setLineWidth(5)
     c.rect(18, 18, W - 36, H - 36)
-    c.setStrokeColor(D)
-    c.setLineWidth(1.5)
-    c.rect(30, 30, W - 60, H - 60)
+    c.setStrokeColor(D); c.setLineWidth(1.1)
+    c.rect(29, 29, W - 58, H - 58)
+    c.setStrokeColor(G); c.setLineWidth(0.7)
+    c.rect(36, 36, W - 72, H - 72)
+    for fx, fy in ((36, 36), (W - 36, 36), (36, H - 36), (W - 36, H - 36)):
+        _diamond(c, fx, fy, 6, G)
 
     cx = W / 2
-    c.setFillColor(P)
+    c.setFillColor(D)
     c.setFont("Amiri-Bold", 20)
-    c.drawCentredString(cx, H - 80, ar(tpl["org_name"]))
+    c.drawCentredString(cx, H - 76, ar(tpl["org_name"]))
     c.setFillColor(M)
     c.setFont("Amiri", 12)
-    c.drawCentredString(cx, H - 100, ar(tpl["country_line"]))
+    c.drawCentredString(cx, H - 96, ar(tpl["country_line"]))
+    # gold divider: line · diamond · line
+    c.setStrokeColor(G); c.setLineWidth(1)
+    c.line(cx - 78, H - 112, cx - 14, H - 112)
+    c.line(cx + 14, H - 112, cx + 78, H - 112)
+    _diamond(c, cx, H - 112, 5, G)
 
-    c.setFillColor(D)
-    c.setFont("Amiri-Bold", 34)
-    c.drawCentredString(cx, H - 165, ar(tpl["main_title"]))
+    c.setFillColor(P)
+    c.setFont("Amiri-Bold", 36)
+    c.drawCentredString(cx, H - 160, ar(tpl["main_title"]))
 
     c.setFillColor(M)
     c.setFont("Amiri", 14)
-    c.drawCentredString(cx, H - 205, ar(tpl["award_label"]))
+    c.drawCentredString(cx, H - 194, ar(tpl["award_label"]))
 
-    c.setFillColor(P)
-    c.setFont("Amiri-Bold", 30)
-    c.drawCentredString(cx, H - 250, ar(name))
+    c.setFillColor(D)
+    c.setFont("Amiri-Bold", 32)
+    c.drawCentredString(cx, H - 240, ar(name))
+    c.setStrokeColor(G); c.setLineWidth(1.6)
+    c.line(cx - 58, H - 254, cx + 58, H - 254)
+    _diamond(c, cx, H - 254, 4, G)
 
     c.setFillColor(colors.HexColor("#334155"))
     c.setFont("Amiri", 15)
-    c.drawCentredString(cx, H - 288, ar(title_line))
+    c.drawCentredString(cx, H - 284, ar(title_line))
     if subtitle:
         c.setFont("Amiri-Bold", 16)
         c.setFillColor(D)
-        c.drawCentredString(cx, H - 315, ar(subtitle))
+        c.drawCentredString(cx, H - 311, ar(subtitle))
 
-    y = 120
+    y = 168
     c.setFont("Amiri", 12)
     c.setFillColor(M)
     for line in meta_lines:
         c.drawCentredString(cx, y, ar(line))
         y -= 20
 
+    # seal (left): gold ring + primary ring + star + ribbons
+    sx, sy = 108, 96
+    c.setFillColor(P)
+    p = c.beginPath()
+    p.moveTo(sx - 17, sy - 22); p.lineTo(sx - 3, sy - 22); p.lineTo(sx - 10, sy - 46)
+    p.close(); c.drawPath(p, fill=1, stroke=0)
+    p = c.beginPath()
+    p.moveTo(sx + 17, sy - 22); p.lineTo(sx + 3, sy - 22); p.lineTo(sx + 10, sy - 46)
+    p.close(); c.drawPath(p, fill=1, stroke=0)
+    c.setStrokeColor(G); c.setLineWidth(2.2)
+    c.circle(sx, sy, 27, stroke=1, fill=0)
+    c.setStrokeColor(P); c.setLineWidth(0.8)
+    c.circle(sx, sy, 21.5, stroke=1, fill=0)
+    _star(c, sx, sy, 11, 4.6, G)
+
+    # signature (right)
+    c.setFillColor(D)
+    c.setFont("Amiri-Bold", 13)
+    c.drawRightString(W - 62, 108, ar(tpl["org_name"]))
+    c.setStrokeColor(M); c.setLineWidth(0.8)
+    c.line(W - 196, 96, W - 62, 96)
+    c.setFillColor(M)
+    c.setFont("Amiri", 10.5)
+    c.drawRightString(W - 62, 82, ar("إدارة المنصة"))
+
+    # footer: date · verification · org
+    c.setFillColor(M)
+    c.setFont("Helvetica", 10)
+    c.drawString(60, 50, datetime.now().strftime("%Y-%m-%d"))
     c.setFont("Amiri", 11)
-    c.drawString(60, 55, ar(datetime.now().strftime("%Y-%m-%d")))
-    c.drawRightString(W - 60, 55, ar(tpl["footer_right"]))
+    c.drawRightString(W - 60, 50, ar(tpl["footer_right"]))
+    if code:
+        c.setFont("Amiri", 9.5)
+        c.drawCentredString(cx, 62, ar(f"رمز التحقق: {code}"))
+        c.setFont("Helvetica", 8.5)
+        c.drawCentredString(cx, 50, f"f-thinkers.vercel.app/verify/{code}")
     c.showPage()
     c.save()
     buf.seek(0)
@@ -183,6 +249,26 @@ async def user_certificates(user_id: str, request: Request):
     return out
 
 
+# ---------- public: verify a certificate by code ----------
+
+@router.get("/verify/{code}")
+async def verify_certificate(code: str):
+    code = (code or "").strip().upper()
+    cert = await db.certificates.find_one({"code": code})
+    if not cert and len(code) >= 6:
+        # شهادات قديمة بلا رمز: طابِق ببادئة معرّف الشهادة
+        async for doc in db.certificates.find({"code": {"$exists": False}}):
+            if str(doc["_id"]).upper().startswith(code):
+                cert = doc
+                break
+    if not cert:
+        return {"valid": False}
+    tpl = await get_template()
+    return {"valid": True, "user_name": cert.get("user_name", ""),
+            "title_line": cert.get("title_line", ""), "subtitle": cert.get("subtitle", ""),
+            "created_at": cert.get("created_at", ""), "org": tpl["org_name"]}
+
+
 @router.get("/{cert_id}/pdf")
 async def certificate_pdf(cert_id: str, user: dict = Depends(get_current_user)):
     cert = await db.certificates.find_one({"_id": oid(cert_id)})
@@ -191,8 +277,9 @@ async def certificate_pdf(cert_id: str, user: dict = Depends(get_current_user)):
     if cert["user_id"] != user["id"] and user.get("role") not in ("admin", "super_admin", "moderator"):
         raise HTTPException(status_code=403, detail="غير مصرح")
     tpl = cert.get("template") or await get_template()
+    code = cert.get("code") or str(cert["_id"])[:8].upper()
     buf = _build(cert["user_name"], cert["title_line"], cert.get("subtitle", ""),
-                 cert.get("meta_lines", []), tpl)
+                 cert.get("meta_lines", []), tpl, code=code)
     return _pdf_response(buf, f"certificate-{cert_id}")
 
 
@@ -207,6 +294,7 @@ class TemplateBody(BaseModel):
     color_primary: str = ""
     color_dark: str = ""
     color_muted: str = ""
+    color_gold: str = ""
     bg_color: str = ""
 
 
@@ -244,6 +332,7 @@ async def admin_award_certificate(body: AwardBody, user: dict = Depends(require_
         "title_line": body.title_line, "subtitle": body.subtitle,
         "meta_lines": [str(x) for x in (body.meta_lines or [])][:6],
         "template": tpl,
+        "code": __import__("secrets").token_hex(3).upper(),
         "awarded_by": user["id"], "awarded_by_name": user["name"],
         "created_at": now_iso(),
     }

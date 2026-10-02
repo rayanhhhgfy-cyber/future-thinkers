@@ -115,6 +115,27 @@ async def feature_book(book_id: str, request: Request,
     return {"ok": True}
 
 
+@router.get("/recommended")
+async def recommended_books(user: dict = Depends(get_current_user)):
+    # Categories of books the user finished (percent >= 95 is this module's
+    # completion threshold), then top-rated approved books in those
+    # categories the user has not finished. No history → top-rated overall.
+    progs = await db.reading_progress.find(
+        {"user_id": user["id"], "percent": {"$gte": 95}}).to_list(500)
+    finished_ids = [p["book_id"] for p in progs if p.get("book_id")]
+    query = {"status": "approved"}
+    if finished_ids:
+        fin_books = await db.books.find(
+            {"_id": {"$in": [oid(x) for x in finished_ids if oid(x)]}},
+            {"category": 1}).to_list(500)
+        cats = sorted({b["category"] for b in fin_books if b.get("category")})
+        if cats:
+            query["category"] = {"$in": cats}
+        query["_id"] = {"$nin": [oid(x) for x in finished_ids if oid(x)]}
+    docs = await db.books.find(query).sort("rating_avg", -1).limit(8).to_list(8)
+    return [_book_out(b) for b in docs]
+
+
 @router.get("/{book_id}")
 async def get_book(book_id: str, request: Request):
     b = await db.books.find_one({"_id": oid(book_id)})

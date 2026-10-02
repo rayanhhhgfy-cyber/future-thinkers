@@ -191,6 +191,8 @@ class BannerBody(BaseModel):
     bg: str = "#1B7A5A"
     starts_at: str | None = None
     ends_at: str | None = None
+    publish_at: str | None = None
+    expires_at: str | None = None
     active: bool = True
 
 
@@ -200,7 +202,22 @@ class BannerPatchBody(BaseModel):
     bg: str | None = None
     starts_at: str | None = None
     ends_at: str | None = None
+    publish_at: str | None = None
+    expires_at: str | None = None
     active: bool | None = None
+
+
+def _check_banner_dates(values: dict):
+    """publish_at / expires_at must be parseable ISO datetimes when non-empty."""
+    from datetime import datetime as _dt
+    for key in ("publish_at", "expires_at"):
+        v = values.get(key)
+        if v is None or str(v).strip() == "":
+            continue
+        try:
+            _dt.fromisoformat(str(v).replace("Z", "+00:00"))
+        except Exception:
+            raise HTTPException(status_code=400, detail="تاريخ غير صالح")
 
 
 def _banner_live(b: dict) -> bool:
@@ -210,6 +227,10 @@ def _banner_live(b: dict) -> bool:
     if b.get("starts_at") and b["starts_at"] > now:
         return False
     if b.get("ends_at") and b["ends_at"] < now:
+        return False
+    if b.get("publish_at") and b["publish_at"] > now:
+        return False
+    if b.get("expires_at") and b["expires_at"] < now:
         return False
     return True
 
@@ -231,6 +252,7 @@ async def admin_list_announcements(user: dict = Depends(require_permission(_ANNO
 @router.post("/admin/announcements")
 async def create_announcement(body: BannerBody, request: Request,
                              user: dict = Depends(require_permission(_ANNOUNCE_PERM))):
+    _check_banner_dates(body.model_dump())
     import uuid as _uuid
     banners = await _load_banners()
     banner = {**body.model_dump(), "id": _uuid.uuid4().hex[:8], "created_at": now_iso()}
@@ -249,6 +271,7 @@ async def update_announcement(bid: str, body: BannerPatchBody, request: Request,
     if not banner:
         raise HTTPException(status_code=404, detail="غير موجود")
     updates = {k: v for k, v in body.model_dump().items() if v is not None}
+    _check_banner_dates(updates)
     banner.update(updates)
     banner["updated_at"] = now_iso()
     await _save_banners(banners)
