@@ -33,15 +33,15 @@ function FocusLeaders() {
   if (!items.length) return null;
   const chip = ["from-amber-400 to-orange-500 text-white shadow-amber-200", "from-slate-400 to-slate-500 text-white shadow-slate-200", "from-orange-300 to-amber-500 text-white shadow-orange-200"];
   return (
-    <section className="animate-fade-up bg-white rounded-[1.6rem] border border-slate-100 ft-shadow p-5 sm:p-6 mb-6">
-      <h3 className="font-head font-extrabold text-slate-800 flex items-center gap-2.5 mb-4">
-        <span className="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 text-white grid place-items-center shadow-lg shadow-amber-200"><Trophy className="w-5 h-5" /></span>
+    <section className="animate-fade-up bg-white rounded-[1.6rem] lg:rounded-[2rem] border border-slate-100 ft-shadow p-5 sm:p-6 lg:p-7 xl:p-8 mb-6 lg:mb-8">
+      <h3 className="font-head font-extrabold text-slate-800 lg:text-lg flex items-center gap-2.5 mb-4 lg:mb-5">
+        <span className="w-10 h-10 lg:w-12 lg:h-12 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 text-white grid place-items-center shadow-lg shadow-amber-200"><Trophy className="w-5 h-5 lg:w-6 lg:h-6" /></span>
         متصدرو التركيز هذا الأسبوع
         <span className="ft-chip rounded-full px-2.5 py-1 text-[10px] font-extrabold">غرف التركيز</span>
       </h3>
-      <div className="grid sm:grid-cols-2 gap-2">
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-2 lg:gap-3">
         {items.slice(0, 6).map((m, i) => (
-          <div key={m.user_id || i} className="flex items-center gap-3 rounded-2xl bg-slate-50/70 ring-1 ring-slate-100 px-3 py-2.5">
+          <div key={m.user_id || i} className="flex items-center gap-3 rounded-2xl bg-slate-50/70 ring-1 ring-slate-100 px-3 py-2.5 lg:px-4 lg:py-3">
             <span className={`w-8 h-8 rounded-full bg-gradient-to-br ${chip[i] || "from-slate-200 to-slate-300 text-slate-600"} grid place-items-center text-xs font-black shadow shrink-0`}>{i + 1}</span>
             <span className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-indigo-500 text-white grid place-items-center text-xs font-extrabold ring-2 ring-white shadow shrink-0">{(m.name || "؟").trim().charAt(0)}</span>
             <Link to={`/profile/${m.user_id}`} className="flex-1 min-w-0 truncate text-sm font-bold text-slate-700 hover:[color:color-mix(in_srgb,var(--ft-accent)_66%,black)] transition-colors min-h-[44px] inline-flex items-center">{m.name}</Link>
@@ -132,43 +132,43 @@ export default function FocusRooms() {
     const R = 124, CIRC = 2 * Math.PI * R;
     return (
       <Layout>
-        <div className="max-w-4xl mx-auto px-4 py-8">
-          <div className="animate-scale-in relative overflow-hidden rounded-[2rem] bg-slate-950 grain text-white px-5 py-9 sm:px-10 sm:py-11 text-center ft-shadow-lg">
+        <div className="max-w-4xl lg:max-w-5xl xl:max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 xl:px-10 py-8 lg:py-10 xl:py-12">
+          <div className="animate-scale-in relative overflow-hidden rounded-[2rem] bg-slate-950 grain text-white px-5 py-9 sm:px-10 sm:py-11 lg:px-12 lg:py-14 xl:px-16 xl:py-16 text-center ft-shadow-lg">
             <span className="absolute inset-x-0 top-0 h-1 z-10" style={{ background: `linear-gradient(to left, transparent, ${m.ring}, transparent)` }} />
             <div className="pointer-events-none absolute inset-0 opacity-40" style={{ background: `radial-gradient(600px 260px at 50% -60px, ${m.glow}, transparent)` }} />
             <div className={`pointer-events-none absolute left-1/2 top-44 -translate-x-1/2 w-72 h-72 rounded-full blur-3xl ${ticking ? "animate-pulse-soft" : ""}`} style={{ background: m.glow, opacity: 0.35 }} />
             <Headphones className="pointer-events-none absolute -right-8 -top-6 w-40 h-40 text-white/[0.04] rotate-12" />
             <Timer className="pointer-events-none absolute -left-8 -bottom-8 w-40 h-40 text-white/[0.04] -rotate-12" />
-            <span className="relative inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 ring-1 ring-white/15 text-xs font-bold backdrop-blur-sm"><span className={`w-2 h-2 rounded-full ${ticking ? "bg-emerald-400 animate-pulse" : "bg-amber-400"}`} /> داخل الغرفة الآن</span>
-            <h1 className="relative font-head text-2xl sm:text-3xl font-extrabold mt-4">{room.name}</h1>
-            <div className="relative flex justify-center gap-2 mt-4 flex-wrap">
-              <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full ring-1 text-[11px] font-bold ${m.soft}`}><span className={`w-2 h-2 rounded-full bg-gradient-to-br ${m.dot}`} /> {m.label}</span>
-              {room.topic && <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 ring-1 ring-white/15 text-[11px] font-bold">{room.topic}</span>}
-              <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full ring-1 text-[11px] font-bold ${goalReached ? "bg-emerald-500/25 ring-emerald-300/50 text-emerald-100" : "bg-white/10 ring-white/15"}`}><Target className="w-3.5 h-3.5" /> هدف {room.goal_min || 25}د{goalReached && <Check className="w-3.5 h-3.5 text-emerald-300" />}</span>
+            <span className="relative inline-flex items-center gap-1.5 px-3 py-1.5 lg:px-4 lg:py-2 lg:text-[13px] rounded-full bg-white/10 ring-1 ring-white/15 text-xs font-bold backdrop-blur-sm min-h-[36px]"><span className={`w-2 h-2 rounded-full ${ticking ? "bg-emerald-400 animate-pulse" : "bg-amber-400"}`} /> داخل الغرفة الآن</span>
+            <h1 className="relative font-head text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-extrabold mt-4 lg:mt-5">{room.name}</h1>
+            <div className="relative flex justify-center gap-2 lg:gap-2.5 mt-4 lg:mt-5 flex-wrap">
+              <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 lg:px-4 lg:py-2 lg:text-xs rounded-full ring-1 text-[11px] font-bold ${m.soft}`}><span className={`w-2 h-2 rounded-full bg-gradient-to-br ${m.dot}`} /> {m.label}</span>
+              {room.topic && <span className="inline-flex items-center gap-1.5 px-3 py-1.5 lg:px-4 lg:py-2 lg:text-xs rounded-full bg-white/10 ring-1 ring-white/15 text-[11px] font-bold">{room.topic}</span>}
+              <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 lg:px-4 lg:py-2 lg:text-xs rounded-full ring-1 text-[11px] font-bold ${goalReached ? "bg-emerald-500/25 ring-emerald-300/50 text-emerald-100" : "bg-white/10 ring-white/15"}`}><Target className="w-3.5 h-3.5" /> هدف {room.goal_min || 25}د{goalReached && <Check className="w-3.5 h-3.5 text-emerald-300" />}</span>
             </div>
-            <div className="relative w-[248px] h-[248px] sm:w-[288px] sm:h-[288px] mx-auto mt-8">
+            <div className="relative w-[248px] h-[248px] sm:w-[288px] sm:h-[288px] lg:w-[320px] lg:h-[320px] xl:w-[360px] xl:h-[360px] mx-auto mt-8 lg:mt-10">
               <svg viewBox="0 0 280 280" className="w-full h-full -rotate-90">
                 <circle cx="140" cy="140" r={R} fill="none" strokeWidth="10" className="stroke-white/[0.07]" />
                 <circle cx="140" cy="140" r={R} fill="none" strokeWidth="10" strokeLinecap="round" stroke={goalReached ? "#34d399" : m.ring} className="transition-all duration-1000" strokeDasharray={CIRC} strokeDashoffset={CIRC * (1 - ringPct / 100)} />
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center px-8">
-                <div className="font-mono text-6xl sm:text-7xl font-black tabular-nums tracking-tight leading-none" dir="ltr">{fmt(seconds)}</div>
-                <div className="text-white/40 text-[11px] font-bold mt-3">{ticking ? "الجلسة جارية · ركّز" : "متوقفة مؤقتاً"}</div>
+                <div className="font-mono text-6xl sm:text-7xl lg:text-7xl xl:text-8xl font-black tabular-nums tracking-tight leading-none" dir="ltr">{fmt(seconds)}</div>
+                <div className="text-white/40 text-[11px] lg:text-xs font-bold mt-3">{ticking ? "الجلسة جارية · ركّز" : "متوقفة مؤقتاً"}</div>
               </div>
             </div>
-            <p className="relative text-white/50 text-sm mt-6 max-w-md mx-auto leading-relaxed">دقائقك المحفوظة: {Math.round((me?.focus_min || 0) + seconds / 60)} · الجلسة من 10 دقائق فأكثر تمنح نقاطاً (حتى 30) · هدف الجلسة {room.goal_min || 25}د</p>
-            <div className="relative flex justify-center gap-3 mt-7 flex-wrap">
-              <button onClick={() => setTicking((t) => !t)} className={`pressable inline-flex items-center justify-center gap-2 h-12 px-7 rounded-2xl bg-gradient-to-l ${m.btn} shadow-lg font-bold min-w-[160px]`} style={{ boxShadow: `0 12px 28px -10px ${m.glow}` }}>
+            <p className="relative text-white/50 text-sm lg:text-base mt-6 lg:mt-7 max-w-md lg:max-w-lg xl:max-w-xl mx-auto leading-relaxed">دقائقك المحفوظة: {Math.round((me?.focus_min || 0) + seconds / 60)} · الجلسة من 10 دقائق فأكثر تمنح نقاطاً (حتى 30) · هدف الجلسة {room.goal_min || 25}د</p>
+            <div className="relative flex justify-center gap-3 lg:gap-4 mt-7 lg:mt-8 flex-wrap">
+              <button onClick={() => setTicking((t) => !t)} className={`pressable inline-flex items-center justify-center gap-2 h-12 lg:h-[52px] px-7 lg:px-9 lg:text-base rounded-2xl bg-gradient-to-l ${m.btn} shadow-lg font-bold min-w-[160px] lg:min-w-[180px] min-h-[44px]`} style={{ boxShadow: `0 12px 28px -10px ${m.glow}` }}>
                 {ticking ? <><Pause className="w-5 h-5" /> إيقاف مؤقت</> : <><Play className="w-5 h-5" /> استئناف</>}
               </button>
-              <button onClick={leave} className="pressable inline-flex items-center justify-center gap-2 h-12 px-7 rounded-2xl bg-white/10 hover:bg-white/15 ring-1 ring-white/15 font-bold min-w-[160px]">
+              <button onClick={leave} className="pressable inline-flex items-center justify-center gap-2 h-12 lg:h-[52px] px-7 lg:px-9 lg:text-base rounded-2xl bg-white/10 hover:bg-white/15 ring-1 ring-white/15 font-bold min-w-[160px] lg:min-w-[180px] min-h-[44px]">
                 <LogOut className="w-5 h-5" /> إنهاء الجلسة
               </button>
             </div>
-            <div className="relative flex justify-center gap-2 mt-9 flex-wrap">
+            <div className="relative flex justify-center gap-2 lg:gap-2.5 mt-9 lg:mt-10 flex-wrap">
               {(room.members || []).map((mm) => (
-                <span key={mm.user_id} className={`inline-flex items-center gap-2 pl-3 pr-1.5 py-1.5 rounded-full text-xs font-bold backdrop-blur-sm ring-1 ${mm.user_id === user?.id ? `${m.soft}` : "bg-white/10 ring-white/10"}`}>
-                  <span className={`w-6 h-6 rounded-full bg-gradient-to-br ${m.dot} grid place-items-center text-[10px] font-black text-white shrink-0`}>{mm.name?.[0] || "؟"}</span>
+                <span key={mm.user_id} className={`inline-flex items-center gap-2 pl-3 pr-1.5 py-1.5 lg:pl-4 lg:pr-2 lg:py-2 lg:text-[13px] rounded-full text-xs font-bold backdrop-blur-sm ring-1 ${mm.user_id === user?.id ? `${m.soft}` : "bg-white/10 ring-white/10"}`}>
+                  <span className={`w-6 h-6 lg:w-7 lg:h-7 rounded-full bg-gradient-to-br ${m.dot} grid place-items-center text-[10px] lg:text-[11px] font-black text-white shrink-0`}>{mm.name?.[0] || "؟"}</span>
                   {mm.name} · {Math.round(mm.focus_min)}د
                   <Flame className="w-3.5 h-3.5 text-amber-400" />
                 </span>
@@ -185,54 +185,80 @@ export default function FocusRooms() {
 
   return (
     <Layout>
-      <div className="max-w-6xl mx-auto px-4 py-8">
-        <div className="animate-fade-up relative overflow-hidden rounded-[2rem] bg-slate-950 grain px-6 py-9 sm:px-10 sm:py-11 mb-8 ft-shadow-lg">
+      <div className="max-w-6xl xl:max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-12 py-8 lg:py-10 xl:py-12">
+        <div className="animate-fade-up relative overflow-hidden rounded-[2rem] bg-slate-950 grain px-6 py-9 sm:px-10 sm:py-11 lg:px-12 lg:py-14 xl:px-16 xl:py-16 mb-8 lg:mb-10 ft-shadow-lg">
           <div className="pointer-events-none absolute -top-28 left-1/3 w-96 h-96 rounded-full bg-violet-600/20 blur-3xl" />
           <div className="pointer-events-none absolute -bottom-32 -right-10 w-80 h-80 rounded-full bg-indigo-500/15 blur-3xl" />
           <Timer className="pointer-events-none absolute -left-8 -bottom-10 w-52 h-52 text-white/[0.05] -rotate-12" />
           <Headphones className="pointer-events-none absolute left-8 top-8 w-12 h-12 text-violet-300/25 animate-float hidden sm:block" />
           <div className="relative">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 ring-1 ring-white/15 text-white text-xs font-bold backdrop-blur-sm"><Timer className="w-3.5 h-3.5" /> ذاكروا معاً بصمت</span>
-            <h1 className="font-head text-4xl sm:text-5xl font-extrabold text-white mt-4 leading-tight">غرف <span className="animate-gradient-text bg-gradient-to-l from-violet-300 via-indigo-300 to-violet-300 bg-clip-text text-transparent">التركيز</span></h1>
-            <p className="text-white/60 text-sm sm:text-base mt-3 max-w-xl leading-relaxed">افتح غرفة أو ادخل واحدة، شغّل المؤقّت واقرأ أو ذاكر · كل 10 دقائق تركيز فأكثر تمنحك نقاط خبرة.</p>
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 lg:px-4 lg:py-2 lg:text-[13px] rounded-full bg-white/10 ring-1 ring-white/15 text-white text-xs font-bold backdrop-blur-sm min-h-[36px]"><Timer className="w-3.5 h-3.5" /> ذاكروا معاً بصمت</span>
+            <h1 className="font-head text-4xl sm:text-5xl lg:text-6xl xl:text-[4.25rem] font-extrabold text-white mt-4 leading-tight">غرف <span className="animate-gradient-text bg-gradient-to-l from-violet-300 via-indigo-300 to-violet-300 bg-clip-text text-transparent">التركيز</span></h1>
+            <p className="text-white/60 text-sm sm:text-base lg:text-lg mt-3 max-w-xl lg:max-w-2xl xl:max-w-3xl leading-relaxed">افتح غرفة أو ادخل واحدة، شغّل المؤقّت واقرأ أو ذاكر · كل 10 دقائق تركيز فأكثر تمنحك نقاط خبرة.</p>
           </div>
         </div>
 
         {stats && (
-          <div className="animate-fade-up relative overflow-hidden rounded-[1.6rem] bg-slate-950 grain text-white px-5 py-4 mb-6 ft-shadow">
+          <div className="animate-fade-up relative overflow-hidden rounded-[1.6rem] lg:rounded-[2rem] bg-slate-950 grain text-white px-5 py-4 lg:px-7 lg:py-6 mb-6 lg:mb-8 ft-shadow">
             <div className="pointer-events-none absolute -top-20 right-1/4 w-64 h-64 rounded-full bg-violet-600/15 blur-3xl" />
-            <div className="relative flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 text-xs font-bold bg-white/[0.07] ring-1 ring-white/10 px-3.5 py-2 rounded-full"><Flame className="w-4 h-4 text-amber-400" /> تركيز اليوم <b className="font-head">{stats.today_min}د</b></span>
-              <span className="inline-flex items-center gap-1.5 text-xs font-bold bg-white/[0.07] ring-1 ring-white/10 px-3.5 py-2 rounded-full"><CalendarDays className="w-4 h-4 text-sky-300" /> هذا الأسبوع <b className="font-head">{stats.week_min}د</b></span>
-              <span className="inline-flex items-center gap-1.5 text-xs font-bold bg-white/[0.07] ring-1 ring-white/10 px-3.5 py-2 rounded-full"><History className="w-4 h-4 text-violet-300" /> جلسات <b className="font-head">{stats.sessions}</b></span>
-              <span className="inline-flex items-center gap-1.5 text-xs font-bold bg-white/[0.07] ring-1 ring-white/10 px-3.5 py-2 rounded-full"><Trophy className="w-4 h-4 text-amber-300" /> أفضل جلسة <b className="font-head">{stats.best_min}د</b></span>
-              {(stats.live_min || 0) > 0 && <span className="inline-flex items-center gap-1.5 text-xs font-bold bg-emerald-400/10 ring-1 ring-emerald-300/25 text-emerald-200 px-3.5 py-2 rounded-full"><Activity className="w-4 h-4" /> مباشر الآن <b className="font-head">{stats.live_min}د</b></span>}
+            <div className="relative flex flex-wrap items-center gap-2 lg:grid lg:grid-cols-5 lg:gap-3">
+              <span className="inline-flex items-center gap-1.5 text-xs lg:text-[13px] font-bold bg-white/[0.07] ring-1 ring-white/10 px-3.5 py-2 lg:px-4 lg:py-3 rounded-full lg:rounded-2xl min-h-[44px]"><Flame className="w-4 h-4 lg:w-5 lg:h-5 text-amber-400" /> تركيز اليوم <b className="font-head">{stats.today_min}د</b></span>
+              <span className="inline-flex items-center gap-1.5 text-xs lg:text-[13px] font-bold bg-white/[0.07] ring-1 ring-white/10 px-3.5 py-2 lg:px-4 lg:py-3 rounded-full lg:rounded-2xl min-h-[44px]"><CalendarDays className="w-4 h-4 lg:w-5 lg:h-5 text-sky-300" /> هذا الأسبوع <b className="font-head">{stats.week_min}د</b></span>
+              <span className="inline-flex items-center gap-1.5 text-xs lg:text-[13px] font-bold bg-white/[0.07] ring-1 ring-white/10 px-3.5 py-2 lg:px-4 lg:py-3 rounded-full lg:rounded-2xl min-h-[44px]"><History className="w-4 h-4 lg:w-5 lg:h-5 text-violet-300" /> جلسات <b className="font-head">{stats.sessions}</b></span>
+              <span className="inline-flex items-center gap-1.5 text-xs lg:text-[13px] font-bold bg-white/[0.07] ring-1 ring-white/10 px-3.5 py-2 lg:px-4 lg:py-3 rounded-full lg:rounded-2xl min-h-[44px]"><Trophy className="w-4 h-4 lg:w-5 lg:h-5 text-amber-300" /> أفضل جلسة <b className="font-head">{stats.best_min}د</b></span>
+              {(stats.live_min || 0) > 0 && <span className="inline-flex items-center gap-1.5 text-xs lg:text-[13px] font-bold bg-emerald-400/10 ring-1 ring-emerald-300/25 text-emerald-200 px-3.5 py-2 lg:px-4 lg:py-3 rounded-full lg:rounded-2xl min-h-[44px]"><Activity className="w-4 h-4 lg:w-5 lg:h-5" /> مباشر الآن <b className="font-head">{stats.live_min}د</b></span>}
+            </div>
+          </div>
+        )}
+
+        {rooms && rooms.length > 0 && (
+          <div className="hidden lg:grid grid-cols-3 gap-5 xl:gap-6 mb-6 lg:mb-8">
+            <div className="bg-white rounded-[1.6rem] border border-slate-100 ft-shadow p-6 xl:p-7 flex items-center gap-4">
+              <span className="w-14 h-14 rounded-2xl bg-violet-50 text-violet-600 grid place-items-center shrink-0"><Timer className="w-7 h-7" /></span>
+              <div className="min-w-0">
+                <div className="font-head text-3xl xl:text-4xl font-extrabold text-slate-900 leading-none">{rooms.length}</div>
+                <div className="text-xs xl:text-sm font-bold text-slate-400 mt-1.5">غرفة مفتوحة الآن</div>
+              </div>
+            </div>
+            <div className="bg-white rounded-[1.6rem] border border-slate-100 ft-shadow p-6 xl:p-7 flex items-center gap-4">
+              <span className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 grid place-items-center shrink-0"><Users className="w-7 h-7" /></span>
+              <div className="min-w-0">
+                <div className="font-head text-3xl xl:text-4xl font-extrabold text-slate-900 leading-none">{rooms.reduce((s, r) => s + (r.member_count || 0), 0)}</div>
+                <div className="text-xs xl:text-sm font-bold text-slate-400 mt-1.5">مشارك داخل الغرف</div>
+              </div>
+            </div>
+            <div className="bg-white rounded-[1.6rem] border border-slate-100 ft-shadow p-6 xl:p-7 flex items-center gap-4">
+              <span className="w-14 h-14 rounded-2xl bg-amber-50 text-amber-600 grid place-items-center shrink-0"><Flame className="w-7 h-7" /></span>
+              <div className="min-w-0">
+                <div className="font-head text-3xl xl:text-4xl font-extrabold text-slate-900 leading-none">{maxCount}</div>
+                <div className="text-xs xl:text-sm font-bold text-slate-400 mt-1.5">في أكثر غرفة نشاطاً</div>
+              </div>
             </div>
           </div>
         )}
 
         <FocusLeaders />
 
-        <div className="animate-fade-up relative overflow-hidden bg-white rounded-[1.8rem] border border-slate-100 ft-shadow hover-lift p-5 sm:p-6 mb-8">
+        <div className="animate-fade-up relative overflow-hidden bg-white rounded-[1.8rem] lg:rounded-[2rem] border border-slate-100 ft-shadow hover-lift p-5 sm:p-6 lg:p-7 xl:p-8 mb-8 lg:mb-10">
           <span className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-l ${selMood.dot} transition-all duration-500`} />
-          <div className="flex flex-col sm:flex-row gap-3">
+          <div className="flex flex-col sm:flex-row gap-3 lg:gap-4">
             <input value={name} onChange={(e) => setName(e.target.value)} placeholder="اسم غرفة جديدة: مذاكرة الرياضيات"
-              className="flex-1 h-12 rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm outline-none focus:border-violet-500 focus:bg-white focus:ring-4 focus:ring-violet-100 transition" />
-            <button onClick={create} className={`pressable inline-flex items-center justify-center gap-1.5 h-12 px-7 rounded-xl bg-gradient-to-l ${selMood.btn} shadow-lg text-white text-sm font-bold transition-all`} style={{ boxShadow: `0 12px 24px -10px ${selMood.glow}` }}><Plus className="w-4 h-4" /> افتح غرفة</button>
+              className="flex-1 h-12 lg:h-[52px] rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm lg:text-[15px] outline-none focus:border-violet-500 focus:bg-white focus:ring-4 focus:ring-violet-100 transition min-h-[44px]" />
+            <button onClick={create} className={`pressable inline-flex items-center justify-center gap-1.5 h-12 lg:h-[52px] px-7 lg:px-9 rounded-xl bg-gradient-to-l ${selMood.btn} shadow-lg text-white text-sm lg:text-base font-bold transition-all min-h-[44px]`} style={{ boxShadow: `0 12px 24px -10px ${selMood.glow}` }}><Plus className="w-4 h-4" /> افتح غرفة</button>
           </div>
           <input value={topic} onChange={(e) => setTopic(e.target.value)} maxLength={80} placeholder="موضوع الجلسة (اختياري): مراجعة الفصل الثالث"
-            className="mt-3 w-full h-12 rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm outline-none focus:border-violet-500 focus:bg-white focus:ring-4 focus:ring-violet-100 transition" />
-          <div className="mt-4 flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-400"><Target className="w-4 h-4" /> هدف الجلسة</span>
+            className="mt-3 w-full h-12 lg:h-[52px] rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm lg:text-[15px] outline-none focus:border-violet-500 focus:bg-white focus:ring-4 focus:ring-violet-100 transition min-h-[44px]" />
+          <div className="mt-4 lg:mt-5 flex flex-wrap items-center gap-2 lg:gap-2.5">
+            <span className="inline-flex items-center gap-1.5 text-xs lg:text-[13px] font-bold text-slate-400"><Target className="w-4 h-4" /> هدف الجلسة</span>
             {GOALS.map((g) => (
-              <button key={g} onClick={() => setGoalMin(g)} className={`pressable h-11 px-4 rounded-full text-xs font-bold transition-all ${goalMin === g ? `bg-gradient-to-l ${selMood.btn} text-white shadow-md` : "bg-slate-50 ring-1 ring-slate-200 text-slate-500 hover:ring-slate-300"}`}>{g} دقيقة</button>
+              <button key={g} onClick={() => setGoalMin(g)} className={`pressable h-11 lg:h-12 px-4 lg:px-5 rounded-full text-xs lg:text-[13px] font-bold transition-all min-h-[44px] ${goalMin === g ? `bg-gradient-to-l ${selMood.btn} text-white shadow-md` : "bg-slate-50 ring-1 ring-slate-200 text-slate-500 hover:ring-slate-300"}`}>{g} دقيقة</button>
             ))}
           </div>
-          <div className="mt-4 flex flex-wrap items-center gap-2.5">
-            <span className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-400"><Flame className="w-4 h-4" /> أجواء الغرفة</span>
+          <div className="mt-4 lg:mt-5 flex flex-wrap items-center gap-2.5 lg:gap-3">
+            <span className="inline-flex items-center gap-1.5 text-xs lg:text-[13px] font-bold text-slate-400"><Flame className="w-4 h-4" /> أجواء الغرفة</span>
             {Object.entries(MOODS).map(([k, mm]) => (
               <button key={k} onClick={() => setMood(k)} title={mm.label} aria-label={mm.label}
-                className={`pressable w-11 h-11 rounded-full bg-gradient-to-br ${mm.dot} transition-all duration-300 ${mood === k ? "scale-110" : "opacity-75 hover:opacity-100 hover:scale-105"}`}
+                className={`pressable w-11 h-11 lg:w-12 lg:h-12 rounded-full bg-gradient-to-br ${mm.dot} transition-all duration-300 ${mood === k ? "scale-110" : "opacity-75 hover:opacity-100 hover:scale-105"}`}
                 style={mood === k ? { boxShadow: `0 0 0 2px #fff, 0 0 0 4.5px ${mm.ring}, 0 10px 20px -8px ${mm.glow}` } : undefined} />
             ))}
             <span className="text-xs font-bold text-slate-500">{selMood.label}</span>
@@ -242,13 +268,13 @@ export default function FocusRooms() {
         {!rooms ? <PageLoader /> : rooms.length === 0 ? (
           <EmptyState icon={Timer} title="لا غرف مفتوحة الآن" desc="افتح أول غرفة تركيز وادعُ زملاءك" />
         ) : (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-4 gap-4 lg:gap-5 xl:gap-6">
             {rooms.map((r, ri) => {
               const m = moodOf(r);
               const members = r.members || [];
               const featured = (r.member_count || 0) > 0 && (r.member_count || 0) === maxCount;
               return (
-                <div key={r.id} className="animate-fade-up group bg-slate-950 text-white rounded-[1.6rem] p-5 ft-shadow hover-lift relative overflow-hidden" style={{ animationDelay: `${Math.min(ri, 8) * 60}ms` }}>
+                <div key={r.id} className="animate-fade-up group bg-slate-950 text-white rounded-[1.6rem] lg:rounded-[1.9rem] p-5 lg:p-6 xl:p-7 ft-shadow hover-lift relative overflow-hidden" style={{ animationDelay: `${Math.min(ri, 8) * 60}ms` }}>
                   <span className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-l ${m.dot} z-10`} />
                   <div className="absolute inset-0 opacity-30 transition-opacity duration-500 group-hover:opacity-50" style={{ background: `radial-gradient(320px 140px at 80% -40px, ${m.glow}, transparent), radial-gradient(240px 120px at 10% 120%, rgba(5,150,105,0.25), transparent)` }} />
                   <Timer className="pointer-events-none absolute -left-5 -bottom-6 w-28 h-28 text-white/[0.04] -rotate-12" />
@@ -261,9 +287,9 @@ export default function FocusRooms() {
                       </span>
                     </div>
                     {members.length > 0 ? (
-                      <div className="flex items-center mt-4" dir="ltr">
+                      <div className="flex items-center mt-4 lg:mt-5" dir="ltr">
                         {members.slice(0, 3).map((mm) => (
-                          <span key={mm.user_id} className={`w-7 h-7 rounded-full bg-gradient-to-br ${m.dot} ring-2 ring-slate-950 -ml-1.5 first:ml-0 grid place-items-center text-[10px] font-black text-white`}>{mm.name?.[0] || "؟"}</span>
+                          <span key={mm.user_id} className={`w-7 h-7 lg:w-8 lg:h-8 rounded-full bg-gradient-to-br ${m.dot} ring-2 ring-slate-950 -ml-1.5 first:ml-0 grid place-items-center text-[10px] lg:text-[11px] font-black text-white`}>{mm.name?.[0] || "؟"}</span>
                         ))}
                         {(r.member_count || 0) > 3 && <span className="text-[10px] font-bold text-white/50 ml-1.5">+{r.member_count - 3}</span>}
                       </div>
@@ -275,14 +301,14 @@ export default function FocusRooms() {
                         {(r.member_count || 0) > 6 && <span className="text-[10px] font-bold text-white/50 ml-1.5">+{r.member_count - 6}</span>}
                       </div>
                     )}
-                    <h3 className="font-head font-extrabold text-lg mt-2.5 leading-snug">{r.name}</h3>
-                    <p className="text-xs text-white/50 mt-1">المضيف: {r.host_name}</p>
-                    <div className="flex items-center gap-1.5 mt-3 flex-wrap">
-                      <span className={`inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full ring-1 ${m.soft}`}><span className={`w-2 h-2 rounded-full bg-gradient-to-br ${m.dot}`} /> {m.label}</span>
-                      {r.topic && <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-white/75 bg-white/[0.08] ring-1 ring-white/10 px-2.5 py-1 rounded-full">{r.topic}</span>}
-                      <span className="inline-flex items-center gap-1 text-[11px] font-bold text-white/75 bg-white/[0.08] ring-1 ring-white/10 px-2.5 py-1 rounded-full"><Target className="w-3 h-3" /> هدف {r.goal_min || 25}د</span>
+                    <h3 className="font-head font-extrabold text-lg lg:text-xl xl:text-[1.35rem] mt-2.5 lg:mt-3 leading-snug">{r.name}</h3>
+                    <p className="text-xs lg:text-[13px] text-white/50 mt-1">المضيف: {r.host_name}</p>
+                    <div className="flex items-center gap-1.5 lg:gap-2 mt-3 lg:mt-3.5 flex-wrap">
+                      <span className={`inline-flex items-center gap-1.5 text-[11px] lg:text-xs font-bold px-2.5 py-1 lg:px-3 lg:py-1.5 rounded-full ring-1 ${m.soft}`}><span className={`w-2 h-2 rounded-full bg-gradient-to-br ${m.dot}`} /> {m.label}</span>
+                      {r.topic && <span className="inline-flex items-center gap-1.5 text-[11px] lg:text-xs font-bold text-white/75 bg-white/[0.08] ring-1 ring-white/10 px-2.5 py-1 lg:px-3 lg:py-1.5 rounded-full">{r.topic}</span>}
+                      <span className="inline-flex items-center gap-1 text-[11px] lg:text-xs font-bold text-white/75 bg-white/[0.08] ring-1 ring-white/10 px-2.5 py-1 lg:px-3 lg:py-1.5 rounded-full"><Target className="w-3 h-3" /> هدف {r.goal_min || 25}د</span>
                     </div>
-                    <button onClick={() => enter(r.id)} className={`pressable mt-5 w-full h-11 rounded-xl bg-gradient-to-l ${m.btn} text-sm font-bold shadow-lg transition-all`} style={{ boxShadow: `0 12px 24px -10px ${m.glow}` }}>
+                    <button onClick={() => enter(r.id)} className={`pressable mt-5 lg:mt-6 w-full h-11 lg:h-12 lg:text-[15px] rounded-xl bg-gradient-to-l ${m.btn} text-sm font-bold shadow-lg transition-all min-h-[44px]`} style={{ boxShadow: `0 12px 24px -10px ${m.glow}` }}>
                       {r.inside ? "العودة للغرفة" : "ادخل وابدأ التركيز"}
                     </button>
                   </div>
