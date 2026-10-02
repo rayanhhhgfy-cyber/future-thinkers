@@ -602,3 +602,202 @@ async def cancel_campaign(cid: str, request: Request, user: dict = Depends(get_c
     await db.notification_campaigns.delete_one({"_id": doc["_id"]})
     await audit_log(user, "notify.history_delete", "notification", cid, None, request)
     return {"ok": True, "deleted": True}
+
+
+# ---------------- Analytics v2 (30-day activity series) ----------------
+@router.get("/analytics-v2")
+async def analytics_v2(user: dict = Depends(require_permission("analytics.view"))):
+    tz = timezone.utc
+    today = datetime.now(tz).date()
+    days = [(today - timedelta(days=i)).isoformat() for i in range(29, -1, -1)]
+    start = days[0]
+    signups = await db.users.aggregate([
+        {"$match": {"created_at": {"$gte": start}}},
+        {"$group": {"_id": {"$substr": ["$created_at", 0, 10]}, "n": {"$sum": 1}}}]).to_list(60)
+    xp = await db.xp_transactions.aggregate([
+        {"$match": {"created_at": {"$gte": start}, "amount": {"$gt": 0}}},
+        {"$group": {"_id": {"$substr": ["$created_at", 0, 10]}, "xp": {"$sum": "$amount"},
+                    "users": {"$addToSet": "$user_id"}}}]).to_list(60)
+    pages = await db.user_daily.aggregate([
+        {"$match": {"date": {"$gte": start}}},
+        {"$group": {"_id": "$date", "pages": {"$sum": "$pages"}}}]).to_list(60)
+    chess = await db.chess_games.aggregate([
+        {"$match": {"created_at": {"$gte": start}}},
+        {"$group": {"_id": {"$substr": ["$created_at", 0, 10]}, "n": {"$sum": 1}}}]).to_list(60)
+    works = await db.works.aggregate([
+        {"$match": {"created_at": {"$gte": start}}},
+        {"$group": {"_id": {"$substr": ["$created_at", 0, 10]}, "n": {"$sum": 1}}}]).to_list(60)
+    sm = {r["_id"]: r["n"] for r in signups}
+    xm = {r["_id"]: {"xp": r["xp"], "users": len(r["users"])} for r in xp}
+    pm = {r["_id"]: r["pages"] for r in pages}
+    cm = {r["_id"]: r["n"] for r in chess}
+    wm = {r["_id"]: r["n"] for r in works}
+    series = [{"date": d, "signups": sm.get(d, 0), "xp": xm.get(d, {}).get("xp", 0),
+               "active_users": xm.get(d, {}).get("users", 0), "pages": pm.get(d, 0),
+               "chess": cm.get(d, 0), "works": wm.get(d, 0)} for d in days]
+    totals = {k: sum(s[k] for s in series) for k in ("signups", "xp", "pages", "chess", "works")}
+    totals["active_users_peak"] = max((s["active_users"] for s in series), default=0)
+    return {"days": series, "totals_30d": totals}
+
+
+@router.post("/digest/send")
+async def send_weekly_digest(request: Request,
+                             user: dict = Depends(require_permission("notification.broadcast"))):
+    from datetime import datetime, timezone, timedelta
+    from bson import ObjectId as _Oid
+    week_ago = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
+    rows = await db.xp_transactions.aggregate([
+        {"$match": {"created_at": {"$gte": week_ago}, "amount": {"$gt": 0}}},
+        {"$group": {"_id": "$user_id", "xp": {"$sum": "$amount"}}},
+        {"$sort": {"xp": -1}},
+    ]).to_list(100000)
+    sent = 0
+    for i, r in enumerate(rows):
+        u = await db.users.find_one({"_id": _Oid(r["_id"])}, {"name": 1, "status": 1})
+        if not u or u.get("status") != "active":
+            continue
+        await create_notification(r["_id"], "achievement", "ملخص أسبوعك 📊",
+            f"أحرزت {r['xp']} نقطة خبرة هذا الأسبوع — ترتيبك {i + 1} من {len(rows)}. واصل التقدّم!",
+            "/points")
+        sent += 1
+    await audit_log(user, "weekly_digest", "system", "", {"sent": sent}, request)
+    return {"ok": True, "sent": sent}
+
+
+# ---------------- Site theme switcher (admin) ----------------
+class ThemeBody(BaseModel):
+    preset: str
+
+
+@router.put("/theme")
+async def set_theme(body: ThemeBody, request: Request,
+                    user: dict = Depends(require_permission("cms.manage"))):
+    from routes.social_routes import THEME_PRESETS
+    if body.preset not in THEME_PRESETS:
+        raise HTTPException(status_code=400, detail="سمة غير معروفة")
+    await db.settings.update_one({"key": "theme"},
+                                 {"$set": {"value": {"preset": body.preset}}}, upsert=True)
+    await audit_log(user, "theme_change", "settings", "theme", {"preset": body.preset}, request)
+    return {"ok": True, "preset": body.preset}
+
+class BulkRow(BaseModel):
+    name: str
+    email: str
+    password: str | None = None
+    grade: int | None = None
+    school_name: str | None = None
+
+
+class BulkImportBody(BaseModel):
+    rows: list[BulkRow]
+
+
+@router.post("/users/bulk-import")
+async def bulk_import(body: BulkImportBody, request: Request,
+                      user: dict = Depends(require_permission("user.create"))):
+    from auth import hash_password
+    created, skipped = [], []
+    for row in body.rows[:500]:
+        email = (row.email or "").strip().lower()
+        name = (row.name or "").strip()
+        if not email or "@" not in email or not name:
+            skipped.append({"email": row.email, "reason": "بيانات ناقصة"})
+            continue
+        if await db.users.find_one({"email": email}):
+            skipped.append({"email": email, "reason": "بريد مستخدم مسبقاً"})
+            continue
+        school = None
+        if row.school_name:
+            school = await db.schools.find_one(
+                {"name": {"$regex": row.school_name.strip(), "$options": "i"}})
+        doc = {
+            "email": email, "name": name,
+            "password_hash": hash_password(row.password or "Student123!"),
+            "role": "student", "status": "active",
+            "xp": 0, "level": 1, "level_title": "مبتدئ", "streak": 0,
+            "chess_rating": 1200, "badges": [], "achievements": [], "stats": {},
+            "grade": row.grade, "created_at": now_iso(),
+        }
+        if school:
+            doc.update({"school_id": str(school["_id"]), "school_name": school["name"],
+                        "directorate_id": school.get("directorate_id"),
+                        "directorate_name": school.get("directorate_name"),
+                        "governorate_id": school.get("governorate_id"),
+                        "governorate_name": school.get("governorate_name")})
+            await db.schools.update_one({"_id": school["_id"]}, {"$inc": {"students_count": 1}})
+        res = await db.users.insert_one(doc)
+        created.append(str(res.inserted_id))
+    await audit_log(user, "user_bulk_import", "user", None,
+                    {"created": len(created), "skipped": len(skipped)}, request)
+    return {"created": len(created), "skipped": skipped}
+
+
+# ---------------- System health center ----------------
+@router.get("/system-health")
+async def system_health(user: dict = Depends(require_permission("analytics.view"))):
+    cols = {}
+    for name in ("users", "books", "works", "ventures", "chess_games", "notifications",
+                 "push_subscriptions", "certificates", "xp_transactions", "reports"):
+        try:
+            cols[name] = await db[name].estimated_document_count()
+        except Exception:
+            cols[name] = None
+    import os
+    locked = await db.login_attempts.count_documents({"locked_until": {"$gt": now_iso()}})
+    failed_today = await db.login_attempts.count_documents({"count": {"$gt": 0}})
+    return {
+        "collections": cols,
+        "users_by_role": {
+            r: await db.users.count_documents({"role": r})
+            for r in ("student", "teacher", "admin", "super_admin")},
+        "pending": {
+            "teachers": await db.users.count_documents({"status": "pending_approval"}),
+            "books": await db.books.count_documents({"status": "pending"}),
+            "reports_open": await db.reports.count_documents({"status": "open"}),
+        },
+        "security": {"active_locks": locked, "identities_with_failures": failed_today},
+        "integrations": {
+            "telegram_storage": bool(os.environ.get("TELEGRAM_BOT_TOKEN")),
+            "push_vapid": bool(os.environ.get("VAPID_PUBLIC_KEY")),
+            "push_devices": cols.get("push_subscriptions"),
+        },
+        "checked_at": now_iso(),
+    }
+
+
+# ---------------- Competition finalize + auto-certificates ----------------
+@router.post("/competitions/{cid}/finalize")
+async def finalize_competition(cid: str, request: Request,
+                               user: dict = Depends(require_permission("competition.manage"))):
+    from services import award_xp
+    from routes.cert_routes import get_template
+    c = await db.competitions.find_one({"_id": oid(cid)})
+    if not c:
+        raise HTTPException(status_code=404, detail="المسابقة غير موجودة")
+    entries = await db.competition_entries.find(
+        {"competition_id": cid, "submitted": True}).sort(
+        [("score", -1), ("submitted_at", 1)]).limit(3).to_list(3)
+    tpl = await get_template()
+    places = ["الأول", "الثاني", "الثالث"]
+    bonus = [150, 100, 50]
+    awarded = []
+    for i, e in enumerate(entries):
+        await award_xp(e["user_id"], bonus[i], f"الفوز بمسابقة: {c['title']}", cid)
+        doc = {
+            "user_id": e["user_id"], "user_name": e["user_name"],
+            "title_line": c["title"],
+            "subtitle": f"المركز {places[i]}",
+            "meta_lines": [f"النتيجة: {e.get('score', 0)}%"],
+            "template": tpl, "awarded_by": user["id"],
+            "awarded_by_name": user["name"], "created_at": now_iso(),
+        }
+        await db.certificates.insert_one(doc)
+        await create_notification(e["user_id"], "certificate",
+                                  "شهادة فوز جديدة! 🏆",
+                                  f"حصلت على المركز {places[i]} في مسابقة «{c['title']}»",
+                                  f"/profile/{e['user_id']}")
+        awarded.append({"user_name": e["user_name"], "place": places[i]})
+    await db.competitions.update_one({"_id": oid(cid)}, {"$set": {"status": "completed"}})
+    await audit_log(user, "competition_finalize", "competition", cid,
+                    {"awarded": len(awarded)}, request)
+    return {"ok": True, "awarded": awarded}

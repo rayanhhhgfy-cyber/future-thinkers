@@ -1,9 +1,10 @@
 """Engagement: daily quests, the live activity feed, and online presence."""
-from fastapi import APIRouter, HTTPException, Depends
+from datetime import datetime, timezone, timedelta
+from fastapi import APIRouter, HTTPException, Depends, Request
 from pydantic import BaseModel
-from db import db, sers
-from auth import get_current_user
-from services import award_xp, get_today_quests
+from db import db, ser, sers, oid, now_iso
+from auth import get_current_user, require_permission, effective_permissions
+from services import award_xp, get_today_quests, create_notification, audit_log, track_quest, log_activity
 
 router = APIRouter(prefix="/api")
 
@@ -59,6 +60,355 @@ async def presence_online(user: dict = Depends(get_current_user)):
     return {"online": len(ids), "user_ids": ids}
 
 
+# ---------------- Learning paths ----------------
+async def _step_done(uid: str, step: dict) -> bool:
+    k, ref = step.get("kind"), step.get("ref_id")
+    if k == "book":
+        p = await db.reading_progress.find_one({"user_id": uid, "book_id": ref})
+        return bool(p and p.get("percent", 0) >= 95)
+    if k == "problem":
+        return await db.coding_submissions.find_one(
+            {"user_id": uid, "problem_id": ref, "verdict": "accepted"}) is not None
+    if k == "competition":
+        return await db.competition_entries.find_one(
+            {"competition_id": ref, "user_id": uid, "submitted": True}) is not None
+    return False
+
+
+@router.get("/paths")
+async def list_paths(user: dict = Depends(get_current_user)):
+    paths = await db.learning_paths.find({}).sort("created_at", -1).to_list(50)
+    claims = {c["path_id"]: set(c.get("claimed", [])) for c in await db.path_progress.find({"user_id": user["id"]}).to_list(50)}
+    out = []
+    for p in paths:
+        d = ser(p)
+        done = 0
+        for i, s in enumerate(d["steps"]):
+            done += 1 if await _step_done(user["id"], s) else 0
+        d["done_steps"] = done
+        d["claimed_steps"] = len(claims.get(d["id"], set()))
+        d["total_xp"] = sum(s.get("xp", 10) for s in d["steps"])
+        out.append(d)
+    return out
+
+
+@router.post("/paths/{pid}/steps/{idx}/claim")
+async def claim_step(pid: str, idx: int, user: dict = Depends(get_current_user)):
+    p = await db.learning_paths.find_one({"_id": oid(pid)})
+    if not p:
+        raise HTTPException(status_code=404, detail="المسار غير موجود")
+    steps = p.get("steps", [])
+    if not (0 <= idx < len(steps)):
+        raise HTTPException(status_code=400, detail="خطوة غير صالحة")
+    step = steps[idx]
+    prog = await db.path_progress.find_one({"user_id": user["id"], "path_id": pid}) or {"claimed": []}
+    if idx in prog.get("claimed", []):
+        return {"ok": True, "already": True, "xp": 0}
+    if not await _step_done(user["id"], step):
+        raise HTTPException(status_code=400, detail="أكمل الخطوة أولاً (اقرأ الكتاب كاملاً / حل المسألة / شارك في المسابقة)")
+    await db.path_progress.update_one({"user_id": user["id"], "path_id": pid},
+                                      {"$addToSet": {"claimed": idx}, "$set": {"updated_at": now_iso()}}, upsert=True)
+    xp = step.get("xp", 10)
+    await award_xp(user["id"], xp, f"خطوة مسار: {p['title']}", pid)
+    claimed_count = len(set(prog.get("claimed", [])) | {idx})
+    if claimed_count == len(steps) and len(steps) > 0:
+        await award_xp(user["id"], 100, f"إكمال مسار {p['title']} 🎉", pid)
+        await create_notification(user["id"], "achievement", "أكملت مساراً كاملاً! 🛤️",
+                                  f"{p['title']} — +100 خبرة إضافية")
+        await log_activity(user, "path_completed", pid, f"أكمل مسار {p['title']}")
+    return {"ok": True, "xp": xp}
+
+
+class PathBody(BaseModel):
+    title: str
+    desc: str = ""
+    icon: str = "🛤️"
+    color: str = "#059669"
+    steps: list[dict]
+
+
+@router.post("/paths")
+async def create_path(body: PathBody, request: Request,
+                      user: dict = Depends(require_permission("cms.manage"))):
+    if len(body.steps) == 0 or len(body.steps) > 30:
+        raise HTTPException(status_code=400, detail="المسار يحتاج 1–30 خطوة")
+    doc = {**body.model_dump(), "created_by": user["id"], "created_at": now_iso()}
+    res = await db.learning_paths.insert_one(doc)
+    await audit_log(user, "path_create", "learning_path", str(res.inserted_id), request=request)
+    return {"id": str(res.inserted_id)}
+
+
+@router.put("/paths/{pid}")
+async def update_path(pid: str, body: PathBody, request: Request,
+                      user: dict = Depends(require_permission("cms.manage"))):
+    if not await db.learning_paths.find_one({"_id": oid(pid)}):
+        raise HTTPException(status_code=404, detail="المسار غير موجود")
+    await db.learning_paths.update_one({"_id": oid(pid)}, {"$set": body.model_dump()})
+    await audit_log(user, "path_update", "learning_path", pid, request=request)
+    return {"ok": True}
+
+
+@router.delete("/paths/{pid}")
+async def delete_path(pid: str, request: Request,
+                      user: dict = Depends(require_permission("cms.manage"))):
+    res = await db.learning_paths.delete_one({"_id": oid(pid)})
+    await audit_log(user, "path_delete", "learning_path", pid, request=request)
+    return {"ok": True, "deleted": bool(res.deleted_count)}
+
+
+# ---------------- Community square ----------------
+class PostBody(BaseModel):
+    text: str
+
+
+@router.get("/feed/posts")
+async def feed_posts(user: dict = Depends(get_current_user)):
+    docs = await db.feed_posts.find({}).sort("created_at", -1).limit(40).to_list(40)
+    out = []
+    for d in docs:
+        x = ser(d)
+        x["liked"] = user["id"] in x.get("likes", [])
+        x["likes"] = len(x.get("likes", []))
+        out.append(x)
+    return out
+
+
+@router.post("/feed/posts")
+async def create_post(body: PostBody, user: dict = Depends(get_current_user)):
+    text = body.text.strip()
+    if len(text) < 2 or len(text) > 1000:
+        raise HTTPException(status_code=400, detail="المنشور بين 2 و 1000 حرف")
+    doc = {"user_id": user["id"], "user_name": user["name"],
+           "user_avatar": user.get("avatar_url"), "text": text,
+           "likes": [], "created_at": now_iso()}
+    res = await db.feed_posts.insert_one(doc)
+    await track_quest(user["id"], "post")
+    return {"id": str(res.inserted_id)}
+
+
+@router.post("/feed/posts/{pid}/like")
+async def like_post(pid: str, user: dict = Depends(get_current_user)):
+    d = await db.feed_posts.find_one({"_id": oid(pid)})
+    if not d:
+        raise HTTPException(status_code=404, detail="غير موجود")
+    if user["id"] in d.get("likes", []):
+        await db.feed_posts.update_one({"_id": oid(pid)}, {"$pull": {"likes": user["id"]}})
+        return {"liked": False}
+    await db.feed_posts.update_one({"_id": oid(pid)}, {"$addToSet": {"likes": user["id"]}})
+    if d["user_id"] != user["id"]:
+        await create_notification(d["user_id"], "follow", "إعجاب بمنشورك ❤️", user["name"], "/community")
+    return {"liked": True}
+
+
+@router.delete("/feed/posts/{pid}")
+async def delete_post(pid: str, user: dict = Depends(get_current_user)):
+    d = await db.feed_posts.find_one({"_id": oid(pid)})
+    if not d:
+        raise HTTPException(status_code=404, detail="غير موجود")
+    if d["user_id"] != user["id"] and "content.moderate" not in effective_permissions(user):
+        raise HTTPException(status_code=403, detail="ليس منشورك")
+    await db.feed_posts.delete_one({"_id": oid(pid)})
+    return {"ok": True}
+
+
+# ---------------- Seasons & hall of fame ----------------
+@router.get("/seasons/champions")
+async def season_champions():
+    from datetime import timezone
+    now = datetime.now(timezone.utc)
+    months = []
+    y, m = now.year, now.month
+    for _ in range(3):
+        m -= 1
+        if m == 0:
+            m, y = 12, y - 1
+        months.append((y, m))
+    out = []
+    for (yy, mm) in months:
+        prefix = f"{yy:04d}-{mm:02d}"
+        rows = await db.xp_transactions.aggregate([
+            {"$match": {"amount": {"$gt": 0}, "created_at": {"$regex": f"^{prefix}"}}},
+            {"$group": {"_id": "$user_id", "xp": {"$sum": "$amount"}}},
+            {"$sort": {"xp": -1}}, {"$limit": 3},
+        ]).to_list(3)
+        champs = []
+        for r in rows:
+            u = await db.users.find_one({"_id": oid(r["_id"])}, {"name": 1})
+            champs.append({"id": r["_id"], "name": u["name"] if u else "طالب", "xp": r["xp"]})
+        out.append({"month": prefix, "champions": champs})
+    return out
+
+
+# ---------------- Reading challenges ----------------
+class ChallengeBody(BaseModel):
+    title: str
+    target_pages: int
+    days: int = 7
+
+
+@router.get("/reading-challenges")
+async def list_challenges(user: dict = Depends(get_current_user)):
+    docs = await db.reading_challenges.find({}).sort("created_at", -1).limit(30).to_list(30)
+    out = []
+    today = datetime.now(timezone.utc).date().isoformat()
+    for c in docs:
+        d = ser(c)
+        members = []
+        for mem in d.get("members", []):
+            pages = await _user_pages_between(mem["user_id"], mem["joined_at"][:10], today)
+            members.append({**mem, "pages": min(pages, d["target_pages"])})
+        members.sort(key=lambda x: -x["pages"])
+        d["members"] = members
+        d["member_count"] = len(members)
+        d["joined"] = any(m["user_id"] == user["id"] for m in members)
+        out.append(d)
+    return out
+
+
+async def _user_pages_between(uid: str, date_from: str, date_to: str) -> int:
+    rows = await db.user_daily.find(
+        {"user_id": uid, "date": {"$gte": date_from, "$lte": date_to}}).to_list(400)
+    return sum(r.get("pages", 0) for r in rows)
+
+
+@router.post("/reading-challenges")
+async def create_challenge(body: ChallengeBody, user: dict = Depends(get_current_user)):
+    title = body.title.strip()
+    if len(title) < 3:
+        raise HTTPException(status_code=400, detail="العنوان قصير")
+    if not (50 <= body.target_pages <= 100000):
+        raise HTTPException(status_code=400, detail="الهدف بين 50 و 100000 صفحة")
+    if not (1 <= body.days <= 90):
+        raise HTTPException(status_code=400, detail="المدة بين 1 و 90 يوماً")
+    from datetime import timedelta as _td
+    today = datetime.now(timezone.utc).date()
+    doc = {"title": title, "target_pages": body.target_pages,
+           "creator_id": user["id"], "creator_name": user["name"],
+           "starts": today.isoformat(),
+           "ends": (today + _td(days=body.days)).isoformat(),
+           "members": [{"user_id": user["id"], "name": user["name"], "joined_at": now_iso()}],
+           "created_at": now_iso()}
+    res = await db.reading_challenges.insert_one(doc)
+    return {"id": str(res.inserted_id)}
+
+
+@router.post("/reading-challenges/{cid}/join")
+async def join_challenge(cid: str, user: dict = Depends(get_current_user)):
+    c = await db.reading_challenges.find_one({"_id": oid(cid)})
+    if not c:
+        raise HTTPException(status_code=404, detail="التحدي غير موجود")
+    if any(m["user_id"] == user["id"] for m in c.get("members", [])):
+        return {"ok": True, "already": True}
+    await db.reading_challenges.update_one({"_id": oid(cid)},
+        {"$push": {"members": {"user_id": user["id"], "name": user["name"], "joined_at": now_iso()}}})
+    return {"ok": True}
+
+
+# ---------------- Focus rooms ----------------
+class FocusRoomBody(BaseModel):
+    name: str
+
+
+@router.get("/focus/rooms")
+async def list_rooms(user: dict = Depends(get_current_user)):
+    cutoff = (datetime.now(timezone.utc) - timedelta(hours=3)).isoformat().replace("+00:00", "Z")
+    docs = await db.focus_rooms.find({"updated_at": {"$gte": cutoff}}).sort("updated_at", -1).limit(20).to_list(20)
+    out = []
+    for d in docs:
+        x = ser(d)
+        x["member_count"] = len(x.get("members", []))
+        x["inside"] = any(m["user_id"] == user["id"] for m in x.get("members", []))
+        out.append(x)
+    return out
+
+
+@router.post("/focus/rooms")
+async def create_room(body: FocusRoomBody, user: dict = Depends(get_current_user)):
+    name = body.name.strip()
+    if len(name) < 2:
+        raise HTTPException(status_code=400, detail="اسم الغرفة قصير")
+    doc = {"name": name, "host_id": user["id"], "host_name": user["name"],
+           "members": [{"user_id": user["id"], "name": user["name"], "focus_min": 0,
+                        "joined_at": now_iso(), "claimed": False}],
+           "created_at": now_iso(), "updated_at": now_iso()}
+    res = await db.focus_rooms.insert_one(doc)
+    return {"id": str(res.inserted_id)}
+
+
+@router.post("/focus/rooms/{rid}/join")
+async def join_room(rid: str, user: dict = Depends(get_current_user)):
+    r = await db.focus_rooms.find_one({"_id": oid(rid)})
+    if not r:
+        raise HTTPException(status_code=404, detail="الغرفة غير موجودة")
+    if not any(m["user_id"] == user["id"] for m in r.get("members", [])):
+        await db.focus_rooms.update_one({"_id": oid(rid)},
+            {"$push": {"members": {"user_id": user["id"], "name": user["name"],
+                                    "focus_min": 0, "joined_at": now_iso(), "claimed": False}},
+             "$set": {"updated_at": now_iso()}})
+    return {"ok": True}
+
+
+@router.post("/focus/rooms/{rid}/heartbeat")
+async def room_heartbeat(rid: str, body: dict, user: dict = Depends(get_current_user)):
+    add = body.get("add_minutes", 0)
+    if not isinstance(add, (int, float)) or add < 0 or add > 5:
+        raise HTTPException(status_code=400, detail="دفعة دقائق غير صالحة")
+    res = await db.focus_rooms.update_one(
+        {"_id": oid(rid), "members.user_id": user["id"]},
+        {"$inc": {"members.$.focus_min": int(add)}, "$set": {"updated_at": now_iso()}})
+    return {"ok": bool(res.modified_count)}
+
+
+@router.post("/focus/rooms/{rid}/leave")
+async def leave_room(rid: str, user: dict = Depends(get_current_user)):
+    r = await db.focus_rooms.find_one({"_id": oid(rid)})
+    if not r:
+        return {"ok": True}
+    me = next((m for m in r.get("members", []) if m["user_id"] == user["id"]), None)
+    xp = 0
+    if me and not me.get("claimed") and me.get("focus_min", 0) >= 10:
+        xp = min(30, int(me["focus_min"]))
+        await db.focus_rooms.update_one({"_id": oid(rid), "members.user_id": user["id"]},
+                                        {"$set": {"members.$.claimed": True}})
+        await award_xp(user["id"], xp, "جلسة تركيز 📚", rid)
+        await log_activity(user, "focus_session", rid, f"أنهى جلسة تركيز ({int(me['focus_min'])} د)")
+    await db.focus_rooms.update_one({"_id": oid(rid)}, {"$pull": {"members": {"user_id": user["id"]}}})
+    return {"ok": True, "xp": xp}
+
+
+@router.get("/focus/rooms/{rid}")
+async def get_room(rid: str, user: dict = Depends(get_current_user)):
+    r = await db.focus_rooms.find_one({"_id": oid(rid)})
+    if not r:
+        raise HTTPException(status_code=404, detail="الغرفة غير موجودة")
+    return ser(r)
+
+
+# ---------------- Event reminders ----------------
+class RemindBody(BaseModel):
+    event_id: str
+
+
+@router.post("/events/remind")
+async def toggle_remind(body: RemindBody, user: dict = Depends(get_current_user)):
+    ev = await db.events.find_one({"_id": oid(body.event_id)})
+    if not ev:
+        raise HTTPException(status_code=404, detail="الفعالية غير موجودة")
+    ex = await db.event_reminders.find_one({"user_id": user["id"], "event_id": body.event_id})
+    if ex:
+        await db.event_reminders.delete_one({"_id": ex["_id"]})
+        return {"remind": False}
+    await db.event_reminders.insert_one({"user_id": user["id"], "event_id": body.event_id,
+                                          "sent": False, "created_at": now_iso()})
+    return {"remind": True}
+
+
+@router.get("/events/my-reminders")
+async def my_reminders(user: dict = Depends(get_current_user)):
+    docs = await db.event_reminders.find({"user_id": user["id"]}).to_list(100)
+    return [d["event_id"] for d in docs]
+
+
 # ---------------- Points store (cosmetics) ----------------
 STORE_ITEMS = [
     {"key": "frame_emerald", "kind": "frame", "name": "إطار الزمرد", "cost": 300},
@@ -68,6 +418,7 @@ STORE_ITEMS = [
     {"key": "title_chess", "kind": "title", "name": "عبقري الشطرنج", "cost": 600},
     {"key": "title_thinker", "kind": "title", "name": "مفكّر المستقبل", "cost": 1200},
     {"key": "title_legend", "kind": "title", "name": "أسطورة النادي", "cost": 3000},
+    {"key": "item_freeze", "kind": "item", "name": "حماية السلسلة ❄️", "cost": 150},
 ]
 _STORE_BY_KEY = {i["key"]: i for i in STORE_ITEMS}
 
@@ -77,11 +428,12 @@ async def store_list(user: dict = Depends(get_current_user)):
     me = await db.users.find_one({"_id": _me_oid(user)})
     owned = (me or {}).get("store_items", [])
     cosmetics = (me or {}).get("cosmetics", {})
-    items = [{**i, "owned": i["key"] in owned,
+    items = [{**i, "owned": (False if i["kind"] == "item" else i["key"] in owned),
               "equipped": (cosmetics.get("frame") == i["key"] if i["kind"] == "frame"
                            else cosmetics.get("title") == i["name"])}
              for i in STORE_ITEMS]
-    return {"items": items, "xp": (me or {}).get("xp", 0), "cosmetics": cosmetics}
+    return {"items": items, "xp": (me or {}).get("xp", 0), "cosmetics": cosmetics,
+            "streak_freezes": (me or {}).get("streak_freezes", 0)}
 
 
 def _me_oid(user):
@@ -102,12 +454,15 @@ async def store_buy(body: BuyBody, user: dict = Depends(get_current_user)):
     if not item:
         raise HTTPException(status_code=404, detail="العنصر غير موجود")
     me = await db.users.find_one({"_id": _me_oid(user)})
-    if body.key in (me.get("store_items") or []):
+    if item["kind"] != "item" and body.key in (me.get("store_items") or []):
         raise HTTPException(status_code=400, detail="تملك هذا العنصر بالفعل")
     if (me.get("xp", 0) or 0) < item["cost"]:
         raise HTTPException(status_code=400, detail="نقاطك لا تكفي")
     await award_xp(user["id"], -item["cost"], f"شراء: {item['name']}", item["key"])
-    await db.users.update_one({"_id": _me_oid(user)}, {"$addToSet": {"store_items": item["key"]}})
+    if item["kind"] == "item":
+        await db.users.update_one({"_id": _me_oid(user)}, {"$inc": {"streak_freezes": 1}})
+    else:
+        await db.users.update_one({"_id": _me_oid(user)}, {"$addToSet": {"store_items": item["key"]}})
     return {"ok": True, "item": item["key"]}
 
 

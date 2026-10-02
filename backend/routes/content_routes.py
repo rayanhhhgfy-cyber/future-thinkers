@@ -153,6 +153,12 @@ async def resolve_report(rid: str, body: ReportActionBody, user: dict = Depends(
             await db.discussion_replies.delete_one({"_id": oid(r["entity_id"])})
         elif r["entity_type"] == "activity":
             await db.activities.delete_one({"_id": oid(r["entity_id"])})
+        elif r["entity_type"] == "work":
+            await db.works.delete_one({"_id": oid(r["entity_id"])})
+        elif r["entity_type"] == "comment":
+            await db.book_comments.delete_one({"_id": oid(r["entity_id"])})
+        elif r["entity_type"] == "book":
+            await db.books.update_one({"_id": oid(r["entity_id"])}, {"$set": {"status": "rejected"}})
     await db.reports.update_one({"_id": r["_id"]}, {"$set": {"status": "resolved", "action": body.action,
                                                              "note": body.note, "resolved_by": user["id"]}})
     await audit_log(user, "report_resolve", "report", rid, {"action": body.action})
