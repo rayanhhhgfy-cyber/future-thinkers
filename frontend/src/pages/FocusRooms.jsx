@@ -59,7 +59,7 @@ export default function FocusRooms() {
     try {
       const { data } = await api.post(`/focus/rooms/${room.id}/leave`);
       if (data.xp > 0) { toast.success(`+${data.xp} خبرة من جلسة التركيز 🎉`); }
-      else toast("انتهت الجلسة — 10 دقائق فأكثر تمنح نقاطاً");
+      else toast("انتهت الجلسة · 10 دقائق فأكثر تمنح نقاطاً");
     } catch (e) { toast.error(apiErr(e)); }
     setRoom(null); setSeconds(0); load();
   };
@@ -102,7 +102,7 @@ export default function FocusRooms() {
         <div className="animate-fade-up relative overflow-hidden rounded-[2rem] bg-slate-950 px-6 py-8 sm:px-10 mb-8">
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 text-white text-xs font-bold"><Timer className="w-3.5 h-3.5" /> ذاكروا معاً بصمت</span>
           <h1 className="font-head text-3xl sm:text-4xl font-extrabold text-white mt-4">غرف التركيز</h1>
-          <p className="text-white/60 text-sm sm:text-base mt-2 max-w-xl">افتح غرفة أو ادخل واحدة، شغّل المؤقّت واقرأ أو ذاكر — كل 10 دقائق تركيز فأكثر تمنحك نقاط خبرة.</p>
+          <p className="text-white/60 text-sm sm:text-base mt-2 max-w-xl">افتح غرفة أو ادخل واحدة، شغّل المؤقّت واقرأ أو ذاكر · كل 10 دقائق تركيز فأكثر تمنحك نقاط خبرة.</p>
           <Timer className="absolute -left-6 -bottom-8 w-44 h-44 text-white/5" />
         </div>
 

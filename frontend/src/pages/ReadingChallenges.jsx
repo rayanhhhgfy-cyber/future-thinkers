@@ -15,12 +15,12 @@ export default function ReadingChallenges() {
   const create = async () => {
     if (form.title.trim().length < 3) return toast.error("عنوان التحدي قصير");
     setCreating(true);
-    try { await api.post("/reading-challenges", { ...form, target_pages: Number(form.target_pages), days: Number(form.days) }); setForm({ title: "", target_pages: 200, days: 7 }); load(); toast.success("أُطلق التحدي — أنت أول المشاركين 🚀"); }
+    try { await api.post("/reading-challenges", { ...form, target_pages: Number(form.target_pages), days: Number(form.days) }); setForm({ title: "", target_pages: 200, days: 7 }); load(); toast.success("أُطلق التحدي · أنت أول المشاركين 🚀"); }
     catch (e) { toast.error(apiErr(e)); }
     setCreating(false);
   };
   const join = async (id) => {
-    try { await api.post(`/reading-challenges/${id}/join`); load(); toast.success("انضممت للتحدي — بالتوفيق 📚"); }
+    try { await api.post(`/reading-challenges/${id}/join`); load(); toast.success("انضممت للتحدي · بالتوفيق 📚"); }
     catch (e) { toast.error(apiErr(e)); }
   };
 
@@ -31,7 +31,7 @@ export default function ReadingChallenges() {
         <div className="animate-fade-up relative overflow-hidden rounded-[2rem] ft-hero-gradient px-6 py-8 sm:px-10 mb-8">
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 text-white text-xs font-bold"><BookOpen className="w-3.5 h-3.5" /> اقرأوا معاً، تنافسوا معاً</span>
           <h1 className="font-head text-3xl sm:text-4xl font-extrabold text-white mt-4">تحديات القراءة الجماعية</h1>
-          <p className="text-white/75 text-sm sm:text-base mt-2 max-w-xl">أطلق تحدي صفحات وانضم مع زملائك — صفحاتك تُحتسب تلقائياً أثناء القراءة في المتصفح.</p>
+          <p className="text-white/75 text-sm sm:text-base mt-2 max-w-xl">أطلق تحدي صفحات وانضم مع زملائك · صفحاتك تُحتسب تلقائياً أثناء القراءة في المتصفح.</p>
           <BookOpen className="absolute -left-6 -bottom-8 w-44 h-44 text-white/10" />
         </div>
 
@@ -92,7 +92,7 @@ export default function ReadingChallenges() {
             })}
           </div>
         )}
-        <div className="mt-6 flex items-center gap-2 text-xs text-slate-400"><Clock className="w-4 h-4" /> تُحتسب الصفحات تلقائياً من قراءتك داخل الموقع — بدون أي إدخال يدوي.</div>
+        <div className="mt-6 flex items-center gap-2 text-xs text-slate-400"><Clock className="w-4 h-4" /> تُحتسب الصفحات تلقائياً من قراءتك داخل الموقع · بدون أي إدخال يدوي.</div>
       </div>
     </Layout>
   );

@@ -35,7 +35,7 @@ export default function Paths() {
           <div className="relative z-10">
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 text-white text-xs font-bold"><Route className="w-3.5 h-3.5" /> رحلات تعلّم موجّهة</span>
             <h1 className="font-head text-3xl sm:text-4xl font-extrabold text-white mt-4">مسارات التعلم</h1>
-            <p className="text-white/75 text-sm sm:text-base mt-2 max-w-xl leading-relaxed">خطوات مرتبة تجمع الكتب والبرمجة والمسابقات — أكمل كل خطوة واجمع نقاطها، وإنهاء المسار كاملاً يمنحك مكافأة إضافية.</p>
+            <p className="text-white/75 text-sm sm:text-base mt-2 max-w-xl leading-relaxed">خطوات مرتبة تجمع الكتب والبرمجة والمسابقات · أكمل كل خطوة واجمع نقاطها، وإنهاء المسار كاملاً يمنحك مكافأة إضافية.</p>
           </div>
           <Route className="absolute -left-8 -bottom-10 w-52 h-52 text-white/10" />
         </div>

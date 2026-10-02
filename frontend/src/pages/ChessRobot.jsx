@@ -12,7 +12,7 @@ import ChessBoardView from "@/components/chess/ChessBoardView";
 import { pickRobotMove, DIFFICULTIES } from "@/components/chess/engine";
 import { playChessSound } from "@/components/chess/sounds";
 
-/* Play against the built-in robot — free forever, 3 difficulty levels. */
+/* Play against the built-in robot: 3 difficulty levels. */
 export default function ChessRobot() {
   const { user } = useAuth();
   const nav = useNavigate();
@@ -154,9 +154,9 @@ export default function ChessRobot() {
 
   const resultText = !over ? null
     : chess.isCheckmate()
-      ? (turn === myColor ? "كش مات — فاز الروبوت 🤖" : "كش مات — فزت أنت! 🏆")
-      : chess.isStalemate() ? "جمود — تعادل 🤝"
-      : "انتهت المباراة — تعادل 🤝";
+      ? (turn === myColor ? "كش مات · فاز الروبوت 🤖" : "كش مات · فزت أنت! 🏆")
+      : chess.isStalemate() ? "جمود · تعادل 🤝"
+      : "انتهت المباراة · تعادل 🤝";
   const iWon = over && chess.isCheckmate() && turn !== myColor;
 
   const myCaps = capturedBy(chess, myColor);
@@ -209,7 +209,7 @@ export default function ChessRobot() {
                   <Bot className="w-10 h-10 text-indigo-300" />
                 </motion.div>
                 <h1 className="font-head text-3xl font-extrabold mt-5">العب ضد الروبوت 🤖</h1>
-                <p className="text-slate-400 mt-2">مجاني بالكامل — بدون حدود، بدون نقاط، بدون تجارب. اختر مستواك وابدأ.</p>
+                <p className="text-slate-400 mt-2">بدون حدود، بدون نقاط، بدون تجارب. اختر مستواك وابدأ.</p>
               </div>
 
               <div className="rounded-3xl p-5 sm:p-6 bg-white/[0.05] border border-white/10 backdrop-blur-xl space-y-6">
@@ -293,7 +293,7 @@ export default function ChessRobot() {
                           transition={{ duration: 3, repeat: Infinity, ease: "easeInOut", repeatDelay: 1.6 }}
                           style={{ background: "linear-gradient(100deg, transparent 25%, rgba(255,255,255,0.12) 50%, transparent 75%)" }} />
                       )}
-                      <span className="relative">{over ? resultText : thinking ? "الروبوت يفكّر… 🤔" : myTurn ? "دورك — حرّك قطعة" : "…"}</span>
+                      <span className="relative">{over ? resultText : thinking ? "الروبوت يفكّر… 🤔" : myTurn ? "دورك · حرّك قطعة" : "…"}</span>
                     </motion.div>
                   </AnimatePresence>
                   {inCheck && !over && <div className="text-sm text-red-400 mt-2 font-bold animate-pulse">كش! 👑</div>}
@@ -303,7 +303,7 @@ export default function ChessRobot() {
                   <h4 className="font-semibold text-sm mb-3 text-slate-300">النقلات ({history.length})</h4>
                   <div ref={movesRef} className="max-h-40 sm:max-h-48 lg:max-h-64 overflow-y-auto pr-1" dir="ltr">
                     {movePairs.length === 0 ? (
-                      <div className="text-sm text-slate-500 text-center py-4">لا نقلات بعد — ابدأ اللعب!</div>
+                      <div className="text-sm text-slate-500 text-center py-4">لا نقلات بعد · ابدأ اللعب!</div>
                     ) : (
                       <div className="grid grid-cols-[2rem_1fr_1fr] gap-y-1 text-sm font-mono">
                         {movePairs.map((pair, i) => (
