@@ -30,18 +30,18 @@ function Toggle({ on, onClick, disabled }) {
 
 function Card({ icon: Icon, color, title, desc, children }) {
   return (
-    <section className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-100 ft-shadow">
+    <section className="bg-white rounded-3xl p-5 sm:p-6 lg:p-7 xl:p-8 border border-slate-100 ft-shadow">
       <div className="flex items-center gap-3 mb-1">
-        <span className="w-10 h-10 rounded-2xl grid place-items-center shrink-0" style={{ background: `${color}15`, color }}><Icon className="w-5 h-5" /></span>
-        <h2 className="font-head font-bold text-base sm:text-lg text-slate-900">{title}</h2>
+        <span className="w-10 h-10 lg:w-11 lg:h-11 rounded-2xl grid place-items-center shrink-0" style={{ background: `${color}15`, color }}><Icon className="w-5 h-5" /></span>
+        <h2 className="font-head font-bold text-base sm:text-lg lg:text-xl text-slate-900">{title}</h2>
       </div>
-      {desc && <p className="text-xs text-slate-500 mb-4 mr-[52px]">{desc}</p>}
+      {desc && <p className="text-xs lg:text-sm text-slate-500 mb-4 mr-[52px] lg:mr-[56px]">{desc}</p>}
       {children}
     </section>
   );
 }
 
-const inputCls = "w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 outline-none ft-focus-border-accent focus:ring-2 ft-ring-accent focus:bg-white transition";
+const inputCls = "w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 lg:py-3 text-sm lg:text-[15px] text-slate-900 outline-none ft-focus-border-accent focus:ring-2 ft-ring-accent focus:bg-white transition";
 
 export default function Settings() {
   const { user, refresh } = useAuth();
@@ -146,22 +146,45 @@ export default function Settings() {
       {/* hero */}
       <div className={`relative overflow-hidden bg-gradient-to-l ${coverCls(cover)} text-white`}>
         <div className="absolute -top-16 -left-16 w-64 h-64 bg-white/10 rounded-full blur-3xl animate-float" />
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-10 relative">
-          <div className="flex items-center gap-4 flex-wrap">
-            {avatar ? <img src={avatar} alt="" className={`w-20 h-20 rounded-3xl object-cover ring-4 ${frameCls}`} />
-              : <div className={`w-20 h-20 rounded-3xl bg-white/15 grid place-items-center text-3xl font-extrabold ring-4 ${frameCls}`}>{user.name?.[0]}</div>}
+        <div className="max-w-3xl lg:max-w-5xl xl:max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 py-10 lg:py-14 relative">
+          <div className="flex items-center gap-4 lg:gap-5 flex-wrap">
+            {avatar ? <img src={avatar} alt="" className={`w-20 h-20 lg:w-24 lg:h-24 rounded-3xl object-cover ring-4 ${frameCls}`} />
+              : <div className={`w-20 h-20 lg:w-24 lg:h-24 rounded-3xl bg-white/15 grid place-items-center text-3xl lg:text-4xl font-extrabold ring-4 ${frameCls}`}>{user.name?.[0]}</div>}
             <div className="flex-1 min-w-[200px]">
-              <h1 className="font-head text-2xl sm:text-3xl font-extrabold flex items-center gap-2"><SettingsIcon className="w-6 h-6" /> إعدادات الحساب</h1>
-              <p className="text-white/75 text-sm mt-1">{user.email} · {user.level_title} · المستوى {user.level}</p>
+              <h1 className="font-head text-2xl sm:text-3xl lg:text-4xl font-extrabold flex items-center gap-2"><SettingsIcon className="w-6 h-6 lg:w-8 lg:h-8" /> إعدادات الحساب</h1>
+              <p className="text-white/75 text-sm lg:text-base mt-1">{user.email} · {user.level_title} · المستوى {user.level}</p>
               {user.cosmetics?.title && <span className="inline-block mt-2 px-2.5 py-0.5 rounded-full bg-amber-400/90 text-amber-950 text-[11px] font-extrabold">✦ {user.cosmetics.title}</span>}
             </div>
-            <Link to={`/profile/${user.id}`} className="pressable px-4 py-2 rounded-full bg-white/15 hover:bg-white/25 text-sm font-bold backdrop-blur">عرض ملفي</Link>
+            <Link to={`/profile/${user.id}`} className="pressable inline-flex items-center px-4 py-2 min-h-[44px] rounded-full bg-white/15 hover:bg-white/25 text-sm font-bold backdrop-blur">عرض ملفي</Link>
           </div>
         </div>
       </div>
 
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 space-y-5">
+      <div className="max-w-3xl lg:max-w-5xl xl:max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 py-8 lg:py-12 lg:grid lg:grid-cols-[260px_minmax(0,1fr)] xl:grid-cols-[280px_minmax(0,1fr)] lg:gap-8 xl:gap-10 lg:items-start">
+        {/* desktop sticky nav rail · تنقّل سريع بين أقسام الإعدادات · مخفي على الجوال حتى لا تتغيّر تجربة الجوال */}
+        <aside className="hidden lg:block sticky top-24 self-start">
+          <nav className="bg-white rounded-3xl border border-slate-100 ft-shadow p-4">
+            <div className="px-3 pt-2 pb-3 text-xs font-black text-slate-400">أقسام الإعدادات</div>
+            <div className="space-y-1">
+              <a href="#settings-profile" className="flex items-center gap-2.5 min-h-[44px] px-3 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"><User className="w-4 h-4 text-slate-400" />الملف الشخصي</a>
+              <a href="#settings-appearance" className="flex items-center gap-2.5 min-h-[44px] px-3 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"><Palette className="w-4 h-4 text-slate-400" />غلاف الملف والإطارات</a>
+              <a href="#settings-goal" className="flex items-center gap-2.5 min-h-[44px] px-3 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"><Target className="w-4 h-4 text-slate-400" />هدف القراءة اليومي</a>
+              <a href="#settings-notifications" className="flex items-center gap-2.5 min-h-[44px] px-3 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"><BellRing className="w-4 h-4 text-slate-400" />الإشعارات</a>
+              <a href="#settings-privacy" className="flex items-center gap-2.5 min-h-[44px] px-3 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"><Shield className="w-4 h-4 text-slate-400" />الخصوصية</a>
+              <a href="#settings-data" className="flex items-center gap-2.5 min-h-[44px] px-3 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"><Download className="w-4 h-4 text-slate-400" />بياناتي</a>
+              <a href="#settings-password" className="flex items-center gap-2.5 min-h-[44px] px-3 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"><KeyRound className="w-4 h-4 text-slate-400" />تغيير كلمة المرور</a>
+              <a href="#settings-danger" className="flex items-center gap-2.5 min-h-[44px] px-3 rounded-xl text-sm font-bold text-rose-600 hover:bg-rose-50 transition-colors"><AlertTriangle className="w-4 h-4" />منطقة الخطر</a>
+            </div>
+          </nav>
+          <div className="mt-4 rounded-3xl ft-bg-soft border border-slate-100 p-5">
+            <div className="flex items-center gap-2 font-head font-bold text-sm ft-text-accent"><Sparkles className="w-4 h-4" /> تلميح سريع</div>
+            <p className="text-xs leading-6 text-slate-500 mt-2">تغييرات ملفك وغلافك تظهر فوراً في صفحتك العامة · جرّب زر «عرض ملفي» في الأعلى لرؤية النتيجة.</p>
+          </div>
+        </aside>
+
+        <div className="space-y-5 lg:space-y-6 min-w-0">
         {/* profile */}
+        <div id="settings-profile" className="scroll-mt-24 lg:scroll-mt-28">
         <Card icon={User} color="#2563EB" title="الملف الشخصي" desc="الاسم والنبذة والصورة التي تظهر للجميع في ملفك العام.">
           <div className="space-y-3">
             <div>
@@ -177,13 +200,15 @@ export default function Settings() {
               <input value={avatar} onChange={(e) => setAvatar(e.target.value)} className={inputCls} dir="ltr" placeholder="https://…" />
             </div>
             <button onClick={() => save("profile", { name, bio, avatar_url: avatar }, "حُفظ ملفك الشخصي ✓")} disabled={saving === "profile"}
-              className="pressable w-full sm:w-auto px-6 py-2.5 rounded-xl bg-slate-900 text-white text-sm font-bold disabled:opacity-50">
+              className="pressable w-full sm:w-auto px-6 py-2.5 min-h-[44px] rounded-xl bg-slate-900 text-white text-sm font-bold disabled:opacity-50">
               {saving === "profile" ? "جارٍ الحفظ…" : "حفظ الملف"}
             </button>
           </div>
         </Card>
+        </div>
 
         {/* cover + cosmetics */}
+        <div id="settings-appearance" className="scroll-mt-24 lg:scroll-mt-28">
         <Card icon={Palette} color="#7C3AED" title="غلاف الملف والإطارات" desc="اختر لون غلاف صفحتك الشخصية · واشترِ إطارات وألقاباً من متجر النقاط.">
           <div className="grid grid-cols-4 gap-2 mb-4">
             {COVERS.map((c) => (
@@ -194,33 +219,37 @@ export default function Settings() {
               </button>
             ))}
           </div>
-          <Link to="/points" className="inline-flex items-center gap-1.5 text-sm font-bold text-violet-700 hover:text-violet-800">
+          <Link to="/points" className="inline-flex items-center gap-1.5 min-h-[44px] text-sm font-bold text-violet-700 hover:text-violet-800">
             <Sparkles className="w-4 h-4" /> افتح متجر النقاط للإطارات والألقاب
           </Link>
         </Card>
+        </div>
 
         {/* reading goal */}
+        <div id="settings-goal" className="scroll-mt-24 lg:scroll-mt-28">
         <Card icon={Target} color="#059669" title="هدف القراءة اليومي" desc="عدد الصفحات التي تطمح لقراءتها كل يوم · يظهر تقدمه في لوحتك.">
           <div className="flex items-center gap-4 flex-wrap">
             <div className="flex items-center gap-2">
-              <button onClick={() => setGoal((g) => Math.max(5, g - 5))} className="w-10 h-10 rounded-xl bg-slate-100 text-lg font-bold hover:bg-slate-200">−</button>
-              <span className="w-20 text-center font-head text-2xl font-extrabold text-slate-900">{goal}</span>
-              <button onClick={() => setGoal((g) => Math.min(300, g + 5))} className="w-10 h-10 rounded-xl bg-slate-100 text-lg font-bold hover:bg-slate-200">+</button>
+              <button onClick={() => setGoal((g) => Math.max(5, g - 5))} className="w-10 h-10 lg:w-11 lg:h-11 rounded-xl bg-slate-100 text-lg font-bold hover:bg-slate-200">−</button>
+              <span className="w-20 text-center font-head text-2xl lg:text-3xl font-extrabold text-slate-900">{goal}</span>
+              <button onClick={() => setGoal((g) => Math.min(300, g + 5))} className="w-10 h-10 lg:w-11 lg:h-11 rounded-xl bg-slate-100 text-lg font-bold hover:bg-slate-200">+</button>
             </div>
             <span className="text-sm text-slate-500">صفحة يومياً</span>
             <button onClick={() => save("goal", { daily_goal_pages: goal }, "حُفظ هدفك اليومي 🎯")} disabled={saving === "goal"}
-              className="pressable px-5 py-2.5 rounded-xl ft-btn-solid text-sm font-bold disabled:opacity-50">
+              className="pressable px-5 py-2.5 min-h-[44px] rounded-xl ft-btn-solid text-sm font-bold disabled:opacity-50">
               {saving === "goal" ? "…" : "حفظ الهدف"}
             </button>
           </div>
-          <div className="flex gap-1.5 mt-4">
+          <div className="flex gap-1.5 mt-4 flex-wrap">
             {[10, 20, 30, 50, 100].map((n) => (
-              <button key={n} onClick={() => setGoal(n)} className={`px-3 py-1.5 rounded-full text-xs font-bold ${goal === n ? "ft-btn-solid" : "bg-slate-100 text-slate-600 ft-hover-bg-soft"}`}>{n}</button>
+              <button key={n} onClick={() => setGoal(n)} className={`px-3 py-1.5 min-h-[40px] lg:px-4 rounded-full text-xs lg:text-sm font-bold ${goal === n ? "ft-btn-solid" : "bg-slate-100 text-slate-600 ft-hover-bg-soft"}`}>{n}</button>
             ))}
           </div>
         </Card>
+        </div>
 
         {/* notifications */}
+        <div id="settings-notifications" className="scroll-mt-24 lg:scroll-mt-28">
         <Card icon={BellRing} color="#D97706" title="الإشعارات" desc="تحكّم فيما يصلك على هاتفك وداخل المنصة.">
           <div className="flex items-center justify-between gap-3 py-3 border-b border-slate-100">
             <div>
@@ -231,7 +260,7 @@ export default function Settings() {
             </div>
             <Toggle on={!!pushOn} onClick={togglePush} disabled={pushBusy || !pushSupported || pushDenied || pushOn === null} />
           </div>
-          {pushOn && <button onClick={testPush} disabled={pushBusy} className="mt-3 min-h-[40px] px-4 rounded-xl bg-amber-100 text-amber-800 text-sm font-bold disabled:opacity-40">🔔 إرسال إشعار اختبار</button>}
+          {pushOn && <button onClick={testPush} disabled={pushBusy} className="mt-3 min-h-[44px] px-4 rounded-xl bg-amber-100 text-amber-800 text-sm font-bold disabled:opacity-40">🔔 إرسال إشعار اختبار</button>}
           <p className="text-[11px] text-slate-400 mt-2">على iPhone: ثبّت التطبيق على الشاشة الرئيسية أولاً لتفعيل إشعارات الهاتف.</p>
           <div className="mt-4 space-y-1">
             <div className="text-xs font-bold text-slate-400 mb-1">أنواع التنبيهات</div>
@@ -246,8 +275,10 @@ export default function Settings() {
             ))}
           </div>
         </Card>
+        </div>
 
         {/* privacy */}
+        <div id="settings-privacy" className="scroll-mt-24 lg:scroll-mt-28">
         <Card icon={Shield} color="#0891B2" title="الخصوصية" desc="ما يظهر للزوار في صفحتك الشخصية العامة.">
           {[
             { k: "show_school", l: "إظهار مدرستي ومديريتي" },
@@ -262,13 +293,17 @@ export default function Settings() {
             </div>
           ))}
         </Card>
+        </div>
 
         {/* my data */}
+        <div id="settings-data" className="scroll-mt-24 lg:scroll-mt-28">
         <Card icon={Download} color="#4F46E5" title="بياناتي" desc="نسخة كاملة من كل ما تملكه المنصة عنك: ملفك، نقاطك، قراءاتك، أعمالك وشهاداتك.">
-          <button onClick={exportData} className="pressable px-5 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-bold">تنزيل بياناتي (JSON)</button>
+          <button onClick={exportData} className="pressable inline-flex items-center px-5 py-2.5 min-h-[44px] rounded-xl bg-indigo-600 text-white text-sm font-bold">تنزيل بياناتي (JSON)</button>
         </Card>
+        </div>
 
         {/* password */}
+        <div id="settings-password" className="scroll-mt-24 lg:scroll-mt-28">
         <Card icon={KeyRound} color="#0A192F" title="تغيير كلمة المرور" desc={user?.email ? `الحساب: ${user.email}` : ""}>
           <form onSubmit={submitPassword} className="space-y-3" data-testid="change-password-form">
             <div className="relative">
@@ -279,26 +314,30 @@ export default function Settings() {
             </div>
             <input type={show ? "text" : "password"} value={next} onChange={(e) => setNext(e.target.value)} className={inputCls} required minLength={6} placeholder="كلمة المرور الجديدة" autoComplete="new-password" data-testid="new-password" />
             <input type={show ? "text" : "password"} value={confirm} onChange={(e) => setConfirm(e.target.value)} className={inputCls} required minLength={6} placeholder="تأكيد كلمة المرور الجديدة" autoComplete="new-password" data-testid="confirm-password" />
-            <button type="submit" disabled={pwSaving} data-testid="change-password-submit" className="pressable w-full rounded-xl ft-btn-solid disabled:opacity-50 font-bold py-2.5 transition-colors">
+            <button type="submit" disabled={pwSaving} data-testid="change-password-submit" className="pressable w-full min-h-[44px] rounded-xl ft-btn-solid disabled:opacity-50 font-bold py-2.5 transition-colors">
               {pwSaving ? "جارٍ الحفظ…" : "حفظ كلمة المرور الجديدة"}
             </button>
           </form>
         </Card>
+        </div>
 
         {/* danger zone */}
-        <section className="rounded-3xl p-5 sm:p-6 border-2 border-rose-100 bg-rose-50/50">
-          <h2 className="font-head font-bold text-base sm:text-lg text-rose-700 flex items-center gap-2 mb-1"><AlertTriangle className="w-5 h-5" /> منطقة الخطر</h2>
-          <p className="text-xs text-rose-500 mb-4">تعطيل الحساب يمنع تسجيل الدخول فوراً. تستطيع الإدارة إعادة تفعيله عند الطلب · بياناتك لا تُحذف.</p>
+        <div id="settings-danger" className="scroll-mt-24 lg:scroll-mt-28">
+        <section className="rounded-3xl p-5 sm:p-6 lg:p-7 border-2 border-rose-100 bg-rose-50/50">
+          <h2 className="font-head font-bold text-base sm:text-lg lg:text-xl text-rose-700 flex items-center gap-2 mb-1"><AlertTriangle className="w-5 h-5" /> منطقة الخطر</h2>
+          <p className="text-xs lg:text-sm text-rose-500 mb-4">تعطيل الحساب يمنع تسجيل الدخول فوراً. تستطيع الإدارة إعادة تفعيله عند الطلب · بياناتك لا تُحذف.</p>
           {!confirmDeactivate ? (
-            <button onClick={() => setConfirmDeactivate(true)} className="px-5 py-2.5 rounded-xl bg-white border border-rose-300 text-rose-700 text-sm font-bold hover:bg-rose-100">تعطيل حسابي</button>
+            <button onClick={() => setConfirmDeactivate(true)} className="inline-flex items-center px-5 py-2.5 min-h-[44px] rounded-xl bg-white border border-rose-300 text-rose-700 text-sm font-bold hover:bg-rose-100">تعطيل حسابي</button>
           ) : (
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-sm font-bold text-rose-700">متأكد؟</span>
-              <button onClick={deactivate} className="pressable px-5 py-2.5 rounded-xl bg-rose-600 text-white text-sm font-bold">نعم، عطّل الحساب</button>
-              <button onClick={() => setConfirmDeactivate(false)} className="px-5 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-600 text-sm font-bold">تراجع</button>
+              <button onClick={deactivate} className="pressable inline-flex items-center px-5 py-2.5 min-h-[44px] rounded-xl bg-rose-600 text-white text-sm font-bold">نعم، عطّل الحساب</button>
+              <button onClick={() => setConfirmDeactivate(false)} className="inline-flex items-center px-5 py-2.5 min-h-[44px] rounded-xl bg-white border border-slate-200 text-slate-600 text-sm font-bold">تراجع</button>
             </div>
           )}
         </section>
+        </div>
+        </div>
       </div>
     </Layout>
   );

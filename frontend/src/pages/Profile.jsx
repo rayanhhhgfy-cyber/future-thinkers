@@ -83,72 +83,109 @@ export default function Profile() {
       <div className={`relative overflow-hidden bg-gradient-to-l ${coverCls(p.cover_theme)} text-white`}>
         <div className="absolute -top-24 -left-24 w-80 h-80 bg-white/10 rounded-full blur-3xl animate-float" />
         <div className="absolute -bottom-28 -right-16 w-72 h-72 bg-black/20 rounded-full blur-3xl" />
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-20 sm:pb-24 relative">
-          <div className="flex flex-col sm:flex-row sm:items-end gap-5">
+        <div className="max-w-5xl lg:max-w-6xl xl:max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 pt-10 pb-20 sm:pb-24 lg:pt-14 lg:pb-32 relative">
+          <div className="flex flex-col sm:flex-row sm:items-end gap-5 lg:gap-7">
             <div className="relative shrink-0 self-start">
               {p.avatar_url ? (
-                <img src={p.avatar_url} alt={p.name} className={`w-28 h-28 sm:w-32 sm:h-32 rounded-[28px] object-cover ring-4 ${frameCls}`} />
+                <img src={p.avatar_url} alt={p.name} className={`w-28 h-28 sm:w-32 sm:h-32 lg:w-40 lg:h-40 rounded-[28px] lg:rounded-[36px] object-cover ring-4 ${frameCls}`} />
               ) : (
-                <div className={`w-28 h-28 sm:w-32 sm:h-32 rounded-[28px] bg-white/15 backdrop-blur grid place-items-center text-5xl font-extrabold ring-4 ${frameCls}`}>{p.name?.[0]}</div>
+                <div className={`w-28 h-28 sm:w-32 sm:h-32 lg:w-40 lg:h-40 rounded-[28px] lg:rounded-[36px] bg-white/15 backdrop-blur grid place-items-center text-5xl lg:text-6xl font-extrabold ring-4 ${frameCls}`}>{p.name?.[0]}</div>
               )}
               <span className="absolute -bottom-2.5 right-1/2 translate-x-1/2 px-3 py-1 rounded-full bg-amber-400 text-amber-950 text-[11px] font-black whitespace-nowrap shadow-lg">⭐ مستوى {p.level}</span>
             </div>
             <div className="flex-1 min-w-0 pb-1">
-              <h1 className="font-head text-3xl sm:text-4xl font-black leading-tight">{p.name}</h1>
-              {p.title_badge && <div className="mt-1 text-amber-300 font-bold text-sm">✦ {p.title_badge}</div>}
-              <div className="mt-2 flex items-center gap-2 flex-wrap">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 backdrop-blur text-sm font-semibold"><Sparkles className="w-3.5 h-3.5" />{p.level_title}</span>
-                {p.school_name && <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-white/10 text-xs"><School className="w-3.5 h-3.5" />{p.school_name}</span>}
-                {p.governorate_name && <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-white/10 text-xs"><MapPin className="w-3.5 h-3.5" />{p.governorate_name}</span>}
+              <h1 className="font-head text-3xl sm:text-4xl lg:text-5xl font-black leading-tight">{p.name}</h1>
+              {p.title_badge && <div className="mt-1 lg:mt-2 text-amber-300 font-bold text-sm lg:text-base">✦ {p.title_badge}</div>}
+              <div className="mt-2 lg:mt-3 flex items-center gap-2 flex-wrap">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 lg:px-3.5 lg:py-1.5 rounded-full bg-white/15 backdrop-blur text-sm font-semibold"><Sparkles className="w-3.5 h-3.5" />{p.level_title}</span>
+                {p.school_name && <span className="inline-flex items-center gap-1 px-3 py-1 lg:px-3.5 lg:py-1.5 rounded-full bg-white/10 text-xs lg:text-[13px]"><School className="w-3.5 h-3.5" />{p.school_name}</span>}
+                {p.governorate_name && <span className="inline-flex items-center gap-1 px-3 py-1 lg:px-3.5 lg:py-1.5 rounded-full bg-white/10 text-xs lg:text-[13px]"><MapPin className="w-3.5 h-3.5" />{p.governorate_name}</span>}
               </div>
             </div>
             <div className="flex sm:flex-col items-center sm:items-end gap-3 shrink-0 pb-1">
               <div className="flex items-center gap-4 text-sm bg-white/10 backdrop-blur rounded-2xl px-4 py-2.5">
-                <button onClick={() => openList("followers")} className="text-center ft-hover-text-bright transition-colors">
-                  <div className="font-head font-extrabold text-base leading-none">{p.followers_count || 0}</div>
+                <button onClick={() => openList("followers")} className="text-center ft-hover-text-bright transition-colors min-h-[44px] min-w-[52px]">
+                  <div className="font-head font-extrabold text-base lg:text-lg leading-none">{p.followers_count || 0}</div>
                   <div className="text-[10px] text-white/70 mt-1">متابِع</div>
                 </button>
                 <span className="w-px h-8 bg-white/20" />
-                <button onClick={() => openList("following")} className="text-center ft-hover-text-bright transition-colors">
-                  <div className="font-head font-extrabold text-base leading-none">{p.following_count || 0}</div>
+                <button onClick={() => openList("following")} className="text-center ft-hover-text-bright transition-colors min-h-[44px] min-w-[52px]">
+                  <div className="font-head font-extrabold text-base lg:text-lg leading-none">{p.following_count || 0}</div>
                   <div className="text-[10px] text-white/70 mt-1">يُتابَع</div>
                 </button>
               </div>
               {!isMine && user && (
-                <button onClick={toggleFollow} className={`pressable inline-flex items-center gap-1.5 px-5 py-2.5 rounded-full text-sm font-extrabold shadow-lg ${p.is_following ? "bg-white/20 text-white backdrop-blur" : "ft-btn-solid"}`}>
+                <button onClick={toggleFollow} className={`pressable inline-flex items-center gap-1.5 px-5 py-2.5 min-h-[44px] rounded-full text-sm font-extrabold shadow-lg ${p.is_following ? "bg-white/20 text-white backdrop-blur" : "ft-btn-solid"}`}>
                   {p.is_following ? <><UserCheck className="w-4 h-4" /> تتابعه</> : <><UserPlus className="w-4 h-4" /> متابعة</>}
                 </button>
               )}
               {isMine && (
-                <Link to="/settings" className="pressable px-5 py-2.5 rounded-full bg-white/15 backdrop-blur text-sm font-bold hover:bg-white/25">تعديل ملفي</Link>
+                <Link to="/settings" className="pressable inline-flex items-center px-5 py-2.5 min-h-[44px] rounded-full bg-white/15 backdrop-blur text-sm font-bold hover:bg-white/25">تعديل ملفي</Link>
               )}
             </div>
           </div>
         </div>
       </div>
 
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* floating stat band */}
-        <div className="-mt-12 sm:-mt-14 relative z-10">
-          <div className="flex gap-3 overflow-x-auto pb-2 snap-x md:grid md:grid-cols-7 md:overflow-visible [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {stats.map((s) => (
-              <div key={s.label} className="snap-start shrink-0 w-[118px] md:w-auto bg-white rounded-2xl p-3.5 border border-slate-100 ft-shadow hover-lift text-center">
-                <div className="w-9 h-9 mx-auto rounded-xl grid place-items-center mb-2" style={{ background: `${s.color}15`, color: s.color }}><s.icon className="w-4.5 h-4.5" /></div>
-                <div className="text-lg font-extrabold font-head text-slate-900 leading-none">{s.value}</div>
-                <div className="text-[10px] text-slate-500 mt-1.5">{s.label}</div>
-              </div>
-            ))}
+      <div className="max-w-5xl lg:max-w-6xl xl:max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 lg:grid lg:grid-cols-[340px_minmax(0,1fr)] xl:grid-cols-[380px_minmax(0,1fr)] lg:gap-8 xl:gap-10 lg:items-start">
+        {/* desktop sticky profile rail · الستاتس والنبذة · hidden identity head keeps mobile DOM order untouched */}
+        <div className="lg:col-start-1 lg:row-start-1 lg:sticky lg:top-24 lg:self-start min-w-0">
+          {/* rail identity card · desktop only */}
+          <div className="hidden lg:block relative z-10 -mt-16 xl:-mt-20 mb-5 bg-white rounded-[28px] border border-slate-100 ft-shadow-lg p-6 text-center">
+            <div className="relative inline-block">
+              {p.avatar_url ? (
+                <img src={p.avatar_url} alt={p.name} className={`w-24 h-24 rounded-[26px] object-cover ring-4 ${frameCls}`} />
+              ) : (
+                <div className={`w-24 h-24 rounded-[26px] bg-slate-100 grid place-items-center text-4xl font-extrabold text-slate-700 ring-4 ${frameCls}`}>{p.name?.[0]}</div>
+              )}
+              <span className="absolute -bottom-2.5 right-1/2 translate-x-1/2 px-3 py-1 rounded-full bg-amber-400 text-amber-950 text-[11px] font-black whitespace-nowrap shadow-lg">⭐ مستوى {p.level}</span>
+            </div>
+            <h2 className="font-head text-xl font-black text-slate-900 mt-5 leading-snug">{p.name}</h2>
+            <div className="mt-1.5 text-sm font-bold ft-text-accent">{p.level_title}</div>
+            {p.title_badge && <div className="mt-1 text-amber-600 font-bold text-xs">✦ {p.title_badge}</div>}
+            <div className="mt-4 flex items-center justify-center gap-2">
+              <button onClick={() => openList("followers")} className="min-h-[44px] px-3 rounded-xl bg-slate-50 hover:bg-slate-100 transition-colors text-center">
+                <span className="block font-head font-extrabold text-slate-900 leading-none">{p.followers_count || 0}</span>
+                <span className="block text-[10px] text-slate-400 mt-1">متابِع</span>
+              </button>
+              <button onClick={() => openList("following")} className="min-h-[44px] px-3 rounded-xl bg-slate-50 hover:bg-slate-100 transition-colors text-center">
+                <span className="block font-head font-extrabold text-slate-900 leading-none">{p.following_count || 0}</span>
+                <span className="block text-[10px] text-slate-400 mt-1">يُتابَع</span>
+              </button>
+            </div>
+            {!isMine && user && (
+              <button onClick={toggleFollow} className={`pressable mt-4 w-full inline-flex items-center justify-center gap-1.5 px-5 py-2.5 min-h-[44px] rounded-full text-sm font-extrabold shadow-lg ${p.is_following ? "bg-slate-100 text-slate-700" : "ft-btn-solid"}`}>
+                {p.is_following ? <><UserCheck className="w-4 h-4" /> تتابعه</> : <><UserPlus className="w-4 h-4" /> متابعة</>}
+              </button>
+            )}
+            {isMine && (
+              <Link to="/settings" className="pressable mt-4 w-full inline-flex items-center justify-center px-5 py-2.5 min-h-[44px] rounded-full bg-slate-900 text-white text-sm font-bold hover:bg-slate-800">تعديل ملفي</Link>
+            )}
           </div>
+          {/* floating stat band */}
+          <div className="-mt-12 sm:-mt-14 lg:mt-0 relative z-10">
+            <div className="flex gap-3 overflow-x-auto pb-2 snap-x md:grid md:grid-cols-7 lg:grid-cols-2 md:overflow-visible lg:overflow-visible lg:pb-0 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {stats.map((s) => (
+                <div key={s.label} className="snap-start shrink-0 w-[118px] md:w-auto bg-white rounded-2xl p-3.5 lg:p-4 border border-slate-100 ft-shadow hover-lift text-center">
+                  <div className="w-9 h-9 lg:w-10 lg:h-10 mx-auto rounded-xl grid place-items-center mb-2" style={{ background: `${s.color}15`, color: s.color }}><s.icon className="w-4.5 h-4.5" /></div>
+                  <div className="text-lg lg:text-xl font-extrabold font-head text-slate-900 leading-none">{s.value}</div>
+                  <div className="text-[10px] lg:text-[11px] text-slate-500 mt-1.5">{s.label}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {p.bio && <FadeUp><p className="text-slate-600 mt-5 bg-white rounded-2xl p-5 lg:p-6 border border-slate-100 ft-shadow leading-relaxed lg:leading-8">{p.bio}</p></FadeUp>}
         </div>
 
-        {p.bio && <FadeUp><p className="text-slate-600 mt-5 bg-white rounded-2xl p-5 border border-slate-100 ft-shadow leading-relaxed">{p.bio}</p></FadeUp>}
-
+        {/* tabbed content column */}
+        <div className="lg:col-start-2 lg:row-start-1 min-w-0">
         {/* tabs */}
-        <div className="sticky top-16 z-20 mt-6 -mx-1 px-1 py-2 bg-[#F8FAFC]/85 backdrop-blur-md">
+        <div className="sticky top-16 lg:top-20 z-20 mt-6 lg:mt-2 -mx-1 px-1 py-2 bg-[#F8FAFC]/85 backdrop-blur-md">
           <div className="flex gap-1.5 bg-white rounded-2xl p-1.5 border border-slate-100 ft-shadow overflow-x-auto">
             {TABS.map((t) => (
               <button key={t.k} onClick={() => setTab(t.k)}
-                className={`flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-bold whitespace-nowrap transition-all ${tab === t.k ? "bg-slate-900 text-white shadow" : "text-slate-500 hover:bg-slate-50"}`}>
+                className={`flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2.5 min-h-[44px] lg:py-3 rounded-xl text-sm lg:text-[15px] font-bold whitespace-nowrap transition-all ${tab === t.k ? "bg-slate-900 text-white shadow" : "text-slate-500 hover:bg-slate-50"}`}>
                 <t.icon className="w-4 h-4" />{t.l}
                 {t.k === "honors" && (skillBadges.length + certs.length) > 0 && <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-black ${tab === t.k ? "bg-white/20" : "bg-slate-100"}`}>{skillBadges.length + certs.length}</span>}
                 {t.k === "achievements" && p.achievements.length > 0 && <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-black ${tab === t.k ? "bg-white/20" : "bg-slate-100"}`}>{p.achievements.length}</span>}
@@ -157,11 +194,11 @@ export default function Profile() {
           </div>
         </div>
 
-        <div className="py-6">
+        <div className="py-6 lg:py-8">
           {tab === "works" && (
-            <div className="space-y-8">
+            <div className="space-y-8 lg:space-y-10">
               <div>
-                <h2 className="font-head font-bold text-lg mb-3 flex items-center gap-2"><PenLine className="w-5 h-5 text-violet-600" /> الأعمال المنشورة</h2>
+                <h2 className="font-head font-bold text-lg lg:text-xl mb-3 flex items-center gap-2"><PenLine className="w-5 h-5 text-violet-600" /> الأعمال المنشورة</h2>
                 {(p.works || []).length === 0 ? <p className="text-slate-400 text-sm bg-white rounded-2xl p-6 text-center border border-slate-100">لا أعمال منشورة بعد ✍️</p> : (
                   <Stagger className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
                     {p.works.map((w) => (
@@ -177,7 +214,7 @@ export default function Profile() {
                 )}
               </div>
               <div>
-                <h2 className="font-head font-bold text-lg mb-3 flex items-center gap-2"><Rocket className="w-5 h-5 text-rose-600" /> المشاريع</h2>
+                <h2 className="font-head font-bold text-lg lg:text-xl mb-3 flex items-center gap-2"><Rocket className="w-5 h-5 text-rose-600" /> المشاريع</h2>
                 {(p.ventures || []).length === 0 ? <p className="text-slate-400 text-sm bg-white rounded-2xl p-6 text-center border border-slate-100">لا مشاريع بعد 🚀</p> : (
                   <div className="flex flex-wrap gap-2">
                     {p.ventures.map((v) => (
@@ -191,9 +228,9 @@ export default function Profile() {
           )}
 
           {tab === "honors" && (
-            <div className="space-y-8">
+            <div className="space-y-8 lg:space-y-10">
               <div>
-                <h2 className="font-head font-bold text-lg mb-3 flex items-center gap-2"><Medal className="w-5 h-5 text-amber-600" /> شارات المهارات ({skillBadges.length})</h2>
+                <h2 className="font-head font-bold text-lg lg:text-xl mb-3 flex items-center gap-2"><Medal className="w-5 h-5 text-amber-600" /> شارات المهارات ({skillBadges.length})</h2>
                 {skillBadges.length === 0 ? <p className="text-slate-400 text-sm bg-white rounded-2xl p-6 text-center border border-slate-100">تُمنح من المشرفين للتميز في الخطابة والكتابة والقيادة 🏅</p> : (
                   <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
                     {skillBadges.map((b) => {
@@ -209,9 +246,9 @@ export default function Profile() {
                 )}
               </div>
               <div>
-                <h2 className="font-head font-bold text-lg mb-3 flex items-center gap-2"><Award className="w-5 h-5 ft-text-accent" /> الشهادات ({certs.length})</h2>
+                <h2 className="font-head font-bold text-lg lg:text-xl mb-3 flex items-center gap-2"><Award className="w-5 h-5 ft-text-accent" /> الشهادات ({certs.length})</h2>
                 {certs.length === 0 ? <p className="text-slate-400 text-sm bg-white rounded-2xl p-6 text-center border border-slate-100">لا شهادات بعد · تُمنح للتميز والمشاركة 🏅</p> : (
-                  <div className="grid sm:grid-cols-2 gap-4">
+                  <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
                     {certs.map((c) => (
                       <div key={c.id} className="relative rounded-[22px] p-[3px] bg-gradient-to-br from-amber-300 via-yellow-500 to-amber-600 shadow-[0_14px_34px_-12px_rgba(217,119,6,0.5)] hover-lift">
                         <div className="relative overflow-hidden rounded-[19px] bg-gradient-to-b from-[#FFFEF9] via-[#FFFDF4] to-[#FCF3DC] px-5 pt-6 pb-5 text-center h-full">
@@ -259,7 +296,7 @@ export default function Profile() {
 
           {tab === "achievements" && (
             <div>
-              <h2 className="font-head font-bold text-lg mb-3 flex items-center gap-2"><Trophy className="w-5 h-5 text-amber-600" /> الإنجازات ({p.achievements.length})</h2>
+              <h2 className="font-head font-bold text-lg lg:text-xl mb-3 flex items-center gap-2"><Trophy className="w-5 h-5 text-amber-600" /> الإنجازات ({p.achievements.length})</h2>
               {p.achievements.length === 0 ? <p className="text-slate-400 text-sm bg-white rounded-2xl p-6 text-center border border-slate-100">لا إنجازات بعد · أول إنجاز أقرب مما تظن ✨</p> : (
                 <Stagger className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
                   {p.achievements.map((a) => {
@@ -278,6 +315,7 @@ export default function Profile() {
             </div>
           )}
         </div>
+        </div>
       </div>
 
       {listModal && (
@@ -285,7 +323,7 @@ export default function Profile() {
           <div className="bg-white rounded-3xl w-full max-w-md max-h-[70vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between p-4 border-b border-slate-100">
               <h3 className="font-head font-bold flex items-center gap-2"><Users className="w-5 h-5 ft-text-accent" />{listModal === "followers" ? "المتابِعون" : "يتابَعهم"}</h3>
-              <button onClick={() => setListModal(null)} className="w-8 h-8 grid place-items-center rounded-full hover:bg-slate-100"><X className="w-4 h-4" /></button>
+              <button onClick={() => setListModal(null)} className="w-11 h-11 grid place-items-center rounded-full hover:bg-slate-100"><X className="w-4 h-4" /></button>
             </div>
             <div className="overflow-y-auto p-3 space-y-1">
               {listItems.length === 0 ? <p className="text-sm text-slate-400 text-center py-8">لا أحد هنا بعد</p> : listItems.map((u) => (
