@@ -14,12 +14,12 @@ import UsersPanel from "@/components/admin/UsersPanel";
 import ClubsPanel from "@/components/admin/ClubsPanel";
 import { toast } from "sonner";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area, CartesianGrid } from "recharts";
-import { LayoutDashboard, ShieldCheck, Users, BookOpen, Calendar, Trophy, Newspaper, Settings, ScrollText, Plus, Check, X, Megaphone, PenLine, Medal, Award, Upload, Trash2, Search, MessageSquare, MessagesSquare, Activity, Smartphone, UserPlus, FileCheck, Rocket, Zap, ArrowLeft, Star, Heart, ThumbsUp, Flag, CalendarCheck, Crown, Download, Link2, CalendarDays, Code2, FlaskConical, Terminal, Palette, Globe2, Route as RouteIcon } from "lucide-react";
+import { LayoutDashboard, ShieldCheck, Users, BookOpen, Calendar, Trophy, Newspaper, Settings, ScrollText, Plus, Check, X, Megaphone, PenLine, Medal, Award, Upload, Trash2, Search, MessageSquare, MessagesSquare, Activity, Smartphone, UserPlus, FileCheck, Rocket, Zap, ArrowLeft, Star, Heart, ThumbsUp, Flag, CalendarCheck, Crown, Download, Link2, CalendarDays, Code2, FlaskConical, Terminal, Palette, Globe2, Route as RouteIcon, Bug } from "lucide-react";
 import { THEME_PRESETS, applyTheme } from "@/lib/theme";
 import { timeAgo } from "@/components/NotificationsPanel";
 import { motion } from "framer-motion";
 import { FadeUp, Stagger, Item } from "@/components/anim";
-import { CodingAdminPanel, ThemePanel, ReportsPanel, HealthPanel, LandingPanel, PathsAdminPanel, AnalyticsV2 } from "@/pages/AdminExtra";
+import { CodingAdminPanel, ThemePanel, ReportsPanel, HealthPanel, LandingPanel, PathsAdminPanel, AnalyticsV2, ErrorsPanel } from "@/pages/AdminExtra";
 import { startChunkedUpload, uploadChunks, completeChunkedUpload, fileToBase64, compressCoverImage, CHUNK_THRESHOLD, MAX_PDF_SIZE } from "@/lib/chunkedUpload";
 
 const NAV = [
@@ -36,6 +36,7 @@ const NAV = [
   { k: "banners", l: "لافتات الإعلانات", icon: Flag, perm: "cms.manage" },
   { k: "theme", l: "مظهر الموقع", icon: Palette, perm: "cms.manage" },
   { k: "reports", l: "الإبلاغات", icon: Flag, perm: "report.manage" },
+  { k: "errors", l: "سجل الأخطاء", icon: Bug, perm: "report.manage" },
   { k: "healthsys", l: "صحة النظام", icon: Activity, perm: "analytics.view" },
   { k: "landing", l: "صفحة الهبوط", icon: Globe2, perm: "cms.manage" },
   { k: "calendar", l: "التقويم", icon: CalendarDays, perm: "analytics.view" },
@@ -94,6 +95,7 @@ export default function Admin() {
             {tab === "banners" && <BannersPanel />}
             {tab === "theme" && <ThemePanel />}
             {tab === "reports" && <ReportsPanel />}
+            {tab === "errors" && <ErrorsPanel />}
             {tab === "healthsys" && <HealthPanel />}
             {tab === "landing" && <LandingPanel />}
             {tab === "calendar" && <CalendarPanel />}
