@@ -75,7 +75,7 @@ export default function Register() {
             push_enabled: false,
           }));
         } catch {}
-        toast.success("تم استلام طلبك بنجاح! حسابك كمعلم قيد مراجعة الإدارة — يمكنك متابعة حالة طلبك وتفعيل إشعار الموافقة على هاتفك من صفحة تسجيل الدخول.", { duration: 8000 });
+        toast.success("تم استلام طلبك بنجاح! حسابك كمعلم قيد مراجعة الإدارة · يمكنك متابعة حالة طلبك وتفعيل إشعار الموافقة على هاتفك من صفحة تسجيل الدخول.", { duration: 8000 });
         nav("/login");
       } else {
         toast.success("تم إنشاء حسابك بنجاح!");
@@ -117,7 +117,7 @@ export default function Register() {
               </Select>
               {form.role === "teacher" && (
                 <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 mt-2">
-                  حسابات المعلمين تحتاج موافقة الإدارة قبل التفعيل — سيصلك إشعار عند الموافقة.
+                  حسابات المعلمين تحتاج موافقة الإدارة قبل التفعيل · سيصلك إشعار عند الموافقة.
                 </p>
               )}
             </div>
@@ -165,7 +165,7 @@ export default function Register() {
       <div className="hidden lg:flex ft-navy-gradient grain relative flex-col justify-center p-12 text-white overflow-hidden order-1 lg:order-2">
         <Link to="/" className="absolute top-12 right-12"><Logo dark /></Link>
         <h1 className="font-head text-4xl font-extrabold leading-tight">رحلتك المعرفية<br /><span className="text-emerald-400">تبدأ من هنا</span></h1>
-        <p className="mt-4 text-slate-300 max-w-md">اقرأ، حاور، تنافس، وابتكر — مع نظام نقاط خبرة وإنجازات وقوائم صدارة على مستوى المملكة.</p>
+        <p className="mt-4 text-slate-300 max-w-md">اقرأ، حاور، تنافس، وابتكر · مع نظام نقاط خبرة وإنجازات وقوائم صدارة على مستوى المملكة.</p>
         <div className="absolute -top-20 -right-20 w-80 h-80 bg-blue-500/20 rounded-full blur-3xl" />
       </div>
     </div>

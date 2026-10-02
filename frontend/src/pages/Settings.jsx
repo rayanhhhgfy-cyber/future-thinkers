@@ -100,7 +100,7 @@ export default function Settings() {
     try {
       const { data } = await api.post("/push/test");
       if (data.ok) toast.success("وصلك إشعار الاختبار؟ إذاً الدفع يعمل 🎉");
-      else toast.error("فشل اختبار الدفع — تأكد من تفعيل الإشعارات");
+      else toast.error("فشل اختبار الدفع · تأكد من تفعيل الإشعارات");
     } catch (e) { toast.error(apiErr(e, "تعذّر اختبار الدفع")); }
     setPushBusy(false);
   };
@@ -184,7 +184,7 @@ export default function Settings() {
         </Card>
 
         {/* cover + cosmetics */}
-        <Card icon={Palette} color="#7C3AED" title="غلاف الملف والإطارات" desc="اختر لون غلاف صفحتك الشخصية — واشترِ إطارات وألقاباً من متجر النقاط.">
+        <Card icon={Palette} color="#7C3AED" title="غلاف الملف والإطارات" desc="اختر لون غلاف صفحتك الشخصية · واشترِ إطارات وألقاباً من متجر النقاط.">
           <div className="grid grid-cols-4 gap-2 mb-4">
             {COVERS.map((c) => (
               <button key={c.key} onClick={() => { setCover(c.key); save("cover", { cover_theme: c.key }, "حُفظ لون الغلاف 🎨"); }}
@@ -200,7 +200,7 @@ export default function Settings() {
         </Card>
 
         {/* reading goal */}
-        <Card icon={Target} color="#059669" title="هدف القراءة اليومي" desc="عدد الصفحات التي تطمح لقراءتها كل يوم — يظهر تقدمه في لوحتك.">
+        <Card icon={Target} color="#059669" title="هدف القراءة اليومي" desc="عدد الصفحات التي تطمح لقراءتها كل يوم · يظهر تقدمه في لوحتك.">
           <div className="flex items-center gap-4 flex-wrap">
             <div className="flex items-center gap-2">
               <button onClick={() => setGoal((g) => Math.max(5, g - 5))} className="w-10 h-10 rounded-xl bg-slate-100 text-lg font-bold hover:bg-slate-200">−</button>
@@ -226,7 +226,7 @@ export default function Settings() {
             <div>
               <div className="font-semibold text-sm text-slate-800">إشعارات الهاتف (Push)</div>
               <div className="text-[11px] text-slate-400">
-                {!pushSupported ? "غير مدعومة على هذا المتصفح" : pushDenied ? "رُفض الإذن من المتصفح — فعّله من إعداداته" : pushOn ? "مفعّلة على هذا الجهاز" : "متوقفة على هذا الجهاز"}
+                {!pushSupported ? "غير مدعومة على هذا المتصفح" : pushDenied ? "رُفض الإذن من المتصفح · فعّله من إعداداته" : pushOn ? "مفعّلة على هذا الجهاز" : "متوقفة على هذا الجهاز"}
               </div>
             </div>
             <Toggle on={!!pushOn} onClick={togglePush} disabled={pushBusy || !pushSupported || pushDenied || pushOn === null} />
@@ -288,7 +288,7 @@ export default function Settings() {
         {/* danger zone */}
         <section className="rounded-3xl p-5 sm:p-6 border-2 border-rose-100 bg-rose-50/50">
           <h2 className="font-head font-bold text-base sm:text-lg text-rose-700 flex items-center gap-2 mb-1"><AlertTriangle className="w-5 h-5" /> منطقة الخطر</h2>
-          <p className="text-xs text-rose-500 mb-4">تعطيل الحساب يمنع تسجيل الدخول فوراً. تستطيع الإدارة إعادة تفعيله عند الطلب — بياناتك لا تُحذف.</p>
+          <p className="text-xs text-rose-500 mb-4">تعطيل الحساب يمنع تسجيل الدخول فوراً. تستطيع الإدارة إعادة تفعيله عند الطلب · بياناتك لا تُحذف.</p>
           {!confirmDeactivate ? (
             <button onClick={() => setConfirmDeactivate(true)} className="px-5 py-2.5 rounded-xl bg-white border border-rose-300 text-rose-700 text-sm font-bold hover:bg-rose-100">تعطيل حسابي</button>
           ) : (

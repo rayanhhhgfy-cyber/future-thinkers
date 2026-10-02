@@ -91,7 +91,7 @@ export default function Studio() {
         <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
           <div>
             <h1 className="font-head text-3xl font-extrabold flex items-center gap-2"><PenLine className="w-7 h-7 text-violet-600" /> استوديو النشر</h1>
-            <p className="text-slate-500 mt-1 text-sm">انشر مقالاتك وأشعارك وخواطرك — تُراجع تحريرياً قبل النشر</p>
+            <p className="text-slate-500 mt-1 text-sm">انشر مقالاتك وأشعارك وخواطرك · تُراجع تحريرياً قبل النشر</p>
           </div>
           {user && <Button onClick={startNew} className="rounded-2xl bg-violet-600 hover:bg-violet-700"><Plus className="w-4 h-4 ml-1" /> عمل جديد</Button>}
         </div>

@@ -217,7 +217,7 @@ export default function StudioWork() {
               )}
 
               {reviews.length === 0 ? (
-                <div className="text-center py-6 text-slate-400 text-sm">لا مراجعات بعد — رأيك يهم الكاتب!</div>
+                <div className="text-center py-6 text-slate-400 text-sm">لا مراجعات بعد · رأيك يهم الكاتب!</div>
               ) : (
                 <Stagger className="space-y-3">
                   {reviews.map((r) => (

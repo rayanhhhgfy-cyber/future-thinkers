@@ -164,7 +164,7 @@ export default function VentureDetail() {
             {!user ? (
               <Button onClick={() => nav("/login")} className="rounded-xl"><UserPlus className="w-4 h-4 ml-1" /> سجّل الدخول للانضمام</Button>
             ) : v.is_owner ? (
-              <p className="text-sm text-slate-400">هذا مشروعك — راجع طلبات الانضمام بالأسفل 👇</p>
+              <p className="text-sm text-slate-400">هذا مشروعك · راجع طلبات الانضمام بالأسفل 👇</p>
             ) : v.is_member ? (
               <Button variant="outline" onClick={leave} className="rounded-xl text-slate-500"><UserMinus className="w-4 h-4 ml-1" /> مغادرة الفريق</Button>
             ) : v.request_pending ? (
