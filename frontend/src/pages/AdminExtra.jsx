@@ -6,7 +6,7 @@ import { FadeUp } from "@/components/anim";
 import { timeAgo } from "@/components/NotificationsPanel";
 import { THEME_PRESETS, applyTheme } from "@/lib/theme";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
-import { Code2, FlaskConical, Terminal, Palette, Flag, Activity, Globe2, Route as RouteIcon, Plus } from "lucide-react";
+import { Code2, FlaskConical, Terminal, Palette, Flag, Activity, Globe2, Route as RouteIcon, Plus, Bug, Copy, Mail, CheckCircle2, Trash2 } from "lucide-react";
 
 function Empty({ t }) {
   return <div className="text-center py-10 text-slate-400 text-sm font-semibold">{t}</div>;
@@ -488,4 +488,133 @@ function AnalyticsV2() {
   );
 }
 
-export { CodingAdminPanel, ThemePanel, ReportsPanel, HealthPanel, LandingPanel, PathsAdminPanel, AnalyticsV2 };
+function ErrorsPanel() {
+  const [items, setItems] = useState(null);
+  const [counts, setCounts] = useState({ open: 0, resolved: 0, total: 0 });
+  const [status, setStatus] = useState("open");
+  const [source, setSource] = useState("");
+  const [page, setPage] = useState(1);
+  const [pages, setPages] = useState(1);
+  const [openId, setOpenId] = useState(null);
+  const [contact, setContact] = useState(null); // error doc being contacted
+  const [contactMsg, setContactMsg] = useState("");
+  const [busy, setBusy] = useState("");
+  const SRC = { server: ["خادم", "bg-rose-100 text-rose-700"], client: ["واجهة", "bg-sky-100 text-sky-700"], auto: ["تلقائي", "bg-amber-100 text-amber-700"], manual: ["بلاغ مستخدم", "bg-emerald-100 text-emerald-700"] };
+  const load = async (p = page, st = status, src = source) => {
+    try {
+      const { data } = await api.get("/admin/errors", { params: { status: st, source: src, page: p, limit: 20 } });
+      setItems(data.items); setCounts(data.counts); setPages(data.pages);
+    } catch (e) { toast.error(apiErr(e)); setItems([]); }
+  };
+  useEffect(() => { load(1); setPage(1); /* eslint-disable-next-line */ }, [status, source]);
+  const setSt = async (e, st) => {
+    setBusy(e.id);
+    try { await api.post(`/admin/errors/${e.id}/resolve`, { status: st }); load(); }
+    catch (er) { toast.error(apiErr(er)); }
+    setBusy("");
+  };
+  const del = async (e) => {
+    if (!window.confirm("حذف سجل هذا الخطأ نهائيًا؟")) return;
+    setBusy(e.id);
+    try { await api.delete(`/admin/errors/${e.id}`); toast.success("تم الحذف"); load(); }
+    catch (er) { toast.error(apiErr(er)); }
+    setBusy("");
+  };
+  const copyFull = async (e) => {
+    const text = `رسالة الخطأ: ${e.message}\nالمصدر: ${e.source}\nالصفحة: ${e.page}\nالمستخدم: ${e.user_name || "زائر"} (${e.user_email || ""})\nالوقت: ${e.created_at}\n\nالتفاصيل الكاملة:\n${e.detail || ""}`;
+    try { await navigator.clipboard.writeText(text); toast.success("تم نسخ الخطأ كاملًا 📋"); }
+    catch { toast.error("تعذر النسخ"); }
+  };
+  const sendContact = async () => {
+    setBusy("contact");
+    try {
+      await api.post(`/admin/errors/${contact.id}/contact`, { message: contactMsg });
+      toast.success("أُرسلت الرسالة للمستخدم عبر الإشعارات 🔔");
+      setContact(null); setContactMsg(""); load();
+    } catch (er) { toast.error(apiErr(er)); }
+    setBusy("");
+  };
+  return (
+    <div>
+      <h2 className="font-head font-extrabold text-lg flex items-center gap-2 mb-1"><Bug className="w-5 h-5 text-rose-600" /> سجل الأخطاء</h2>
+      <p className="text-xs text-slate-400 mb-4">كل خطأ يحدث في الموقع يُسجل هنا بتفاصيله الحقيقية الكاملة · المستخدمون لا يرون إلا رسائل ودية قصيرة · المفتوحة: {counts.open} · تم حلها: {counts.resolved} · الإجمالي: {counts.total}</p>
+      <div className="flex flex-wrap gap-2 mb-5 items-center">
+        <div className="flex gap-1.5 bg-white rounded-2xl p-1.5 border border-slate-100 ft-shadow w-fit">
+          {[["open", "المفتوحة"], ["resolved", "تم حلها"], ["all", "الكل"]].map(([k, l]) => (
+            <button key={k} onClick={() => setStatus(k)} className={`px-4 py-2 rounded-xl text-sm font-bold ${status === k ? "bg-slate-900 text-white" : "text-slate-500 hover:bg-slate-50"}`}>{l}{k === "open" && counts.open ? ` (${counts.open})` : ""}</button>
+          ))}
+        </div>
+        <div className="flex gap-1.5 bg-white rounded-2xl p-1.5 border border-slate-100 ft-shadow w-fit">
+          {[["", "كل المصادر"], ["server", "الخادم"], ["client", "الواجهة"], ["auto", "تلقائي"], ["manual", "بلاغات"]].map(([k, l]) => (
+            <button key={k || "all"} onClick={() => setSource(k)} className={`px-3 py-2 rounded-xl text-xs font-bold ${source === k ? "bg-rose-600 text-white" : "text-slate-500 hover:bg-slate-50"}`}>{l}</button>
+          ))}
+        </div>
+        <button onClick={() => load()} className="px-3 py-2 rounded-xl text-sm font-bold text-slate-400 hover:bg-white">تحديث</button>
+      </div>
+      {!items ? <PageLoader /> : items.length === 0 ? <Empty t="لا أخطاء هنا 🎉" /> : (
+        <div className="space-y-3">
+          {items.map((e) => {
+            const [sLabel, sCls] = SRC[e.source] || [e.source, "bg-slate-100 text-slate-600"];
+            const opened = openId === e.id;
+            return (
+              <div key={e.id} className="bg-white rounded-2xl p-4 border border-slate-100 ft-shadow">
+                <div className="flex flex-wrap items-start gap-3">
+                  <span className={`px-2.5 py-1 rounded-full text-[11px] font-extrabold shrink-0 ${sCls}`}>{sLabel}</span>
+                  <div className="flex-1 min-w-[220px]">
+                    <div className="font-semibold text-sm text-slate-800 break-words">{e.message}</div>
+                    <div className="text-[11px] text-slate-400 mt-1 flex flex-wrap gap-x-2">
+                      <span dir="ltr">{e.page || ""}</span>
+                      <span>·</span>
+                      <span>{e.user_name ? `${e.user_name} (${e.user_email || ""})` : "زائر غير مسجل"}</span>
+                      <span>·</span>
+                      <span>{timeAgo(e.created_at)}</span>
+                      {e.contacted_at && <span className="text-sky-600 font-bold">· تمت مراسلته</span>}
+                    </div>
+                  </div>
+                  <span className={`px-2.5 py-1 rounded-full text-[11px] font-extrabold shrink-0 ${e.status === "resolved" ? "bg-emerald-100 text-emerald-700" : "bg-rose-50 text-rose-600"}`}>{e.status === "resolved" ? "تم الحل" : "مفتوح"}</span>
+                </div>
+                {opened && (
+                  <div className="mt-3">
+                    <pre dir="ltr" className="text-left bg-slate-900 text-emerald-200/90 text-[11px] leading-relaxed rounded-xl p-3 max-h-72 overflow-auto whitespace-pre-wrap break-words">{e.detail || "لا توجد تفاصيل تقنية مرفقة"}</pre>
+                  </div>
+                )}
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button onClick={() => setOpenId(opened ? null : e.id)} className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold">{opened ? "إخفاء التفاصيل" : "عرض الخطأ كاملًا"}</button>
+                  <button onClick={() => copyFull(e)} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold"><Copy className="w-3.5 h-3.5" /> نسخ الخطأ</button>
+                  {e.user_id && <button onClick={() => { setContact(e); setContactMsg("مرحبًا، لاحظنا حدوث خطأ أثناء استخدامك المنصة وعملنا على إصلاحه. جرّب الآن وأخبرنا إن تكرر 🙏"); }} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold"><Mail className="w-3.5 h-3.5" /> مراسلة المستخدم</button>}
+                  {e.status === "open"
+                    ? <button disabled={busy === e.id} onClick={() => setSt(e, "resolved")} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold disabled:opacity-50"><CheckCircle2 className="w-3.5 h-3.5" /> تحديد كمحلول</button>
+                    : <button disabled={busy === e.id} onClick={() => setSt(e, "open")} className="px-3 py-1.5 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-700 text-xs font-bold disabled:opacity-50">إعادة فتح</button>}
+                  <button disabled={busy === e.id} onClick={() => del(e)} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-bold disabled:opacity-50"><Trash2 className="w-3.5 h-3.5" /> حذف</button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+      {pages > 1 && (
+        <div className="flex items-center justify-center gap-2 mt-5">
+          <button disabled={page <= 1} onClick={() => { const p = page - 1; setPage(p); load(p); }} className="px-4 py-2 rounded-xl bg-white border border-slate-100 text-sm font-bold disabled:opacity-40">السابق</button>
+          <span className="text-sm text-slate-500 font-bold">{page} / {pages}</span>
+          <button disabled={page >= pages} onClick={() => { const p = page + 1; setPage(p); load(p); }} className="px-4 py-2 rounded-xl bg-white border border-slate-100 text-sm font-bold disabled:opacity-40">التالي</button>
+        </div>
+      )}
+      {contact && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-3" onClick={() => setContact(null)}>
+          <div className="bg-white rounded-3xl p-5 w-full max-w-md" onClick={(ev) => ev.stopPropagation()}>
+            <h3 className="font-head font-extrabold">مراسلة {contact.user_name || "المستخدم"}</h3>
+            <p className="text-xs text-slate-400 mt-1">ستصله الرسالة كإشعار داخل المنصة بخصوص الخطأ: «{contact.message}»</p>
+            <textarea value={contactMsg} onChange={(ev) => setContactMsg(ev.target.value)} rows={4}
+              className="w-full mt-3 rounded-xl border border-slate-200 p-3 text-sm outline-none focus:border-sky-400" placeholder="اكتب رسالتك..." />
+            <div className="flex gap-2 mt-4">
+              <button disabled={busy === "contact" || contactMsg.trim().length < 3} onClick={sendContact} className="flex-1 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-sm font-bold disabled:opacity-50">إرسال الإشعار</button>
+              <button onClick={() => setContact(null)} className="px-5 py-2.5 rounded-xl bg-slate-100 text-slate-600 text-sm font-bold">إلغاء</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export { CodingAdminPanel, ThemePanel, ReportsPanel, HealthPanel, LandingPanel, PathsAdminPanel, AnalyticsV2, ErrorsPanel };
