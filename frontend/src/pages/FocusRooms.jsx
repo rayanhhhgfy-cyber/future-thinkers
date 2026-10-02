@@ -4,7 +4,7 @@ import api, { apiErr } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { Layout, PageLoader, EmptyState } from "@/components/Layout";
 import { toast } from "sonner";
-import { Timer, Plus, LogOut, Users, Play, Pause, Flame, Headphones, Target, CalendarDays, Trophy, History, Activity, Check } from "lucide-react";
+import { Timer, Plus, LogOut, Users, Play, Pause, Flame, Headphones, Target, CalendarDays, Trophy, History, Activity, Check, Coffee } from "lucide-react";
 
 function fmt(s) {
   const m = Math.floor(s / 60), ss = s % 60;
@@ -21,6 +21,7 @@ const MOODS = {
 };
 const moodOf = (r) => MOODS[r?.mood] || MOODS.violet;
 const GOALS = [10, 25, 45, 60];
+const POMO_FOCUS = 25 * 60, POMO_BREAK = 5 * 60, POMO_CYCLE = POMO_FOCUS + POMO_BREAK;
 
 /* Weekly focus leaderboard strip · hides on error/empty, lobby only. */
 function FocusLeaders() {
@@ -65,6 +66,8 @@ export default function FocusRooms() {
   const [seconds, setSeconds] = useState(0);
   const [ticking, setTicking] = useState(false);
   const [goalReached, setGoalReached] = useState(false);
+  const [pomodoro, setPomodoro] = useState(false);
+  const [pomoSec, setPomoSec] = useState(0);
   const pendingMin = useRef(0);
   const load = () => api.get("/focus/rooms").then((r) => setRooms(r.data)).catch(() => setRooms([]));
   const loadStats = () => api.get("/focus/stats/me").then((r) => setStats(r.data)).catch(() => setStats(null));
@@ -97,6 +100,24 @@ export default function FocusRooms() {
     }
   }, [seconds, room, goalSec, goalReached]);
 
+  // pomodoro: independent 25/5 cycle clock, local state only (never touches heartbeat)
+  useEffect(() => {
+    if (!pomodoro || !ticking) return;
+    const iv = setInterval(() => setPomoSec((s) => s + 1), 1000);
+    return () => clearInterval(iv);
+  }, [pomodoro, ticking]);
+  useEffect(() => { if (!room) { setPomodoro(false); setPomoSec(0); } }, [room]);
+  const prevPomoPhase = useRef(null);
+  useEffect(() => {
+    if (!pomodoro) { prevPomoPhase.current = null; return; }
+    const ph = (pomoSec % POMO_CYCLE) < POMO_FOCUS ? "focus" : "break";
+    if (prevPomoPhase.current && prevPomoPhase.current !== ph) {
+      if (ph === "break") toast("موعد استراحة ☕ · خمس دقائق لتلتقط أنفاسك");
+      else toast("انتهت الاستراحة · عودة للتركيز 🎯");
+    }
+    prevPomoPhase.current = ph;
+  }, [pomoSec, pomodoro]);
+
   const create = async () => {
     if (name.trim().length < 2) return toast.error("اسم الغرفة قصير");
     try {
@@ -127,13 +148,18 @@ export default function FocusRooms() {
   if (room) {
     const me = room.members?.find((m) => m.user_id === user?.id);
     const m = moodOf(room);
+    const pomoPos = pomoSec % POMO_CYCLE;
+    const pomoPhase = pomoPos < POMO_FOCUS ? "focus" : "break";
+    const pomoLeft = (pomoPhase === "focus" ? POMO_FOCUS : POMO_CYCLE) - pomoPos;
+    const pomoCycles = Math.floor(pomoSec / POMO_CYCLE);
+    const pomoPct = Math.round(((pomoPhase === "focus" ? pomoPos : pomoPos - POMO_FOCUS) / (pomoPhase === "focus" ? POMO_FOCUS : POMO_BREAK)) * 100);
     const roomGoalSec = (room.goal_min || 25) * 60;
     const ringPct = Math.min(100, (seconds / roomGoalSec) * 100);
     const R = 124, CIRC = 2 * Math.PI * R;
     return (
       <Layout>
         <div className="max-w-4xl lg:max-w-5xl xl:max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 xl:px-10 py-8 lg:py-10 xl:py-12">
-          <div className="animate-scale-in relative overflow-hidden rounded-[2rem] bg-slate-950 grain text-white px-5 py-9 sm:px-10 sm:py-11 lg:px-12 lg:py-14 xl:px-16 xl:py-16 text-center ft-shadow-lg">
+          <div className={`animate-scale-in relative overflow-hidden rounded-[2rem] bg-slate-950 grain text-white px-5 py-9 sm:px-10 sm:py-11 lg:px-12 lg:py-14 xl:px-16 xl:py-16 text-center ft-shadow-lg ${pomodoro && pomoPhase === "break" ? "ring-2 ring-emerald-300/50" : ""}`}>
             <span className="absolute inset-x-0 top-0 h-1 z-10" style={{ background: `linear-gradient(to left, transparent, ${m.ring}, transparent)` }} />
             <div className="pointer-events-none absolute inset-0 opacity-40" style={{ background: `radial-gradient(600px 260px at 50% -60px, ${m.glow}, transparent)` }} />
             <div className={`pointer-events-none absolute left-1/2 top-44 -translate-x-1/2 w-72 h-72 rounded-full blur-3xl ${ticking ? "animate-pulse-soft" : ""}`} style={{ background: m.glow, opacity: 0.35 }} />
@@ -152,8 +178,8 @@ export default function FocusRooms() {
                 <circle cx="140" cy="140" r={R} fill="none" strokeWidth="10" strokeLinecap="round" stroke={goalReached ? "#34d399" : m.ring} className="transition-all duration-1000" strokeDasharray={CIRC} strokeDashoffset={CIRC * (1 - ringPct / 100)} />
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center px-8">
-                <div className="font-mono text-6xl sm:text-7xl lg:text-7xl xl:text-8xl font-black tabular-nums tracking-tight leading-none" dir="ltr">{fmt(seconds)}</div>
-                <div className="text-white/40 text-[11px] lg:text-xs font-bold mt-3">{ticking ? "الجلسة جارية · ركّز" : "متوقفة مؤقتاً"}</div>
+                <div className={`font-mono text-6xl sm:text-7xl lg:text-7xl xl:text-8xl font-black tabular-nums tracking-tight leading-none ${pomodoro && pomoPhase === "break" ? "text-emerald-300" : ""}`} dir="ltr">{fmt(seconds)}</div>
+                <div className="text-white/40 text-[11px] lg:text-xs font-bold mt-3">{pomodoro && pomoPhase === "break" ? "موعد استراحة · أرح عينيك وابتعد عن الشاشة" : ticking ? "الجلسة جارية · ركّز" : "متوقفة مؤقتاً"}</div>
               </div>
             </div>
             <p className="relative text-white/50 text-sm lg:text-base mt-6 lg:mt-7 max-w-md lg:max-w-lg xl:max-w-xl mx-auto leading-relaxed">دقائقك المحفوظة: {Math.round((me?.focus_min || 0) + seconds / 60)} · الجلسة من 10 دقائق فأكثر تمنح نقاطاً (حتى 30) · هدف الجلسة {room.goal_min || 25}د</p>
@@ -164,6 +190,27 @@ export default function FocusRooms() {
               <button onClick={leave} className="pressable inline-flex items-center justify-center gap-2 h-12 lg:h-[52px] px-7 lg:px-9 lg:text-base rounded-2xl bg-white/10 hover:bg-white/15 ring-1 ring-white/15 font-bold min-w-[160px] lg:min-w-[180px] min-h-[44px]">
                 <LogOut className="w-5 h-5" /> إنهاء الجلسة
               </button>
+            </div>
+            <div className="relative mt-6 lg:mt-7 flex flex-col items-center gap-3">
+              <button
+                onClick={() => { setPomodoro((v) => !v); setPomoSec(0); }}
+                aria-pressed={pomodoro}
+                data-testid="focus-pomodoro-toggle"
+                className={`pressable inline-flex items-center justify-center gap-2 min-h-[44px] px-5 py-2.5 rounded-full text-xs lg:text-sm font-bold ring-1 transition-colors ${pomodoro ? "bg-amber-400/20 ring-amber-300/50 text-amber-100" : "bg-white/10 ring-white/15 text-white/80 hover:bg-white/15"}`}
+              >
+                <Timer className="w-4 h-4" /> وضع بومودورو · {pomodoro ? "مفعّل" : "معطّل"}
+              </button>
+              {pomodoro && (
+                <div className={`inline-flex items-center gap-2.5 px-4 py-2.5 rounded-2xl text-sm font-bold ring-1 backdrop-blur-sm ${pomoPhase === "break" ? "bg-emerald-400/20 ring-emerald-300/50 text-emerald-100" : "bg-white/10 ring-white/15 text-white"}`}>
+                  {pomoPhase === "break" ? <Coffee className="w-4 h-4 shrink-0" /> : <Flame className="w-4 h-4 shrink-0 text-amber-300" />}
+                  <span>{pomoPhase === "break" ? "موعد استراحة" : "جولة تركيز"}</span>
+                  <span className="font-mono tabular-nums" dir="ltr">{fmt(pomoLeft)}</span>
+                  <span className="w-16 h-1.5 rounded-full bg-white/15 overflow-hidden shrink-0">
+                    <span className={`block h-full rounded-full transition-all duration-1000 ${pomoPhase === "break" ? "bg-emerald-300" : "bg-amber-300"}`} style={{ width: `${pomoPct}%` }} />
+                  </span>
+                  <span className="text-white/50 text-[11px] font-bold">الدورة {pomoCycles + 1} · {pomoCycles} مكتملة</span>
+                </div>
+              )}
             </div>
             <div className="relative flex justify-center gap-2 lg:gap-2.5 mt-9 lg:mt-10 flex-wrap">
               {(room.members || []).map((mm) => (

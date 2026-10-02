@@ -5,7 +5,7 @@ import api from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 import * as Icons from "lucide-react";
-import { Trophy, Flame, BookOpen, Crown, School, MapPin, Award, Sparkles, Medal, Download, UserPlus, UserCheck, Users, PenLine, Rocket, X, FileText, LayoutGrid, BadgeCheck, Swords, Copy, ShieldCheck } from "lucide-react";
+import { Trophy, Flame, BookOpen, Crown, School, MapPin, Award, Sparkles, Medal, Download, UserPlus, UserCheck, Users, PenLine, Rocket, X, FileText, LayoutGrid, BadgeCheck, Swords, Copy, ShieldCheck, Share2 } from "lucide-react";
 import { FadeUp, Stagger, Item } from "@/components/anim";
 import { coverCls, FRAME_RING } from "@/lib/cosmetics";
 import { ActivityHeatmap } from "@/components/dashboard/widgets";
@@ -48,6 +48,89 @@ export default function Profile() {
   const copyCertCode = async (code) => {
     try { await navigator.clipboard.writeText(code); toast.success("نُسخ رمز التحقق ✓"); }
     catch { toast.error("تعذّر النسخ · انسخ الرمز يدوياً"); }
+  };
+
+  const shareCertImage = (c) => {
+    try {
+      const W = 1280, H = 900;
+      const cv = document.createElement("canvas");
+      cv.width = W; cv.height = H;
+      const x = cv.getContext("2d");
+      x.direction = "rtl";
+      x.textAlign = "center";
+      x.textBaseline = "middle";
+      // ivory background
+      const wash = x.createLinearGradient(0, 0, 0, H);
+      wash.addColorStop(0, "#FFFEF9"); wash.addColorStop(1, "#FCF3DC");
+      x.fillStyle = wash; x.fillRect(0, 0, W, H);
+      // gold double frame
+      const gold = x.createLinearGradient(0, 0, W, H);
+      gold.addColorStop(0, "#FBBF24"); gold.addColorStop(0.5, "#D97706"); gold.addColorStop(1, "#F59E0B");
+      x.strokeStyle = gold; x.lineWidth = 10; x.strokeRect(22, 22, W - 44, H - 44);
+      x.lineWidth = 2; x.strokeRect(46, 46, W - 92, H - 92);
+      // dark header band with org name
+      x.fillStyle = "#0A192F"; x.fillRect(46, 46, W - 92, 118);
+      x.fillStyle = "#FBBF24"; x.fillRect(46, 158, W - 92, 6);
+      x.fillStyle = "#FFFFFF";
+      x.font = "800 46px 'Segoe UI', Tahoma, Arial, sans-serif";
+      x.fillText("منصة مفكري المستقبل", W / 2, 106);
+      // certificate title
+      x.fillStyle = "#B45309";
+      x.font = "800 54px 'Segoe UI', Tahoma, Arial, sans-serif";
+      x.fillText("شهادة تقدير", W / 2, 248);
+      // recipient name (big)
+      x.fillStyle = "#0F172A";
+      x.font = "800 68px 'Segoe UI', Tahoma, Arial, sans-serif";
+      x.fillText(p.name || "", W / 2, 348);
+      // achievement line + subtitle
+      x.fillStyle = "#334155";
+      x.font = "700 34px 'Segoe UI', Tahoma, Arial, sans-serif";
+      x.fillText(c.title_line || "", W / 2, 428);
+      if (c.subtitle) {
+        x.fillStyle = "#64748B";
+        x.font = "400 26px 'Segoe UI', Tahoma, Arial, sans-serif";
+        x.fillText(c.subtitle, W / 2, 478);
+      }
+      // ornament divider
+      x.strokeStyle = "#D97706"; x.lineWidth = 2;
+      x.beginPath(); x.moveTo(W / 2 - 190, 528); x.lineTo(W / 2 - 26, 528); x.stroke();
+      x.beginPath(); x.moveTo(W / 2 + 26, 528); x.lineTo(W / 2 + 190, 528); x.stroke();
+      x.save(); x.translate(W / 2, 528); x.rotate(Math.PI / 4);
+      x.fillStyle = "#F59E0B"; x.fillRect(-9, -9, 18, 18); x.restore();
+      // seal: gold circle with star
+      const sx = W / 2, sy = 648, sr = 66;
+      const sealGrad = x.createRadialGradient(sx - 18, sy - 18, 8, sx, sy, sr);
+      sealGrad.addColorStop(0, "#FDE68A"); sealGrad.addColorStop(0.55, "#F59E0B"); sealGrad.addColorStop(1, "#B45309");
+      x.beginPath(); x.arc(sx, sy, sr, 0, Math.PI * 2); x.fillStyle = sealGrad; x.fill();
+      x.lineWidth = 4; x.strokeStyle = "#FFFBEB"; x.stroke();
+      x.beginPath(); x.arc(sx, sy, sr - 12, 0, Math.PI * 2); x.lineWidth = 2; x.strokeStyle = "rgba(120,53,15,0.55)"; x.stroke();
+      x.beginPath();
+      for (let i = 0; i < 10; i++) {
+        const r = i % 2 === 0 ? 30 : 13;
+        const a = -Math.PI / 2 + (i * Math.PI) / 5;
+        const px = sx + r * Math.cos(a), py = sy + r * Math.sin(a);
+        if (i === 0) x.moveTo(px, py); else x.lineTo(px, py);
+      }
+      x.closePath(); x.fillStyle = "#FFFBEB"; x.fill();
+      // date + verify code
+      x.fillStyle = "#475569";
+      x.font = "700 24px 'Segoe UI', Tahoma, Arial, sans-serif";
+      const dateStr = String(c.created_at || "").slice(0, 10);
+      x.fillText(dateStr ? `تاريخ المنح: ${dateStr}` : "", W / 2, 762);
+      if (c.code) {
+        x.fillStyle = "#92400E";
+        x.font = "700 24px 'Courier New', monospace";
+        x.fillText(`رمز التحقق: ${c.code}`, W / 2, 806);
+      }
+      cv.toBlob((blob) => {
+        if (!blob) { toast.error("تعذّر إنشاء الصورة"); return; }
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url; a.download = `cert-${c.code || c.id}.png`; a.click();
+        URL.revokeObjectURL(url);
+        toast.success("تم إنشاء صورة الشهادة · بدأ التنزيل 🖼");
+      }, "image/png");
+    } catch { toast.error("تعذّر إنشاء الصورة"); }
   };
 
   const toggleFollow = async () => {
@@ -248,27 +331,27 @@ export default function Profile() {
               <div>
                 <h2 className="font-head font-bold text-lg lg:text-xl mb-3 flex items-center gap-2"><Award className="w-5 h-5 ft-text-accent" /> الشهادات ({certs.length})</h2>
                 {certs.length === 0 ? <p className="text-slate-400 text-sm bg-white rounded-2xl p-6 text-center border border-slate-100">لا شهادات بعد · تُمنح للتميز والمشاركة 🏅</p> : (
-                  <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                  <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-3">
                     {certs.map((c) => (
                       <div key={c.id} className="relative rounded-[22px] p-[3px] bg-gradient-to-br from-amber-300 via-yellow-500 to-amber-600 shadow-[0_14px_34px_-12px_rgba(217,119,6,0.5)] hover-lift">
-                        <div className="relative overflow-hidden rounded-[19px] bg-gradient-to-b from-[#FFFEF9] via-[#FFFDF4] to-[#FCF3DC] px-5 pt-6 pb-5 text-center h-full">
+                        <div className="relative overflow-hidden rounded-[19px] bg-gradient-to-b from-[#FFFEF9] via-[#FFFDF4] to-[#FCF3DC] px-4 pt-4 pb-4 text-center h-full">
                           <div className="pointer-events-none absolute inset-2 rounded-2xl border border-amber-300/60" />
                           <div className="pointer-events-none absolute inset-[13px] rounded-[13px] border border-amber-200/50" />
-                          <div className="relative mx-auto w-16 h-16">
-                            <span className="absolute -bottom-2.5 right-[26px] w-4 h-8 rounded-b-lg bg-gradient-to-b from-rose-400 to-rose-600 rotate-[16deg]" />
-                            <span className="absolute -bottom-2.5 left-[26px] w-4 h-8 rounded-b-lg bg-gradient-to-b from-amber-400 to-amber-600 -rotate-[16deg]" />
-                            <span className="relative z-10 w-16 h-16 rounded-full bg-gradient-to-br from-amber-300 via-amber-500 to-yellow-600 ring-4 ring-amber-100 shadow-lg grid place-items-center text-white">
-                              <Award className="w-8 h-8" />
+                          <div className="relative mx-auto w-12 h-12">
+                            <span className="absolute -bottom-2 right-[20px] w-3 h-6 rounded-b-lg bg-gradient-to-b from-rose-400 to-rose-600 rotate-[16deg]" />
+                            <span className="absolute -bottom-2 left-[20px] w-3 h-6 rounded-b-lg bg-gradient-to-b from-amber-400 to-amber-600 -rotate-[16deg]" />
+                            <span className="relative z-10 w-12 h-12 rounded-full bg-gradient-to-br from-amber-300 via-amber-500 to-yellow-600 ring-4 ring-amber-100 shadow-lg grid place-items-center text-white">
+                              <Award className="w-6 h-6" />
                             </span>
                           </div>
-                          <div className="relative mt-5 font-head font-extrabold text-slate-800 leading-snug">{c.title_line}</div>
+                          <div className="relative mt-3 font-head font-extrabold text-slate-800 leading-snug">{c.title_line}</div>
                           {c.subtitle && <div className="relative mt-1 text-xs text-slate-500 leading-relaxed">{c.subtitle}</div>}
-                          <div className="relative mt-3.5 flex items-center justify-center gap-2" aria-hidden="true">
+                          <div className="relative mt-2.5 flex items-center justify-center gap-2" aria-hidden="true">
                             <span className="h-px w-10 bg-gradient-to-l from-transparent to-amber-400" />
                             <span className="w-1.5 h-1.5 rotate-45 bg-amber-500" />
                             <span className="h-px w-10 bg-gradient-to-r from-transparent to-amber-400" />
                           </div>
-                          <div className="relative mt-3 flex items-center justify-center gap-2 flex-wrap">
+                          <div className="relative mt-2.5 flex items-center justify-center gap-2 flex-wrap">
                             <span className="text-[11px] font-bold text-slate-400">{String(c.created_at || "").slice(0, 10)}</span>
                             {c.code && (
                               <button onClick={() => copyCertCode(c.code)} title="نسخ رمز التحقق"
@@ -279,12 +362,24 @@ export default function Profile() {
                               </button>
                             )}
                           </div>
-                          {isMine && (
-                            <button onClick={() => downloadCert(c.id)}
-                              className="pressable relative mt-4 inline-flex items-center gap-2 rounded-xl ft-btn-primary px-4 py-2.5 text-sm font-bold min-h-[44px]">
-                              <Download className="w-4 h-4" /> تحميل الشهادة PDF
+                          <div className="relative mt-3 flex items-center justify-center gap-1.5 flex-wrap">
+                            {isMine && (
+                              <button onClick={() => downloadCert(c.id)} title="تحميل الشهادة PDF"
+                                className="pressable inline-flex items-center gap-1.5 rounded-full ft-btn-primary px-3 py-1.5 text-[11px] font-bold min-h-[36px]">
+                                <Download className="w-3.5 h-3.5" /> PDF
+                              </button>
+                            )}
+                            <button onClick={() => shareCertImage(c)} title="مشاركة الشهادة كصورة"
+                              className="pressable inline-flex items-center gap-1.5 rounded-full bg-white border border-amber-300 px-3 py-1.5 text-[11px] font-bold text-amber-800 hover:bg-amber-50 transition-colors min-h-[36px]">
+                              <Share2 className="w-3.5 h-3.5" /> مشاركة كصورة
                             </button>
-                          )}
+                            {c.code && (
+                              <a href={`/verify/${c.code}`} target="_blank" rel="noreferrer" title="صفحة التحقق العامة"
+                                className="pressable inline-flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1.5 text-[11px] font-bold text-emerald-700 hover:bg-emerald-100 transition-colors min-h-[36px]">
+                                <ShieldCheck className="w-3.5 h-3.5" /> تحقق
+                              </a>
+                            )}
+                          </div>
                         </div>
                       </div>
                     ))}

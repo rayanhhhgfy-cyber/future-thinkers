@@ -182,6 +182,7 @@ export default function Leaderboard() {
   const [period, setPeriod] = useState("all");
   const [rows, setRows] = useState(null);
   const [standing, setStanding] = useState(null);
+  const [rivals, setRivals] = useState(null);
   const [q, setQ] = useState("");
 
   useEffect(() => {
@@ -205,6 +206,11 @@ export default function Leaderboard() {
   useEffect(() => {
     if (!user) { setStanding(null); return; }
     api.get("/leaderboard/my-standing").then((r) => setStanding(r.data)).catch(() => {});
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) { setRivals(null); return; }
+    api.get("/leaderboard/around-me").then((r) => setRivals(r.data)).catch(() => setRivals(null));
   }, [user]);
 
   const tabMeta = TABS.find((t) => t.v === tab);
@@ -270,6 +276,9 @@ export default function Leaderboard() {
       <div className="max-w-4xl lg:max-w-6xl xl:max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-10 xl:px-12 py-8 lg:py-12">
         {/* my standing */}
         {user && standing && <MyStandingCard standing={standing} user={user} />}
+
+        {/* rivals around me */}
+        {user && rivals && <RivalsCard data={rivals} />}
 
         {/* tabs */}
         <div className="flex gap-2 lg:gap-3 overflow-x-auto pb-2 -mx-1 px-1 mb-4 lg:mb-6" style={{ scrollbarWidth: "none" }}>
@@ -390,6 +399,54 @@ export default function Leaderboard() {
         </motion.div>
       </div>
     </Layout>
+  );
+}
+
+function RivalsCard({ data }) {
+  const items = data?.items || [];
+  if (!items.length) return null;
+  const me = items.find((r) => r.is_me);
+  const above = me && data.me_rank ? items.find((r) => r.rank === data.me_rank - 1) : null;
+  const need = above && me ? Math.max(1, (above.xp || 0) - (me.xp || 0) + 1) : null;
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: EASE }}
+      className="bg-white rounded-[28px] lg:rounded-[32px] border border-slate-100 ft-shadow p-5 sm:p-6 lg:p-7 mb-6 lg:mb-8"
+      data-testid="lb-rivals"
+    >
+      <div className="flex items-center gap-2.5 mb-4">
+        <span className="w-10 h-10 lg:w-11 lg:h-11 rounded-2xl bg-gradient-to-br from-rose-500 to-orange-500 text-white grid place-items-center shadow-lg shadow-rose-200 shrink-0">
+          <Swords className="w-5 h-5" />
+        </span>
+        <div>
+          <div className="font-head font-extrabold text-slate-800 lg:text-lg leading-tight">منافسوك حولك</div>
+          <div className="text-[11px] lg:text-xs text-slate-400 font-bold">{data.me_rank ? `أنت في المركز #${data.me_rank} · هؤلاء الأقرب إليك` : "أنت خارج قائمة الطلاب · هؤلاء متصدّرو الترتيب"}</div>
+        </div>
+      </div>
+      <div className="space-y-1.5">
+        {items.map((r) => (
+          <div
+            key={r.user_id}
+            className={`flex items-center gap-3 rounded-2xl px-3 py-2 lg:px-4 ${r.is_me ? "ft-bg-soft ring-2 ft-ring-accent" : "bg-slate-50/70 ring-1 ring-slate-100"}`}
+          >
+            <span className={`w-8 h-8 rounded-full grid place-items-center text-xs font-black shrink-0 ${r.is_me ? "ft-icon-tile text-white" : "bg-white ring-1 ring-slate-200 text-slate-500"}`}>{r.rank}</span>
+            <Link to={`/profile/${r.user_id}`} className="flex-1 min-w-0 truncate text-sm font-bold text-slate-700 hover:ft-text-accent transition-colors min-h-[44px] inline-flex items-center">
+              {r.name}
+            </Link>
+            {r.is_me && <span className="ft-chip rounded-full px-2.5 py-1 text-[10px] font-extrabold shrink-0">أنت</span>}
+            <span className="inline-flex items-center gap-1 text-xs font-extrabold text-amber-600 bg-amber-50 ring-1 ring-amber-100 rounded-full px-2.5 py-1 shrink-0">
+              <Zap className="w-3.5 h-3.5" />{(r.xp || 0).toLocaleString("en-US")}
+            </span>
+          </div>
+        ))}
+      </div>
+      {above && need && (
+        <div className="mt-4 flex items-center gap-2 rounded-2xl bg-gradient-to-l from-amber-50 to-orange-50 ring-1 ring-amber-100 px-4 py-3 text-xs lg:text-sm font-bold text-amber-800">
+          <TrendingUp className="w-4 h-4 shrink-0" />
+          <span>تحتاج <b className="font-head">{need.toLocaleString("en-US")}</b> نقطة لتجاوز <b className="font-head">{above.name}</b> والوصول إلى المركز #{above.rank} · كتاب واحد قد يكفي 📚</span>
+        </div>
+      )}
+    </motion.div>
   );
 }
 
