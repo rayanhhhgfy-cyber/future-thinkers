@@ -165,7 +165,7 @@ export function ActivityHeatmap() {
                 <div key={wi} className="grid grid-rows-7 gap-1">
                   {w.map((d, di) => d ? (
                     <div key={d.date} title={`${d.date} · ${d.count} نشاط`}
-                      className={`w-3.5 h-3.5 rounded-[4px] ${heatColor(d.count)} hover:ring-2 hover:ring-emerald-300 transition-transform hover:scale-110`} />
+                      className={`w-3.5 h-3.5 rounded-[4px] ${heatColor(d.count)} hover:ring-2 ft-hover-ring-accent transition-transform hover:scale-110`} />
                   ) : <div key={`e-${di}`} className="w-3.5 h-3.5" />)}
                 </div>
               ))}
@@ -376,7 +376,7 @@ export function Suggestions() {
                         <div className="text-sm font-semibold text-slate-800 line-clamp-1">{c.name}</div>
                         <div className="text-[11px] text-slate-400">{c.members_count || 0} عضو</div>
                       </Link>
-                      <Button size="sm" onClick={() => join(c.slug)} disabled={joining === c.slug} className="rounded-xl bg-emerald-600 hover:bg-emerald-700 text-xs h-8">
+                      <Button size="sm" onClick={() => join(c.slug)} disabled={joining === c.slug} className="rounded-xl ft-btn-solid text-xs h-8">
                         {joining === c.slug ? "…" : "انضم"}
                       </Button>
                     </div>

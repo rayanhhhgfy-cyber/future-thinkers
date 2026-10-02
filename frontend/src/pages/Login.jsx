@@ -93,7 +93,7 @@ export default function Login() {
       <div className="hidden lg:flex ft-navy-gradient grain relative flex-col justify-between p-12 text-white overflow-hidden">
         <Link to="/"><Logo dark /></Link>
         <div className="relative z-10">
-          <h1 className="font-head text-4xl font-extrabold leading-tight">أهلاً بك مجدداً في<br /><span className="text-emerald-400">مفكري المستقبل</span></h1>
+          <h1 className="font-head text-4xl font-extrabold leading-tight">أهلاً بك مجدداً في<br /><span className="ft-text-accent-bright">مفكري المستقبل</span></h1>
           <p className="mt-4 text-slate-300 max-w-md">تابع رحلتك المعرفية، واصل القراءة، تحدَّ زملاءك، وتصدّر قوائم الصدارة الوطنية.</p>
         </div>
         <div className="text-slate-400 text-sm">المملكة الأردنية الهاشمية</div>
@@ -114,11 +114,11 @@ export default function Login() {
               <Label htmlFor="password">كلمة المرور</Label>
               <Input id="password" data-testid="login-password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} className="mt-1.5 rounded-xl" placeholder="••••••••" />
             </div>
-            <Button type="submit" data-testid="login-submit" disabled={loading} className="w-full rounded-xl bg-emerald-600 hover:bg-emerald-700 h-11">
+            <Button type="submit" data-testid="login-submit" disabled={loading} className="w-full rounded-xl ft-btn-solid h-11">
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "دخول"}
             </Button>
           </form>
-          <p className="mt-6 text-center text-sm text-slate-500">ليس لديك حساب؟ <Link to="/register" data-testid="go-register-link" className="text-emerald-600 font-medium">أنشئ حساباً</Link></p>
+          <p className="mt-6 text-center text-sm text-slate-500">ليس لديك حساب؟ <Link to="/register" data-testid="go-register-link" className="ft-text-accent font-medium">أنشئ حساباً</Link></p>
 
           <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4">
             <button

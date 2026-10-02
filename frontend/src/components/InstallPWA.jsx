@@ -68,7 +68,7 @@ export default function InstallPWA() {
           <button
             onClick={install}
             data-testid="pwa-install-button"
-            className="shrink-0 inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold px-4 py-2.5 transition-colors"
+            className="shrink-0 inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 ft-hover-bg-soft0 text-white text-sm font-bold px-4 py-2.5 transition-colors"
           >
             <Download className="w-4 h-4" />
             تثبيت
@@ -91,7 +91,7 @@ export default function InstallPWA() {
           <button
             onClick={() => setShowIosHint(true)}
             data-testid="pwa-install-button"
-            className="shrink-0 inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold px-4 py-2.5 transition-colors"
+            className="shrink-0 inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 ft-hover-bg-soft0 text-white text-sm font-bold px-4 py-2.5 transition-colors"
           >
             <Download className="w-4 h-4" />
             تحميل

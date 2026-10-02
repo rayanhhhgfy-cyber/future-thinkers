@@ -91,7 +91,7 @@ export function ChessArena() {
             </div>
             <div className="mr-auto flex items-center gap-2 sm:gap-3">
               <StatChip icon={<Crown className="w-4 h-4 text-amber-300" />} label="تصنيفك" value={`${user.chess_rating || 1200}`} />
-              <StatChip icon={<Trophy className="w-4 h-4 text-emerald-300" />} label="نسبة الفوز" value={`${winRate}%`} />
+              <StatChip icon={<Trophy className="w-4 h-4 ft-text-accent-bright" />} label="نسبة الفوز" value={`${winRate}%`} />
             </div>
           </div>
 
@@ -120,7 +120,7 @@ export function ChessArena() {
               </div>
               <div className="relative">
                 <div className="flex items-center gap-2 font-head font-extrabold text-lg text-white">
-                  <User className="w-5 h-5 text-emerald-300" />
+                  <User className="w-5 h-5 ft-text-accent-bright" />
                   تدريب فردي
                 </div>
                 <p className="text-sm text-slate-400 mt-1">العب باللونين وحدك · جرّب الافتتاحيات والتكتيكات</p>
@@ -146,7 +146,7 @@ export function ChessArena() {
           {/* stats strip */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mt-4">
             <MiniStat icon={<Swords className="w-4 h-4 text-sky-300" />} label="مباريات" value={games.length} delay={0.05} />
-            <MiniStat icon={<Trophy className="w-4 h-4 text-emerald-300" />} label="انتصارات" value={wins} delay={0.1} />
+            <MiniStat icon={<Trophy className="w-4 h-4 ft-text-accent-bright" />} label="انتصارات" value={wins} delay={0.1} />
             <MiniStat icon={<Target className="w-4 h-4 text-slate-300" />} label="تعادل" value={draws} delay={0.15} />
             <MiniStat icon={<Flame className="w-4 h-4 text-rose-300" />} label="خسائر" value={losses} delay={0.2} />
           </div>
@@ -163,12 +163,12 @@ export function ChessArena() {
                 <div className="space-y-2">
                   {activeGames.map((g) => (
                     <button key={g.id} data-testid={`active-game-${g.id}`} onClick={() => nav(`/chess/${g.id}`)}
-                      className="w-full flex items-center justify-between gap-3 rounded-2xl p-4 bg-white/[0.06] border border-white/10 backdrop-blur-xl hover:bg-white/[0.1] hover:border-emerald-400/40 transition-all group">
+                      className="w-full flex items-center justify-between gap-3 rounded-2xl p-4 bg-white/[0.06] border border-white/10 backdrop-blur-xl hover:bg-white/[0.1] ft-hover-border-accent/40 transition-all group">
                       <span className="flex items-center gap-3 min-w-0">
                         <img src={pieceSrc("p", "w")} alt="" className="w-8 h-8 shrink-0 drop-shadow-[0_3px_4px_rgba(0,0,0,0.5)]" draggable={false} />
                         <span className="font-medium text-white truncate">{g.white_name} <span className="text-slate-500 font-normal">ضد</span> {g.black_name}</span>
                       </span>
-                      <span className="flex items-center gap-1 text-xs font-bold text-emerald-300 shrink-0">
+                      <span className="flex items-center gap-1 text-xs font-bold ft-text-accent-bright shrink-0">
                         العب الآن <ChevronLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
                       </span>
                     </button>
@@ -244,7 +244,7 @@ export function ChessArena() {
                     <span className="text-sm font-bold text-white truncate">{c.challenger_name}</span>
                     <div className="flex gap-1.5 shrink-0">
                       <Button size="icon" data-testid={`accept-${c.id}`} onClick={() => accept(c.id)}
-                        className="w-9 h-9 rounded-xl bg-gradient-to-b from-emerald-400 to-emerald-600 hover:from-emerald-300 text-white shadow-[0_8px_20px_-6px_rgba(16,185,129,0.6)]">
+                        className="w-9 h-9 rounded-xl ft-btn-primary shadow-lg">
                         <Check className="w-4 h-4" />
                       </Button>
                       <Button size="icon" variant="outline" data-testid={`decline-${c.id}`} onClick={() => decline(c.id)}
@@ -406,7 +406,7 @@ function TournamentsSection() {
                     {t.status === "registration" ? "التسجيل مفتوح" : t.status === "running" ? "جارية ⚔️" : `انتهت · البطل: ${t.champion_name || ""} 🏆`}
                   </span>
                   {t.status === "registration" && !t.joined && (
-                    <button onClick={() => act(`/chess/tournaments/${t.id}/join`, "انضممت للبطولة ✓")} className="pressable px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold">انضم</button>
+                    <button onClick={() => act(`/chess/tournaments/${t.id}/join`, "انضممت للبطولة ✓")} className="pressable px-4 py-2 rounded-xl ft-btn-solid text-xs font-bold">انضم</button>
                   )}
                   {t.status === "registration" && t.joined && (
                     <button onClick={() => act(`/chess/tournaments/${t.id}/start`, "بدأت البطولة!")} className="pressable px-4 py-2 rounded-xl bg-amber-500 text-slate-950 text-xs font-extrabold">بدء البطولة</button>

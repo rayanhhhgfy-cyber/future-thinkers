@@ -154,7 +154,7 @@ export default function Register() {
               )}
             </div>
 
-            <Button type="submit" data-testid="reg-submit" disabled={loading} className="w-full rounded-xl bg-emerald-600 hover:bg-emerald-700 h-11 mt-2">
+            <Button type="submit" data-testid="reg-submit" disabled={loading} className="w-full rounded-xl ft-btn-solid h-11 mt-2">
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "إنشاء الحساب"}
             </Button>
           </form>
@@ -164,7 +164,7 @@ export default function Register() {
 
       <div className="hidden lg:flex ft-navy-gradient grain relative flex-col justify-center p-12 text-white overflow-hidden order-1 lg:order-2">
         <Link to="/" className="absolute top-12 right-12"><Logo dark /></Link>
-        <h1 className="font-head text-4xl font-extrabold leading-tight">رحلتك المعرفية<br /><span className="text-emerald-400">تبدأ من هنا</span></h1>
+        <h1 className="font-head text-4xl font-extrabold leading-tight">رحلتك المعرفية<br /><span className="ft-text-accent-bright">تبدأ من هنا</span></h1>
         <p className="mt-4 text-slate-300 max-w-md">اقرأ، حاور، تنافس، وابتكر · مع نظام نقاط خبرة وإنجازات وقوائم صدارة على مستوى المملكة.</p>
         <div className="absolute -top-20 -right-20 w-80 h-80 bg-blue-500/20 rounded-full blur-3xl" />
       </div>

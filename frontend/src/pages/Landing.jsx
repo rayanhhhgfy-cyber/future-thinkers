@@ -22,7 +22,7 @@ function ReadMore({ children, lines = 3 }) {
       <div className={expanded ? "" : (CLAMP_CLASSES[lines] || "line-clamp-3")}>{children}</div>
       <button
         onClick={() => setExpanded((v) => !v)}
-        className="mt-3 inline-flex items-center gap-1.5 text-emerald-600 hover:text-emerald-800 text-sm font-bold transition-colors"
+        className="mt-3 inline-flex items-center gap-1.5 ft-text-accent text-sm font-bold transition-colors"
       >
         {expanded ? "عرض أقل" : "اقرأ المزيد"}
         <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${expanded ? "rotate-180" : ""}`} />
@@ -83,16 +83,16 @@ export default function Landing() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 lg:py-32 relative">
           <div className="max-w-3xl">
             <div className="animate-fade-up inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/15 text-sm mb-6">
-              <Sparkles className="w-4 h-4 text-emerald-400" /> {cms?.hero_badge || "المنصة المعرفية الوطنية لطلاب الأردن"}
+              <Sparkles className="w-4 h-4 ft-text-accent-bright" /> {cms?.hero_badge || "المنصة المعرفية الوطنية لطلاب الأردن"}
             </div>
             <h1 className="animate-fade-up d-1 font-head text-4xl sm:text-5xl lg:text-6xl font-extrabold leading-tight">
-              {cms?.hero_title || "نقرأ أكثر، نفكّر أعمق،"}<br /><span className="text-transparent bg-clip-text bg-gradient-to-l from-emerald-300 via-emerald-400 to-teal-300 animate-gradient-text">{cms?.hero_highlight || "ونصنع المستقبل."}</span>
+              {cms?.hero_title || "نقرأ أكثر، نفكّر أعمق،"}<br /><span className="ft-text-gradient animate-gradient-text">{cms?.hero_highlight || "ونصنع المستقبل."}</span>
             </h1>
             <p className="animate-fade-up d-2 mt-6 text-lg text-slate-300 leading-relaxed max-w-2xl">
               {cms?.hero_subtitle || "بيئة معرفية وثقافية وعلمية تجمع طلاب المملكة الأردنية الهاشمية حول القراءة والحوار والشطرنج والبرمجة والابتكار والمنافسات في مجتمع طلابي واحد."}
             </p>
             <div className="animate-fade-up d-3 mt-8 flex flex-wrap gap-3">
-              <Button data-testid="hero-join-btn" onClick={() => nav(user ? "/dashboard" : "/register")} size="lg" className="pressable rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white h-12 px-7 text-base">
+              <Button data-testid="hero-join-btn" onClick={() => nav(user ? "/dashboard" : "/register")} size="lg" className="pressable rounded-2xl ft-btn-solid h-12 px-7 text-base">
                 {user ? "اذهب إلى لوحتي" : "انضم إلى مفكري المستقبل"} <ArrowLeft className="w-5 h-5 mr-1" />
               </Button>
               <Button data-testid="hero-library-btn" onClick={() => nav("/library")} size="lg" variant="outline" className="pressable rounded-2xl h-12 px-7 text-base bg-white/5 border-white/20 text-white hover:bg-white/10">
@@ -117,9 +117,9 @@ export default function Landing() {
       {/* About Us */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 bg-white">
         <FadeUp>
-        <div className="bg-gradient-to-r from-emerald-50 to-blue-50 rounded-3xl p-8 lg:p-12 border border-emerald-100">
+        <div className="bg-gradient-to-r from-emerald-50 to-blue-50 rounded-3xl p-8 lg:p-12 border ft-border-accent">
           <div className="flex items-center gap-3 mb-6">
-            <div className="w-12 h-12 rounded-2xl bg-emerald-100 grid place-items-center"><Users2 className="w-6 h-6 text-emerald-600" /></div>
+            <div className="w-12 h-12 rounded-2xl ft-bg-soft-2 grid place-items-center"><Users2 className="w-6 h-6 ft-text-accent" /></div>
             <h2 className="font-head text-3xl lg:text-4xl font-extrabold text-slate-900">من نحن</h2>
           </div>
           <div className="text-slate-700 leading-relaxed text-base font-body max-w-none">
@@ -137,12 +137,12 @@ export default function Landing() {
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
         <Stagger className="grid lg:grid-cols-2 gap-6 mb-6">
           <Item className="bg-white rounded-3xl p-8 ft-shadow border border-slate-100 hover-lift">
-            <div className="w-12 h-12 rounded-2xl bg-emerald-50 grid place-items-center mb-4"><Flag className="w-6 h-6 text-emerald-600" /></div>
+            <div className="w-12 h-12 rounded-2xl ft-bg-soft grid place-items-center mb-4"><Flag className="w-6 h-6 ft-text-accent" /></div>
             <h2 className="font-head text-2xl font-bold text-slate-900">رؤيتنا</h2>
             <div className="mt-3"><ReadMore lines={3}><p className="text-slate-600 leading-relaxed">{visionText}</p></ReadMore></div>
           </Item>
           <Item className="bg-white rounded-3xl p-8 ft-shadow border border-slate-100 hover-lift">
-            <div className="w-12 h-12 rounded-2xl bg-emerald-50 grid place-items-center mb-4"><Target className="w-6 h-6 text-emerald-600" /></div>
+            <div className="w-12 h-12 rounded-2xl ft-bg-soft grid place-items-center mb-4"><Target className="w-6 h-6 ft-text-accent" /></div>
             <h2 className="font-head text-2xl font-bold text-slate-900">رسالتنا</h2>
             <div className="mt-3"><ReadMore lines={3}><p className="text-slate-600 leading-relaxed">{missionText}</p></ReadMore></div>
           </Item>
@@ -152,7 +152,7 @@ export default function Landing() {
         <Stagger className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {(goalsExpanded ? goalsList : goalsList.slice(0, 3)).map((g, i) => (
             <Item key={i} className="flex items-start gap-3 bg-white rounded-2xl p-5 border border-slate-100 ft-shadow hover-lift">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 text-white grid place-items-center text-sm font-bold shrink-0">{i + 1}</div>
+              <div className="w-8 h-8 rounded-lg ft-icon-tile grid place-items-center text-sm font-bold shrink-0">{i + 1}</div>
               <p className="text-slate-700 text-sm leading-relaxed">{g}</p>
             </Item>
           ))}
@@ -161,7 +161,7 @@ export default function Landing() {
           <div className="text-center mt-6">
             <button
               onClick={() => setGoalsExpanded((v) => !v)}
-              className="inline-flex items-center gap-1.5 text-emerald-600 hover:text-emerald-800 text-sm font-bold transition-colors bg-white border border-emerald-200 hover:border-emerald-300 rounded-2xl px-5 py-2.5 ft-shadow"
+              className="inline-flex items-center gap-1.5 ft-text-accent text-sm font-bold transition-colors bg-white border ft-border-accent rounded-2xl px-5 py-2.5 ft-shadow"
             >
               {goalsExpanded ? "عرض أقل" : `عرض جميع الأهداف (${goalsList.length})`}
               <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${goalsExpanded ? "rotate-180" : ""}`} />
@@ -182,7 +182,7 @@ export default function Landing() {
               {cms.activities.map((activity, index) => {
                 const Icon = Icons[activity.icon] || Icons.BookOpen;
                 return (
-                  <div key={index} className="group bg-white rounded-3xl p-6 border border-slate-100 ft-shadow hover-lift hover:border-emerald-200 transition-all duration-300">
+                  <div key={index} className="group bg-white rounded-3xl p-6 border border-slate-100 ft-shadow hover-lift ft-hover-border-accent transition-all duration-300">
                     <div className="w-14 h-14 rounded-2xl grid place-items-center mb-5 text-white" style={{ background: activity.color }}>
                       <Icon className="w-7 h-7" />
                     </div>
@@ -212,7 +212,7 @@ export default function Landing() {
                   <div className="w-12 h-12 rounded-2xl grid place-items-center mb-4 text-white" style={{ background: c.color }}><Icon className="w-6 h-6" /></div>
                   <h3 className="font-head font-bold text-lg text-slate-900">{c.name}</h3>
                   <p className="mt-2 text-sm text-slate-500 line-clamp-2 leading-relaxed">{c.description}</p>
-                  <div className="mt-4 text-emerald-600 text-sm font-medium inline-flex items-center gap-1 group-hover:gap-2 transition-all">ادخل النادي <ArrowLeft className="w-4 h-4" /></div>
+                  <div className="mt-4 ft-text-accent text-sm font-medium inline-flex items-center gap-1 group-hover:gap-2 transition-all">ادخل النادي <ArrowLeft className="w-4 h-4" /></div>
                 </Link>
                 </Item>
               );
@@ -225,10 +225,10 @@ export default function Landing() {
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
         <FadeUp>
         <div className="ft-hero-gradient grain relative overflow-hidden rounded-[2rem] p-10 lg:p-16 text-center text-white">
-          <Float className="inline-block"><Trophy className="w-14 h-14 text-emerald-400 mx-auto mb-5" /></Float>
+          <Float className="inline-block"><Trophy className="w-14 h-14 ft-text-accent-bright mx-auto mb-5" /></Float>
           <h2 className="font-head text-3xl lg:text-4xl font-extrabold">جاهز لتكون من مفكري المستقبل؟</h2>
           <p className="mt-4 text-slate-300 max-w-xl mx-auto">انضم إلى آلاف الطلاب في رحلة معرفية تنافسية، واجمع نقاط الخبرة، وتصدّر قوائم الصدارة الوطنية.</p>
-          <Button data-testid="cta-join-btn" onClick={() => nav(user ? "/dashboard" : "/register")} size="lg" className="pressable mt-8 rounded-2xl bg-emerald-600 hover:bg-emerald-700 h-12 px-8 text-base">
+          <Button data-testid="cta-join-btn" onClick={() => nav(user ? "/dashboard" : "/register")} size="lg" className="pressable mt-8 rounded-2xl ft-btn-solid h-12 px-8 text-base">
             <Rocket className="w-5 h-5 ml-2" /> {user ? "لوحتي" : "ابدأ الآن مجاناً"}
           </Button>
         </div>

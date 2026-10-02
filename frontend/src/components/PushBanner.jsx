@@ -66,7 +66,7 @@ export default function PushBanner() {
           onClick={activate}
           disabled={busy}
           data-testid="push-enable-btn"
-          className="shrink-0 px-3 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-white text-xs font-bold"
+          className="shrink-0 px-3 py-2 rounded-xl ft-btn-solid disabled:opacity-50 text-white text-xs font-bold"
         >
           {busy ? "جارٍ…" : "تفعيل"}
         </button>
