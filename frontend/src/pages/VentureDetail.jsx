@@ -27,6 +27,7 @@ export default function VentureDetail() {
   const [updOpen, setUpdOpen] = useState(false);
   const [updForm, setUpdForm] = useState({ title: "", text: "" });
   const [busy, setBusy] = useState(false);
+  const [voting, setVoting] = useState(false);
 
   const load = useCallback(async () => {
     try { const { data } = await api.get(`/ventures/${id}`); setV(data); }
@@ -39,10 +40,13 @@ export default function VentureDetail() {
 
   const vote = async () => {
     if (!user) { toast.info("سجّل الدخول للتصويت"); return; }
+    if (voting) return;
+    setVoting(true);
     try {
       const { data } = await api.post(`/ventures/${v.id}/vote`);
       setV({ ...v, voted: data.voted, votes_count: v.votes_count + (data.voted ? 1 : -1) });
     } catch {}
+    finally { setVoting(false); }
   };
 
   const join = async () => {
@@ -58,11 +62,13 @@ export default function VentureDetail() {
   };
 
   const decide = async (uid, ok) => {
+    setBusy(true);
     try {
       await api.post(`/ventures/${v.id}/requests/${uid}/${ok ? "approve" : "reject"}`);
       toast.success(ok ? "تم قبول العضو 🎉" : "تم رفض الطلب");
       load();
     } catch (e) { toast.error(e.response?.data?.detail || "حدث خطأ"); }
+    finally { setBusy(false); }
   };
 
   const leave = async () => {
@@ -246,8 +252,8 @@ export default function VentureDetail() {
                     </div>
                   </div>
                   <div className="flex gap-2 shrink-0">
-                    <Button size="sm" onClick={() => decide(r.id, true)} className="rounded-xl bg-gradient-to-l from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 font-extrabold pressable min-h-[44px] px-4 shadow-md shadow-emerald-200"><Check className="w-4 h-4 ml-1" /> قبول</Button>
-                    <Button size="sm" onClick={() => decide(r.id, false)} className="rounded-xl bg-gradient-to-l from-rose-500 to-red-500 hover:from-rose-600 hover:to-red-600 text-white font-extrabold pressable min-h-[44px] px-4 shadow-md shadow-rose-200"><X className="w-4 h-4 ml-1" /> رفض</Button>
+                    <Button size="sm" disabled={busy} onClick={() => decide(r.id, true)} className="rounded-xl bg-gradient-to-l from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 font-extrabold pressable min-h-[44px] px-4 shadow-md shadow-emerald-200"><Check className="w-4 h-4 ml-1" /> قبول</Button>
+                    <Button size="sm" disabled={busy} onClick={() => decide(r.id, false)} className="rounded-xl bg-gradient-to-l from-rose-500 to-red-500 hover:from-rose-600 hover:to-red-600 text-white font-extrabold pressable min-h-[44px] px-4 shadow-md shadow-rose-200"><X className="w-4 h-4 ml-1" /> رفض</Button>
                   </div>
                 </div>
               ))}

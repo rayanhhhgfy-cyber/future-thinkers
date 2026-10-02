@@ -71,6 +71,7 @@ export default function Ventures() {
   const [status, setStatus] = useState("all");
   const [sort, setSort] = useState("votes");
   const [showNew, setShowNew] = useState(false);
+  const [votingId, setVotingId] = useState(null);
   const [form, setForm] = useState({ title: "", description: "", category: "تقنية وبرمجة", looking_for: "", max_members: 5 });
   const [saving, setSaving] = useState(false);
 
@@ -104,11 +105,14 @@ export default function Ventures() {
 
   const vote = async (v) => {
     if (!user) { toast.info("سجّل الدخول للتصويت"); return; }
+    if (votingId === v.id) return;
+    setVotingId(v.id);
     try {
       const { data } = await api.post(`/ventures/${v.id}/vote`);
       setVentures((list) => list.map((x) => x.id === v.id
         ? { ...x, voted: data.voted, votes_count: x.votes_count + (data.voted ? 1 : -1) } : x));
     } catch {}
+    finally { setVotingId(null); }
   };
 
   const openCreate = () => { if (!user) { toast.info("سجّل الدخول أولاً"); nav("/login"); } else setShowNew(true); };
@@ -294,8 +298,8 @@ export default function Ventures() {
                           <span className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-600 bg-slate-50 border border-slate-200/80 rounded-full px-3 min-h-[36px]">
                             <Users className="w-4 h-4 text-blue-500" />{v.team_count}/{v.max_members}
                           </span>
-                          <button onClick={() => vote(v)}
-                            className={`pressable flex items-center justify-center gap-1.5 text-sm font-extrabold rounded-full px-4 min-h-[44px] transition-all ${v.voted ? "bg-gradient-to-l from-rose-500 to-pink-500 text-white shadow-lg shadow-rose-200 border border-rose-400" : "text-slate-400 border border-slate-200 bg-white hover:text-rose-500 hover:border-rose-200 hover:bg-rose-50"}`}>
+                          <button onClick={() => vote(v)} disabled={votingId === v.id}
+                            className={`pressable flex items-center justify-center gap-1.5 text-sm font-extrabold rounded-full px-4 min-h-[44px] transition-all disabled:opacity-60 ${v.voted ? "bg-gradient-to-l from-rose-500 to-pink-500 text-white shadow-lg shadow-rose-200 border border-rose-400" : "text-slate-400 border border-slate-200 bg-white hover:text-rose-500 hover:border-rose-200 hover:bg-rose-50"}`}>
                             <Heart className={`w-4 h-4 ${v.voted ? "fill-current" : ""}`} />{v.votes_count}
                           </button>
                           <Link to={`/ventures/${v.id}`} className="pressable inline-flex items-center gap-1 text-emerald-700 text-sm font-extrabold min-h-[44px] px-2 rounded-full hover:bg-emerald-50 transition-colors group/lnk">
