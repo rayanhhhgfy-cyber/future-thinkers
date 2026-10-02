@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 import { PageLoader, EmptyState } from "@/components/Layout";
-import { Code2, Play, CheckCircle2, Lightbulb, ThumbsUp, Scale, Plus, ArrowRight, Loader2 } from "lucide-react";
+import { Code2, Play, CheckCircle2, Lightbulb, ThumbsUp, Scale, Plus, ArrowRight, Loader2, Terminal, FlaskConical } from "lucide-react";
 
 /* ============ نادي البرمجة — Coding challenges ============ */
 export function CodingPanel() {
@@ -40,12 +40,25 @@ function ProblemView({ pid, onBack }) {
   const [p, setP] = useState(null);
   const [code, setCode] = useState("# اكتب حلك هنا\n");
   const [result, setResult] = useState(null);
-  const [running, setRunning] = useState(false);
+  const [runResults, setRunResults] = useState(null);
+  const [running, setRunning] = useState("");
+  const [stdin, setStdin] = useState("");
+  const [consoleOut, setConsoleOut] = useState(null);
   useEffect(() => { api.get(`/coding/problems/${pid}`).then((r) => setP(r.data)); }, [pid]);
-  const run = async () => {
-    setRunning(true); setResult(null);
+  const submit = async () => {
+    setRunning("submit"); setResult(null);
     try { const { data } = await api.post(`/coding/problems/${pid}/submit`, { code }); setResult(data); if (data.verdict === "accepted") toast.success("حل مقبول! 🎉"); }
-    catch (e) { toast.error(apiErr(e)); } finally { setRunning(false); }
+    catch (e) { toast.error(apiErr(e)); } finally { setRunning(""); }
+  };
+  const runSamples = async () => {
+    setRunning("samples"); setRunResults(null);
+    try { const { data } = await api.post(`/coding/problems/${pid}/run`, { code }); setRunResults(data.results); }
+    catch (e) { toast.error(apiErr(e)); } finally { setRunning(""); }
+  };
+  const runCustom = async () => {
+    setRunning("play"); setConsoleOut(null);
+    try { const { data } = await api.post(`/coding/run`, { code, stdin }); setConsoleOut(data); }
+    catch (e) { toast.error(apiErr(e)); } finally { setRunning(""); }
   };
   if (!p) return <PageLoader />;
   return (
@@ -64,15 +77,45 @@ function ProblemView({ pid, onBack }) {
               </div>
             ))}
           </div>
+          {/* debugger console */}
+          <div className="mt-6 bg-slate-950 rounded-2xl overflow-hidden">
+            <div className="px-4 py-2.5 text-slate-400 text-xs border-b border-slate-800 flex items-center justify-between">
+              <span className="flex items-center gap-2"><Terminal className="w-4 h-4 text-emerald-400" /> المصحّح — إدخال مخصص</span>
+              <button onClick={runCustom} disabled={!!running} className="pressable inline-flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-600 text-white text-[11px] font-bold disabled:opacity-50">
+                {running === "play" ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3" />} تشغيل
+              </button>
+            </div>
+            <textarea value={stdin} onChange={(e) => setStdin(e.target.value)} dir="ltr" spellCheck={false}
+              placeholder={"stdin… e.g. 7"} className="w-full bg-slate-900 text-slate-200 font-mono text-xs p-3 min-h-[64px] outline-none resize-none" />
+            {consoleOut && (
+              <pre dir="ltr" className={`text-left font-mono text-xs p-3 whitespace-pre-wrap max-h-48 overflow-auto ${consoleOut.ok ? "text-emerald-300" : "text-rose-300"}`}>{consoleOut.output || "(لا مخرجات)"}</pre>
+            )}
+          </div>
         </div>
         <div>
           <div className="bg-slate-900 rounded-2xl overflow-hidden ft-shadow">
-            <div className="px-4 py-2 text-slate-400 text-xs border-b border-slate-700 flex items-center gap-2"><Code2 className="w-4 h-4" /> Python 3</div>
+            <div className="px-4 py-2 text-slate-400 text-xs border-b border-slate-700 flex items-center gap-2"><Code2 className="w-4 h-4" /> Python 3 — بيئة معزولة آمنة</div>
             <Textarea data-testid="code-editor" value={code} onChange={(e) => setCode(e.target.value)} dir="ltr" spellCheck={false} className="min-h-[280px] bg-slate-900 text-emerald-300 font-mono border-0 rounded-none focus-visible:ring-0 resize-none" />
           </div>
-          <Button data-testid="run-code-btn" onClick={run} disabled={running} className="w-full mt-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 h-11">
-            {running ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Play className="w-4 h-4 ml-1" /> تشغيل واختبار</>}
-          </Button>
+          <div className="grid grid-cols-2 gap-2 mt-3">
+            <Button data-testid="run-samples-btn" onClick={runSamples} disabled={!!running} variant="outline" className="rounded-xl h-11 border-slate-300">
+              {running === "samples" ? <Loader2 className="w-4 h-4 animate-spin" /> : <><FlaskConical className="w-4 h-4 ml-1" /> تجربة الأمثلة</>}
+            </Button>
+            <Button data-testid="run-code-btn" onClick={submit} disabled={!!running} className="rounded-xl bg-emerald-600 hover:bg-emerald-700 h-11">
+              {running === "submit" ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Play className="w-4 h-4 ml-1" /> إرسال الحل</>}
+            </Button>
+          </div>
+          {runResults && (
+            <div className="mt-3 space-y-2">
+              {runResults.map((r) => (
+                <div key={r.test} dir="ltr" className={`text-left p-3 rounded-xl font-mono text-xs ${r.passed ? "bg-emerald-50 text-emerald-800" : "bg-rose-50 text-rose-800"}`}>
+                  <div className="font-bold">Test {r.test}: {r.passed ? "PASS ✓" : r.ran ? "WRONG OUTPUT" : "ERROR"}</div>
+                  <div className="mt-1 whitespace-pre-wrap">got: {r.output || "(empty)"}</div>
+                  {!r.passed && <div className="whitespace-pre-wrap opacity-75">expected: {r.expected}</div>}
+                </div>
+              ))}
+            </div>
+          )}
           {result && (
             <div className={`mt-3 p-4 rounded-xl ${result.verdict === "accepted" ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"}`} data-testid="code-result">
               <div className="font-bold">{result.verdict === "accepted" ? "مقبول ✓" : result.verdict === "wrong_answer" ? "إجابة خاطئة" : "خطأ في التنفيذ"}</div>

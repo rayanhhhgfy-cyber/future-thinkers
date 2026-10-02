@@ -152,6 +152,8 @@ export function ChessArena() {
           </div>
         </motion.div>
 
+        <TournamentsSection />
+
         <div className="grid lg:grid-cols-3 gap-4 sm:gap-5 mt-6">
           {/* ===== main column ===== */}
           <div className="lg:col-span-2 space-y-4 sm:space-y-5 min-w-0">
@@ -348,5 +350,95 @@ function SectionTitle({ children }) {
       <span className="w-1.5 h-5 rounded-full bg-gradient-to-b from-amber-300 to-orange-500" />
       {children}
     </h3>
+  );
+}
+
+function TournamentsSection() {
+  const nav = useNavigate();
+  const [items, setItems] = useState(null);
+  const [name, setName] = useState("");
+  const [busy, setBusy] = useState("");
+  const load = () => api.get("/chess/tournaments").then((r) => setItems(r.data)).catch(() => setItems([]));
+  useEffect(() => { load(); }, []);
+
+  const create = async () => {
+    if (name.trim().length < 3) return toast.error("اسم البطولة قصير");
+    setBusy("create");
+    try { await api.post("/chess/tournaments", { name: name.trim(), max_players: 8 }); setName(""); load(); toast.success("أُنشئت البطولة — شارك الرابط مع اللاعبين 🏆"); }
+    catch (e) { toast.error(apiErr(e)); }
+    setBusy("");
+  };
+  const act = async (path, msg) => {
+    try { const { data } = await api.post(path); if (data.game_id) nav(`/chess/${data.game_id}`); else { toast.success(msg); load(); } }
+    catch (e) { toast.error(apiErr(e)); }
+  };
+
+  const rounds = (t) => {
+    const by = {};
+    (t.matches || []).forEach((m) => { (by[m.round] = by[m.round] || []).push(m); });
+    return Object.entries(by).sort((a, b) => a[0] - b[0]);
+  };
+
+  return (
+    <motion.section initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.2, ease: EASE }} className="mt-6">
+      <SectionTitle>بطولات الشطرنج 🏆</SectionTitle>
+      <div className="rounded-3xl bg-white/[0.05] border border-white/10 backdrop-blur-xl p-4 sm:p-5">
+        <div className="flex gap-2 flex-wrap mb-4">
+          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="اسم بطولة جديدة: كأس الجمعة"
+            className="flex-1 min-w-[200px] bg-white/10 border-white/15 text-white placeholder:text-slate-500 rounded-xl" />
+          <Button onClick={create} disabled={busy === "create"} className="rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold">
+            <Trophy className="w-4 h-4 ml-1" /> إنشاء بطولة
+          </Button>
+        </div>
+        {!items ? <div className="text-slate-500 text-sm py-4 text-center">جارٍ التحميل…</div> : items.length === 0 ? (
+          <p className="text-slate-500 text-sm py-4 text-center">لا بطولات بعد — أنشئ أول بطولة ودعُ زملاءك</p>
+        ) : (
+          <div className="space-y-4">
+            {items.map((t) => (
+              <div key={t.id} className="rounded-2xl bg-slate-950/50 border border-white/[0.07] p-4">
+                <div className="flex items-center gap-3 flex-wrap">
+                  <span className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-orange-600 grid place-items-center text-slate-950 shrink-0"><Trophy className="w-5 h-5" /></span>
+                  <div className="flex-1 min-w-[160px]">
+                    <div className="font-head font-extrabold text-white">{t.name}</div>
+                    <div className="text-[11px] text-slate-400">{(t.players || []).length}/{t.max_players} لاعب · منشئ: {t.creator_name}</div>
+                  </div>
+                  <span className={`px-2.5 py-1 rounded-full text-[11px] font-extrabold ${t.status === "registration" ? "bg-sky-500/15 text-sky-300" : t.status === "running" ? "bg-emerald-500/15 text-emerald-300" : "bg-amber-500/15 text-amber-300"}`}>
+                    {t.status === "registration" ? "التسجيل مفتوح" : t.status === "running" ? "جارية ⚔️" : `انتهت — البطل: ${t.champion_name || ""} 🏆`}
+                  </span>
+                  {t.status === "registration" && !t.joined && (
+                    <button onClick={() => act(`/chess/tournaments/${t.id}/join`, "انضممت للبطولة ✓")} className="pressable px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold">انضم</button>
+                  )}
+                  {t.status === "registration" && t.joined && (
+                    <button onClick={() => act(`/chess/tournaments/${t.id}/start`, "بدأت البطولة!")} className="pressable px-4 py-2 rounded-xl bg-amber-500 text-slate-950 text-xs font-extrabold">بدء البطولة</button>
+                  )}
+                  {t.joined && t.status === "registration" && <span className="text-[11px] font-bold text-emerald-300">مسجل ✓</span>}
+                </div>
+                {t.status !== "registration" && rounds(t).map(([rnd, ms]) => (
+                  <div key={rnd} className="mt-3">
+                    <div className="text-[11px] font-extrabold text-slate-500 mb-1.5">{Number(rnd) === 1 && (t.matches || []).length <= 2 ? "النهائي" : `الجولة ${rnd}`}</div>
+                    <div className="grid sm:grid-cols-2 gap-2">
+                      {ms.map((m) => (
+                        <div key={m.idx} className="flex items-center gap-2 rounded-xl bg-white/[0.04] border border-white/[0.06] px-3 py-2 text-sm">
+                          <span className={`flex-1 truncate ${m.winner_id === m.a_id ? "text-amber-300 font-extrabold" : "text-slate-200"}`}>{m.a_name}</span>
+                          <span className="text-slate-600 text-xs font-bold">ضد</span>
+                          <span className={`flex-1 truncate text-left ${m.winner_id === m.b_id ? "text-amber-300 font-extrabold" : "text-slate-200"}`}>{m.b_name || "— (تأهل تلقائي)"}</span>
+                          {m.status === "done" && m.winner_id && <Crown className="w-4 h-4 text-amber-400 shrink-0" />}
+                          {(m.status === "pending" || m.status === "playing") && (
+                            <button onClick={() => act(`/chess/tournaments/${t.id}/matches/${m.idx}/play`, "")}
+                              className="pressable px-3 py-1.5 rounded-lg bg-amber-500 text-slate-950 text-[11px] font-extrabold shrink-0">
+                              {m.status === "playing" ? "استكمال" : "العب"}
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </motion.section>
   );
 }
