@@ -1,4 +1,5 @@
-import React, { useRef } from "react";
+import React, { useRef, useState } from "react";
+import { Copy, Check, Loader2, CheckCircle2, XCircle, Circle } from "lucide-react";
 
 /* Lightweight Python syntax highlighting (no dependencies): comments, strings,
    numbers, keywords, constants, builtins and function calls get colors.
@@ -67,22 +68,88 @@ export function PythonEditor({ value, onChange, minHeight = 280, testId, placeho
    like "اختبار 1: NameError: ..." too. */
 const ERR_NAME = /([A-Za-z_][\w.]*(?:Error|Exception|Interrupt|Exit|Warning|Fault|Failure))/;
 
-export function PyErrorText({ text, tone = "dark" }) {
+export function PyErrorText({ text, tone = "dark", trail = true }) {
   const plain = tone === "dark" ? "text-rose-200" : "text-rose-700";
   const name = tone === "dark" ? "text-rose-400" : "text-red-600";
   const rest = tone === "dark" ? "text-rose-100" : "text-rose-800";
   const lines = String(text ?? "").split("\n");
   return lines.map((ln, i) => {
     const m = ln.match(ERR_NAME);
-    if (!m) return <span key={i} className={plain}>{ln}{"\n"}</span>;
+    if (!m) return <span key={i} className={plain}>{ln}{trail ? "\n" : ""}</span>;
     const idx = ln.indexOf(m[1]);
     return (
       <span key={i}>
         <span className={plain}>{ln.slice(0, idx)}</span>
         <span className={`${name} font-bold`}>{m[1]}</span>
         <span className={rest}>{ln.slice(idx + m[1].length)}</span>
-        {"\n"}
+        {trail ? "\n" : ""}
       </span>
     );
   });
+}
+
+/* Beautiful terminal window: mac dots, status chip, copy button, line numbers.
+   status: idle | running | ok | error */
+export function Terminal({ title = "output", status = "idle", rawText = "", emptyHint = "جاهز… اضغط «تشغيل» لترى النتائج هنا", children, className = "" }) {
+  const [copied, setCopied] = useState(false);
+  const copy = async () => {
+    try { await navigator.clipboard.writeText(rawText || ""); setCopied(true); setTimeout(() => setCopied(false), 1400); } catch { /* clipboard unavailable */ }
+  };
+  const chip = {
+    idle: <span className="inline-flex items-center gap-1 text-slate-400"><Circle className="w-3 h-3" /> جاهز</span>,
+    running: <span className="inline-flex items-center gap-1 text-sky-300"><Loader2 className="w-3.5 h-3.5 animate-spin" /> يُشغّل</span>,
+    ok: <span className="inline-flex items-center gap-1 text-emerald-300"><CheckCircle2 className="w-3.5 h-3.5" /> ناجح</span>,
+    error: <span className="inline-flex items-center gap-1 text-rose-300"><XCircle className="w-3.5 h-3.5" /> خطأ</span>,
+  }[status] || null;
+  const hasBody = React.Children.count(children) > 0;
+  return (
+    <div className={`relative overflow-hidden rounded-[1.25rem] bg-slate-950 ring-1 ring-white/10 shadow-[0_18px_50px_-20px_rgba(2,6,23,0.8)] ${className}`} dir="ltr">
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-emerald-400/50 to-transparent" />
+      <div className="flex items-center gap-3 px-4 py-2.5 bg-white/[0.03] border-b border-white/[0.06]">
+        <span className="flex gap-1.5 shrink-0">
+          <span className="w-3 h-3 rounded-full bg-[#ff5f57] shadow-inner" />
+          <span className="w-3 h-3 rounded-full bg-[#febc2e] shadow-inner" />
+          <span className="w-3 h-3 rounded-full bg-[#28c840] shadow-inner" />
+        </span>
+        <span className="font-mono text-[11px] tracking-wide text-slate-400 truncate">{title}</span>
+        <span className="ml-auto flex items-center gap-3 text-[11px] font-bold shrink-0">
+          {chip}
+          {rawText ? (
+            <button onClick={copy} title="نسخ المخرجات" className="p-1 rounded-md text-slate-500 hover:text-slate-200 hover:bg-white/10 transition">
+              {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+            </button>
+          ) : null}
+        </span>
+      </div>
+      <div className="font-mono text-[13px] leading-6 text-left max-h-80 overflow-auto">
+        {status === "running" && !hasBody ? (
+          <div className="px-4 py-4 text-slate-400 flex items-center gap-2">
+            <Loader2 className="w-4 h-4 animate-spin text-sky-300" /> <span>جارٍ تنفيذ الكود في البيئة المعزولة…</span>
+          </div>
+        ) : hasBody ? children : (
+          <div className="px-4 py-4 text-slate-500">
+            <span className="text-emerald-400 font-bold">❯</span> {emptyHint}
+            <span className="inline-block w-2 h-4 ml-1.5 align-[-2px] bg-emerald-400/80 animate-pulse" />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* Numbered output lines for Terminal bodies. error=true colors error lines. */
+export function TermLines({ text, error = false, okClass = "text-slate-200" }) {
+  const lines = String(text ?? "").split("\n");
+  return (
+    <div className="py-2">
+      {lines.map((ln, i) => (
+        <div key={i} className="flex px-3 hover:bg-white/[0.03]">
+          <span className="w-8 shrink-0 text-right pr-3 text-slate-600 select-none">{i + 1}</span>
+          <span className={`flex-1 whitespace-pre-wrap break-all ${error ? "" : okClass}`}>
+            {error ? <PyErrorText text={ln} trail={false} /> : (ln || " ")}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
 }
