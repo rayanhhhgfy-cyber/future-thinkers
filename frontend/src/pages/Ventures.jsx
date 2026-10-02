@@ -125,21 +125,21 @@ export default function Ventures() {
         <div className="ft-hero-gradient grain relative overflow-hidden rounded-[2rem] text-white px-6 py-10 sm:px-10 sm:py-14 ft-shadow-lg">
           <Rocket className="pointer-events-none absolute -left-6 -bottom-8 w-44 h-44 sm:w-64 sm:h-64 text-white/10 -rotate-12" />
           <Sparkles className="pointer-events-none absolute left-[38%] top-8 w-8 h-8 text-white/15 hidden sm:block" />
-          <div className="pointer-events-none absolute -top-20 right-[15%] w-56 h-56 rounded-full bg-emerald-300/20 blur-3xl" />
-          <div className="pointer-events-none absolute -bottom-24 left-[30%] w-56 h-56 rounded-full bg-teal-300/15 blur-3xl" />
+          <div className="pointer-events-none absolute -top-20 right-[15%] w-56 h-56 rounded-full bg-[color:color-mix(in_srgb,var(--ft-accent)_20%,transparent)] blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-24 left-[30%] w-56 h-56 rounded-full bg-[color:color-mix(in_srgb,var(--ft-accent)_15%,transparent)] blur-3xl" />
           <div className="relative">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 border border-white/25 px-3.5 py-1.5 text-xs font-bold backdrop-blur-md shadow-inner">
-              <Sparkles className="w-3.5 h-3.5 text-emerald-200" /> مشاريع طلابية
+              <Sparkles className="w-3.5 h-3.5 ft-text-accent-bright" /> مشاريع طلابية
             </span>
             <h1 className="font-head text-4xl sm:text-5xl font-extrabold mt-5 leading-tight">
-              مساحة <span className="bg-gradient-to-l from-emerald-200 via-teal-100 to-white bg-clip-text text-transparent">المشاريع</span> 🚀
+              مساحة <span className="ft-text-gradient">المشاريع</span> 🚀
             </h1>
             <p className="text-slate-200/90 mt-3 max-w-2xl leading-relaxed text-base sm:text-lg">
               اعرض فكرة مشروعك، كوّن فريقاً من طلاب المدارس الأخرى، وتابع التقدّم حتى الإنجاز.
             </p>
             <div className="mt-7 flex flex-wrap items-center gap-3">
               <Button onClick={openCreate}
-                className="rounded-2xl bg-gradient-to-l from-emerald-400 to-teal-500 hover:from-emerald-500 hover:to-teal-600 text-white font-extrabold pressable shadow-xl shadow-emerald-950/30 min-h-[52px] px-6 text-base border border-white/20">
+                className="rounded-2xl ft-btn-primary text-white font-extrabold pressable shadow-xl min-h-[52px] px-6 text-base border border-white/20">
                 <Plus className="w-5 h-5 ml-1.5" /> اعرض مشروعك
               </Button>
               <a href="#ventures-toolbar"
@@ -150,10 +150,10 @@ export default function Ventures() {
             {ventures && (
               <div className="mt-8 flex flex-wrap gap-2.5 animate-fade-up">
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 border border-white/20 backdrop-blur-md px-3.5 py-2 text-xs font-bold">
-                  <Rocket className="w-4 h-4 text-emerald-200" /> {ventures.length} مشروع
+                  <Rocket className="w-4 h-4 ft-text-accent-bright" /> {ventures.length} مشروع
                 </span>
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 border border-white/20 backdrop-blur-md px-3.5 py-2 text-xs font-bold">
-                  <BadgeCheck className="w-4 h-4 text-teal-200" /> {completedCount} مكتمل
+                  <BadgeCheck className="w-4 h-4 ft-text-accent-bright" /> {completedCount} مكتمل
                 </span>
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 border border-white/20 backdrop-blur-md px-3.5 py-2 text-xs font-bold">
                   <Heart className="w-4 h-4 text-rose-200" /> {totalVotes} صوت
@@ -175,7 +175,7 @@ export default function Ventures() {
             <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:flex-wrap sm:overflow-visible sm:mx-0 sm:px-0 sm:pb-0">
               {VENTURE_CATEGORIES.map((c) => (
                 <button key={c} onClick={() => setCategory(c)}
-                  className={`pressable shrink-0 rounded-full px-4 min-h-[44px] inline-flex items-center text-xs sm:text-sm font-bold border transition-all ${category === c ? "bg-gradient-to-l from-slate-900 to-slate-700 text-white border-slate-900 shadow-lg shadow-slate-300" : "bg-white/70 text-slate-500 border-slate-200 hover:border-emerald-300 hover:text-emerald-700"}`}>
+                  className={`pressable shrink-0 rounded-full px-4 min-h-[44px] inline-flex items-center text-xs sm:text-sm font-bold border transition-all ${category === c ? "bg-gradient-to-l from-slate-900 to-slate-700 text-white border-slate-900 shadow-lg shadow-slate-300" : "bg-white/70 text-slate-500 border-slate-200 hover:[border-color:color-mix(in_srgb,var(--ft-accent)_32%,white)] hover:[color:color-mix(in_srgb,var(--ft-accent)_66%,black)]"}`}>
                   {c}
                 </button>
               ))}
@@ -183,7 +183,7 @@ export default function Ventures() {
             <div className="flex flex-wrap items-center gap-2">
               {VENTURE_STATUSES.map((s) => (
                 <button key={s.v} onClick={() => setStatus(s.v)}
-                  className={`pressable inline-flex items-center gap-1.5 rounded-full px-4 min-h-[44px] text-xs sm:text-sm font-bold border transition-all ${status === s.v ? "bg-gradient-to-l from-emerald-600 to-teal-600 text-white border-emerald-600 shadow-lg shadow-emerald-200" : "bg-white/70 text-slate-500 border-slate-200 hover:border-emerald-300 hover:text-emerald-700"}`}>
+                  className={`pressable inline-flex items-center gap-1.5 rounded-full px-4 min-h-[44px] text-xs sm:text-sm font-bold border transition-all ${status === s.v ? "ft-btn-primary ft-border-accent text-white shadow-lg" : "bg-white/70 text-slate-500 border-slate-200 hover:[border-color:color-mix(in_srgb,var(--ft-accent)_32%,white)] hover:[color:color-mix(in_srgb,var(--ft-accent)_66%,black)]"}`}>
                   {s.v !== "all" && <span className={`w-2 h-2 rounded-full ${status === s.v ? "bg-white" : STATUS_DOT[s.v] || "bg-slate-300"}`} />}
                   {s.l}
                 </button>
@@ -241,14 +241,14 @@ export default function Ventures() {
             <p className="font-head font-bold text-lg text-slate-600">لا توجد مشاريع بعد</p>
             <p className="mt-1 text-sm">كن أول من يعرض فكرته ويكوّن فريقاً!</p>
             <Button onClick={openCreate}
-              className="mt-6 rounded-2xl bg-gradient-to-l from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-extrabold pressable shadow-lg shadow-emerald-200 min-h-[52px] px-6">
+              className="mt-6 rounded-2xl ft-btn-primary text-white font-extrabold pressable shadow-lg min-h-[52px] px-6">
               <Plus className="w-5 h-5 ml-1.5" /> اعرض مشروعك
             </Button>
           </div>
         ) : (
           <>
             <div className="mt-7 mb-4 flex items-center gap-2 text-sm font-bold text-slate-400">
-              <Sparkles className="w-4 h-4 text-emerald-500" />
+              <Sparkles className="w-4 h-4 ft-text-accent" />
               عرض {ventures.length} مشروع
             </div>
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
@@ -259,7 +259,7 @@ export default function Ventures() {
                   <div key={v.id} style={{ animationDelay: `${Math.min(i, 11) * 60}ms` }}
                     className="group relative bg-white rounded-[1.6rem] border border-slate-100 ft-shadow hover-lift flex flex-col overflow-hidden animate-fade-up">
                     <div className={`h-1.5 bg-gradient-to-l ${STATUS_RIBBON[v.status] || "from-slate-300 to-slate-200"}`} />
-                    <div className="pointer-events-none absolute inset-0 bg-gradient-to-tl from-emerald-50/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                    <div className="pointer-events-none absolute inset-0 bg-gradient-to-tl from-[color:color-mix(in_srgb,var(--ft-accent)_7%,transparent)] via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                     <div className="relative p-5 sm:p-6 pt-5 flex flex-col flex-1">
                       <div className="flex items-start justify-between gap-2">
                         <span className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${meta.grad} text-white flex items-center justify-center shadow-lg ${meta.shadow} ring-1 ring-white/40 transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-3`}>
@@ -280,7 +280,7 @@ export default function Ventures() {
                           </Badge>
                         )}
                       </div>
-                      <Link to={`/ventures/${v.id}`} className="font-head font-extrabold text-lg text-slate-900 mt-3 hover:text-emerald-700 line-clamp-1 transition-colors">{v.title}</Link>
+                      <Link to={`/ventures/${v.id}`} className="font-head font-extrabold text-lg text-slate-900 mt-3 hover:[color:color-mix(in_srgb,var(--ft-accent)_66%,black)] line-clamp-1 transition-colors">{v.title}</Link>
                       <p className="mt-2 text-sm text-slate-500 line-clamp-2 leading-relaxed">{v.description}</p>
                       {v.looking_for && (
                         <p className="mt-3 inline-flex items-start gap-1.5 text-xs font-bold text-violet-700 bg-violet-50 border border-violet-100 rounded-xl px-2.5 py-1.5 line-clamp-1">
@@ -302,7 +302,7 @@ export default function Ventures() {
                             className={`pressable flex items-center justify-center gap-1.5 text-sm font-extrabold rounded-full px-4 min-h-[44px] transition-all disabled:opacity-60 ${v.voted ? "bg-gradient-to-l from-rose-500 to-pink-500 text-white shadow-lg shadow-rose-200 border border-rose-400" : "text-slate-400 border border-slate-200 bg-white hover:text-rose-500 hover:border-rose-200 hover:bg-rose-50"}`}>
                             <Heart className={`w-4 h-4 ${v.voted ? "fill-current" : ""}`} />{v.votes_count}
                           </button>
-                          <Link to={`/ventures/${v.id}`} className="pressable inline-flex items-center gap-1 text-emerald-700 text-sm font-extrabold min-h-[44px] px-2 rounded-full hover:bg-emerald-50 transition-colors group/lnk">
+                          <Link to={`/ventures/${v.id}`} className="pressable inline-flex items-center gap-1 ft-text-accent text-sm font-extrabold min-h-[44px] px-2 rounded-full hover:bg-[color:color-mix(in_srgb,var(--ft-accent)_9%,white)] transition-colors group/lnk">
                             التفاصيل <ArrowLeft className="w-4 h-4 transition-transform group-hover/lnk:-translate-x-1" />
                           </Link>
                         </div>
@@ -320,7 +320,7 @@ export default function Ventures() {
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl" dir="rtl">
           <DialogHeader>
             <div className="flex items-center gap-3">
-              <span className="w-11 h-11 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-500 text-white flex items-center justify-center shadow-lg shadow-emerald-200 shrink-0">
+              <span className="w-11 h-11 rounded-2xl ft-icon-tile text-white flex items-center justify-center shadow-lg shrink-0">
                 <Rocket className="w-5 h-5" />
               </span>
               <DialogTitle className="font-head text-xl font-extrabold">اعرض مشروعك 🚀</DialogTitle>
@@ -347,7 +347,7 @@ export default function Ventures() {
             <div><Label>من تبحث عنه؟ (اختياري)</Label>
               <Input value={form.looking_for} onChange={(e) => setForm({ ...form, looking_for: e.target.value })}
                 placeholder="مثال: مصمم ومبرمج وكاتب محتوى" className="rounded-xl mt-1 text-base min-h-[48px]" maxLength={500} /></div>
-            <Button onClick={create} disabled={saving} className="w-full rounded-2xl bg-gradient-to-l from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 font-extrabold text-base min-h-[52px] pressable shadow-lg shadow-emerald-200">
+            <Button onClick={create} disabled={saving} className="w-full rounded-2xl ft-btn-primary font-extrabold text-base min-h-[52px] pressable shadow-lg">
               {saving ? "جارٍ النشر..." : "انشر المشروع"}
             </Button>
           </div>

@@ -123,8 +123,8 @@ export default function VentureDetail() {
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6">
         <div className="ft-hero-gradient grain relative overflow-hidden rounded-[2rem] text-white px-6 py-10 sm:px-10 sm:py-14 ft-shadow-lg">
           <Rocket className="pointer-events-none absolute -left-8 -bottom-10 w-48 h-48 sm:w-72 sm:h-72 text-white/10 -rotate-12" />
-          <div className="pointer-events-none absolute -top-24 right-[20%] w-64 h-64 rounded-full bg-emerald-300/20 blur-3xl" />
-          <div className="pointer-events-none absolute -bottom-28 left-[35%] w-64 h-64 rounded-full bg-teal-300/15 blur-3xl" />
+          <div className="pointer-events-none absolute -top-24 right-[20%] w-64 h-64 rounded-full bg-[color:color-mix(in_srgb,var(--ft-accent)_20%,transparent)] blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-28 left-[35%] w-64 h-64 rounded-full bg-[color:color-mix(in_srgb,var(--ft-accent)_15%,transparent)] blur-3xl" />
           <div className="relative">
             <Link to="/ventures" className="inline-flex items-center gap-1.5 rounded-full bg-white/10 border border-white/20 backdrop-blur-md px-3.5 py-2 text-slate-100 hover:bg-white/20 hover:text-white text-sm font-bold pressable transition-colors">
               <ArrowRight className="w-4 h-4" /> كل المشاريع
@@ -139,7 +139,7 @@ export default function VentureDetail() {
             </div>
             <h1 className="font-head text-3xl sm:text-[2.6rem] font-extrabold leading-snug mt-4">{v.title}</h1>
             <div className="mt-4 inline-flex items-center gap-2.5 rounded-full bg-white/10 border border-white/20 backdrop-blur-md py-1.5 pr-1.5 pl-4 max-w-full">
-              <span className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 text-white text-sm font-extrabold flex items-center justify-center shrink-0 ring-2 ring-white/40 shadow">
+              <span className="w-8 h-8 rounded-full ft-icon-tile text-white text-sm font-extrabold flex items-center justify-center shrink-0 ring-2 ring-white/40 shadow">
                 {(v.owner_name || "؟").trim().charAt(0)}
               </span>
               <span className="text-sm font-bold truncate">👤 {v.owner_name}{v.school_name ? ` · 🏫 ${v.school_name}` : ""}</span>
@@ -152,7 +152,7 @@ export default function VentureDetail() {
                 <span className={`w-2 h-2 rounded-full ${STATUS_DOT[v.status] || "bg-white/70"}`} /> {v.status_label}
               </span>
               <button onClick={vote}
-                className={`pressable inline-flex items-center gap-2 rounded-full px-6 min-h-[48px] text-base font-extrabold transition-all ${v.voted ? "bg-gradient-to-l from-rose-500 to-pink-500 text-white shadow-xl shadow-rose-950/30 border border-rose-300/50" : "bg-white text-rose-600 shadow-xl shadow-emerald-950/20 hover:bg-rose-50"}`}>
+                className={`pressable inline-flex items-center gap-2 rounded-full px-6 min-h-[48px] text-base font-extrabold transition-all ${v.voted ? "bg-gradient-to-l from-rose-500 to-pink-500 text-white shadow-xl shadow-rose-950/30 border border-rose-300/50" : "bg-white text-rose-600 shadow-xl hover:bg-rose-50"}`}>
                 <Heart className={`w-5 h-5 ${v.voted ? "fill-current" : ""}`} /> {v.votes_count}
               </button>
             </div>
@@ -165,7 +165,7 @@ export default function VentureDetail() {
         <div className="bg-white rounded-[1.4rem] sm:rounded-3xl border border-slate-100 ft-shadow p-6 sm:p-8 animate-fade-up">
           <div className="flex items-start justify-between gap-4 flex-wrap">
             <h2 className="font-head font-extrabold text-xl flex items-center gap-2.5">
-              <span className="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-500 text-white flex items-center justify-center shadow-lg shadow-emerald-200 shrink-0"><Info className="w-5 h-5" /></span>
+              <span className="w-10 h-10 rounded-2xl ft-icon-tile text-white flex items-center justify-center shadow-lg shrink-0"><Info className="w-5 h-5" /></span>
               عن المشروع
             </h2>
             <button onClick={vote}
@@ -183,7 +183,7 @@ export default function VentureDetail() {
           {canManage && (
             <div className="mt-6 flex flex-wrap gap-2 border-t border-slate-100 pt-5">
               <Button variant="outline" onClick={openEdit} className="rounded-xl pressable min-h-[44px] hover:border-blue-300 hover:text-blue-700"><Pencil className="w-4 h-4 ml-1" /> تعديل</Button>
-              <Button variant="outline" onClick={() => setUpdOpen(true)} className="rounded-xl pressable min-h-[44px] hover:border-emerald-300 hover:text-emerald-700"><Megaphone className="w-4 h-4 ml-1" /> تحديث تقدّم</Button>
+              <Button variant="outline" onClick={() => setUpdOpen(true)} className="rounded-xl pressable min-h-[44px] hover:[border-color:color-mix(in_srgb,var(--ft-accent)_32%,white)] hover:[color:color-mix(in_srgb,var(--ft-accent)_66%,black)]"><Megaphone className="w-4 h-4 ml-1" /> تحديث تقدّم</Button>
               <Button variant="outline" onClick={remove} className="rounded-xl text-red-600 hover:text-red-700 hover:bg-rose-50 hover:border-rose-200 pressable min-h-[44px]"><Trash2 className="w-4 h-4 ml-1" /> حذف</Button>
             </div>
           )}
@@ -227,7 +227,7 @@ export default function VentureDetail() {
             ) : v.team_count >= v.max_members ? (
               <Badge variant="outline" className="rounded-full bg-slate-100 text-slate-500 border-slate-200 px-4 py-2.5 font-bold">اكتمل عدد الفريق</Badge>
             ) : (
-              <Button onClick={() => setJoinOpen(true)} className="rounded-2xl bg-gradient-to-l from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 font-extrabold text-base min-h-[52px] px-6 pressable shadow-lg shadow-emerald-200">
+              <Button onClick={() => setJoinOpen(true)} className="rounded-2xl ft-btn-primary font-extrabold text-base min-h-[52px] px-6 pressable shadow-lg">
                 <UserPlus className="w-5 h-5 ml-1.5" /> اطلب الانضمام للفريق
               </Button>
             )}
@@ -264,16 +264,16 @@ export default function VentureDetail() {
         {(v.updates || []).length > 0 && (
           <div className="bg-white rounded-[1.4rem] sm:rounded-3xl border border-slate-100 ft-shadow p-6 sm:p-8 animate-fade-up" style={{ animationDelay: "180ms" }}>
             <h2 className="font-head font-extrabold text-xl flex items-center gap-2.5">
-              <span className="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-500 text-white flex items-center justify-center shadow-lg shadow-emerald-200 shrink-0"><Megaphone className="w-5 h-5" /></span>
+              <span className="w-10 h-10 rounded-2xl ft-icon-tile text-white flex items-center justify-center shadow-lg shrink-0"><Megaphone className="w-5 h-5" /></span>
               آخر التحديثات
-              <span className="inline-flex items-center justify-center min-w-[28px] h-7 px-2 rounded-full bg-emerald-50 border border-emerald-100 text-emerald-700 text-xs font-extrabold">{v.updates.length}</span>
+              <span className="inline-flex items-center justify-center min-w-[28px] h-7 px-2 rounded-full ft-chip text-xs font-extrabold">{v.updates.length}</span>
             </h2>
             <div className="relative mt-7">
-              <div className="absolute top-2 bottom-2 right-[9px] w-0.5 rounded-full bg-gradient-to-b from-emerald-400 via-emerald-200 to-transparent" />
+              <div className="absolute top-2 bottom-2 right-[9px] w-0.5 rounded-full [background-image:linear-gradient(to_bottom,var(--ft-accent),transparent)]" />
               <div className="space-y-5">
                 {v.updates.map((u, i) => (
                   <div key={i} className="relative pr-10">
-                    <span className={`absolute right-0 top-2 w-5 h-5 rounded-full ring-4 ring-emerald-50 border-2 border-white shadow-md flex items-center justify-center ${STATUS_DOT[v.status] || "bg-emerald-500"}`}>
+                    <span className={`absolute right-0 top-2 w-5 h-5 rounded-full ring-4 ft-ring-accent border-2 border-white shadow-md flex items-center justify-center ${STATUS_DOT[v.status] || "bg-emerald-500"}`}>
                       <Megaphone className="w-2.5 h-2.5 text-white" />
                     </span>
                     <div className="rounded-2xl bg-white border border-slate-100 ft-shadow hover-lift p-4 sm:p-5">
@@ -313,7 +313,7 @@ export default function VentureDetail() {
             <div><Label>رسالة تعريفية (اختياري)</Label>
               <Textarea value={joinMsg} onChange={(e) => setJoinMsg(e.target.value)}
                 placeholder="عرّف بنفسك وبما ستضيفه للفريق..." className="rounded-xl mt-1 text-base" maxLength={500} /></div>
-            <Button onClick={join} disabled={busy} className="w-full rounded-2xl bg-gradient-to-l from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 font-extrabold text-base min-h-[52px] pressable shadow-lg shadow-emerald-200">
+            <Button onClick={join} disabled={busy} className="w-full rounded-2xl ft-btn-primary font-extrabold text-base min-h-[52px] pressable shadow-lg">
               {busy ? "جارٍ الإرسال..." : "أرسل الطلب"}
             </Button>
           </div>
@@ -352,7 +352,7 @@ export default function VentureDetail() {
             <div><Label>من تبحث عنه؟</Label>
               <Input value={editForm.looking_for || ""} onChange={(e) => setEditForm({ ...editForm, looking_for: e.target.value })}
                 className="rounded-xl mt-1 text-base min-h-[48px]" maxLength={500} /></div>
-            <Button onClick={saveEdit} disabled={busy} className="w-full rounded-2xl bg-gradient-to-l from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-extrabold text-base min-h-[52px] pressable shadow-lg shadow-emerald-200">
+            <Button onClick={saveEdit} disabled={busy} className="w-full rounded-2xl ft-btn-primary text-white font-extrabold text-base min-h-[52px] pressable shadow-lg">
               {busy ? "جارٍ الحفظ..." : "حفظ التعديلات"}
             </Button>
           </div>
@@ -363,7 +363,7 @@ export default function VentureDetail() {
         <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto rounded-3xl" dir="rtl">
           <DialogHeader>
             <div className="flex items-center gap-3">
-              <span className="w-11 h-11 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-500 text-white flex items-center justify-center shadow-lg shadow-emerald-200 shrink-0">
+              <span className="w-11 h-11 rounded-2xl ft-icon-tile text-white flex items-center justify-center shadow-lg shrink-0">
                 <Megaphone className="w-5 h-5" />
               </span>
               <DialogTitle className="font-head text-xl font-extrabold">تحديث تقدّم <Plus className="inline w-5 h-5" /></DialogTitle>
@@ -376,7 +376,7 @@ export default function VentureDetail() {
             <div><Label>التفاصيل</Label>
               <Textarea value={updForm.text} onChange={(e) => setUpdForm({ ...updForm, text: e.target.value })}
                 placeholder="ماذا أنجز الفريق؟" className="rounded-xl mt-1 text-base" maxLength={2000} /></div>
-            <Button onClick={addUpdate} disabled={busy} className="w-full rounded-2xl bg-gradient-to-l from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-extrabold text-base min-h-[52px] pressable shadow-lg shadow-emerald-200">
+            <Button onClick={addUpdate} disabled={busy} className="w-full rounded-2xl ft-btn-primary text-white font-extrabold text-base min-h-[52px] pressable shadow-lg">
               {busy ? "جارٍ النشر..." : "انشر التحديث"}
             </Button>
           </div>

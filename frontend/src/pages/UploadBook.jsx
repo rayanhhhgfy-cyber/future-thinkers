@@ -95,13 +95,13 @@ export default function UploadBook() {
               <input data-testid="book-cover" type="file" accept="image/*" className="hidden" onChange={(e) => setCover(e.target.files[0])} />
             </label>
           </div>
-          <Button type="submit" data-testid="submit-book-btn" disabled={loading} className="w-full rounded-xl bg-emerald-600 hover:bg-emerald-700 h-11">
+          <Button type="submit" data-testid="submit-book-btn" disabled={loading} className="w-full rounded-xl ft-btn-solid h-11">
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Upload className="w-4 h-4 ml-1" /> رفع الكتاب</>}
           </Button>
           {loading && progress > 0 && (
             <div className="space-y-1.5">
               <div className="h-2.5 rounded-full bg-slate-100 overflow-hidden">
-                <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${progress}%` }} />
+                <div className="h-full ft-grad-bar rounded-full transition-all" style={{ width: `${progress}%` }} />
               </div>
               <div className="text-xs text-slate-500 text-center">جارٍ رفع الملف… {progress}%</div>
             </div>

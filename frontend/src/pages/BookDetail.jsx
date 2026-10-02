@@ -120,7 +120,7 @@ export default function BookDetail() {
           </div>
 
           <div>
-            <div className="flex items-center gap-2 text-sm text-emerald-700 bg-emerald-50 w-fit px-3 py-1 rounded-full mb-3">{book.category}</div>
+            <div className="flex items-center gap-2 text-sm ft-text-accent ft-bg-soft w-fit px-3 py-1 rounded-full mb-3">{book.category}</div>
             <h1 className="font-head text-3xl font-extrabold text-slate-900">{book.title}</h1>
             <p className="text-slate-500 mt-1">تأليف: {book.author}</p>
             <div className="flex items-center gap-5 mt-4 text-sm text-slate-600">

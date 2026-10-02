@@ -17,7 +17,7 @@ const PLAYLIST_COLORS = ["#2563EB", "#059669", "#D97706", "#DC2626", "#7C3AED", 
 export function BookCard({ b, i = 0, catName }) {
   return (
     <Link to={`/books/${b.id}`} data-testid={`book-card-${b.id}`} className="group block animate-fade-up" style={{ animationDelay: `${(i % 10) * 45}ms` }}>
-      <article className="flex h-full flex-col overflow-hidden rounded-[1.35rem] border border-slate-100 bg-white ft-shadow hover-lift group-hover:ring-1 group-hover:ring-emerald-200/70">
+      <article className="flex h-full flex-col overflow-hidden rounded-[1.35rem] border border-slate-100 bg-white ft-shadow hover-lift group-hover:ring-1 ft-ring-accent">
         <div className="relative aspect-[3/4] overflow-hidden bg-gradient-to-b from-slate-100 via-slate-100 to-slate-200">
           <BookCover book={b} className="w-full h-full" imgClassName="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.07]" />
           <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-slate-950/55 via-slate-950/15 to-transparent transition-opacity duration-300 group-hover:from-slate-950/70" />
@@ -27,19 +27,19 @@ export function BookCard({ b, i = 0, catName }) {
           {catName && <span className="absolute bottom-2 right-2 z-10 max-w-[55%] truncate rounded-full bg-white/85 px-2 py-1 text-[10px] font-bold text-slate-700 shadow ring-1 ring-white/60 backdrop-blur-sm">{catName}</span>}
           {typeof b.progress === "number" && b.progress > 0 && (
             <>
-              <span className={`absolute right-2 z-10 rounded-full bg-slate-950/55 px-2 py-0.5 text-[10px] font-bold text-emerald-300 ring-1 ring-white/25 backdrop-blur-sm ${catName ? "bottom-9" : "bottom-3"}`}>{b.progress}%</span>
+              <span className={`absolute right-2 z-10 rounded-full bg-slate-950/55 px-2 py-0.5 text-[10px] font-bold ft-text-accent-bright ring-1 ring-white/25 backdrop-blur-sm ${catName ? "bottom-9" : "bottom-3"}`}>{b.progress}%</span>
               <div className="absolute inset-x-0 bottom-0 h-1.5 bg-black/30">
-                <div className="h-full bg-gradient-to-l from-emerald-400 to-teal-300" style={{ width: `${b.progress}%` }} />
+                <div className="h-full ft-grad-bar" style={{ width: `${b.progress}%` }} />
               </div>
             </>
           )}
         </div>
         <div className="flex flex-1 flex-col p-3 sm:p-3.5">
-          <h3 className="font-head font-bold leading-snug text-slate-800 line-clamp-2 transition-colors group-hover:text-emerald-700">{b.title}</h3>
+          <h3 className="font-head font-bold leading-snug text-slate-800 line-clamp-2 transition-colors group-hover:[color:color-mix(in_srgb,var(--ft-accent)_66%,black)]">{b.title}</h3>
           <p className="mt-1 text-xs text-slate-400 line-clamp-1">{b.author}</p>
           <div className="mt-auto flex items-center gap-2 pt-3 text-[11px]">
             <span className="inline-flex items-center gap-1 rounded-full bg-slate-50 px-2 py-1 font-semibold text-slate-500 ring-1 ring-slate-100"><Eye className="h-3.5 w-3.5" />{b.views || 0}</span>
-            <span className="mr-auto inline-flex translate-x-1 items-center gap-1 font-bold text-emerald-600 opacity-0 transition-all duration-300 group-hover:translate-x-0 group-hover:opacity-100">اقرأ الآن <BookOpen className="h-3.5 w-3.5" /></span>
+            <span className="mr-auto inline-flex translate-x-1 items-center gap-1 font-bold ft-text-accent opacity-0 transition-all duration-300 group-hover:translate-x-0 group-hover:opacity-100">اقرأ الآن <BookOpen className="h-3.5 w-3.5" /></span>
           </div>
         </div>
       </article>
@@ -86,20 +86,20 @@ export default function Library() {
               <span className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-[11px] font-bold text-white ring-1 ring-white/20 backdrop-blur">
                 <LibraryIcon className="h-3.5 w-3.5" /> مكتبة النادي
               </span>
-              <h1 className="mt-4 font-head text-4xl font-extrabold leading-[1.15] sm:text-5xl lg:text-6xl">المكتبة <span className="animate-gradient-text bg-gradient-to-l from-emerald-300 via-teal-200 to-emerald-300 bg-clip-text text-transparent">الرقمية</span></h1>
+              <h1 className="mt-4 font-head text-4xl font-extrabold leading-[1.15] sm:text-5xl lg:text-6xl">المكتبة <span className="animate-gradient-text ft-text-gradient">الرقمية</span></h1>
               <p className="mt-3 max-w-xl leading-relaxed text-slate-300 sm:text-lg">اقرأ في العلوم والثقافة والأدب والبرمجة والفلسفة وأكثر.</p>
               <div className="mt-5 flex flex-wrap gap-2">
-                {data && <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3.5 py-2 text-xs font-bold ring-1 ring-white/15 backdrop-blur"><BookOpen className="h-4 w-4 text-emerald-300" /> {data.total} كتاب متاح</span>}
-                {cats.length > 0 && <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3.5 py-2 text-xs font-bold ring-1 ring-white/15 backdrop-blur"><LibraryIcon className="h-4 w-4 text-teal-300" /> {cats.length} تصنيف</span>}
+                {data && <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3.5 py-2 text-xs font-bold ring-1 ring-white/15 backdrop-blur"><BookOpen className="h-4 w-4 ft-text-accent-bright" /> {data.total} كتاب متاح</span>}
+                {cats.length > 0 && <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3.5 py-2 text-xs font-bold ring-1 ring-white/15 backdrop-blur"><LibraryIcon className="h-4 w-4 ft-text-accent-bright" /> {cats.length} تصنيف</span>}
                 {featured && <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3.5 py-2 text-xs font-bold ring-1 ring-white/15 backdrop-blur"><Star className="h-4 w-4 fill-amber-300 text-amber-300" /> كتاب مميز هذا الأسبوع</span>}
               </div>
             </div>
-            {user && <Button data-testid="upload-book-btn" asChild className="pressable h-12 rounded-full bg-gradient-to-l from-emerald-500 to-teal-500 px-6 font-bold text-white shadow-lg shadow-emerald-950/30 ring-1 ring-white/20 hover:from-emerald-600 hover:to-teal-600"><Link to="/upload-book"><Upload className="w-4 h-4 ml-1" /> أضف كتاباً</Link></Button>}
+            {user && <Button data-testid="upload-book-btn" asChild className="pressable h-12 rounded-full ft-btn-primary px-6 font-bold text-white shadow-lg ring-1 ring-white/20"><Link to="/upload-book"><Upload className="w-4 h-4 ml-1" /> أضف كتاباً</Link></Button>}
           </div>
 
-          <div className="relative mt-8 max-w-xl rounded-[1.4rem] bg-white/10 p-1.5 ring-1 ring-white/15 backdrop-blur transition-shadow focus-within:ring-2 focus-within:ring-emerald-300/50">
+          <div className="relative mt-8 max-w-xl rounded-[1.4rem] bg-white/10 p-1.5 ring-1 ring-white/15 backdrop-blur transition-shadow focus-within:ring-2 ft-ring-accent">
             <Search className="absolute right-5 top-1/2 z-10 h-5 w-5 -translate-y-1/2 text-slate-400" />
-            <Input data-testid="library-search" value={q} onChange={(e) => { setQ(e.target.value); setTab("browse"); }} placeholder="ابحث بالعنوان أو المؤلف…" className="h-[52px] rounded-[1.1rem] border-0 bg-white/95 pr-11 text-slate-800 shadow-inner placeholder:text-slate-400 focus-visible:ring-2 focus-visible:ring-emerald-300" />
+            <Input data-testid="library-search" value={q} onChange={(e) => { setQ(e.target.value); setTab("browse"); }} placeholder="ابحث بالعنوان أو المؤلف…" className="h-[52px] rounded-[1.1rem] border-0 bg-white/95 pr-11 text-slate-800 shadow-inner placeholder:text-slate-400 focus-visible:ring-2 ft-ring-accent" />
           </div>
 
           {user && (
@@ -150,19 +150,19 @@ export default function Library() {
           <div className="sticky top-3 z-30 mb-6 rounded-[1.6rem] border border-slate-100 bg-white/90 px-4 py-4 shadow-[0_16px_40px_-20px_rgba(15,23,42,0.25)] backdrop-blur-xl sm:top-4 sm:px-5">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
               <h2 className="flex items-center gap-2.5 font-head text-lg font-extrabold text-slate-900">
-                <span className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-md shadow-emerald-600/25"><BookOpen className="h-5 w-5" /></span>
+                <span className="grid h-9 w-9 place-items-center rounded-xl ft-icon-tile shadow-md"><BookOpen className="h-5 w-5" /></span>
                 تصفح الكتب
               </h2>
-              {data && <span className="rounded-full bg-emerald-50 px-3 py-1.5 text-[11px] font-bold text-emerald-700 ring-1 ring-emerald-100">{data.total} كتاب</span>}
+              {data && <span className="rounded-full ft-bg-soft px-3 py-1.5 text-[11px] font-bold ft-text-accent ring-1 ft-ring-accent">{data.total} كتاب</span>}
             </div>
             <div className="flex items-center gap-3">
               <div className="-mx-1 flex flex-1 snap-x snap-mandatory gap-2 overflow-x-auto px-1 pb-1 pt-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                <button onClick={() => setCat("")} data-testid="cat-all" className={`pressable min-h-[42px] shrink-0 snap-start rounded-full px-4 text-sm font-bold transition-all ${!cat ? "bg-gradient-to-l from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-600/25" : "bg-slate-100 text-slate-600 ring-1 ring-slate-200/70 hover:bg-slate-200"}`}>الكل</button>
+                <button onClick={() => setCat("")} data-testid="cat-all" className={`pressable min-h-[42px] shrink-0 snap-start rounded-full px-4 text-sm font-bold transition-all ${!cat ? "ft-btn-primary text-white shadow-md" : "bg-slate-100 text-slate-600 ring-1 ring-slate-200/70 hover:bg-slate-200"}`}>الكل</button>
                 {cats.map((c) => (
                   <button key={c.slug} onClick={() => setCat(c.slug)} data-testid={`cat-${c.slug}`} className={`pressable min-h-[42px] shrink-0 snap-start whitespace-nowrap rounded-full px-4 text-sm font-bold transition-all ${cat === c.slug ? "text-white shadow-md" : "bg-slate-100 text-slate-600 ring-1 ring-slate-200/70 hover:bg-slate-200"}`} style={cat === c.slug ? { background: c.color } : {}}>{c.name}</button>
                 ))}
               </div>
-              <select data-testid="sort-select" value={sort} onChange={(e) => setSort(e.target.value)} className="h-11 shrink-0 rounded-full border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100">
+              <select data-testid="sort-select" value={sort} onChange={(e) => setSort(e.target.value)} className="h-11 shrink-0 rounded-full border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 outline-none transition focus:[border-color:color-mix(in_srgb,var(--ft-accent)_32%,white)] focus:ring-2 ft-ring-accent">
                 {SORTS.map((s) => <option key={s.v} value={s.v}>{s.l}</option>)}
               </select>
             </div>
@@ -180,7 +180,7 @@ export default function Library() {
                   <div className="inline-flex items-center gap-2 rounded-full border border-slate-100 bg-white p-1.5 ft-shadow">
                     <Button variant="outline" disabled={page <= 1} onClick={() => setPage((p) => p - 1)} className="pressable h-11 rounded-full border-0 bg-slate-50 px-5 hover:bg-slate-100 disabled:opacity-40">السابق</Button>
                     <span className="min-w-14 px-2 text-center text-sm font-bold text-slate-600">{page} / {totalPages}</span>
-                    <Button variant="outline" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)} className="pressable h-11 rounded-full border-0 bg-emerald-600 px-5 text-white hover:bg-emerald-700 disabled:opacity-40">التالي</Button>
+                    <Button variant="outline" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)} className="pressable h-11 rounded-full border-0 ft-btn-solid px-5 text-white disabled:opacity-40">التالي</Button>
                   </div>
                 </div>
               )}
@@ -296,7 +296,7 @@ function PersonalLibrary() {
 
         <div className="mb-5 rounded-[1.6rem] border border-slate-100 bg-white p-4 ft-shadow sm:p-5">
           <div className="flex flex-wrap gap-3">
-            <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="اسم قائمة جديدة… مثل: كتب الصيف ☀️" className="h-12 min-w-[200px] flex-1 rounded-full bg-slate-50 px-4 focus-visible:ring-emerald-200" />
+            <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="اسم قائمة جديدة… مثل: كتب الصيف ☀️" className="h-12 min-w-[200px] flex-1 rounded-full bg-slate-50 px-4 ft-ring-accent" />
             <div className="flex items-center gap-1.5 rounded-full bg-slate-50 px-2 py-1 ring-1 ring-slate-100">
               {PLAYLIST_COLORS.map((c) => (
                 <button key={c} onClick={() => setNewColor(c)} aria-label="لون القائمة"
