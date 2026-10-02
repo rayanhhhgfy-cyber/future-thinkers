@@ -244,7 +244,7 @@ function Overview() {
               </button>
             ))}
           </div>
-          {totalPending === 0 && <div className="text-center text-sm text-emerald-600 font-medium py-4">كل شيء مُراجع — أحسنت! ✨</div>}
+          {totalPending === 0 && <div className="text-center text-sm text-emerald-600 font-medium py-4">كل شيء مُراجع · أحسنت! ✨</div>}
         </div>
         </FadeUp>
 
@@ -309,7 +309,7 @@ function Overview() {
                 </span>
                 <div>
                   <div className="font-bold text-sm">{!health ? "يفحص…" : health.status === "healthy" ? "المنصة تعمل بشكل سليم ✅" : "مشكلة في الاتصال ⚠️"}</div>
-                  <div className="text-xs text-slate-400">قاعدة البيانات: {health?.db === "up" ? "متصلة" : "—"}</div>
+                  <div className="text-xs text-slate-400">قاعدة البيانات: {health?.db === "up" ? "متصلة" : "·"}</div>
                 </div>
               </div>
             </div>
@@ -484,7 +484,7 @@ function CompetitionsManager() {
   useEffect(() => { load(); }, []);
   const openEdit = (c) => {
     setEditing(c);
-    // NOTE: question editing is intentionally out of scope here — edit the metadata only.
+    // NOTE: question editing is intentionally out of scope here · edit the metadata only.
     setF({ title: c.title || "", description: c.description || "", type: c.type || "quiz", start_at: (c.start_at || "").slice(0, 16), end_at: (c.end_at || "").slice(0, 16), duration_minutes: c.duration_minutes || 30 });
   };
   const save = async () => {
@@ -509,7 +509,7 @@ function CompetitionsManager() {
     if (!window.confirm(`إنهاء مسابقة "${c.title}"؟ سيحصل أفضل 3 على نقاط وشهادات تلقائياً.`)) return;
     try {
       const { data } = await api.post(`/admin/competitions/${c.id}/finalize`);
-      toast.success(`اكتملت المسابقة — ${data.winners.length} فائز حصلوا على شهادات 🏆`);
+      toast.success(`اكتملت المسابقة · ${data.winners.length} فائز حصلوا على شهادات 🏆`);
       load();
     } catch (e) { toast.error(apiErr(e)); }
   };
@@ -552,7 +552,7 @@ function CompetitionsManager() {
             <div><Label>تبدأ</Label><Input type="datetime-local" value={f.start_at || ""} onChange={(e) => set("start_at")(e.target.value)} className="rounded-xl mt-1" /></div>
             <div><Label>تنتهي</Label><Input type="datetime-local" value={f.end_at || ""} onChange={(e) => set("end_at")(e.target.value)} className="rounded-xl mt-1" /></div>
             <div className="sm:col-span-2"><Label>الوصف</Label><Textarea value={f.description || ""} onChange={(e) => set("description")(e.target.value)} className="rounded-xl mt-1" rows={3} /></div>
-            <p className="sm:col-span-2 text-xs text-slate-400">ملاحظة: تعديل الأسئلة يتم عند إنشاء مسابقة جديدة — هنا تُعدَّل البيانات الأساسية فقط.</p>
+            <p className="sm:col-span-2 text-xs text-slate-400">ملاحظة: تعديل الأسئلة يتم عند إنشاء مسابقة جديدة · هنا تُعدَّل البيانات الأساسية فقط.</p>
           </div>
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setEditing(null)} className="rounded-xl">إلغاء</Button>
@@ -1563,11 +1563,11 @@ function BannersPanel() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <p className="text-sm text-slate-500">لافتات تظهر أعلى الموقع لجميع الزوار — مثالية للتنبيهات المهمة.</p>
+        <p className="text-sm text-slate-500">لافتات تظهر أعلى الموقع لجميع الزوار · مثالية للتنبيهات المهمة.</p>
         <Button onClick={openNew} className="rounded-xl bg-emerald-600 hover:bg-emerald-700"><Plus className="w-4 h-4 ml-1" /> لافتة جديدة</Button>
       </div>
       {banners.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-slate-100 ft-shadow"><Empty t="لا لافتات بعد — أنشئ أول لافتة بالأعلى" /></div>
+        <div className="bg-white rounded-2xl border border-slate-100 ft-shadow"><Empty t="لا لافتات بعد · أنشئ أول لافتة بالأعلى" /></div>
       ) : (
         <Stagger className="space-y-3">
           {banners.map((b) => {
@@ -1583,7 +1583,7 @@ function BannersPanel() {
                   <div className="text-xs text-slate-400 flex-1 min-w-0 space-y-1">
                     {b.link && <div className="flex items-center gap-1 truncate" dir="ltr"><Link2 className="w-3.5 h-3.5 shrink-0" />{b.link}</div>}
                     {(b.starts_at || b.ends_at) && (
-                      <div>من {b.starts_at ? String(b.starts_at).slice(0, 16).replace("T", " ") : "—"} إلى {b.ends_at ? String(b.ends_at).slice(0, 16).replace("T", " ") : "—"}</div>
+                      <div>من {b.starts_at ? String(b.starts_at).slice(0, 16).replace("T", " ") : "·"} إلى {b.ends_at ? String(b.ends_at).slice(0, 16).replace("T", " ") : "·"}</div>
                     )}
                     <div>أُنشئت {String(b.created_at || "").slice(0, 10)}</div>
                   </div>
@@ -1609,7 +1609,7 @@ function BannersPanel() {
               </div>
             </div>
             <div><Label>النص *</Label><Textarea value={f.text} onChange={(e) => set("text")(e.target.value)} rows={2} className="rounded-xl mt-1" placeholder="مثال: التسجيل في مسابقة القراءة مفتوح الآن! 🎉" /></div>
-            <div><Label>الرابط (اختياري — عند النقر على اللافتة)</Label><Input value={f.link} onChange={(e) => set("link")(e.target.value)} dir="ltr" className="rounded-xl mt-1" placeholder="/competitions" /></div>
+            <div><Label>الرابط (اختياري · عند النقر على اللافتة)</Label><Input value={f.link} onChange={(e) => set("link")(e.target.value)} dir="ltr" className="rounded-xl mt-1" placeholder="/competitions" /></div>
             <div>
               <Label>لون الخلفية</Label>
               <div className="flex items-center gap-2 mt-2 flex-wrap">
@@ -1705,7 +1705,7 @@ function ExportsPanel() {
   };
   return (
     <div className="space-y-6">
-      <p className="text-sm text-slate-500">تصدير فوري لبيانات المنصة بصيغة CSV (متوافقة مع Excel بالعربية) — تُحمَّل مباشرة من جهازك.</p>
+      <p className="text-sm text-slate-500">تصدير فوري لبيانات المنصة بصيغة CSV (متوافقة مع Excel بالعربية) · تُحمَّل مباشرة من جهازك.</p>
       <Stagger className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
         {EXPORT_DEFS.map((d) => (
           <Item key={d.k} className="bg-white rounded-2xl p-5 border border-slate-100 ft-shadow hover-lift flex flex-col">
@@ -1777,7 +1777,7 @@ function CalendarPanel() {
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h3 className="font-head font-bold text-lg">تقويم المحتوى — <span className="text-emerald-700">{AR_MONTHS[m]} {y}</span></h3>
+        <h3 className="font-head font-bold text-lg">تقويم المحتوى · <span className="text-emerald-700">{AR_MONTHS[m]} {y}</span></h3>
         <div className="flex items-center gap-2">
           <Button size="sm" variant="outline" onClick={() => shift(-1)} className="rounded-xl">الشهر السابق</Button>
           <Button size="sm" variant="outline" onClick={() => { setYm({ y: now.getFullYear(), m: now.getMonth() }); }} className="rounded-xl">اليوم</Button>
