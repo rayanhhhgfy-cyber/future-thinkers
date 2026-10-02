@@ -92,7 +92,7 @@ function CodingAdminPanel() {
 
           <div className="mt-5">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-bold text-slate-700">حالات الاختبار ({edit.tests.length}) — أول حالتين تظهران كأمثلة للطالب</span>
+              <span className="text-sm font-bold text-slate-700">حالات الاختبار ({edit.tests.length}) · أول حالتين تظهران كأمثلة للطالب</span>
               <button onClick={addTest} className="text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-full">+ حالة</button>
             </div>
             <div className="space-y-2">
@@ -109,20 +109,20 @@ function CodingAdminPanel() {
           {/* secure debugger */}
           <div className="mt-6 bg-slate-950 rounded-2xl overflow-hidden">
             <div className="px-4 py-2.5 flex items-center justify-between border-b border-slate-800">
-              <span className="text-slate-300 text-xs flex items-center gap-2"><Terminal className="w-4 h-4 text-emerald-400" /> المصحّح الآمن — اختبر حلاً مرجعياً قبل النشر</span>
+              <span className="text-slate-300 text-xs flex items-center gap-2"><Terminal className="w-4 h-4 text-emerald-400" /> المصحّح الآمن · اختبر حلاً مرجعياً قبل النشر</span>
               <button onClick={runSolution} disabled={!!busy} className="pressable inline-flex items-center gap-1 px-3.5 py-1.5 rounded-full bg-emerald-600 text-white text-[11px] font-bold disabled:opacity-50">
                 <FlaskConical className="w-3.5 h-3.5" /> {busy === "test" ? "يُشغّل…" : "تشغيل الاختبارات"}
               </button>
             </div>
-            <textarea value={solCode} onChange={(e) => setSolCode(e.target.value)} dir="ltr" spellCheck={false}
+            <textarea value={solCode} onChange={(e) => setSolCode(e.target.value)} dir="ltr" spellCheck={false} autoCapitalize="off" autoCorrect="off"
               placeholder={"# reference solution…\nn = int(input())\nprint(n * n)"}
               className="w-full bg-slate-900 text-emerald-300 font-mono text-xs p-4 min-h-[140px] outline-none resize-y" />
             {testOut && (
               <div className="p-3 space-y-1.5 border-t border-slate-800">
-                <div className={`text-xs font-bold ${testOut.all_passed ? "text-emerald-400" : "text-amber-400"}`}>{testOut.all_passed ? "كل الاختبارات ناجحة — جاهز للنشر ✅" : "بعض الاختبارات فشلت — راجعها قبل النشر"}</div>
+                <div className={`text-xs font-bold ${testOut.all_passed ? "text-emerald-400" : "text-amber-400"}`}>{testOut.all_passed ? "كل الاختبارات ناجحة · جاهز للنشر ✅" : "بعض الاختبارات فشلت · راجعها قبل النشر"}</div>
                 {testOut.results.map((r) => (
                   <div key={r.test} dir="ltr" className={`text-left font-mono text-[11px] px-3 py-2 rounded-lg ${r.passed ? "bg-emerald-500/10 text-emerald-300" : "bg-rose-500/10 text-rose-300"}`}>
-                    Test {r.test}: {r.passed ? "PASS" : r.ran ? "WRONG OUTPUT" : "ERROR"} — got: {(r.output || "").slice(0, 120) || "(empty)"}{!r.passed && ` · expected: ${String(r.expected).slice(0, 120)}`}
+                    Test {r.test}: {r.passed ? "PASS" : r.ran ? "WRONG OUTPUT" : "ERROR"} · got: {(r.output || "").slice(0, 120) || "(empty)"}{!r.passed && ` · expected: ${String(r.expected).slice(0, 120)}`}
                   </div>
                 ))}
               </div>
@@ -157,7 +157,7 @@ function ThemePanel() {
   return (
     <div>
       <h2 className="font-head font-extrabold text-lg flex items-center gap-2 mb-1"><Palette className="w-5 h-5 text-violet-600" /> مظهر الموقع</h2>
-      <p className="text-xs text-slate-400 mb-5">اختر سمة لونية واحدة — تتغير تدرجات البطولات والأقسام الداكنة في الموقع كاملاً فوراً لكل الزوار. آمن تماماً: القيم محفوظة كقائمة مغلقة.</p>
+      <p className="text-xs text-slate-400 mb-5">اختر سمة لونية واحدة · تتغير تدرجات البطولات والأقسام الداكنة في الموقع كاملاً فوراً لكل الزوار. آمن تماماً: القيم محفوظة كقائمة مغلقة.</p>
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {THEME_PRESETS.map((p) => (
           <button key={p.key} onClick={() => apply(p.key)} disabled={!!busy}
@@ -238,16 +238,16 @@ function HealthPanel() {
         <div className="bg-slate-900 rounded-3xl p-5 text-white ft-shadow">
           <div className="text-xs text-slate-400 mb-1">بانتظار إجراء</div>
           <div className="space-y-1.5 text-sm font-semibold">
-            <div>معلمون: {h.pending?.teachers ?? "—"}</div>
-            <div>كتب: {h.pending?.books ?? "—"}</div>
-            <div>بلاغات مفتوحة: {h.pending?.reports_open ?? "—"}</div>
+            <div>معلمون: {h.pending?.teachers ?? "·"}</div>
+            <div>كتب: {h.pending?.books ?? "·"}</div>
+            <div>بلاغات مفتوحة: {h.pending?.reports_open ?? "·"}</div>
           </div>
         </div>
         <div className="bg-white rounded-3xl p-5 border border-slate-100 ft-shadow">
           <div className="text-xs text-slate-400 mb-1">الأمان</div>
           <div className="space-y-1.5 text-sm font-semibold text-slate-700">
-            <div>حسابات مقفلة الآن: {h.security?.active_locks ?? "—"}</div>
-            <div>هويات بمحاولات فاشلة: {h.security?.identities_with_failures ?? "—"}</div>
+            <div>حسابات مقفلة الآن: {h.security?.active_locks ?? "·"}</div>
+            <div>هويات بمحاولات فاشلة: {h.security?.identities_with_failures ?? "·"}</div>
           </div>
         </div>
         <div className="bg-white rounded-3xl p-5 border border-slate-100 ft-shadow">
@@ -255,7 +255,7 @@ function HealthPanel() {
           <div className="space-y-1.5 text-sm font-semibold text-slate-700">
             <div>تخزين تليجرام: {h.integrations?.telegram_storage ? "✅ مهيأ" : "⚠️ غير مهيأ"}</div>
             <div>دفع الهاتف (VAPID): {h.integrations?.push_vapid ? "✅ مهيأ" : "⚠️ غير مهيأ"}</div>
-            <div>أجهزة مسجلة: {h.integrations?.push_devices ?? "—"}</div>
+            <div>أجهزة مسجلة: {h.integrations?.push_devices ?? "·"}</div>
           </div>
         </div>
       </div>
@@ -293,7 +293,7 @@ function LandingPanel() {
         activities: (cms.activitiesText || "").split("\n").map((s) => s.trim()).filter(Boolean) };
       delete payload.goalsText; delete payload.activitiesText;
       await api.put("/admin/cms/landing", payload);
-      toast.success("حُفظت صفحة الهبوط — حدّث الموقع لتراها 🎉");
+      toast.success("حُفظت صفحة الهبوط · حدّث الموقع لتراها 🎉");
     } catch (e) { toast.error(apiErr(e)); }
     setSaving(false);
   };
@@ -301,7 +301,7 @@ function LandingPanel() {
   return (
     <div>
       <h2 className="font-head font-extrabold text-lg flex items-center gap-2 mb-1"><Globe2 className="w-5 h-5 text-sky-600" /> محرر صفحة الهبوط</h2>
-      <p className="text-xs text-slate-400 mb-5">حرّر نصوص الصفحة الرئيسية دون لمس الكود — تُحفظ فوراً وتنعكس على الموقع.</p>
+      <p className="text-xs text-slate-400 mb-5">حرّر نصوص الصفحة الرئيسية دون لمس الكود · تُحفظ فوراً وتنعكس على الموقع.</p>
       <div className="bg-white rounded-3xl border border-slate-100 ft-shadow p-5 sm:p-6 space-y-4">
         <div className="grid sm:grid-cols-2 gap-3">
           <input value={f("hero_badge")} onChange={(e) => set("hero_badge", e.target.value)} placeholder="شارة البطل (المنصة المعرفية…)" className={ta} />
@@ -452,7 +452,7 @@ function AnalyticsV2() {
       <div className="bg-white rounded-3xl border border-slate-100 ft-shadow p-5 sm:p-6 mt-6">
         <div className="flex items-start justify-between gap-3 flex-wrap">
           <div>
-            <h3 className="font-head font-bold mb-1 flex items-center gap-2"><Activity className="w-5 h-5 text-emerald-600" /> نمو المنصة — آخر 30 يوماً</h3>
+            <h3 className="font-head font-bold mb-1 flex items-center gap-2"><Activity className="w-5 h-5 text-emerald-600" /> نمو المنصة · آخر 30 يوماً</h3>
             <p className="text-[11px] text-slate-400 mb-4">نشاط حقيقي من حركات النقاط والتسجيلات والمباريات</p>
           </div>
           <button onClick={async () => { try { const { data } = await api.post("/admin/digest/send"); toast.success(`أُرسل الملخص الأسبوعي إلى ${data.sent} طالب 📊`); } catch (e) { toast.error(apiErr(e)); } }}

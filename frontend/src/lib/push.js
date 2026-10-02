@@ -60,7 +60,7 @@ export async function enablePush() {
 
 /**
  * Subscribe this device for the teacher-approval push before the account is
- * approved. No login session needed — authorized by the single-purpose token
+ * approved. No login session needed · authorized by the single-purpose token
  * issued at teacher registration.
  */
 export async function enablePendingPush(token) {

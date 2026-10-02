@@ -36,7 +36,7 @@ export function Item({ children, className, y = 22 }) {
   );
 }
 
-/** Fade-up on first view — for section headers and standalone blocks. */
+/** Fade-up on first view · for section headers and standalone blocks. */
 export function FadeUp({ children, className, delay = 0, y = 20 }) {
   const reduce = useReducedMotion();
   if (reduce) return <div className={className}>{children}</div>;

@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import api from "@/lib/api";
 
-/* Site design presets — server stores only the preset key (whitelisted),
+/* Site design presets · server stores only the preset key (whitelisted),
    the actual colors live here. Zero CSS injection surface. */
 export const THEME_PRESETS = [
   { key: "emerald", name: "الزمردي", a: "#052e26", b: "#065f46", c: "#043a2e", accent: "#10b981" },

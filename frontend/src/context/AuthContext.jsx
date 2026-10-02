@@ -35,7 +35,7 @@ export function AuthProvider({ children }) {
 
   const register = async (payload) => {
     const { data } = await api.post("/auth/register", payload);
-    if (data.pending_approval) return data; // teacher account — activates after admin approval
+    if (data.pending_approval) return data; // teacher account · activates after admin approval
     localStorage.setItem("ft_token", data.access_token);
     setUser(data.user);
     return data.user;

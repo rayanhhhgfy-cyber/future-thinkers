@@ -42,11 +42,11 @@ export function GlobalSearch({ onClose }) {
           {loading && <div className="p-6 text-center text-slate-400 text-sm">جارٍ البحث…</div>}
           {res && !loading && (
             <>
-              <Section icon={BookOpen} label="كتب" list={res.books} render={(b) => <button key={b.id} onClick={() => go(`/books/${b.id}`)} className="w-full text-right px-4 py-2 hover:bg-slate-50 text-sm">{b.title} <span className="text-slate-400">— {b.author}</span></button>} />
+              <Section icon={BookOpen} label="كتب" list={res.books} render={(b) => <button key={b.id} onClick={() => go(`/books/${b.id}`)} className="w-full text-right px-4 py-2 hover:bg-slate-50 text-sm">{b.title} <span className="text-slate-400">· {b.author}</span></button>} />
               <Section icon={MessagesSquare} label="نقاشات" list={res.discussions} render={(d) => <button key={d.id} onClick={() => go(`/discussions/${d.id}`)} className="w-full text-right px-4 py-2 hover:bg-slate-50 text-sm">{d.title}</button>} />
               <Section icon={Calendar} label="فعاليات" list={res.events} render={(e) => <button key={e.id} onClick={() => go(`/events/${e.id}`)} className="w-full text-right px-4 py-2 hover:bg-slate-50 text-sm">{e.title}</button>} />
-              <Section icon={User} label="طلاب" list={res.students} render={(u) => <button key={u.id} onClick={() => go(`/profile/${u.id}`)} className="w-full text-right px-4 py-2 hover:bg-slate-50 text-sm">{u.name} <span className="text-slate-400">— {u.school_name}</span></button>} />
-              <Section icon={School} label="مدارس" list={res.schools} render={(s) => <div key={s.id} className="px-4 py-2 text-sm text-slate-600">{s.name} <span className="text-slate-400">— {s.governorate_name}</span></div>} />
+              <Section icon={User} label="طلاب" list={res.students} render={(u) => <button key={u.id} onClick={() => go(`/profile/${u.id}`)} className="w-full text-right px-4 py-2 hover:bg-slate-50 text-sm">{u.name} <span className="text-slate-400">· {u.school_name}</span></button>} />
+              <Section icon={School} label="مدارس" list={res.schools} render={(s) => <div key={s.id} className="px-4 py-2 text-sm text-slate-600">{s.name} <span className="text-slate-400">· {s.governorate_name}</span></div>} />
               {["books", "discussions", "events", "students", "schools"].every((k) => !res[k]?.length) && <div className="p-8 text-center text-slate-400 text-sm">لا توجد نتائج</div>}
             </>
           )}

@@ -81,7 +81,7 @@ export default function InstallPWA() {
     );
   }
 
-  // iOS Safari: no native prompt — show manual instructions instead
+  // iOS Safari: no native prompt · show manual instructions instead
   if (isIos() && !showIosHint) {
     return (
       <div className="fixed bottom-0 inset-x-0 z-50 flex justify-center px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pointer-events-none">

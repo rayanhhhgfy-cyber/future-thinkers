@@ -176,7 +176,7 @@ export function Navbar() {
 }
 
 /* ------------------------------------------------------------------ */
-/* MobileDrawer — reimagined hamburger: full-screen slide-in command    */
+/* MobileDrawer · reimagined hamburger: full-screen slide-in command    */
 /* center with user card, quick actions, grouped nav and animations.   */
 /* ------------------------------------------------------------------ */
 function MobileDrawer({ open, onClose, user, gam, isStaff, pathname, nav, logout }) {

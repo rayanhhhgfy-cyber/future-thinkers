@@ -34,7 +34,7 @@ export function Footer() {
         </div>
       </div>
       <div className="border-t border-white/10 py-5 text-center text-xs text-slate-400">
-        © {new Date().getFullYear()} منصة مفكري المستقبل — جميع الحقوق محفوظة
+        © {new Date().getFullYear()} منصة مفكري المستقبل · جميع الحقوق محفوظة
       </div>
     </footer>
   );

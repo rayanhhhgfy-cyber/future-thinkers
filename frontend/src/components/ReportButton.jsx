@@ -3,7 +3,7 @@ import api, { apiErr } from "@/lib/api";
 import { toast } from "sonner";
 import { Flag } from "lucide-react";
 
-/* Small report button — posts to the existing moderation queue (/api/reports). */
+/* Small report button · posts to the existing moderation queue (/api/reports). */
 export default function ReportButton({ entityType, entityId, className = "" }) {
   const [busy, setBusy] = useState(false);
   const report = async () => {
@@ -12,7 +12,7 @@ export default function ReportButton({ entityType, entityId, className = "" }) {
     setBusy(true);
     try {
       await api.post("/reports", { entity_type: entityType, entity_id: entityId, reason: reason.trim() });
-      toast.success("وصل بلاغك لفريق الإشراف — شكراً 🙏");
+      toast.success("وصل بلاغك لفريق الإشراف · شكراً 🙏");
     } catch (e) { toast.error(apiErr(e)); }
     setBusy(false);
   };
