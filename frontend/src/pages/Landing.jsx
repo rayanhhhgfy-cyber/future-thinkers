@@ -80,15 +80,17 @@ export default function Landing() {
       <section className="relative overflow-hidden ft-hero-gradient grain text-white">
         <div className="absolute top-20 -left-24 w-96 h-96 bg-blue-500/20 rounded-full blur-3xl animate-float" />
         <div className="absolute bottom-0 -right-24 w-96 h-96 bg-emerald-500/20 rounded-full blur-3xl" />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 lg:py-32 relative">
-          <div className="max-w-3xl">
+        <div className="pointer-events-none absolute -top-24 right-1/4 w-[28rem] h-[28rem] rounded-full blur-3xl" style={{ background: "color-mix(in srgb, var(--ft-accent) 26%, transparent)" }} />
+        <div className="pointer-events-none absolute inset-0 opacity-[0.05]" style={{ backgroundImage: "linear-gradient(to left, rgba(255,255,255,.7) 1px, transparent 1px), linear-gradient(to top, rgba(255,255,255,.7) 1px, transparent 1px)", backgroundSize: "54px 54px" }} />
+        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-24 lg:py-36 2xl:py-40 relative">
+          <div className="max-w-3xl lg:max-w-4xl xl:max-w-5xl">
             <div className="animate-fade-up inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/15 text-sm mb-6">
               <Sparkles className="w-4 h-4 ft-text-accent-bright" /> {cms?.hero_badge || "المنصة المعرفية الوطنية لطلاب الأردن"}
             </div>
-            <h1 className="animate-fade-up d-1 font-head text-4xl sm:text-5xl lg:text-6xl font-extrabold leading-tight">
+            <h1 className="animate-fade-up d-1 font-head text-4xl sm:text-5xl lg:text-6xl xl:text-7xl 2xl:text-[5.25rem] font-extrabold leading-tight">
               {cms?.hero_title || "نقرأ أكثر، نفكّر أعمق،"}<br /><span className="ft-text-gradient animate-gradient-text">{cms?.hero_highlight || "ونصنع المستقبل."}</span>
             </h1>
-            <p className="animate-fade-up d-2 mt-6 text-lg text-slate-300 leading-relaxed max-w-2xl">
+            <p className="animate-fade-up d-2 mt-6 text-lg lg:text-xl text-slate-300 leading-relaxed max-w-2xl">
               {cms?.hero_subtitle || "بيئة معرفية وثقافية وعلمية تجمع طلاب المملكة الأردنية الهاشمية حول القراءة والحوار والشطرنج والبرمجة والابتكار والمنافسات في مجتمع طلابي واحد."}
             </p>
             <div className="animate-fade-up d-3 mt-8 flex flex-wrap gap-3">
@@ -103,9 +105,10 @@ export default function Landing() {
         </div>
         {/* stats ribbon */}
         <div className="relative border-t border-white/10 bg-black/20">
-          <Stagger className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
+          <Stagger className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-6 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
             {statItems.map((s) => (
-              <Item key={s.label} className="text-center">
+              <Item key={s.label} className="text-center lg:rounded-2xl lg:bg-white/[0.06] lg:border lg:border-white/10 lg:backdrop-blur-sm lg:px-4 lg:py-6">
+                <s.icon className="hidden lg:block w-6 h-6 mx-auto mb-2.5 ft-text-accent-bright" />
                 <div className="text-2xl lg:text-3xl font-extrabold font-head text-white"><Counter value={s.value} /></div>
                 <div className="text-xs text-slate-400 mt-1">{s.label}</div>
               </Item>
@@ -115,14 +118,14 @@ export default function Landing() {
       </section>
 
       {/* About Us */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 bg-white">
+      <section className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-24 bg-white">
         <FadeUp>
-        <div className="bg-gradient-to-r from-emerald-50 to-blue-50 rounded-3xl p-8 lg:p-12 border ft-border-accent">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-12 h-12 rounded-2xl ft-bg-soft-2 grid place-items-center"><Users2 className="w-6 h-6 ft-text-accent" /></div>
-            <h2 className="font-head text-3xl lg:text-4xl font-extrabold text-slate-900">من نحن</h2>
+        <div className="bg-gradient-to-r from-emerald-50 to-blue-50 rounded-3xl p-8 lg:p-14 border ft-border-accent lg:grid lg:grid-cols-3 lg:gap-12">
+          <div className="flex items-center gap-3 mb-6 lg:flex-col lg:items-start lg:justify-center lg:mb-0">
+            <div className="w-12 h-12 lg:w-16 lg:h-16 rounded-2xl ft-bg-soft-2 grid place-items-center"><Users2 className="w-6 h-6 lg:w-8 lg:h-8 ft-text-accent" /></div>
+            <h2 className="font-head text-3xl lg:text-4xl xl:text-5xl font-extrabold text-slate-900">من نحن</h2>
           </div>
-          <div className="text-slate-700 leading-relaxed text-base font-body max-w-none">
+          <div className="text-slate-700 leading-relaxed text-base lg:text-lg font-body max-w-none lg:col-span-2">
             <ReadMore lines={3}>
               {aboutText.split('\n\n').map((paragraph, i) => (
                 <p key={i} className="text-slate-600 leading-relaxed mb-4 last:mb-0">{paragraph}</p>
@@ -134,26 +137,26 @@ export default function Landing() {
       </section>
 
       {/* Vision / Mission / Goals */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
-        <Stagger className="grid lg:grid-cols-2 gap-6 mb-6">
-          <Item className="bg-white rounded-3xl p-8 ft-shadow border border-slate-100 hover-lift">
-            <div className="w-12 h-12 rounded-2xl ft-bg-soft grid place-items-center mb-4"><Flag className="w-6 h-6 ft-text-accent" /></div>
-            <h2 className="font-head text-2xl font-bold text-slate-900">رؤيتنا</h2>
+      <section className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-24">
+        <Stagger className="grid lg:grid-cols-2 gap-6 xl:gap-8 mb-6">
+          <Item className="bg-white rounded-3xl p-8 lg:p-10 xl:p-12 ft-shadow border border-slate-100 hover-lift">
+            <div className="w-12 h-12 lg:w-14 lg:h-14 rounded-2xl ft-bg-soft grid place-items-center mb-4"><Flag className="w-6 h-6 lg:w-7 lg:h-7 ft-text-accent" /></div>
+            <h2 className="font-head text-2xl lg:text-3xl font-bold text-slate-900">رؤيتنا</h2>
             <div className="mt-3"><ReadMore lines={3}><p className="text-slate-600 leading-relaxed">{visionText}</p></ReadMore></div>
           </Item>
-          <Item className="bg-white rounded-3xl p-8 ft-shadow border border-slate-100 hover-lift">
-            <div className="w-12 h-12 rounded-2xl ft-bg-soft grid place-items-center mb-4"><Target className="w-6 h-6 ft-text-accent" /></div>
-            <h2 className="font-head text-2xl font-bold text-slate-900">رسالتنا</h2>
+          <Item className="bg-white rounded-3xl p-8 lg:p-10 xl:p-12 ft-shadow border border-slate-100 hover-lift">
+            <div className="w-12 h-12 lg:w-14 lg:h-14 rounded-2xl ft-bg-soft grid place-items-center mb-4"><Target className="w-6 h-6 lg:w-7 lg:h-7 ft-text-accent" /></div>
+            <h2 className="font-head text-2xl lg:text-3xl font-bold text-slate-900">رسالتنا</h2>
             <div className="mt-3"><ReadMore lines={3}><p className="text-slate-600 leading-relaxed">{missionText}</p></ReadMore></div>
           </Item>
         </Stagger>
 
-        <FadeUp><h2 className="font-head text-2xl font-bold text-slate-900 mb-5">أهدافنا</h2></FadeUp>
-        <Stagger className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <FadeUp><h2 className="font-head text-2xl lg:text-3xl font-bold text-slate-900 mb-5">أهدافنا</h2></FadeUp>
+        <Stagger className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 xl:gap-5">
           {(goalsExpanded ? goalsList : goalsList.slice(0, 3)).map((g, i) => (
-            <Item key={i} className="flex items-start gap-3 bg-white rounded-2xl p-5 border border-slate-100 ft-shadow hover-lift">
-              <div className="w-8 h-8 rounded-lg ft-icon-tile grid place-items-center text-sm font-bold shrink-0">{i + 1}</div>
-              <p className="text-slate-700 text-sm leading-relaxed">{g}</p>
+            <Item key={i} className="flex items-start gap-3 bg-white rounded-2xl p-5 lg:p-6 border border-slate-100 ft-shadow hover-lift">
+              <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-lg ft-icon-tile grid place-items-center text-sm font-bold shrink-0">{i + 1}</div>
+              <p className="text-slate-700 text-sm lg:text-base leading-relaxed">{g}</p>
             </Item>
           ))}
         </Stagger>
@@ -172,22 +175,24 @@ export default function Landing() {
 
       {/* Activities / Projects */}
       {cms?.activities && cms.activities.length > 0 && (
-        <section className="bg-white py-20 border-y border-slate-100">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <section className="bg-white py-20 lg:py-24 border-y border-slate-100">
+          <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-12">
-              <h2 className="font-head text-3xl lg:text-4xl font-extrabold text-slate-900">نشاطاتنا وفعالياتنا ومشاريعنا</h2>
+              <h2 className="font-head text-3xl lg:text-4xl xl:text-[2.75rem] font-extrabold text-slate-900">نشاطاتنا وفعالياتنا ومشاريعنا</h2>
               <p className="mt-3 text-slate-500 max-w-2xl mx-auto">مبادرات نوعية تستهدف بناء الطالب المبدع والمفكر الناقد والريادي الواعي</p>
             </div>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 lg:auto-rows-fr gap-6">
               {cms.activities.map((activity, index) => {
                 const Icon = Icons[activity.icon] || Icons.BookOpen;
+                const featured = index === 0;
+                const wide = index === 1;
                 return (
-                  <div key={index} className="group bg-white rounded-3xl p-6 border border-slate-100 ft-shadow hover-lift ft-hover-border-accent transition-all duration-300">
-                    <div className="w-14 h-14 rounded-2xl grid place-items-center mb-5 text-white" style={{ background: activity.color }}>
-                      <Icon className="w-7 h-7" />
+                  <div key={index} className={`group bg-white rounded-3xl p-6 border border-slate-100 ft-shadow hover-lift ft-hover-border-accent transition-all duration-300 ${featured ? "lg:col-span-2 lg:row-span-2 lg:p-10" : ""} ${wide ? "lg:col-span-2" : ""}`}>
+                    <div className={`w-14 h-14 rounded-2xl grid place-items-center mb-5 text-white ${featured ? "lg:w-[4.5rem] lg:h-[4.5rem]" : ""}`} style={{ background: activity.color }}>
+                      <Icon className={`w-7 h-7 ${featured ? "lg:w-9 lg:h-9" : ""}`} />
                     </div>
-                    <h3 className="font-head text-xl font-bold text-slate-900 mb-3">{activity.title}</h3>
-                    <p className="text-slate-600 leading-relaxed text-sm">{activity.description}</p>
+                    <h3 className={`font-head text-xl font-bold text-slate-900 mb-3 ${featured ? "lg:text-2xl" : ""}`}>{activity.title}</h3>
+                    <p className={`text-slate-600 leading-relaxed text-sm ${featured ? "lg:text-base" : ""}`}>{activity.description}</p>
                   </div>
                 );
               })}
@@ -197,13 +202,13 @@ export default function Landing() {
       )}
 
       {/* Clubs showcase */}
-      <section className="bg-slate-50 py-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <section className="bg-slate-50 py-20 lg:py-24">
+        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
           <FadeUp className="text-center mb-12">
-            <h2 className="font-head text-3xl lg:text-4xl font-extrabold text-slate-900">اكتشف الأندية</h2>
+            <h2 className="font-head text-3xl lg:text-4xl xl:text-[2.75rem] font-extrabold text-slate-900">اكتشف الأندية</h2>
             <p className="mt-3 text-slate-500 max-w-2xl mx-auto">مساحات تفاعلية حقيقية للقراءة، الحوار، الشطرنج، البرمجة، العلوم، الابتكار والمزيد.</p>
           </FadeUp>
-          <Stagger className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          <Stagger className="grid sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-5">
             {clubs.map((c) => {
               const Icon = CLUB_ICON(c.icon);
               return (
@@ -222,13 +227,15 @@ export default function Landing() {
       </section>
 
       {/* CTA */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+      <section className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-24">
         <FadeUp>
-        <div className="ft-hero-gradient grain relative overflow-hidden rounded-[2rem] p-10 lg:p-16 text-center text-white">
-          <Float className="inline-block"><Trophy className="w-14 h-14 ft-text-accent-bright mx-auto mb-5" /></Float>
-          <h2 className="font-head text-3xl lg:text-4xl font-extrabold">جاهز لتكون من مفكري المستقبل؟</h2>
-          <p className="mt-4 text-slate-300 max-w-xl mx-auto">انضم إلى آلاف الطلاب في رحلة معرفية تنافسية، واجمع نقاط الخبرة، وتصدّر قوائم الصدارة الوطنية.</p>
-          <Button data-testid="cta-join-btn" onClick={() => nav(user ? "/dashboard" : "/register")} size="lg" className="pressable mt-8 rounded-2xl ft-btn-solid h-12 px-8 text-base">
+        <div className="ft-hero-gradient grain relative overflow-hidden rounded-[2rem] p-10 lg:p-20 text-center text-white">
+          <div className="pointer-events-none absolute -top-20 -right-20 w-80 h-80 rounded-full blur-3xl" style={{ background: "color-mix(in srgb, var(--ft-accent) 30%, transparent)" }} />
+          <div className="pointer-events-none absolute -bottom-24 -left-16 w-80 h-80 rounded-full blur-3xl" style={{ background: "color-mix(in srgb, var(--ft-accent) 18%, transparent)" }} />
+          <Float className="inline-block relative"><Trophy className="w-14 h-14 lg:w-[4.5rem] lg:h-[4.5rem] ft-text-accent-bright mx-auto mb-5" /></Float>
+          <h2 className="relative font-head text-3xl lg:text-5xl font-extrabold">جاهز لتكون من مفكري المستقبل؟</h2>
+          <p className="relative mt-4 text-slate-300 max-w-xl lg:max-w-2xl lg:text-lg mx-auto">انضم إلى آلاف الطلاب في رحلة معرفية تنافسية، واجمع نقاط الخبرة، وتصدّر قوائم الصدارة الوطنية.</p>
+          <Button data-testid="cta-join-btn" onClick={() => nav(user ? "/dashboard" : "/register")} size="lg" className="pressable relative mt-8 rounded-2xl ft-btn-solid h-12 px-8 text-base">
             <Rocket className="w-5 h-5 ml-2" /> {user ? "لوحتي" : "ابدأ الآن مجاناً"}
           </Button>
         </div>

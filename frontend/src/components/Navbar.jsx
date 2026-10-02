@@ -4,7 +4,7 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import {
   Bell, Search, Menu, X, LogOut, User, LayoutDashboard, Shield, Settings,
   BookOpen, Sparkles, Users, Calendar, Trophy, Newspaper, Rocket, Crown,
-  Gamepad2, Flame, ChevronLeft, Route as RouteIcon, MessagesSquare, CalendarDays, Target, Timer,
+  Gamepad2, Flame, ChevronLeft, ChevronDown, Puzzle, BarChart3, Route as RouteIcon, MessagesSquare, CalendarDays, Target, Timer,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { EASE } from "@/components/anim";
@@ -35,6 +35,26 @@ const DISCOVER_LINKS = [
   { to: "/focus", label: "غرف التركيز", icon: Timer, tint: "bg-slate-200 text-slate-700" },
 ];
 
+const PRIMARY_LINKS = DISCOVER_LINKS.slice(0, 6);
+const MORE_GROUPS = [
+  { title: "التنافس والنقاط", items: [
+    { to: "/leaderboard", label: "المتصدرون", icon: Crown, tint: "bg-yellow-100 text-yellow-600" },
+    { to: "/points", label: "نقاطي وإنجازاتي", icon: Sparkles, tint: "bg-amber-100 text-amber-600" },
+    { to: "/chess/puzzle", label: "لغز اليوم", icon: Puzzle, tint: "bg-orange-100 text-orange-600" },
+  ]},
+  { title: "التعلم والنمو", items: [
+    { to: "/paths", label: "مسارات التعلم", icon: RouteIcon, tint: "bg-emerald-100 text-emerald-700" },
+    { to: "/reading-challenges", label: "تحديات القراءة", icon: Target, tint: "bg-teal-100 text-teal-600" },
+    { to: "/focus", label: "غرف التركيز", icon: Timer, tint: "bg-slate-200 text-slate-700" },
+    { to: "/stats", label: "إحصائياتي", icon: BarChart3, tint: "bg-blue-100 text-blue-600" },
+  ]},
+  { title: "المجتمع", items: [
+    { to: "/community", label: "ساحة المجتمع", icon: MessagesSquare, tint: "bg-rose-100 text-rose-600" },
+    { to: "/news", label: "الأخبار", icon: Newspaper, tint: "bg-sky-100 text-sky-600" },
+    { to: "/calendar", label: "التقويم", icon: CalendarDays, tint: "bg-indigo-100 text-indigo-600" },
+  ]},
+];
+
 export function Navbar() {
   const { user, logout, isStaff } = useAuth();
   const nav = useNavigate();
@@ -43,7 +63,15 @@ export function Navbar() {
   const [unread, setUnread] = useState(0);
   const [notifOpen, setNotifOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const [gam, setGam] = useState(null);
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 10);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   useEffect(() => {
     const h = (e) => {
@@ -69,9 +97,9 @@ export function Navbar() {
     return () => { document.body.style.overflow = prev; };
   }, [open]);
 
-  // gamification snapshot for the drawer user card
+  // gamification snapshot for the drawer user card + desktop user chip
   useEffect(() => {
-    if (open && user) api.get("/gamification/me").then((r) => setGam(r.data)).catch(() => {});
+    if (user) api.get("/gamification/me").then((r) => setGam(r.data)).catch(() => {});
   }, [open, user]);
 
   // real-time notifications via WebSocket (polling above stays as fallback)
@@ -97,24 +125,68 @@ export function Navbar() {
   }, [user, nav]);
 
   return (
-    <header className="sticky top-0 z-50 glass border-b border-slate-200/70 pt-[env(safe-area-inset-top)]">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-3">
-        <div className="flex items-center gap-6">
-          <Link to="/" data-testid="nav-home-link"><Logo /></Link>
-          <nav className="hidden lg:flex items-center gap-1">
-            {DISCOVER_LINKS.map((l) => (
-              <Link key={l.to} to={l.to} data-testid={`nav-${l.to.slice(1)}`}
-                className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${loc.pathname.startsWith(l.to) ? "ft-text-accent ft-bg-soft" : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"}`}>
-                {l.label}
-              </Link>
-            ))}
+    <header className="sticky top-0 z-50 px-3 sm:px-5 lg:px-8 pt-[max(0.6rem,env(safe-area-inset-top))]">
+      <div className={`max-w-[1440px] mx-auto glass rounded-[22px] border border-white/60 ring-1 ring-slate-900/5 px-3.5 sm:px-5 lg:px-6 h-16 lg:h-[68px] flex items-center justify-between gap-3 transition-shadow duration-300 ${scrolled ? "shadow-[0_20px_48px_-16px_rgba(15,23,42,0.38)]" : "shadow-[0_10px_30px_-14px_rgba(15,23,42,0.22)]"}`}>
+        <div className="flex items-center gap-8 min-w-0">
+          <Link to="/" data-testid="nav-home-link" className="shrink-0"><Logo /></Link>
+          <nav className="hidden lg:flex items-center gap-1.5">
+            {PRIMARY_LINKS.map((l) => {
+              const active = loc.pathname.startsWith(l.to);
+              const Icon = l.icon;
+              return (
+                <Link key={l.to} to={l.to} data-testid={`nav-${l.to.slice(1)}`}
+                  className={`group flex items-center gap-2 px-3.5 py-2.5 rounded-full text-sm font-bold transition-all ${active ? "ft-bg-soft ft-text-accent shadow-inner" : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"}`}>
+                  <span className={`w-6 h-6 rounded-lg grid place-items-center transition-transform group-hover:scale-110 ${active ? "ft-icon-tile text-white" : l.tint}`}>
+                    <Icon className="w-3.5 h-3.5" />
+                  </span>
+                  {l.label}
+                </Link>
+              );
+            })}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button data-testid="nav-more-btn"
+                  className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-full text-sm font-bold text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 transition-colors">
+                  استكشف
+                  <ChevronDown className="w-4 h-4" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-[36rem] max-w-[94vw] p-4 rounded-3xl shadow-2xl">
+                <div className="grid grid-cols-3 gap-4">
+                  {MORE_GROUPS.map((g) => (
+                    <div key={g.title}>
+                      <div className="text-[11px] font-extrabold text-slate-400 px-2 mb-1.5">{g.title}</div>
+                      {g.items.map((l) => {
+                        const Icon = l.icon;
+                        return (
+                          <DropdownMenuItem key={l.to} data-testid={`nav-more-${l.to.slice(1).replace(/\//g, "-")}`}
+                            onClick={() => nav(l.to)}
+                            className="flex items-center gap-2.5 rounded-2xl px-2 py-2 cursor-pointer">
+                            <span className={`w-9 h-9 rounded-xl grid place-items-center shrink-0 ${l.tint}`}><Icon className="w-4 h-4" /></span>
+                            <span className="text-sm font-bold text-slate-700">{l.label}</span>
+                          </DropdownMenuItem>
+                        );
+                      })}
+                    </div>
+                  ))}
+                </div>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </nav>
         </div>
 
-        <div className="flex items-center gap-1.5">
-          <Button variant="ghost" size="icon" data-testid="open-search-btn" onClick={() => setSearchOpen(true)} className="rounded-xl">
-            <Search className="w-5 h-5" />
-          </Button>
+        <div className="flex items-center gap-2">
+          <button data-testid="open-search-pill" onClick={() => setSearchOpen(true)}
+            className="hidden xl:flex items-center gap-2.5 w-60 h-11 px-4 rounded-full bg-slate-100/90 hover:bg-slate-100 border border-slate-200/70 text-slate-400 transition-colors">
+            <Search className="w-4 h-4 shrink-0" />
+            <span className="flex-1 text-right text-sm">بحث سريع…</span>
+            <kbd className="text-[10px] font-bold bg-white border border-slate-200 rounded-md px-1.5 py-0.5 shadow-sm">Ctrl K</kbd>
+          </button>
+          <span className="xl:hidden">
+            <Button variant="ghost" size="icon" data-testid="open-search-btn" onClick={() => setSearchOpen(true)} className="rounded-xl">
+              <Search className="w-5 h-5" />
+            </Button>
+          </span>
 
           {user ? (
             <>
@@ -128,8 +200,15 @@ export function Navbar() {
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button data-testid="user-menu-btn" className="flex items-center gap-2 pr-1 pl-2 py-1 rounded-xl hover:bg-slate-100 transition-colors">
-                    <Avatar className="w-8 h-8"><AvatarFallback className="bg-blue-600 text-white text-xs">{user.name?.[0] || "؟"}</AvatarFallback></Avatar>
+                  <button data-testid="user-menu-btn" className="flex items-center gap-2.5 pr-1 pl-1.5 xl:pl-3 py-1 rounded-full hover:bg-slate-100 transition-colors">
+                    <Avatar className="w-9 h-9 ring-2 ring-white shadow-md"><AvatarFallback className="ft-icon-tile text-white text-xs font-bold">{user.name?.[0] || "؟"}</AvatarFallback></Avatar>
+                    <span className="hidden xl:block text-right leading-tight">
+                      <span className="block text-[13px] font-extrabold text-slate-800 max-w-[120px] truncate">{user.name}</span>
+                      <span className="flex items-center gap-1 text-[11px] text-slate-400 font-bold">
+                        {user.level_title} · مستوى {user.level}
+                        {(gam?.streak || 0) > 0 && <span className="inline-flex items-center gap-0.5 text-orange-500"><Flame className="w-3 h-3" />{gam.streak}</span>}
+                      </span>
+                    </span>
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
@@ -149,8 +228,8 @@ export function Navbar() {
             </>
           ) : (
             <div className="hidden sm:flex items-center gap-2">
-              <Button variant="ghost" data-testid="nav-login-btn" onClick={() => nav("/login")} className="rounded-xl">دخول</Button>
-              <Button data-testid="nav-register-btn" onClick={() => nav("/register")} className="rounded-xl ft-btn-solid">انضم الآن</Button>
+              <Button variant="ghost" data-testid="nav-login-btn" onClick={() => nav("/login")} className="rounded-full font-bold px-5 h-11">دخول</Button>
+              <Button data-testid="nav-register-btn" onClick={() => nav("/register")} className="rounded-full ft-btn-primary text-white font-extrabold px-6 h-11 shadow-lg">انضم الآن</Button>
             </div>
           )}
           <Button variant="ghost" size="icon" className="lg:hidden rounded-xl" data-testid="mobile-menu-btn" onClick={() => setOpen((v) => !v)}>

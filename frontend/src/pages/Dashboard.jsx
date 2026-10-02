@@ -6,7 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
-import { Flame, Trophy, BookOpen, Crown, Calendar, Zap, Award, TrendingUp, TrendingDown, BarChart3, Sparkles, MessagesSquare, Medal, PenLine, Rocket, Bell, Quote, ArrowLeft, Star, Clock, ListMusic, FileText, Target, Activity, Users } from "lucide-react";
+import { Flame, Trophy, BookOpen, Crown, Calendar, Zap, Award, TrendingUp, TrendingDown, BarChart3, Sparkles, MessagesSquare, Medal, PenLine, Rocket, Bell, Quote, ArrowLeft, Star, Clock, ListMusic, FileText, Target, Activity, Users, Upload, Puzzle, Timer } from "lucide-react";
 import * as Icons from "lucide-react";
 import { FadeUp, Stagger, Item } from "@/components/anim";
 import { WeeklyGoals, ActivityHeatmap, UpcomingDeadlines, DailyChallenge, SavedItems, Suggestions, AchievementsShowcase } from "@/components/dashboard/widgets";
@@ -140,15 +140,16 @@ export default function Dashboard() {
 
   return (
     <Layout>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col xl:grid xl:grid-cols-12 xl:gap-6 xl:items-start">
+        <div className="contents xl:block xl:col-span-8 xl:min-w-0">
         {/* Hero card */}
-        <FadeUp>
-        <div className="ft-navy-gradient grain relative overflow-hidden rounded-3xl p-8 text-white mb-6">
+        <FadeUp className="order-1">
+        <div className="ft-navy-gradient grain relative overflow-hidden rounded-3xl p-8 lg:p-10 text-white mb-6">
           <div className="absolute -top-16 -left-16 w-64 h-64 bg-white/10 rounded-full blur-3xl animate-float" />
           <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div>
               <div className="text-slate-300 text-sm">أهلاً بك،</div>
-              <h1 className="font-head text-3xl font-extrabold">{user.name}</h1>
+              <h1 className="font-head text-3xl lg:text-4xl font-extrabold">{user.name}</h1>
               <div className="mt-2 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-sm">
                 <Sparkles className="w-4 h-4 ft-text-accent-bright" /> {gam.level_title} · المستوى {gam.level}
               </div>
@@ -193,92 +194,37 @@ export default function Dashboard() {
               </Button>
             </div>
           </div>
+          {/* Quick actions · desktop only */}
+          <div className="relative hidden lg:grid grid-cols-4 gap-3 mt-7">
+            <Link to="/upload-book" className="pressable flex items-center gap-2.5 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/15 px-4 py-3 min-h-[52px] text-sm font-bold text-white transition-colors">
+              <Upload className="w-5 h-5 ft-text-accent-bright shrink-0" /> رفع كتاب
+            </Link>
+            <Link to="/chess/puzzle" className="pressable flex items-center gap-2.5 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/15 px-4 py-3 min-h-[52px] text-sm font-bold text-white transition-colors">
+              <Puzzle className="w-5 h-5 ft-text-accent-bright shrink-0" /> لغز اليوم
+            </Link>
+            <Link to="/focus" className="pressable flex items-center gap-2.5 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/15 px-4 py-3 min-h-[52px] text-sm font-bold text-white transition-colors">
+              <Timer className="w-5 h-5 ft-text-accent-bright shrink-0" /> غرف التركيز
+            </Link>
+            <Link to="/competitions" className="pressable flex items-center gap-2.5 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/15 px-4 py-3 min-h-[52px] text-sm font-bold text-white transition-colors">
+              <Trophy className="w-5 h-5 ft-text-accent-bright shrink-0" /> المسابقات
+            </Link>
+          </div>
         </div>
         </FadeUp>
 
         {/* stats */}
-        <Stagger className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <Stagger className="order-2 grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           <Item><StatCard icon={Trophy} label="ترتيبك الوطني" value={`#${data.national_rank}`} color="#D97706" sub={data.school_rank ? `مدرستك: #${data.school_rank}` : ""} /></Item>
           <Item><StatCard icon={BookOpen} label="كتب مقروءة" value={data.books_read} color="#2563EB" /></Item>
           <Item><StatCard icon={Crown} label="تصنيف الشطرنج" value={data.chess_rating} color="#0A192F" /></Item>
           <Item><StatCard icon={MessagesSquare} label="مشاركاتك" value={data.posts} color="#059669" /></Item>
         </Stagger>
 
-        {/* daily quests + live activity feed */}
-        <div className="grid lg:grid-cols-5 gap-4 mb-6">
-          <FadeUp className="lg:col-span-3">
-            <section className="bg-white rounded-2xl p-5 border border-slate-100 ft-shadow h-full">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-head font-bold text-slate-800 flex items-center gap-2">
-                  <span className="w-9 h-9 rounded-xl grid place-items-center bg-rose-50 text-rose-600"><Target className="w-5 h-5" /></span>
-                  مهام اليوم
-                </h3>
-                <span className="text-[11px] font-bold px-2 py-1 rounded-full bg-rose-100 text-rose-700">تتجدّد يومياً</span>
-              </div>
-              {quests.length === 0 ? (
-                <p className="text-sm text-slate-400 py-4 text-center">جارٍ تجهيز مهامك…</p>
-              ) : (
-                <div className="space-y-3">
-                  {quests.map((q) => {
-                    const Icon = Icons[q.icon] || Icons.Target;
-                    const pct = Math.min(100, ((q.progress || 0) / (q.target || 1)) * 100);
-                    return (
-                      <div key={q.key} className="flex items-center gap-3">
-                        <span className={`w-9 h-9 rounded-xl grid place-items-center shrink-0 ${q.done ? "bg-emerald-100 text-emerald-600" : "bg-slate-100 text-slate-500"}`}><Icon className="w-4.5 h-4.5" /></span>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="text-sm font-semibold text-slate-700 truncate">{q.title}</span>
-                            <span className="text-[11px] text-slate-400 shrink-0">{q.progress}/{q.target}</span>
-                          </div>
-                          <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden mt-1">
-                            <div className={`h-full rounded-full transition-all duration-700 ${q.done ? "bg-emerald-500" : "bg-rose-400"}`} style={{ width: `${pct}%` }} />
-                          </div>
-                        </div>
-                        {q.claimed ? (
-                          <span className="text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full shrink-0">تم ✓</span>
-                        ) : q.done ? (
-                          <button onClick={() => claimQuest(q)} className="pressable shrink-0 text-[11px] font-extrabold text-white ft-btn-solid px-3 py-1.5 rounded-full">خذ +{q.reward}</button>
-                        ) : (
-                          <span className="text-[11px] font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded-full shrink-0">+{q.reward} XP</span>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </section>
-          </FadeUp>
-          <FadeUp className="lg:col-span-2">
-            <section className="bg-white rounded-2xl p-5 border border-slate-100 ft-shadow h-full">
-              <h3 className="font-head font-bold text-slate-800 flex items-center gap-2 mb-4">
-                <span className="w-9 h-9 rounded-xl grid place-items-center bg-sky-50 text-sky-600"><Activity className="w-5 h-5" /></span>
-                نشاط المنصة الآن
-              </h3>
-              {feed.length === 0 ? (
-                <p className="text-sm text-slate-400 py-4 text-center">كن أول من يصنع نشاطاً اليوم ✨</p>
-              ) : (
-                <div className="space-y-2.5">
-                  {feed.slice(0, 6).map((f) => (
-                    <div key={f.id} className="flex items-start gap-2.5 text-sm">
-                      <span className="w-7 h-7 rounded-full bg-gradient-to-br from-sky-400 to-indigo-500 text-white grid place-items-center text-[11px] font-bold shrink-0">{(f.user_name || "؟").slice(0, 1)}</span>
-                      <div className="min-w-0">
-                        <span className="font-semibold text-slate-700">{f.user_name}</span>{" "}
-                        <span className="text-slate-500">{f.text}</span>
-                        <div className="text-[11px] text-slate-400">{timeAgo(f.created_at)}</div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </section>
-          </FadeUp>
-        </div>
-
         {/* my week in numbers */}
-        <WeeklyNumbers />
+        <div className="order-4"><WeeklyNumbers /></div>
 
         {/* my library: pages read + finish later + playlists */}
-        <Stagger className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+        <Stagger className="order-5 grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
           <Item>
             <div className="bg-white rounded-2xl p-5 border border-slate-100 ft-shadow h-full">
               <div className="flex items-center gap-2 mb-3">
@@ -339,7 +285,7 @@ export default function Dashboard() {
         </Stagger>
 
         {/* NEW: ventures + chess + daily quote */}
-        <Stagger className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+        <Stagger className="order-6 grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
           <Item>
             <div className="bg-white rounded-2xl p-5 border border-slate-100 ft-shadow h-full">
               <div className="flex items-center justify-between mb-3">
@@ -379,7 +325,7 @@ export default function Dashboard() {
           </Item>
         </Stagger>
 
-        <div className="grid lg:grid-cols-3 gap-6">
+        <div className="order-7 grid lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
             <FadeUp>
             <section className="bg-white rounded-2xl p-6 border border-slate-100 ft-shadow">
@@ -560,7 +506,7 @@ export default function Dashboard() {
         </div>
 
         {/* NEW: personal progress wave */}
-        <div className="mt-6 space-y-6">
+        <div className="order-8 mt-6 space-y-6">
           <div className="grid lg:grid-cols-2 gap-6">
             <WeeklyGoals />
             <DailyChallenge onXp={() => { refresh(); }} />
@@ -573,6 +519,90 @@ export default function Dashboard() {
           <Suggestions />
           <AchievementsShowcase />
         </div>
+        </div>
+        <aside className="contents xl:block xl:col-span-4 xl:sticky xl:top-[calc(5rem+env(safe-area-inset-top))] xl:space-y-6">
+        {/* daily quests + live activity feed */}
+        <div className="grid lg:grid-cols-5 xl:grid-cols-1 gap-4 mb-6 xl:mb-0 order-3 w-full">
+          <FadeUp className="lg:col-span-3 xl:col-span-1">
+            <section className="bg-white rounded-2xl p-5 border border-slate-100 ft-shadow h-full">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-head font-bold text-slate-800 flex items-center gap-2">
+                  <span className="w-9 h-9 rounded-xl grid place-items-center bg-rose-50 text-rose-600"><Target className="w-5 h-5" /></span>
+                  مهام اليوم
+                </h3>
+                <span className="text-[11px] font-bold px-2 py-1 rounded-full bg-rose-100 text-rose-700">تتجدّد يومياً</span>
+              </div>
+              {quests.length === 0 ? (
+                <p className="text-sm text-slate-400 py-4 text-center">جارٍ تجهيز مهامك…</p>
+              ) : (
+                <div className="space-y-3">
+                  {quests.map((q) => {
+                    const Icon = Icons[q.icon] || Icons.Target;
+                    const pct = Math.min(100, ((q.progress || 0) / (q.target || 1)) * 100);
+                    return (
+                      <div key={q.key} className="flex items-center gap-3">
+                        <span className={`w-9 h-9 rounded-xl grid place-items-center shrink-0 ${q.done ? "bg-emerald-100 text-emerald-600" : "bg-slate-100 text-slate-500"}`}><Icon className="w-4.5 h-4.5" /></span>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-sm font-semibold text-slate-700 truncate">{q.title}</span>
+                            <span className="text-[11px] text-slate-400 shrink-0">{q.progress}/{q.target}</span>
+                          </div>
+                          <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden mt-1">
+                            <div className={`h-full rounded-full transition-all duration-700 ${q.done ? "bg-emerald-500" : "bg-rose-400"}`} style={{ width: `${pct}%` }} />
+                          </div>
+                        </div>
+                        {q.claimed ? (
+                          <span className="text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full shrink-0">تم ✓</span>
+                        ) : q.done ? (
+                          <button onClick={() => claimQuest(q)} className="pressable shrink-0 text-[11px] font-extrabold text-white ft-btn-solid px-3 py-1.5 rounded-full">خذ +{q.reward}</button>
+                        ) : (
+                          <span className="text-[11px] font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded-full shrink-0">+{q.reward} XP</span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
+          </FadeUp>
+          <FadeUp className="lg:col-span-2 xl:col-span-1">
+            <section className="bg-white rounded-2xl p-5 border border-slate-100 ft-shadow h-full">
+              <h3 className="font-head font-bold text-slate-800 flex items-center gap-2 mb-4">
+                <span className="w-9 h-9 rounded-xl grid place-items-center bg-sky-50 text-sky-600"><Activity className="w-5 h-5" /></span>
+                نشاط المنصة الآن
+              </h3>
+              {feed.length === 0 ? (
+                <p className="text-sm text-slate-400 py-4 text-center">كن أول من يصنع نشاطاً اليوم ✨</p>
+              ) : (
+                <div className="space-y-2.5">
+                  {feed.slice(0, 6).map((f) => (
+                    <div key={f.id} className="flex items-start gap-2.5 text-sm">
+                      <span className="w-7 h-7 rounded-full bg-gradient-to-br from-sky-400 to-indigo-500 text-white grid place-items-center text-[11px] font-bold shrink-0">{(f.user_name || "؟").slice(0, 1)}</span>
+                      <div className="min-w-0">
+                        <span className="font-semibold text-slate-700">{f.user_name}</span>{" "}
+                        <span className="text-slate-500">{f.text}</span>
+                        <div className="text-[11px] text-slate-400">{timeAgo(f.created_at)}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+          </FadeUp>
+        </div>
+        <section className="hidden xl:block bg-white rounded-2xl p-5 border border-slate-100 ft-shadow">
+          <h3 className="font-head font-bold text-slate-800 flex items-center gap-2 mb-3">
+            <span className="w-9 h-9 rounded-xl grid place-items-center bg-emerald-50 text-emerald-600"><Users className="w-5 h-5" /></span>
+            المنصة الآن
+          </h3>
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="font-head text-2xl font-black text-slate-900">{online}</span>
+            <span className="text-sm text-slate-500">مستخدم على المنصة الآن</span>
+          </div>
+          <Link to="/community" className="pressable inline-flex items-center gap-1 text-xs font-bold ft-text-accent mt-2 min-h-[44px]">ادخل ساحة المجتمع <ArrowLeft className="w-3.5 h-3.5" /></Link>
+        </section>
+        </aside>
       </div>
     </Layout>
   );

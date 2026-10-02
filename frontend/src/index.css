@@ -68,6 +68,26 @@ h1, h2, h3, h4, .font-head { font-family: var(--ft-font-head, 'Readex Pro', sans
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
 }
+
+/* desktop ambience: soft theme-tinted mesh + themed scrollbar */
+@media (min-width: 1024px) {
+  body {
+    background:
+      radial-gradient(54rem 30rem at 88% -6%, color-mix(in srgb, var(--ft-accent, #0d9488) 8%, transparent), transparent 62%),
+      radial-gradient(46rem 28rem at 6% -2%, color-mix(in srgb, var(--ft-grad-b, #064e3b) 7%, transparent), transparent 62%),
+      #F7F8FA;
+    background-attachment: fixed;
+  }
+}
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--ft-accent, #0d9488) 45%, #CBD5E1);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--ft-accent, #0d9488); background-clip: padding-box; }
 .ft-navy-gradient { background: linear-gradient(135deg, var(--ft-grad-a, #052e26) 0%, var(--ft-grad-b, #064e3b) 55%, var(--ft-grad-c, #043a2e) 100%); }
 .ft-hero-gradient { background: linear-gradient(135deg, var(--ft-grad-c, #04211d) 0%, var(--ft-grad-b, #065f46) 45%, var(--ft-accent, #0d9488) 100%); }
 .ft-shadow { box-shadow: 0 4px 24px -8px rgba(15, 23, 42, 0.12); }

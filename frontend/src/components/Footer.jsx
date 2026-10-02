@@ -1,40 +1,77 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { Logo } from "@/components/Logo";
+import { Logo, LogoMark } from "@/components/Logo";
+
+const COLS = [
+  { title: "استكشف", links: [
+    { to: "/library", l: "المكتبة الرقمية" },
+    { to: "/studio", l: "الاستوديو" },
+    { to: "/clubs", l: "الأندية الطلابية" },
+    { to: "/ventures", l: "مساحة المشاريع" },
+    { to: "/events", l: "الفعاليات" },
+    { to: "/competitions", l: "المسابقات" },
+  ]},
+  { title: "المجتمع", links: [
+    { to: "/leaderboard", l: "قوائم الصدارة" },
+    { to: "/community", l: "ساحة المجتمع" },
+    { to: "/clubs/dialogue", l: "نادي الحوار" },
+    { to: "/clubs/chess", l: "نادي الشطرنج" },
+    { to: "/news", l: "الأخبار" },
+    { to: "/calendar", l: "التقويم" },
+  ]},
+  { title: "طوّر نفسك", links: [
+    { to: "/paths", l: "مسارات التعلم" },
+    { to: "/reading-challenges", l: "تحديات القراءة" },
+    { to: "/focus", l: "غرف التركيز" },
+    { to: "/chess/puzzle", l: "لغز اليوم" },
+    { to: "/points", l: "نقاطي وإنجازاتي" },
+    { to: "/stats", l: "إحصائياتي" },
+  ]},
+];
 
 export function Footer() {
   return (
     <footer className="ft-navy-gradient text-slate-300 mt-20 relative grain overflow-hidden">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14 grid gap-10 md:grid-cols-4">
-        <div className="md:col-span-1">
+      <LogoMark className="pointer-events-none absolute -left-10 -bottom-12 w-64 h-64 opacity-[0.07] -rotate-12" />
+      <div className="pointer-events-none absolute -top-24 right-[20%] w-72 h-72 rounded-full bg-[color:color-mix(in_srgb,var(--ft-accent)_14%,transparent)] blur-3xl" />
+      <div className="relative max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-10 py-14 lg:py-20 grid gap-10 md:grid-cols-2 lg:grid-cols-6">
+        <div className="lg:col-span-2">
           <Logo dark />
-          <p className="mt-4 text-sm text-slate-400 leading-relaxed">منصة معرفية وطنية أردنية تجمع القراءة والحوار والعلم والإبداع في مجتمع طلابي واحد.</p>
+          <p className="mt-5 text-sm text-slate-400 leading-loose max-w-sm">منصة معرفية وطنية أردنية تجمع القراءة والحوار والعلم والإبداع في مجتمع طلابي واحد.</p>
+          <div className="mt-6 flex flex-wrap gap-2">
+            <span className="inline-flex items-center rounded-full bg-white/10 border border-white/15 px-3.5 py-1.5 text-[11px] font-bold">قصبة إربد الأولى</span>
+            <span className="inline-flex items-center rounded-full bg-white/10 border border-white/15 px-3.5 py-1.5 text-[11px] font-bold">طلاب الأردن</span>
+            <span className="inline-flex items-center rounded-full bg-white/10 border border-white/15 px-3.5 py-1.5 text-[11px] font-bold">قراءة · حوار · إبداع</span>
+          </div>
         </div>
+        {COLS.map((c) => (
+          <div key={c.title}>
+            <h4 className="text-white font-head font-extrabold mb-4 flex items-center gap-2">
+              {c.title}
+              <span className="h-px flex-1 bg-gradient-to-l from-[color:color-mix(in_srgb,var(--ft-accent)_45%,transparent)] to-transparent" />
+            </h4>
+            <ul className="space-y-2.5 text-sm">
+              {c.links.map((x) => (
+                <li key={x.to}>
+                  <Link to={x.to} className="text-slate-400 hover:text-white hover:pr-1 transition-all">{x.l}</Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
         <div>
-          <h4 className="text-white font-semibold mb-3">استكشف</h4>
-          <ul className="space-y-2 text-sm">
-            <li><Link to="/library" className="hover:text-white">المكتبة الرقمية</Link></li>
-            <li><Link to="/clubs" className="hover:text-white">الأندية الطلابية</Link></li>
-            <li><Link to="/events" className="hover:text-white">الفعاليات</Link></li>
-            <li><Link to="/competitions" className="hover:text-white">المسابقات</Link></li>
-          </ul>
-        </div>
-        <div>
-          <h4 className="text-white font-semibold mb-3">المجتمع</h4>
-          <ul className="space-y-2 text-sm">
-            <li><Link to="/leaderboard" className="hover:text-white">قوائم الصدارة</Link></li>
-            <li><Link to="/clubs/dialogue" className="hover:text-white">نادي الحوار</Link></li>
-            <li><Link to="/clubs/chess" className="hover:text-white">نادي الشطرنج</Link></li>
-            <li><Link to="/news" className="hover:text-white">الأخبار</Link></li>
-          </ul>
-        </div>
-        <div>
-          <h4 className="text-white font-semibold mb-3">المملكة الأردنية الهاشمية</h4>
-          <p className="text-sm text-slate-400">منصة موجهة لجميع طلاب الأردن في مختلف المحافظات ومديريات التربية والتعليم.</p>
+          <h4 className="text-white font-head font-extrabold mb-4 flex items-center gap-2">
+            المملكة الأردنية الهاشمية
+            <span className="h-px flex-1 bg-gradient-to-l from-[color:color-mix(in_srgb,var(--ft-accent)_45%,transparent)] to-transparent" />
+          </h4>
+          <p className="text-sm text-slate-400 leading-loose">منصة موجهة لجميع طلاب الأردن في مختلف المحافظات ومديريات التربية والتعليم.</p>
         </div>
       </div>
-      <div className="border-t border-white/10 py-5 text-center text-xs text-slate-400">
-        © {new Date().getFullYear()} منصة مفكري المستقبل · جميع الحقوق محفوظة
+      <div className="relative border-t border-white/10">
+        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-10 py-5 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-400">
+          <span>© {new Date().getFullYear()} منصة مفكري المستقبل · جميع الحقوق محفوظة</span>
+          <span className="inline-flex items-center gap-1.5">صُنعت بشغف لطلاب الأردن <span className="ft-text-accent-bright font-bold">· مفكرو المستقبل</span></span>
+        </div>
       </div>
     </footer>
   );
