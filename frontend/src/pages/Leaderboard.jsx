@@ -18,6 +18,7 @@ const TABS = [
   { v: "chess", l: "الشطرنج", icon: Swords, accent: "amber", hex: "#D97706" },
   { v: "studio", l: "الاستوديو", icon: Sparkles, accent: "fuchsia", hex: "#C026D3" },
   { v: "ventures", l: "المشاريع", icon: Rocket, accent: "indigo", hex: "#4F46E5" },
+  { v: "seasons", l: "المواسم", icon: Crown, accent: "orange", hex: "#EA580C" },
 ];
 const PERIODS = [
   { v: "all", l: "كل الوقت" },
@@ -34,7 +35,52 @@ const EMPTY_HINTS = {
   chess: { t: "لا مباريات منتهية بعد", d: "أنهِ أول مباراة شطرنج وسيظهر اسمك هنا بتصنيفك الحقيقي.", cta: ["/clubs/chess", "إلى حلبة الشطرنج"] },
   studio: { t: "لا أعمال منشورة بعد", d: "انشر عملاً في الاستوديو واجمع الإعجابات لتتصدّر." },
   ventures: { t: "لا مشاريع بعد", d: "أطلق مشروعاً طلابياً واجمع الأصوات.", cta: ["/ventures", "تصفّح المشاريع"] },
+  seasons: { t: "", d: "" },
 };
+
+const MONTH_AR = ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"];
+const MEDALS = ["🥇", "🥈", "🥉"];
+
+function SeasonsBoard() {
+  const [seasons, setSeasons] = useState(null);
+  useEffect(() => { api.get("/seasons/champions").then((r) => setSeasons(r.data)).catch(() => setSeasons([])); }, []);
+  if (!seasons) return <div className="text-center text-slate-300 py-8 font-bold">جارٍ تحميل الأبطال…</div>;
+  return (
+    <div className="mb-6">
+      <div className="relative overflow-hidden rounded-[1.8rem] bg-gradient-to-l from-amber-500 via-orange-500 to-rose-500 p-6 sm:p-8 text-white ft-shadow mb-5">
+        <Crown className="absolute -left-4 -bottom-8 w-40 h-40 text-white/15" />
+        <h3 className="font-head font-extrabold text-2xl relative">قاعة مشاهير المواسم 🏆</h3>
+        <p className="text-white/85 text-sm mt-1.5 relative max-w-lg">كل شهر يُتوَّج أبطال جديدون — أفضل 3 جامعي نقاط يخلّدون أسماءهم هنا للأبد. الشهر الحالي يُحسم مع نهايته.</p>
+      </div>
+      <div className="grid sm:grid-cols-3 gap-4">
+        {seasons.map((s) => {
+          const [yy, mm] = s.month.split("-");
+          return (
+            <div key={s.month} className="bg-white rounded-3xl border border-slate-100 ft-shadow p-5">
+              <div className="font-head font-extrabold text-slate-800 flex items-center gap-2">
+                <span className="w-8 h-8 rounded-lg bg-amber-50 grid place-items-center text-base">🗓️</span>
+                {MONTH_AR[Number(mm) - 1]} {yy}
+              </div>
+              {s.champions.length === 0 ? (
+                <p className="text-sm text-slate-300 mt-4">لا نشاط مسجل هذا الشهر</p>
+              ) : (
+                <div className="mt-4 space-y-2.5">
+                  {s.champions.map((c, i) => (
+                    <Link key={c.id} to={`/profile/${c.id}`} className="flex items-center gap-2.5 rounded-2xl bg-slate-50 hover:bg-amber-50 transition p-2.5">
+                      <span className="text-xl">{MEDALS[i]}</span>
+                      <span className="flex-1 font-bold text-sm text-slate-700 truncate">{c.name}</span>
+                      <span className="text-xs font-extrabold text-amber-600">{c.xp.toLocaleString("en-US")} XP</span>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 const asArr = (d) => (Array.isArray(d) ? d : d?.items || []);
 
@@ -139,6 +185,7 @@ export default function Leaderboard() {
   const [q, setQ] = useState("");
 
   useEffect(() => {
+    if (tab === "seasons") { setRows([]); return; }
     setRows(null);
     let url = "/leaderboard";
     let params = {};
@@ -280,6 +327,8 @@ export default function Leaderboard() {
         </div>
 
         {tab === "schools" && <BattleCard />}
+
+        {tab === "seasons" && <SeasonsBoard />}
 
         <AnimatePresence mode="wait" initial={false}>
           <motion.div

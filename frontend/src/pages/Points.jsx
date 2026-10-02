@@ -27,6 +27,7 @@ function StoreSection() {
   if (!data) return null;
   const frames = data.items.filter((i) => i.kind === "frame");
   const titles = data.items.filter((i) => i.kind === "title");
+  const tools = data.items.filter((i) => i.kind === "item");
 
   const buy = async (item) => {
     setBusy(item.key);
@@ -51,6 +52,8 @@ function StoreSection() {
     <div key={item.key} className={`rounded-2xl border p-4 flex flex-col items-center text-center gap-2 transition-all ${item.equipped ? "border-emerald-300 bg-emerald-50/60" : "border-slate-100 bg-slate-50/60"}`}>
       {item.kind === "frame" ? (
         <span className={`w-14 h-14 rounded-full bg-white grid place-items-center text-xl font-extrabold text-slate-700 ring-4 shadow-lg ${FRAME_STYLES[item.key] || "ring-slate-200"}`}>{user?.name?.[0] || "؟"}</span>
+      ) : item.kind === "item" ? (
+        <span className="w-14 h-14 rounded-2xl bg-sky-50 grid place-items-center text-3xl">❄️</span>
       ) : (
         <span className="px-3 py-1.5 rounded-full bg-gradient-to-l from-amber-400 to-yellow-500 text-amber-950 text-xs font-extrabold shadow">✦ {item.name}</span>
       )}
@@ -78,7 +81,10 @@ function StoreSection() {
         <div className="text-xs font-bold text-slate-400 mb-2">إطارات الصورة</div>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-5">{frames.map(renderItem)}</div>
         <div className="text-xs font-bold text-slate-400 mb-2">ألقاب الملف</div>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">{titles.map(renderItem)}</div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">{titles.map(renderItem)}</div>
+        <div className="text-xs font-bold text-slate-400 mb-2">أدوات تحمي تقدمك — تملك {data.streak_freezes || 0} حماية سلسلة</div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">{tools.map(renderItem)}</div>
+        <p className="text-[11px] text-slate-300 mt-3">حماية السلسلة تُستخدم تلقائياً عندما تغيب يوماً واحداً فتحافظ على سلسلة أيامك.</p>
       </div>
     </section>
   );

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { Layout, PageLoader } from "@/components/Layout";
+import ReportButton from "@/components/ReportButton";
 import api, { apiErr } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -36,6 +37,7 @@ export default function DiscussionDetail() {
         <div className="bg-white rounded-2xl p-6 border border-slate-100 ft-shadow">
           <span className="text-xs px-2 py-0.5 rounded-md bg-blue-50 text-blue-700">{d.category}</span>
           <h1 className="font-head text-2xl font-extrabold text-slate-900 mt-3">{d.title}</h1>
+          <div className="mt-1"><ReportButton entityType="discussion" entityId={d.id} /></div>
           <div className="flex items-center gap-2 mt-3 text-sm text-slate-500">
             <Avatar className="w-7 h-7"><AvatarFallback className="bg-slate-200 text-xs">{d.author_name?.[0]}</AvatarFallback></Avatar>
             {d.author_name} · {d.author_school || "—"}
@@ -65,7 +67,10 @@ export default function DiscussionDetail() {
                 <span className="text-slate-400 text-xs">{r.author_school}</span>
               </div>
               <p className="mt-2 text-slate-700 leading-relaxed whitespace-pre-wrap">{r.body}</p>
-              <button data-testid={`like-reply-${r.id}`} onClick={() => likeReply(r.id)} className={`mt-2 text-xs flex items-center gap-1 ${r.liked ? "text-rose-600" : "text-slate-400"}`}><Heart className={`w-3.5 h-3.5 ${r.liked ? "fill-rose-600" : ""}`} />{r.likes_count}</button>
+              <div className="flex items-center gap-3 mt-2">
+                <button data-testid={`like-reply-${r.id}`} onClick={() => likeReply(r.id)} className={`text-xs flex items-center gap-1 ${r.liked ? "text-rose-600" : "text-slate-400"}`}><Heart className={`w-3.5 h-3.5 ${r.liked ? "fill-rose-600" : ""}`} />{r.likes_count}</button>
+                <ReportButton entityType="reply" entityId={r.id} />
+              </div>
             </div>
           ))}
           {d.replies.length === 0 && <p className="text-slate-400 text-sm text-center py-4">كن أول من يرد على هذا النقاش</p>}

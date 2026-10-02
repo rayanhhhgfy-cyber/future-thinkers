@@ -10,6 +10,7 @@ import { Star, Heart, BookOpen, ArrowRight, Eye, Bookmark, BookmarkCheck, Clock,
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useBookmarks } from "@/components/BookmarkButton";
 import BookCover from "@/components/BookCover";
+import ReportButton from "@/components/ReportButton";
 import { PlaylistPicker } from "@/components/library/PlaylistPicker";
 
 const BookReader = lazy(() => import("./reader/BookReader"));
@@ -191,6 +192,7 @@ export default function BookDetail() {
                           {user && c.user_id === user.id && (
                             <button onClick={() => deleteComment(c.id)} className="mr-auto opacity-0 group-hover:opacity-100 transition-opacity text-slate-300 hover:text-rose-500" aria-label="حذف التعليق"><Trash2 className="w-3.5 h-3.5" /></button>
                           )}
+                          {user && c.user_id !== user.id && <span className="mr-auto"><ReportButton entityType="comment" entityId={c.id} /></span>}
                         </div>
                         <p className="text-sm text-slate-600 mt-0.5 whitespace-pre-wrap">{c.text}</p>
                       </div>

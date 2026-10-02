@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { ArrowRight, Heart, Eye, Star, Feather, ScrollText, PenLine, BookOpen, Trash2, Send, Sparkles } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import BookmarkButton from "@/components/BookmarkButton";
+import ReportButton from "@/components/ReportButton";
 import { FadeUp, Stagger, Item, EASE } from "@/components/anim";
 
 const TYPES = {
@@ -123,6 +124,7 @@ export default function StudioWork() {
                 </span>
               )}
               <BookmarkButton kind="work" refId={work.id} title={work.title} dark />
+              <ReportButton entityType="work" entityId={work.id} className="text-white/50 hover:text-rose-300" />
             </div>
             <h1 className="font-head text-3xl sm:text-5xl font-extrabold leading-tight mb-4">{work.title}</h1>
             <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-white/85 text-sm">
