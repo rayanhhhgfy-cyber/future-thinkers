@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, Suspense, lazy } from "react";
 import "@/App.css";
 import { BrowserRouter, Routes, Route, Link, useLocation } from "react-router-dom";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
@@ -12,42 +12,55 @@ import { EASE } from "@/components/anim";
 import { ErrorBoundary, installErrorReporter } from "@/components/ErrorState";
 
 import Landing from "@/pages/Landing";
-import Login from "@/pages/Login";
-import Register from "@/pages/Register";
-import Dashboard from "@/pages/Dashboard";
-import Library from "@/pages/Library";
-import BookDetail from "@/pages/BookDetail";
-import UploadBook from "@/pages/UploadBook";
-import Clubs from "@/pages/Clubs";
-import ClubDetail from "@/pages/ClubDetail";
-import DiscussionDetail from "@/pages/DiscussionDetail";
-import ChessGame from "@/pages/ChessGame";
-import ChessPractice from "@/pages/ChessPractice";
-import ChessRobot from "@/pages/ChessRobot";
-import Paths from "@/pages/Paths";
-import Community from "@/pages/Community";
-import Calendar from "@/pages/Calendar";
-import ReadingChallenges from "@/pages/ReadingChallenges";
-import FocusRooms from "@/pages/FocusRooms";
-import Events from "@/pages/Events";
-import EventDetail from "@/pages/EventDetail";
-import Competitions from "@/pages/Competitions";
-import CompetitionDetail from "@/pages/CompetitionDetail";
-import Leaderboard from "@/pages/Leaderboard";
-import Profile from "@/pages/Profile";
-import Settings from "@/pages/Settings";
-import News from "@/pages/News";
-import Studio from "@/pages/Studio";
-import StudioWork from "@/pages/StudioWork";
-import Ventures from "@/pages/Ventures";
-import VentureDetail from "@/pages/VentureDetail";
-import Points from "@/pages/Points";
-import Stats from "@/pages/Stats";
-import ChessPuzzle from "@/pages/ChessPuzzle";
-import VerifyCertificate from "@/pages/VerifyCertificate";
-import CertificatesWall from "@/pages/CertificatesWall";
-import BookReviews from "@/pages/BookReviews";
-import Admin from "@/pages/Admin";
+import { LogoMark } from "@/components/Logo";
+
+const Login = lazy(() => import("@/pages/Login"));
+const Register = lazy(() => import("@/pages/Register"));
+const Dashboard = lazy(() => import("@/pages/Dashboard"));
+const Library = lazy(() => import("@/pages/Library"));
+const BookDetail = lazy(() => import("@/pages/BookDetail"));
+const UploadBook = lazy(() => import("@/pages/UploadBook"));
+const Clubs = lazy(() => import("@/pages/Clubs"));
+const ClubDetail = lazy(() => import("@/pages/ClubDetail"));
+const DiscussionDetail = lazy(() => import("@/pages/DiscussionDetail"));
+const ChessGame = lazy(() => import("@/pages/ChessGame"));
+const ChessPractice = lazy(() => import("@/pages/ChessPractice"));
+const ChessRobot = lazy(() => import("@/pages/ChessRobot"));
+const Paths = lazy(() => import("@/pages/Paths"));
+const Community = lazy(() => import("@/pages/Community"));
+const Calendar = lazy(() => import("@/pages/Calendar"));
+const ReadingChallenges = lazy(() => import("@/pages/ReadingChallenges"));
+const FocusRooms = lazy(() => import("@/pages/FocusRooms"));
+const Events = lazy(() => import("@/pages/Events"));
+const EventDetail = lazy(() => import("@/pages/EventDetail"));
+const Competitions = lazy(() => import("@/pages/Competitions"));
+const CompetitionDetail = lazy(() => import("@/pages/CompetitionDetail"));
+const Leaderboard = lazy(() => import("@/pages/Leaderboard"));
+const Profile = lazy(() => import("@/pages/Profile"));
+const Settings = lazy(() => import("@/pages/Settings"));
+const News = lazy(() => import("@/pages/News"));
+const Studio = lazy(() => import("@/pages/Studio"));
+const StudioWork = lazy(() => import("@/pages/StudioWork"));
+const Ventures = lazy(() => import("@/pages/Ventures"));
+const VentureDetail = lazy(() => import("@/pages/VentureDetail"));
+const Points = lazy(() => import("@/pages/Points"));
+const Stats = lazy(() => import("@/pages/Stats"));
+const ChessPuzzle = lazy(() => import("@/pages/ChessPuzzle"));
+const VerifyCertificate = lazy(() => import("@/pages/VerifyCertificate"));
+const CertificatesWall = lazy(() => import("@/pages/CertificatesWall"));
+const BookReviews = lazy(() => import("@/pages/BookReviews"));
+const Admin = lazy(() => import("@/pages/Admin"));
+
+function PageLoader() {
+  return (
+    <main className="min-h-[70vh] grid place-items-center px-4" dir="rtl">
+      <div className="text-center">
+        <LogoMark className="w-14 h-14 mx-auto animate-pulse" />
+        <p className="mt-4 text-sm font-bold text-slate-500">جارٍ التحميل…</p>
+      </div>
+    </main>
+  );
+}
 
 function NotFound() {
   return (
@@ -112,7 +125,7 @@ function AnimatedRoutes() {
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
-  if (reduce) return routes;
+  if (reduce) return <Suspense fallback={<PageLoader />}>{routes}</Suspense>;
   return (
     <AnimatePresence mode="wait" initial={false}>
       <motion.div
@@ -122,7 +135,7 @@ function AnimatedRoutes() {
         exit={{ opacity: 0, y: -10 }}
         transition={{ duration: 0.28, ease: EASE }}
       >
-        {routes}
+        <Suspense fallback={<PageLoader />}>{routes}</Suspense>
       </motion.div>
     </AnimatePresence>
   );
