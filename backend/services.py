@@ -90,12 +90,16 @@ async def check_achievements(user_id: str):
         await create_notification(
             user_id, "achievement", f"🏅 إنجاز جديد: {a['title']}", a.get("description", ""),
         )
+        await log_activity(user_id, "badge", f"فتح إنجاز «{a['title']}» 🏅")
 
 
 async def bump_stat(user_id: str, stat: str, delta: int = 1):
     await db.users.update_one(
         {"_id": ObjectId(user_id)}, {"$inc": {f"stats.{stat}": delta}}
     )
+    kind = _STAT_TO_QUEST.get(stat)
+    if kind and delta > 0:
+        await track_quest(user_id, kind, delta)
     await check_achievements(user_id)
 
 
@@ -258,3 +262,72 @@ async def audit_log(user, action: str, entity: str, entity_id: str = None, meta:
         "action": action, "entity": entity, "entity_id": entity_id,
         "meta": meta or {}, "ip": ip, "user_agent": ua, "created_at": now_iso(),
     })
+
+
+# ---------------- Daily quests & activity feed ----------------
+QUEST_POOL = [
+    {"key": "read_pages", "kind": "pages_read", "title": "اقرأ 20 صفحة", "target": 20, "reward": 15, "icon": "BookOpen"},
+    {"key": "finish_book", "kind": "books_read", "title": "أنهِ قراءة كتاب", "target": 1, "reward": 40, "icon": "Library"},
+    {"key": "review_book", "kind": "review", "title": "قيّم كتاباً أو عملاً أدبياً", "target": 1, "reward": 10, "icon": "Star"},
+    {"key": "chess_win", "kind": "chess_wins", "title": "اربح مباراة شطرنج", "target": 1, "reward": 20, "icon": "Crown"},
+    {"key": "chess_play", "kind": "chess_games", "title": "العب مباراة شطرنج", "target": 1, "reward": 5, "icon": "Swords"},
+    {"key": "daily_checkin_q", "kind": "checkin", "title": "سجّل حضورك اليومي", "target": 1, "reward": 5, "icon": "Flame"},
+    {"key": "discuss", "kind": "posts", "title": "شارك في نقاش", "target": 1, "reward": 10, "icon": "MessageSquare"},
+]
+_STAT_TO_QUEST = {"pages_read": "pages_read", "books_read": "books_read",
+                  "chess_wins": "chess_wins", "chess_games": "chess_games", "posts": "posts"}
+
+
+def _today_str() -> str:
+    from datetime import datetime, timezone
+    return datetime.now(timezone.utc).date().isoformat()
+
+
+async def get_today_quests(user_id: str) -> dict:
+    today = _today_str()
+    doc = await db.user_quests.find_one({"user_id": user_id, "date": today})
+    if doc:
+        return doc
+    from datetime import date
+    seed_n = date.today().toordinal() + sum(ord(c) for c in user_id)
+    quests = []
+    for i in range(3):
+        t = QUEST_POOL[(seed_n + i * 2) % len(QUEST_POOL)]
+        quests.append({**t, "progress": 0, "claimed": False})
+    doc = {"user_id": user_id, "date": today, "quests": quests, "created_at": now_iso()}
+    try:
+        await db.user_quests.insert_one(doc)
+    except Exception:
+        doc = await db.user_quests.find_one({"user_id": user_id, "date": today}) or doc
+    return doc
+
+
+async def track_quest(user_id: str, kind: str, delta: int = 1):
+    """Advance today's quest progress for an action kind. Never raises."""
+    try:
+        doc = await get_today_quests(user_id)
+        changed = False
+        for q in doc.get("quests", []):
+            if q.get("kind") == kind and not q.get("claimed"):
+                new_p = min(q.get("target", 1), q.get("progress", 0) + delta)
+                if new_p != q.get("progress", 0):
+                    q["progress"] = new_p
+                    changed = True
+        if changed:
+            await db.user_quests.update_one(
+                {"user_id": user_id, "date": doc["date"]},
+                {"$set": {"quests": doc["quests"]}})
+    except Exception:
+        pass
+
+
+async def log_activity(user_id: str, kind: str, text: str, ref: str = None):
+    """Append to the platform activity feed. Never raises."""
+    try:
+        u = await db.users.find_one({"_id": ObjectId(user_id)}, {"name": 1})
+        await db.activity_events.insert_one({
+            "user_id": user_id, "user_name": (u or {}).get("name", ""),
+            "kind": kind, "text": text, "ref": ref, "created_at": now_iso(),
+        })
+    except Exception:
+        pass

@@ -218,6 +218,15 @@ async def seed_all():
     await db.notifications.create_index([("user_id", 1), ("read", 1)])
     await db.xp_transactions.create_index([("user_id", 1), ("created_at", -1)])
     await db.books.create_index([("status", 1), ("category", 1)])
+    await db.user_quests.create_index([("user_id", 1), ("date", 1)], unique=True)
+    await db.activity_events.create_index([("created_at", -1)])
+    await db.follows.create_index([("follower_id", 1), ("following_id", 1)], unique=True)
+    await db.book_comments.create_index([("book_id", 1), ("created_at", -1)])
+    await db.works.create_index([("status", 1), ("likes", -1)])
+    await db.chess_games.create_index([("white_id", 1), ("updated_at", -1)])
+    await db.chess_games.create_index([("black_id", 1), ("updated_at", -1)])
+    await db.notifications.create_index([("user_id", 1), ("created_at", -1)])
+    await db.reports.create_index([("status", 1), ("created_at", -1)])
 
     # categories
     for c in CATEGORIES:
