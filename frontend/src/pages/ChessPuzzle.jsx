@@ -123,7 +123,7 @@ export default function ChessPuzzle() {
         <div className="pointer-events-none absolute -top-40 right-1/4 w-[26rem] h-[26rem] bg-amber-500/[0.07] rounded-full blur-3xl" />
         <div className="pointer-events-none absolute -bottom-40 left-1/4 w-[26rem] h-[26rem] bg-indigo-500/[0.07] rounded-full blur-3xl" />
 
-        <div className="relative max-w-6xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
+        <div className="relative max-w-6xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
           <div className="flex items-center justify-between mb-4 gap-2 flex-wrap">
             <Link to="/clubs/chess" className="pressable inline-flex items-center gap-1.5 text-slate-400 hover:text-white text-sm min-h-[44px] transition-colors">
               <ArrowRight className="w-4 h-4" /> عودة للحلبة
@@ -140,8 +140,8 @@ export default function ChessPuzzle() {
             <p className="text-slate-400 text-sm mt-2">الأبيض يلعب ويُمات فوراً · نقلة واحدة صحيحة فقط</p>
           </div>
 
-          <div className="grid lg:grid-cols-[1fr_300px] gap-5 items-start max-w-4xl mx-auto">
-            <motion.div key={wrong} animate={wrong ? { x: [0, -9, 9, -5, 5, 0] } : { x: 0 }} transition={{ duration: 0.4 }} className="min-w-0 relative">
+          <div className="grid lg:grid-cols-[minmax(0,1fr)_340px] gap-5 lg:gap-6 items-start max-w-6xl mx-auto">
+            <motion.div key={wrong} animate={wrong ? { x: [0, -9, 9, -5, 5, 0] } : { x: 0 }} transition={{ duration: 0.4 }} className="min-w-0 relative w-full max-w-[680px] mx-auto">
               <ChessBoardView
                 chess={chess} pieces={pieces} theme={theme} themeId={themeId} setTheme={setTheme}
                 orientation="w" flipped={flipped} setFlipped={setFlipped}
@@ -178,7 +178,7 @@ export default function ChessPuzzle() {
             </motion.div>
 
             <motion.div initial={{ opacity: 0, x: -24 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.6, delay: 0.12, ease: EASE }} className="space-y-4 min-w-0">
-              <div className="rounded-3xl p-5 border border-white/10 bg-white/[0.05] backdrop-blur-xl">
+              <div className="rounded-3xl p-5 lg:p-6 border border-white/10 bg-white/[0.05] backdrop-blur-xl">
                 <h3 className="font-head font-bold flex items-center gap-2 text-amber-300 mb-3">
                   <span className="w-8 h-8 rounded-xl grid place-items-center bg-gradient-to-br from-amber-300 to-orange-500"><Puzzle className="w-4 h-4 text-slate-950" /></span>
                   مهمّتك
@@ -203,7 +203,7 @@ export default function ChessPuzzle() {
                 </AnimatePresence>
               </div>
 
-              <div className="rounded-3xl p-5 border border-white/10 bg-white/[0.05] backdrop-blur-xl">
+              <div className="rounded-3xl p-5 lg:p-6 border border-white/10 bg-white/[0.05] backdrop-blur-xl">
                 <h4 className="font-head font-bold text-sm text-slate-200 flex items-center gap-2 mb-3"><Sparkles className="w-4 h-4 text-amber-300" /> ألغاز الأسبوع</h4>
                 <div className="grid grid-cols-7 gap-1.5">
                   {PUZZLES.map((p, i) => (
