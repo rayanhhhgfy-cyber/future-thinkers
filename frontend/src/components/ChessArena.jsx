@@ -5,7 +5,7 @@ import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { Swords, Crown, Loader2, Check, X, Play, User, Trophy, Target, Flame, ChevronLeft } from "lucide-react";
+import { Swords, Crown, Loader2, Check, X, Play, User, Trophy, Target, Flame, ChevronLeft, Bot } from "lucide-react";
 import { motion } from "framer-motion";
 import { EASE } from "@/components/anim";
 import { pieceSrc } from "@/components/chess/shared";
@@ -96,7 +96,7 @@ export function ChessArena() {
           </div>
 
           {/* quick actions */}
-          <div className="grid sm:grid-cols-2 gap-3 mt-6">
+          <div className="grid sm:grid-cols-3 gap-3 mt-6">
             <motion.button data-testid="quick-match-btn" onClick={quickMatch} disabled={matching}
               whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
               className="relative overflow-hidden rounded-3xl p-5 text-right disabled:opacity-60 group"
@@ -124,6 +124,21 @@ export function ChessArena() {
                   تدريب فردي
                 </div>
                 <p className="text-sm text-slate-400 mt-1">العب باللونين وحدك — جرّب الافتتاحيات والتكتيكات</p>
+              </div>
+            </motion.button>
+            <motion.button onClick={() => nav("/chess/robot")}
+              whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+              className="relative overflow-hidden rounded-3xl p-5 text-right border border-indigo-300/30 backdrop-blur-xl group transition-colors"
+              style={{ background: "linear-gradient(135deg, rgba(99,102,241,0.28), rgba(139,92,246,0.14))" }}>
+              <div className="absolute -left-3 -bottom-6 opacity-20 group-hover:opacity-35 transition-opacity">
+                <img src={pieceSrc("q", "b")} alt="" className="w-28 h-28" draggable={false} />
+              </div>
+              <div className="relative">
+                <div className="flex items-center gap-2 font-head font-extrabold text-lg text-white">
+                  <Bot className="w-5 h-5 text-indigo-300" />
+                  ضد الروبوت 🤖
+                </div>
+                <p className="text-sm text-indigo-200/70 mt-1">مجاني بالكامل · 3 مستويات صعوبة</p>
               </div>
             </motion.button>
           </div>
