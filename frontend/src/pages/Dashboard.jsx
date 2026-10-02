@@ -95,13 +95,13 @@ export default function Dashboard() {
         {/* Hero card */}
         <FadeUp>
         <div className="ft-navy-gradient grain relative overflow-hidden rounded-3xl p-8 text-white mb-6">
-          <div className="absolute -top-16 -left-16 w-64 h-64 bg-emerald-500/20 rounded-full blur-3xl animate-float" />
+          <div className="absolute -top-16 -left-16 w-64 h-64 bg-white/10 rounded-full blur-3xl animate-float" />
           <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div>
               <div className="text-slate-300 text-sm">أهلاً بك،</div>
               <h1 className="font-head text-3xl font-extrabold">{user.name}</h1>
               <div className="mt-2 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-sm">
-                <Sparkles className="w-4 h-4 text-emerald-400" /> {gam.level_title} · المستوى {gam.level}
+                <Sparkles className="w-4 h-4 ft-text-accent-bright" /> {gam.level_title} · المستوى {gam.level}
               </div>
               {online > 0 && (
                 <div className="mt-2 mr-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-200 text-xs font-semibold">
@@ -110,7 +110,7 @@ export default function Dashboard() {
               )}
               <div className="mt-4 max-w-md">
                 <div className="flex justify-between text-xs text-slate-300 mb-1"><span>{gam.xp} نقطة خبرة</span><span>باقٍ {gam.xp_to_next} للمستوى التالي</span></div>
-                <div className="h-2 rounded-full bg-white/15 overflow-hidden"><div className="h-full bg-emerald-500 rounded-full transition-all duration-700" style={{ width: `${gam.level_progress}%` }} /></div>
+                <div className="h-2 rounded-full bg-white/15 overflow-hidden"><div className="h-full ft-grad-bar rounded-full transition-all duration-700" style={{ width: `${gam.level_progress}%` }} /></div>
               </div>
             </div>
             <div className="flex items-center gap-3">
@@ -139,7 +139,7 @@ export default function Dashboard() {
                 <div className="text-2xl font-extrabold font-head flex items-center gap-1"><Flame className="w-5 h-5 text-orange-400" />{gam.streak}</div>
                 <div className="text-[11px] text-slate-300">سلسلة أيام</div>
               </div>
-              <Button data-testid="checkin-btn" onClick={checkin} disabled={checkedIn} className="pressable rounded-2xl bg-emerald-600 hover:bg-emerald-700 h-12">
+              <Button data-testid="checkin-btn" onClick={checkin} disabled={checkedIn} className="pressable rounded-2xl ft-btn-solid h-12">
                 <Zap className="w-4 h-4 ml-1" /> حضور اليوم
               </Button>
             </div>
@@ -188,7 +188,7 @@ export default function Dashboard() {
                         {q.claimed ? (
                           <span className="text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full shrink-0">تم ✓</span>
                         ) : q.done ? (
-                          <button onClick={() => claimQuest(q)} className="pressable shrink-0 text-[11px] font-extrabold text-white bg-emerald-600 hover:bg-emerald-700 px-3 py-1.5 rounded-full">خذ +{q.reward}</button>
+                          <button onClick={() => claimQuest(q)} className="pressable shrink-0 text-[11px] font-extrabold text-white ft-btn-solid px-3 py-1.5 rounded-full">خذ +{q.reward}</button>
                         ) : (
                           <span className="text-[11px] font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded-full shrink-0">+{q.reward} XP</span>
                         )}
@@ -356,7 +356,7 @@ export default function Dashboard() {
             </FadeUp>
             <FadeUp>
             <section className="bg-white rounded-2xl p-6 border border-slate-100 ft-shadow">
-              <h2 className="font-head font-bold text-lg flex items-center gap-2 mb-4"><Sparkles className="w-5 h-5 text-emerald-600" /> موصى لك</h2>
+              <h2 className="font-head font-bold text-lg flex items-center gap-2 mb-4"><Sparkles className="w-5 h-5 ft-text-accent" /> موصى لك</h2>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 {recs.slice(0, 4).map((b) => (
                   <Link key={b.id} to={`/books/${b.id}`} className="group">
@@ -394,7 +394,7 @@ export default function Dashboard() {
             {followFeed.length > 0 && (
             <FadeUp>
             <section className="bg-white rounded-2xl p-6 border border-slate-100 ft-shadow">
-              <h2 className="font-head font-bold text-lg flex items-center gap-2 mb-4"><Users className="w-5 h-5 text-emerald-600" /> جديد ممن تتابعهم</h2>
+              <h2 className="font-head font-bold text-lg flex items-center gap-2 mb-4"><Users className="w-5 h-5 ft-text-accent" /> جديد ممن تتابعهم</h2>
               <div className="space-y-2">
                 {followFeed.slice(0, 5).map((f) => (
                   <Link key={`${f.kind}-${f.id}`} to={f.kind === "work" ? `/studio/${f.id}` : `/ventures/${f.id}`} className="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 bg-slate-50/50 transition-colors">
@@ -465,10 +465,10 @@ export default function Dashboard() {
             </FadeUp>
             <FadeUp>
             <section className="bg-white rounded-2xl p-6 border border-slate-100 ft-shadow">
-              <h2 className="font-head font-bold text-lg flex items-center gap-2 mb-4"><Award className="w-5 h-5 text-emerald-600" /> إنجازاتك</h2>
+              <h2 className="font-head font-bold text-lg flex items-center gap-2 mb-4"><Award className="w-5 h-5 ft-text-accent" /> إنجازاتك</h2>
               {gam.badges.length === 0 ? <div className="text-sm text-slate-400 text-center py-4">اجمع إنجازك الأول!</div> : (
                 <div className="flex flex-wrap gap-2">
-                  {gam.badges.map((b, i) => <span key={i} className="px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700 text-xs font-medium">{b}</span>)}
+                  {gam.badges.map((b, i) => <span key={i} className="px-3 py-1.5 rounded-full ft-bg-soft ft-text-accent text-xs font-medium">{b}</span>)}
                 </div>
               )}
             </section>

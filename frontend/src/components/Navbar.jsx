@@ -104,7 +104,7 @@ export function Navbar() {
           <nav className="hidden lg:flex items-center gap-1">
             {DISCOVER_LINKS.map((l) => (
               <Link key={l.to} to={l.to} data-testid={`nav-${l.to.slice(1)}`}
-                className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${loc.pathname.startsWith(l.to) ? "text-emerald-700 bg-emerald-50" : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"}`}>
+                className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${loc.pathname.startsWith(l.to) ? "ft-text-accent ft-bg-soft" : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"}`}>
                 {l.label}
               </Link>
             ))}
@@ -150,7 +150,7 @@ export function Navbar() {
           ) : (
             <div className="hidden sm:flex items-center gap-2">
               <Button variant="ghost" data-testid="nav-login-btn" onClick={() => nav("/login")} className="rounded-xl">دخول</Button>
-              <Button data-testid="nav-register-btn" onClick={() => nav("/register")} className="rounded-xl bg-emerald-600 hover:bg-emerald-700">انضم الآن</Button>
+              <Button data-testid="nav-register-btn" onClick={() => nav("/register")} className="rounded-xl ft-btn-solid">انضم الآن</Button>
             </div>
           )}
           <Button variant="ghost" size="icon" className="lg:hidden rounded-xl" data-testid="mobile-menu-btn" onClick={() => setOpen((v) => !v)}>
@@ -218,7 +218,7 @@ function MobileDrawer({ open, onClose, user, gam, isStaff, pathname, nav, logout
                 <motion.div
                   initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.06, duration: 0.35, ease: EASE }}
-                  className="rounded-3xl p-5 text-white bg-gradient-to-bl from-emerald-600 via-teal-600 to-cyan-700 relative overflow-hidden"
+                  className="rounded-3xl p-5 text-white ft-hero-gradient relative overflow-hidden"
                 >
                   <div className="absolute -top-10 -left-10 w-36 h-36 rounded-full bg-white/10" />
                   <div className="absolute -bottom-12 -right-6 w-44 h-44 rounded-full bg-white/10" />
@@ -257,11 +257,11 @@ function MobileDrawer({ open, onClose, user, gam, isStaff, pathname, nav, logout
                   transition={{ delay: 0.06, duration: 0.35, ease: EASE }}
                   className="rounded-3xl p-5 text-white bg-gradient-to-bl from-slate-900 via-slate-800 to-slate-700 relative overflow-hidden"
                 >
-                  <div className="absolute -top-10 -left-10 w-36 h-36 rounded-full bg-emerald-500/20" />
+                  <div className="absolute -top-10 -left-10 w-36 h-36 rounded-full bg-white/10" />
                   <div className="relative font-extrabold text-lg">أهلاً بك في مفكري المستقبل 👋</div>
                   <p className="relative text-sm text-slate-300 mt-1">انضم لآلاف الطلاب: اقرأ، العب، ابنِ مشاريع واصعد الصدارة.</p>
                   <div className="relative flex gap-2 mt-4">
-                    <Button className="flex-1 rounded-2xl bg-emerald-500 hover:bg-emerald-600" onClick={() => nav("/register")}>انضم الآن</Button>
+                    <Button className="flex-1 rounded-2xl ft-btn-solid" onClick={() => nav("/register")}>انضم الآن</Button>
                     <Button variant="outline" className="flex-1 rounded-2xl bg-white/10 border-white/20 text-white hover:bg-white/20" onClick={() => nav("/login")}>دخول</Button>
                   </div>
                 </motion.div>
@@ -302,10 +302,10 @@ function MobileDrawer({ open, onClose, user, gam, isStaff, pathname, nav, logout
                       >
                         <Link
                           to={l.to}
-                          className={`flex items-center gap-3 px-3 py-2.5 rounded-2xl transition active:scale-[0.98] ${active ? "bg-emerald-50" : "hover:bg-slate-50"}`}
+                          className={`flex items-center gap-3 px-3 py-2.5 rounded-2xl transition active:scale-[0.98] ${active ? "ft-bg-soft" : "hover:bg-slate-50"}`}
                         >
                           <span className={`w-10 h-10 rounded-2xl grid place-items-center ${l.tint} shrink-0`}><l.icon className="w-5 h-5" /></span>
-                          <span className={`font-bold text-[15px] ${active ? "text-emerald-700" : "text-slate-700"}`}>{l.label}</span>
+                          <span className={`font-bold text-[15px] ${active ? "ft-text-accent" : "text-slate-700"}`}>{l.label}</span>
                           <ChevronLeft className="w-4 h-4 text-slate-300 mr-auto" />
                         </Link>
                       </motion.div>

@@ -128,7 +128,7 @@ h1, h2, h3, h4, .font-head { font-family: 'Readex Pro', sans-serif; }
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
 
-::selection { background: #059669; color: #fff; }
+::selection { background: var(--ft-accent, #059669); color: #fff; }
 
 .grain::before {
   content: ""; position: absolute; inset: 0; opacity: .04; pointer-events: none;
@@ -156,3 +156,27 @@ html[data-motion="off"] .animate-float,
 html[data-motion="off"] .animate-pulse-soft,
 html[data-motion="off"] .animate-gradient-text,
 html[data-motion="off"] .animate-scale-in { animation: none !important; }
+
+/* ===== Full-theme semantic accents · every brand surface follows --ft-accent ===== */
+.ft-btn-primary { background-image: linear-gradient(to left, var(--ft-grad-b, #065f46), var(--ft-accent, #10b981)); color: #fff; }
+.ft-btn-primary:hover { filter: brightness(1.07); }
+.ft-btn-solid { background-color: color-mix(in srgb, var(--ft-accent, #10b981) 76%, black); color: #fff; }
+.ft-btn-solid:hover { filter: brightness(1.1); }
+.ft-text-accent { color: color-mix(in srgb, var(--ft-accent, #10b981) 66%, black); }
+.ft-text-accent-bright { color: var(--ft-accent, #10b981); }
+.ft-bg-soft { background-color: color-mix(in srgb, var(--ft-accent, #10b981) 9%, white); }
+.ft-bg-soft-2 { background-color: color-mix(in srgb, var(--ft-accent, #10b981) 17%, white); }
+.ft-border-accent { border-color: color-mix(in srgb, var(--ft-accent, #10b981) 32%, white); }
+.ft-ring-accent { --tw-ring-color: color-mix(in srgb, var(--ft-accent, #10b981) 30%, white); }
+.ft-grad-bar { background-image: linear-gradient(to left, var(--ft-grad-b, #065f46), var(--ft-accent, #10b981)); }
+.ft-icon-tile { background-image: linear-gradient(135deg, var(--ft-grad-b, #065f46), var(--ft-accent, #10b981)); color: #fff; }
+.ft-text-gradient { background-image: linear-gradient(to left, var(--ft-grad-b, #065f46), var(--ft-accent, #10b981)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.ft-chip { background-color: color-mix(in srgb, var(--ft-accent, #10b981) 9%, white); color: color-mix(in srgb, var(--ft-accent, #10b981) 66%, black); border: 1px solid color-mix(in srgb, var(--ft-accent, #10b981) 28%, white); }
+.ft-hover-text-accent:hover { color: color-mix(in srgb, var(--ft-accent, #10b981) 66%, black); }
+.ft-hover-text-bright:hover { color: var(--ft-accent, #10b981); }
+.group:hover .ft-group-hover-text-accent { color: color-mix(in srgb, var(--ft-accent, #10b981) 66%, black); }
+.ft-hover-bg-soft:hover { background-color: color-mix(in srgb, var(--ft-accent, #10b981) 9%, white); }
+.ft-hover-border-accent:hover { border-color: color-mix(in srgb, var(--ft-accent, #10b981) 32%, white); }
+.ft-hover-ring-accent:hover { --tw-ring-color: color-mix(in srgb, var(--ft-accent, #10b981) 30%, white); }
+.ft-focus-border-accent:focus { border-color: color-mix(in srgb, var(--ft-accent, #10b981) 32%, white); }
+.ft-focus-ring-accent:focus { --tw-ring-color: color-mix(in srgb, var(--ft-accent, #10b981) 30%, white); }
