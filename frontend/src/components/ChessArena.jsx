@@ -141,6 +141,21 @@ export function ChessArena() {
                 <p className="text-sm text-indigo-200/70 mt-1">3 مستويات صعوبة</p>
               </div>
             </motion.button>
+            <motion.button onClick={() => nav("/chess/puzzle")}
+              whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+              className="relative overflow-hidden rounded-3xl p-5 text-right border border-amber-300/30 backdrop-blur-xl group transition-colors"
+              style={{ background: "linear-gradient(135deg, rgba(245,158,11,0.25), rgba(251,191,36,0.10))" }}>
+              <div className="absolute -left-3 -bottom-6 opacity-20 group-hover:opacity-35 transition-opacity">
+                <img src={pieceSrc("n", "b")} alt="" className="w-28 h-28" draggable={false} />
+              </div>
+              <div className="relative">
+                <div className="flex items-center gap-2 font-head font-extrabold text-lg text-white">
+                  <Crown className="w-5 h-5 text-amber-300" />
+                  لغز اليوم 🧩
+                </div>
+                <p className="text-sm text-amber-200/70 mt-1">مات في حركة واحدة · لغز جديد كل يوم</p>
+              </div>
+            </motion.button>
           </div>
 
           {/* stats strip */}

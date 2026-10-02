@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import api, { apiErr } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { Layout, PageLoader, EmptyState } from "@/components/Layout";
@@ -20,6 +21,37 @@ const MOODS = {
 };
 const moodOf = (r) => MOODS[r?.mood] || MOODS.violet;
 const GOALS = [10, 25, 45, 60];
+
+/* Weekly focus leaderboard strip · hides on error/empty, lobby only. */
+function FocusLeaders() {
+  const [items, setItems] = useState([]);
+  useEffect(() => {
+    api.get("/focus/leaderboard")
+      .then((r) => setItems(r.data?.items || []))
+      .catch(() => {});
+  }, []);
+  if (!items.length) return null;
+  const chip = ["from-amber-400 to-orange-500 text-white shadow-amber-200", "from-slate-400 to-slate-500 text-white shadow-slate-200", "from-orange-300 to-amber-500 text-white shadow-orange-200"];
+  return (
+    <section className="animate-fade-up bg-white rounded-[1.6rem] border border-slate-100 ft-shadow p-5 sm:p-6 mb-6">
+      <h3 className="font-head font-extrabold text-slate-800 flex items-center gap-2.5 mb-4">
+        <span className="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 text-white grid place-items-center shadow-lg shadow-amber-200"><Trophy className="w-5 h-5" /></span>
+        متصدرو التركيز هذا الأسبوع
+        <span className="ft-chip rounded-full px-2.5 py-1 text-[10px] font-extrabold">غرف التركيز</span>
+      </h3>
+      <div className="grid sm:grid-cols-2 gap-2">
+        {items.slice(0, 6).map((m, i) => (
+          <div key={m.user_id || i} className="flex items-center gap-3 rounded-2xl bg-slate-50/70 ring-1 ring-slate-100 px-3 py-2.5">
+            <span className={`w-8 h-8 rounded-full bg-gradient-to-br ${chip[i] || "from-slate-200 to-slate-300 text-slate-600"} grid place-items-center text-xs font-black shadow shrink-0`}>{i + 1}</span>
+            <span className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-indigo-500 text-white grid place-items-center text-xs font-extrabold ring-2 ring-white shadow shrink-0">{(m.name || "؟").trim().charAt(0)}</span>
+            <Link to={`/profile/${m.user_id}`} className="flex-1 min-w-0 truncate text-sm font-bold text-slate-700 hover:[color:color-mix(in_srgb,var(--ft-accent)_66%,black)] transition-colors min-h-[44px] inline-flex items-center">{m.name}</Link>
+            <span className="inline-flex items-center gap-1 text-xs font-extrabold text-violet-600 bg-violet-50 ring-1 ring-violet-100 rounded-full px-2.5 py-1 shrink-0"><Timer className="w-3.5 h-3.5" />{m.minutes}د</span>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
 
 export default function FocusRooms() {
   const { user } = useAuth();
@@ -178,6 +210,8 @@ export default function FocusRooms() {
             </div>
           </div>
         )}
+
+        <FocusLeaders />
 
         <div className="animate-fade-up relative overflow-hidden bg-white rounded-[1.8rem] border border-slate-100 ft-shadow hover-lift p-5 sm:p-6 mb-8">
           <span className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-l ${selMood.dot} transition-all duration-500`} />

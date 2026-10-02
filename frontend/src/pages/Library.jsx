@@ -6,7 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Star, Search, Upload, BookOpen, Eye, Clock, Heart, ListMusic, Plus, Trash2, X, Library as LibraryIcon } from "lucide-react";
+import { Star, Search, Upload, BookOpen, Eye, Clock, Heart, ListMusic, Plus, Trash2, X, Library as LibraryIcon, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import BookmarkButton from "@/components/BookmarkButton";
 import BookCover from "@/components/BookCover";
@@ -44,6 +44,37 @@ export function BookCard({ b, i = 0, catName }) {
         </div>
       </article>
     </Link>
+  );
+}
+
+/* "Because you read" strip · renders only when recommendations exist. */
+function RecommendedStrip() {
+  const [items, setItems] = useState([]);
+  useEffect(() => {
+    api.get("/books/recommended")
+      .then((r) => setItems(r.data?.items || r.data?.books || (Array.isArray(r.data) ? r.data : [])))
+      .catch(() => {});
+  }, []);
+  if (!items.length) return null;
+  return (
+    <section className="mb-6 animate-fade-up">
+      <div className="mb-3 flex items-center gap-2">
+        <span className="grid h-8 w-8 place-items-center rounded-xl ft-icon-tile text-white shadow-md"><Sparkles className="h-4 w-4" /></span>
+        <h3 className="font-head text-base font-extrabold text-slate-900">لأنك قرأت</h3>
+        <span className="rounded-full ft-bg-soft px-2.5 py-1 text-[10px] font-bold ft-text-accent ring-1 ft-ring-accent">مقترحة لك شخصياً</span>
+      </div>
+      <div className="-mx-1 flex snap-x snap-mandatory gap-3 overflow-x-auto px-1 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {items.slice(0, 10).map((b) => (
+          <Link key={b.id} to={`/books/${b.id}`} className="group w-28 shrink-0 snap-start sm:w-32">
+            <div className="overflow-hidden rounded-2xl ft-shadow ring-1 ring-slate-100 transition-transform duration-300 group-hover:-translate-y-1">
+              <BookCover book={b} className="aspect-[3/4] w-full" imgClassName="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.06]" />
+            </div>
+            <div className="mt-2 line-clamp-2 text-xs font-bold leading-snug text-slate-800 transition-colors group-hover:[color:color-mix(in_srgb,var(--ft-accent)_66%,black)]">{b.title}</div>
+            {b.author && <div className="mt-0.5 truncate text-[10px] font-medium text-slate-400">{b.author}</div>}
+          </Link>
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -167,6 +198,8 @@ export default function Library() {
               </select>
             </div>
           </div>
+
+          <RecommendedStrip />
 
           {!data ? (
             <div className="grid grid-cols-2 gap-4 md:grid-cols-3 md:gap-5 xl:grid-cols-5">{Array.from({ length: 10 }).map((_, i) => <div key={i} className="overflow-hidden rounded-[1.35rem] border border-slate-100 bg-white ft-shadow"><Skeleton className="aspect-[3/4] rounded-none" /><div className="p-3"><Skeleton className="h-4 w-3/4" /><Skeleton className="mt-2 h-3 w-1/2" /><Skeleton className="mt-3 h-6 w-16 rounded-full" /></div></div>)}</div>

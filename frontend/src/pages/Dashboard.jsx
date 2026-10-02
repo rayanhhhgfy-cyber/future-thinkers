@@ -6,7 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
-import { Flame, Trophy, BookOpen, Crown, Calendar, Zap, Award, TrendingUp, Sparkles, MessagesSquare, Medal, PenLine, Rocket, Bell, Quote, ArrowLeft, Star, Clock, ListMusic, FileText, Target, Activity, Users } from "lucide-react";
+import { Flame, Trophy, BookOpen, Crown, Calendar, Zap, Award, TrendingUp, TrendingDown, BarChart3, Sparkles, MessagesSquare, Medal, PenLine, Rocket, Bell, Quote, ArrowLeft, Star, Clock, ListMusic, FileText, Target, Activity, Users } from "lucide-react";
 import * as Icons from "lucide-react";
 import { FadeUp, Stagger, Item } from "@/components/anim";
 import { WeeklyGoals, ActivityHeatmap, UpcomingDeadlines, DailyChallenge, SavedItems, Suggestions, AchievementsShowcase } from "@/components/dashboard/widgets";
@@ -36,6 +36,55 @@ const StatCard = ({ icon: Icon, label, value, color, sub }) => (
     {sub && <div className="text-[11px] text-slate-400 mt-0.5">{sub}</div>}
   </div>
 );
+
+/* "My week in numbers" card · hides silently until /stats/my-week answers. */
+function WeeklyNumbers() {
+  const [w, setW] = useState(null);
+  useEffect(() => {
+    api.get("/stats/my-week").then((r) => setW(r.data)).catch(() => {});
+  }, []);
+  if (!w) return null;
+  const delta = (w.pages_this_week || 0) - (w.pages_last_week || 0);
+  const pct = w.pages_last_week > 0 ? Math.round((delta / w.pages_last_week) * 100) : null;
+  const mini = [
+    { label: "صفحات هذا الأسبوع", value: w.pages_this_week ?? 0, icon: BookOpen, tint: "bg-sky-50 text-sky-600" },
+    { label: "نقاط الأسبوع", value: w.xp_this_week ?? 0, icon: Zap, tint: "bg-amber-50 text-amber-600" },
+    { label: "دقائق تركيز", value: w.focus_min_week ?? 0, icon: Clock, tint: "bg-violet-50 text-violet-600" },
+    { label: "أيام نشطة", value: `${w.active_days ?? 0}/7`, icon: Calendar, tint: "bg-emerald-50 text-emerald-600" },
+  ];
+  return (
+    <FadeUp className="mb-6">
+      <section className="bg-white rounded-2xl p-5 border border-slate-100 ft-shadow">
+        <div className="flex items-center justify-between gap-2 mb-4 flex-wrap">
+          <h3 className="font-head font-bold text-slate-800 flex items-center gap-2">
+            <span className="w-9 h-9 rounded-xl ft-icon-tile text-white grid place-items-center"><BarChart3 className="w-5 h-5" /></span>
+            أسبوعي في أرقام
+          </h3>
+          <div className="flex items-center gap-2">
+            {pct !== null ? (
+              <span className={`inline-flex items-center gap-1 text-[11px] font-extrabold px-2.5 py-1 rounded-full ${delta >= 0 ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-500"}`}>
+                {delta >= 0 ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
+                القراءة {delta >= 0 ? "+" : ""}{pct}% عن الأسبوع الماضي
+              </span>
+            ) : (
+              <span className="text-[11px] font-bold text-slate-400 bg-slate-50 px-2.5 py-1 rounded-full">أسبوعك الأول · بداية موفقة!</span>
+            )}
+            <Link to="/stats" className="pressable inline-flex items-center gap-1 text-[11px] font-extrabold ft-text-accent min-h-[44px] px-2">كل إحصائياتي <ArrowLeft className="w-3.5 h-3.5" /></Link>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {mini.map((m) => (
+            <div key={m.label} className="rounded-2xl bg-slate-50/70 ring-1 ring-slate-100 px-3.5 py-3.5">
+              <span className={`w-8 h-8 rounded-lg grid place-items-center ${m.tint}`}><m.icon className="w-4 h-4" /></span>
+              <div className="font-head text-xl font-black text-slate-900 mt-2 leading-none">{m.value}</div>
+              <div className="text-[10px] font-bold text-slate-400 mt-1">{m.label}</div>
+            </div>
+          ))}
+        </div>
+      </section>
+    </FadeUp>
+  );
+}
 
 export default function Dashboard() {
   const { user, refresh } = useAuth();
@@ -224,6 +273,9 @@ export default function Dashboard() {
             </section>
           </FadeUp>
         </div>
+
+        {/* my week in numbers */}
+        <WeeklyNumbers />
 
         {/* my library: pages read + finish later + playlists */}
         <Stagger className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
