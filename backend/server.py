@@ -87,6 +87,67 @@ async def opportunistic_dispatch_middleware(request: Request, call_next):
     return await call_next(request)
 
 
+@app.middleware("http")
+async def signing_middleware(request: Request, call_next):
+    """HMAC request signing (see security_signing.py). Modes off|warn|enforce
+    come from the api_signing settings doc; warn (default) never rejects, it
+    only reports the outcome in the X-Ft-Sig response header."""
+    path = request.url.path
+    if (not path.startswith("/api")) or path == "/api/health" or request.method == "OPTIONS":
+        return await call_next(request)
+    try:
+        from security_signing import get_signing_config, verify_request
+        cfg = await get_signing_config()
+        mode = cfg.get("mode", "warn")
+    except Exception:
+        return await call_next(request)
+    if mode == "off":
+        return await call_next(request)
+    ts = request.headers.get("x-ft-ts")
+    nonce = request.headers.get("x-ft-nonce")
+    sig = request.headers.get("x-ft-sig")
+    query_signed = False
+    if request.method == "GET" and not (ts and nonce and sig):
+        q_ts = request.query_params.get("fts")
+        q_nonce = request.query_params.get("fnonce")
+        q_sig = request.query_params.get("fsig")
+        if q_ts and q_nonce and q_sig:
+            ts, nonce, sig = q_ts, q_nonce, q_sig
+            query_signed = True
+    auth_token = None
+    authz = request.headers.get("authorization") or ""
+    if authz.lower().startswith("bearer "):
+        auth_token = authz[7:].strip() or None
+    if not auth_token:
+        auth_token = request.cookies.get("access_token")
+    ctype = (request.headers.get("content-type") or "").lower()
+    if request.method in ("GET", "HEAD") or ctype.startswith("multipart/form-data"):
+        body = b""
+    else:
+        try:
+            body = await request.body()
+        except Exception:
+            body = b""
+    try:
+        ok, key_used, reason = await verify_request(
+            request.method, path, ts, nonce, sig, body, auth_token,
+            query_signed=query_signed)
+    except Exception:
+        ok, key_used, reason = (False, None, "error")
+    if ok:
+        response = await call_next(request)
+        response.headers["X-Ft-Sig"] = key_used or "app"
+        return response
+    if mode == "enforce":
+        return JSONResponse(
+            status_code=401,
+            content={"detail": "طلب غير موقّع",
+                     "code": f"SIG_{(reason or 'invalid').upper()}"})
+    response = await call_next(request)
+    response.headers["X-Ft-Sig"] = f"fail-{reason or 'invalid'}"
+    return response
+
+
 async def _ws_user(websocket, token):
     try:
         payload = jwt.decode(token, get_secret(), algorithms=["HS256"])

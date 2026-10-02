@@ -925,3 +925,27 @@ async def export_csv(kind: str, user: dict = Depends(get_current_user)):
                         d.get("awarded_by_name", "") or "", d.get("created_at", "")])
     return Response(content=buf.getvalue(), media_type="text/csv; charset=utf-8",
                     headers={"Content-Disposition": f'attachment; filename="{kind}.csv"'})
+
+
+class SigningBody(BaseModel):
+    mode: str
+
+
+@router.get("/signing")
+async def get_signing_mode(user: dict = Depends(require_role("super_admin"))):
+    """super_admin only: current API-signing mode (off|warn|enforce)."""
+    from security_signing import get_signing_config
+    cfg = await get_signing_config()
+    return {"mode": cfg.get("mode", "warn")}
+
+
+@router.put("/signing")
+async def set_signing_mode(body: SigningBody, user: dict = Depends(require_role("super_admin"))):
+    """super_admin only: switch API-signing mode without a redeploy."""
+    if body.mode not in ("off", "warn", "enforce"):
+        raise HTTPException(status_code=400, detail="وضع غير صالح · اختر off أو warn أو enforce")
+    await db.settings.update_one({"_id": "api_signing"},
+                                 {"$set": {"mode": body.mode}}, upsert=True)
+    from security_signing import clear_signing_cache
+    clear_signing_cache()
+    return {"mode": body.mode}

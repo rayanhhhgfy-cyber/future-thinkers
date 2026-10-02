@@ -117,7 +117,9 @@ async def register(body: RegisterBody, request: Request, response: Response):
                 "message": "تم استلام طلب إنشاء حسابك كمعلم بنجاح. سيتم مراجعته من قبل الإدارة وسيصلك إشعار عند الموافقة."}
     access, refresh = create_access_token(uid, email), create_refresh_token(uid)
     _set_cookies(response, access, refresh)
-    return {"user": _public_user(doc), "access_token": access, "refresh_token": refresh}
+    from security_signing import get_session_key
+    return {"user": _public_user(doc), "access_token": access, "refresh_token": refresh,
+            "sig_key": await get_session_key(access)}
 
 
 @router.get("/teacher-application-status")
@@ -180,6 +182,8 @@ async def login(body: LoginBody, request: Request, response: Response):
     _set_cookies(response, access, refresh)
     await audit_log({"id": uid, "email": email}, "login", "user", uid, request=request)
     resp = {"user": _public_user(user), "access_token": access, "refresh_token": refresh}
+    from security_signing import get_session_key
+    resp["sig_key"] = await get_session_key(access)
     if user.get("approval_notice"):
         # First login after a teacher approval · the frontend shows a celebration
         # toast, then calls /auth/ack-approval-notice so it only shows once.
@@ -201,8 +205,18 @@ async def logout(response: Response, user: dict = Depends(get_current_user)):
 
 
 @router.get("/me")
-async def me(user: dict = Depends(get_current_user)):
-    return _public_user(user)
+async def me(request: Request, user: dict = Depends(get_current_user)):
+    out = _public_user(user)
+    token = None
+    authz = request.headers.get("authorization") or ""
+    if authz.lower().startswith("bearer "):
+        token = authz[7:].strip() or None
+    if not token:
+        token = request.cookies.get("access_token")
+    if token:
+        from security_signing import get_session_key
+        out["sig_key"] = await get_session_key(token)
+    return out
 
 
 @router.post("/refresh")
