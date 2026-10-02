@@ -3,7 +3,7 @@ from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, HTTPException, Request, Response, Depends
 from pydantic import BaseModel, EmailStr, Field
 from bson import ObjectId
-from db import db, ser, now_iso
+from db import db, ser, sers, now_iso
 from auth import (hash_password, verify_password, create_access_token, create_refresh_token,
                   get_current_user, effective_permissions, get_secret)
 import jwt
@@ -44,6 +44,9 @@ class UpdateProfileBody(BaseModel):
     bio: str | None = None
     avatar_url: str | None = None
     privacy: dict | None = None
+    cover_theme: str | None = None
+    daily_goal_pages: int | None = None
+    notify_prefs: dict | None = None
 
 
 class ChangePasswordBody(BaseModel):
@@ -163,6 +166,8 @@ async def login(body: LoginBody, request: Request, response: Response):
         raise HTTPException(status_code=401, detail="البريد الإلكتروني أو كلمة المرور غير صحيحة")
     if user.get("status") == "banned":
         raise HTTPException(status_code=403, detail="تم حظر هذا الحساب")
+    if user.get("status") == "deactivated":
+        raise HTTPException(status_code=403, detail="هذا الحساب معطّل — تواصل مع الإدارة لإعادة تفعيله")
     if user.get("status") == "pending_approval":
         raise HTTPException(status_code=403, detail="حسابك كمعلم قيد المراجعة من قبل الإدارة. سيصلك إشعار عند الموافقة.")
     if user.get("status") == "rejected":
@@ -268,3 +273,30 @@ async def change_password(body: ChangePasswordBody, user: dict = Depends(get_cur
     await db.users.update_one({"_id": ObjectId(user["id"])},
         {"$set": {"password_hash": hash_password(body.new_password)}})
     return {"message": "تم تغيير كلمة المرور"}
+
+
+@router.get("/me/export")
+async def export_my_data(user: dict = Depends(get_current_user)):
+    """Download everything the platform holds about me (JSON)."""
+    uid = user["id"]
+    me = await db.users.find_one({"_id": ObjectId(uid)}) or {}
+    me.pop("password_hash", None)
+    tx = await db.xp_transactions.find({"user_id": uid}).sort("created_at", -1).limit(300).to_list(300)
+    progress = await db.reading_progress.find({"user_id": uid}).to_list(200)
+    works = await db.works.find({"author_id": uid}).to_list(100)
+    ventures = await db.ventures.find(
+        {"$or": [{"owner_id": uid}, {"members.id": uid}]}).to_list(100)
+    certs = await db.certificates.find({"user_id": uid}).to_list(100)
+    return {
+        "exported_at": now_iso(), "profile": ser(me),
+        "xp_history": sers(tx), "reading_progress": sers(progress),
+        "my_works": sers(works), "my_ventures": sers(ventures),
+        "my_certificates": sers(certs),
+    }
+
+
+@router.post("/me/deactivate")
+async def deactivate_account(user: dict = Depends(get_current_user)):
+    await db.users.update_one({"_id": ObjectId(user["id"])},
+                              {"$set": {"status": "deactivated", "deactivated_at": now_iso()}})
+    return {"ok": True, "message": "تم تعطيل حسابك. تواصل مع الإدارة لإعادة تفعيله."}

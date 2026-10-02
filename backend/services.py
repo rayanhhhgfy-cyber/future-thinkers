@@ -103,7 +103,29 @@ async def bump_stat(user_id: str, stat: str, delta: int = 1):
     await check_achievements(user_id)
 
 
+_PREF_MAP = {"achievement": "achievements", "certificate": "achievements", "follow": "social"}
+
+
+def _pref_key(type_: str):
+    if type_.startswith("chess"):
+        return "chess"
+    if type_.startswith("venture"):
+        return "ventures"
+    if type_.startswith("book"):
+        return "books"
+    return _PREF_MAP.get(type_)
+
+
 async def create_notification(user_id: str, type_: str, title: str, body: str = "", link: str = None):
+    # Respect the user's notification preferences (Settings → notifications).
+    pk = _pref_key(type_)
+    if pk:
+        try:
+            u = await db.users.find_one({"_id": ObjectId(user_id)}, {"notify_prefs": 1})
+            if u and (u.get("notify_prefs") or {}).get(pk) is False:
+                return
+        except Exception:
+            pass
     doc = {
         "user_id": user_id, "type": type_, "title": title, "body": body,
         "link": link, "read": False, "created_at": now_iso(),
