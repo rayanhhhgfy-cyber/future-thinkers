@@ -10,6 +10,14 @@ import {
 export default function SeasonCup() {
   const [rows, setRows] = useState([]);
   const [state, setState] = useState("loading"); // loading | ok | error
+  const [mounted, setMounted] = useState(false);
+
+  // animate the points bars from 0 once standings are on screen
+  useEffect(() => {
+    if (state !== "ok") return;
+    const t = requestAnimationFrame(() => requestAnimationFrame(() => setMounted(true)));
+    return () => cancelAnimationFrame(t);
+  }, [state]);
 
   useEffect(() => {
     let alive = true;
@@ -32,6 +40,7 @@ export default function SeasonCup() {
 
   const maxXp = rows.length ? Math.max(...rows.map((s) => s.xp), 1) : 1;
   const totalXp = rows.reduce((a, s) => a + s.xp, 0);
+  const barW = (xp) => (mounted ? Math.max(4, Math.round((xp / maxXp) * 100)) : 0);
   const podium = rows.length ? [rows[1], rows[0], rows[2]] : [];
   const podiumRanks = [2, 1, 3];
 
@@ -43,8 +52,14 @@ export default function SeasonCup() {
           <div className="pointer-events-none absolute inset-0 opacity-[0.12] [background-image:radial-gradient(rgba(255,255,255,0.6)_1px,transparent_1.6px)] [background-size:22px_22px]" />
           <div className="pointer-events-none absolute -top-24 right-[10%] h-64 w-64 rounded-full bg-amber-400/30 blur-3xl" />
           <div className="pointer-events-none absolute -bottom-28 left-[18%] h-64 w-64 rounded-full bg-white/10 blur-3xl" />
-          <Trophy className="pointer-events-none absolute -left-8 -bottom-10 h-44 w-44 -rotate-12 text-white/[0.08] sm:h-60 sm:w-60" />
-          <div className="relative">
+          <Trophy aria-hidden="true" className="pointer-events-none absolute -left-8 -bottom-10 z-0 h-44 w-44 -rotate-12 text-white/[0.08] sm:h-60 sm:w-60" />
+          <span aria-hidden="true" className="pointer-events-none absolute right-[16%] top-8 z-0 hidden rotate-12 rounded-2xl bg-white/10 px-3 py-2 ring-1 ring-white/20 backdrop-blur-sm animate-float [animation-duration:7s] sm:block">
+            <Medal className="h-5 w-5 text-amber-300" />
+          </span>
+          <span aria-hidden="true" className="pointer-events-none absolute left-[20%] top-14 z-0 hidden -rotate-12 rounded-2xl bg-white/10 px-3 py-2 ring-1 ring-white/20 backdrop-blur-sm animate-float [animation-duration:8s] sm:block">
+            <Crown className="h-5 w-5 text-amber-200" />
+          </span>
+          <div className="relative z-10">
             <span className="inline-grid h-16 w-16 place-items-center rounded-[1.25rem] bg-gradient-to-br from-amber-300 to-orange-500 text-white shadow-xl shadow-orange-950/30 ring-1 ring-white/40 animate-float [animation-duration:6s] sm:h-[4.5rem] sm:w-[4.5rem]">
               <Trophy className="h-8 w-8 sm:h-9 sm:w-9" />
             </span>
@@ -120,8 +135,10 @@ export default function SeasonCup() {
                             : "border border-slate-100 bg-white px-3 pb-6 pt-7 ft-shadow hover:shadow-[0_22px_45px_-18px_rgba(15,23,42,0.25)] sm:px-5 sm:pb-7 sm:pt-8"
                         }`}
                       >
-                        {first && <div className="pointer-events-none absolute inset-0 opacity-20 [background-image:radial-gradient(rgba(255,255,255,0.7)_1px,transparent_1.5px)] [background-size:16px_16px]" />}
-                        <div className="relative">
+                        {first && <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-0 opacity-20 [background-image:radial-gradient(rgba(255,255,255,0.7)_1px,transparent_1.5px)] [background-size:16px_16px]" />}
+                        {first && <Sparkles aria-hidden="true" className="pointer-events-none absolute left-4 top-4 z-0 h-5 w-5 text-white/70 animate-pulse-soft" />}
+                        {first && <Sparkles aria-hidden="true" className="pointer-events-none absolute bottom-5 right-4 z-0 h-4 w-4 text-white/60 animate-pulse-soft" />}
+                        <div className="relative z-10">
                           {first ? (
                             <span className="relative mx-auto grid h-8 place-items-center">
                               <Crown className="h-8 w-8 text-white drop-shadow animate-float [animation-duration:5s]" />
@@ -138,6 +155,9 @@ export default function SeasonCup() {
                           <div className={`mt-3 flex items-center justify-center gap-3 text-[10px] font-bold ${first ? "text-white/75" : "text-slate-400"}`}>
                             <span className="inline-flex items-center gap-1"><Users className="h-3 w-3" /> {s.members}</span>
                             <span className="inline-flex items-center gap-1"><BookOpen className="h-3 w-3" /> {s.books}</span>
+                          </div>
+                          <div className={`mt-3.5 h-1.5 overflow-hidden rounded-full ${first ? "bg-white/25" : "bg-slate-100"}`}>
+                            <div className={`h-full rounded-full transition-all duration-700 ${first ? "bg-white" : "ft-grad-bar"}`} style={{ width: `${barW(s.xp)}%` }} />
                           </div>
                         </div>
                       </article>
@@ -177,8 +197,11 @@ export default function SeasonCup() {
                         }`}>
                           {i + 1}
                         </span>
-                        <span className={`hidden h-11 w-11 shrink-0 place-items-center rounded-2xl text-white shadow-md sm:grid ${i === 0 ? "bg-gradient-to-br from-amber-400 to-orange-500" : "bg-gradient-to-br from-slate-500 to-slate-700"}`}>
-                          <GraduationCap className="h-5 w-5" />
+                        <span className={`relative grid h-11 w-11 shrink-0 place-items-center rounded-full text-sm font-black text-white shadow-md ring-2 ring-white ${i === 0 ? "bg-gradient-to-br from-amber-400 to-orange-500" : "bg-gradient-to-br from-slate-500 to-slate-700"}`}>
+                          {(s.school || "؟").trim().charAt(0)}
+                          <span className={`absolute -bottom-1 -left-1 grid h-5 w-5 place-items-center rounded-full text-white shadow ring-2 ring-white ${i === 0 ? "bg-gradient-to-br from-amber-400 to-orange-500" : "bg-slate-600"}`}>
+                            <GraduationCap className="h-3 w-3" />
+                          </span>
                         </span>
                         <div className="min-w-0 flex-1">
                           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -192,7 +215,7 @@ export default function SeasonCup() {
                           <div className="mt-2 h-1.5 max-w-xs overflow-hidden rounded-full bg-slate-100">
                             <div
                               className={`h-full rounded-full transition-all duration-700 ${i === 0 ? "bg-gradient-to-l from-amber-300 to-orange-500" : "ft-grad-bar"}`}
-                              style={{ width: `${Math.max(4, Math.round((s.xp / maxXp) * 100))}%` }}
+                              style={{ width: `${barW(s.xp)}%` }}
                             />
                           </div>
                         </div>
