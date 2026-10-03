@@ -1,7 +1,8 @@
 from fastapi import APIRouter, HTTPException, Depends, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+from datetime import datetime, timezone, timedelta
 from db import db, ser, sers, oid, now_iso
-from auth import get_current_user, get_optional_user, require_permission
+from auth import get_current_user, get_optional_user, require_permission, effective_permissions
 from services import create_notification, audit_log, broadcast_notification
 
 router = APIRouter(prefix="/api")
@@ -19,13 +20,56 @@ class NewsBody(BaseModel):
 async def list_news(page: int = 1, limit: int = 9):
     total = await db.news.count_documents({"status": "published"})
     docs = await db.news.find({"status": "published"}).sort("created_at", -1).skip((page - 1) * limit).limit(limit).to_list(limit)
-    return {"items": sers(docs), "total": total}
+    items = []
+    for d in sers(docs):
+        d["views"] = d.get("views", 0)
+        items.append(d)
+    return {"items": items, "total": total}
+
+
+@router.get("/news/trending")
+async def trending_news():
+    docs = await db.news.find({"status": "published"}).sort("views", -1).limit(5).to_list(5)
+    items = []
+    for d in sers(docs):
+        d["views"] = d.get("views", 0)
+        items.append(d)
+    return {"items": items}
+
+
+@router.get("/news/digest")
+async def news_digest():
+    since = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
+    news_docs = await db.news.find(
+        {"status": "published", "created_at": {"$gte": since}}).sort("views", -1).limit(3).to_list(3)
+    if len(news_docs) < 3:
+        news_docs = await db.news.find({"status": "published"}).sort("views", -1).limit(3).to_list(3)
+    top_news = []
+    for d in sers(news_docs):
+        d["views"] = d.get("views", 0)
+        top_news.append(d)
+    today = datetime.now(timezone.utc).date().isoformat()
+    ev = await db.events.find_one({"status": "published", "date": {"$gte": today}}, sort=[("date", 1)])
+    top_event = None
+    if ev:
+        e = ser(ev)
+        top_event = {"id": e["id"], "title": e.get("title", ""), "date": e.get("date", ""),
+                     "time": e.get("time", ""), "location": e.get("location", ""),
+                     "mode": e.get("mode", "online")}
+    bk = await db.books.find_one({}, sort=[("views", -1)])
+    top_book = None
+    if bk:
+        b = ser(bk)
+        top_book = {"id": b["id"], "title": b.get("title", ""), "author": b.get("author", ""),
+                    "cover_url": b.get("cover_url", ""), "views": b.get("views", 0),
+                    "rating_avg": b.get("rating_avg", 0), "rating_count": b.get("rating_count", 0)}
+    return {"top_news": top_news, "top_event": top_event, "top_book": top_book}
 
 
 @router.post("/news")
 async def create_news(body: NewsBody, request: Request, user: dict = Depends(require_permission("news.manage"))):
     doc = {**body.model_dump(), "status": "published", "author_id": user["id"],
-           "author_name": user["name"], "created_at": now_iso()}
+           "author_name": user["name"], "views": 0, "created_at": now_iso()}
     res = await db.news.insert_one(doc)
     await audit_log(user, "news_create", "news", str(res.inserted_id), request=request)
     return {"id": str(res.inserted_id)}
@@ -36,7 +80,71 @@ async def get_news(nid: str):
     n = await db.news.find_one({"_id": oid(nid)})
     if not n:
         raise HTTPException(status_code=404, detail="الخبر غير موجود")
-    return ser(n)
+    out = ser(n)
+    out["views"] = out.get("views", 0)
+    return out
+
+
+@router.post("/news/{nid}/view")
+async def view_news(nid: str, user: dict = Depends(get_current_user)):
+    n = await db.news.find_one({"_id": oid(nid)})
+    if not n:
+        raise HTTPException(status_code=404, detail="الخبر غير موجود")
+    await db.news.update_one({"_id": n["_id"]}, {"$inc": {"views": 1}})
+    return {"views": (n.get("views", 0) or 0) + 1}
+
+
+# ---------------- News comments ----------------
+class NewsCommentBody(BaseModel):
+    text: str = Field(min_length=1, max_length=1000)
+
+
+def _comment_out(c: dict, viewer: dict | None) -> dict:
+    return {"id": str(c["_id"]),
+            "user": {"id": c["user_id"], "name": c.get("user_name", "")},
+            "text": c["text"], "at": c.get("created_at"),
+            "mine": bool(viewer and viewer["id"] == c["user_id"])}
+
+
+@router.get("/news/{nid}/comments")
+async def list_news_comments(nid: str, request: Request):
+    n = await db.news.find_one({"_id": oid(nid)})
+    if not n:
+        raise HTTPException(status_code=404, detail="الخبر غير موجود")
+    viewer = await get_optional_user(request)
+    docs = await db.news_comments.find({"news_id": nid}).sort("created_at", 1).to_list(500)
+    return {"items": [_comment_out(c, viewer) for c in docs], "total": len(docs)}
+
+
+@router.post("/news/{nid}/comments")
+async def add_news_comment(nid: str, body: NewsCommentBody, user: dict = Depends(get_current_user)):
+    n = await db.news.find_one({"_id": oid(nid)})
+    if not n:
+        raise HTTPException(status_code=404, detail="الخبر غير موجود")
+    text = body.text.strip()
+    if not text:
+        raise HTTPException(status_code=400, detail="التعليق فارغ")
+    doc = {"news_id": nid, "user_id": user["id"], "user_name": user["name"],
+           "text": text, "created_at": now_iso()}
+    res = await db.news_comments.insert_one(doc)
+    author_id = n.get("author_id")
+    if author_id and author_id != user["id"]:
+        await create_notification(author_id, "news", "تعليق جديد على خبرك 💬",
+                                  f"{user['name']}: {text[:60]}", "/news")
+    return _comment_out({**doc, "_id": res.inserted_id}, user)
+
+
+@router.delete("/news/{nid}/comments/{cid}")
+async def delete_news_comment(nid: str, cid: str, user: dict = Depends(get_current_user)):
+    c = await db.news_comments.find_one({"_id": oid(cid), "news_id": nid})
+    if not c:
+        raise HTTPException(status_code=404, detail="التعليق غير موجود")
+    perms = effective_permissions(user)
+    is_staff = bool(perms & {"news.manage", "news.edit", "news.delete"}) or user.get("role") in ("admin", "super_admin")
+    if c["user_id"] != user["id"] and not is_staff:
+        raise HTTPException(status_code=403, detail="لا تملك صلاحية الحذف")
+    await db.news_comments.delete_one({"_id": c["_id"]})
+    return {"ok": True}
 
 
 class NewsPatchBody(BaseModel):

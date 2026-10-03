@@ -93,6 +93,39 @@ async def my_week(user: dict = Depends(get_current_user)):
 
 
 # ---------------- Learning paths ----------------
+async def _ensure_path_certificate(user: dict, path_doc: dict):
+    """Award the path-completion certificate exactly once per (user, path).
+
+    Creates a certificate record consistent with cert_routes (verify code +
+    template snapshot) and returns its code. Idempotent on `path_id`.
+    """
+    pid = str(path_doc["_id"])
+    existing = await db.certificates.find_one({"user_id": user["id"], "path_id": pid})
+    if existing:
+        return existing.get("code")
+    try:
+        from routes.cert_routes import get_template, _gen_code
+        tpl = await get_template()
+        code = _gen_code()
+    except Exception:
+        import secrets as _secrets
+        tpl, code = {}, _secrets.token_hex(3).upper()
+    title_line = f"إكمال مسار: {path_doc.get('title', 'مسار تعليمي')}"
+    doc = {
+        "user_id": user["id"], "user_name": user["name"],
+        "title_line": title_line, "subtitle": "شهادة إكمال مسار تعليمي",
+        "meta_lines": ["مسارات التعلّم · منصة مفكري المستقبل"],
+        "template": tpl, "code": code, "path_id": pid,
+        "awarded_by": "system", "awarded_by_name": "منصة مفكري المستقبل",
+        "created_at": now_iso(),
+    }
+    await db.certificates.insert_one(doc)
+    await create_notification(user["id"], "certificate",
+                              "حصلت على شهادة جديدة! 🏅", title_line,
+                              f"/profile/{user['id']}")
+    return code
+
+
 async def _step_done(uid: str, step: dict) -> bool:
     k, ref = step.get("kind"), step.get("ref_id")
     if k == "book":
@@ -120,8 +153,81 @@ async def list_paths(user: dict = Depends(get_current_user)):
         d["done_steps"] = done
         d["claimed_steps"] = len(claims.get(d["id"], set()))
         d["total_xp"] = sum(s.get("xp", 10) for s in d["steps"])
+        cert = await db.certificates.find_one(
+            {"user_id": user["id"], "path_id": d["id"]}, {"code": 1})
+        d["certificate_code"] = (cert or {}).get("code")
         out.append(d)
     return out
+
+
+@router.get("/paths/recommended")
+async def recommended_paths(user: dict = Depends(get_current_user)):
+    paths = await db.learning_paths.find({}).sort("created_at", -1).to_list(200)
+    by_id = {str(p["_id"]): p for p in paths}
+    prog_docs = await db.path_progress.find({"user_id": user["id"]}).to_list(100)
+    enrolled = {p["path_id"] for p in prog_docs}
+    completed_cats, completed_tags = set(), set()
+    for p in prog_docs:
+        path = by_id.get(p["path_id"])
+        if not path:
+            continue
+        steps = path.get("steps", [])
+        if steps and len(p.get("claimed", [])) >= len(steps):
+            if path.get("category"):
+                completed_cats.add(path["category"])
+            completed_tags.update(path.get("tags") or [])
+    pop_rows = await db.path_progress.aggregate([
+        {"$group": {"_id": "$path_id", "n": {"$sum": 1}}}]).to_list(500)
+    popularity = {r["_id"]: r["n"] for r in pop_rows}
+    scored = []
+    for p in paths:
+        pid = str(p["_id"])
+        if pid in enrolled:
+            continue
+        score = 0
+        if p.get("category") and p["category"] in completed_cats:
+            score += 2
+        score += len(set(p.get("tags") or []) & completed_tags)
+        scored.append((score, popularity.get(pid, 0), p))
+    scored.sort(key=lambda x: (-x[0], -x[1]))
+    out = []
+    for _, _, p in scored[:6]:
+        d = ser(p)
+        done = 0
+        for s in d["steps"]:
+            done += 1 if await _step_done(user["id"], s) else 0
+        d["done_steps"] = done
+        d["claimed_steps"] = 0
+        d["total_xp"] = sum(s.get("xp", 10) for s in d["steps"])
+        d["certificate_code"] = None
+        out.append(d)
+    return {"items": out}
+
+
+@router.get("/paths/{pid}/friends")
+async def path_friends(pid: str, user: dict = Depends(get_current_user)):
+    p = await db.learning_paths.find_one({"_id": oid(pid)})
+    if not p:
+        raise HTTPException(status_code=404, detail="المسار غير موجود")
+    steps = p.get("steps", [])
+    total = len(steps)
+    rels = await db.follows.find({"follower_id": user["id"]}).to_list(200)
+    items = []
+    for rel in rels:
+        fid = rel["following_id"]
+        fu = await db.users.find_one({"_id": oid(fid)}, {"name": 1, "avatar_url": 1})
+        if not fu:
+            continue
+        done = 0
+        for s in steps:
+            done += 1 if await _step_done(fid, s) else 0
+        pct = round(done * 100 / total) if total else 0
+        items.append({"user": {"id": fid, "name": fu.get("name", ""),
+                               "avatar_url": fu.get("avatar_url")},
+                      "progress": pct, "done_steps": done, "total_steps": total,
+                      "completed": total > 0 and done >= total})
+    items.sort(key=lambda x: -x["progress"])
+    return {"items": items}
 
 
 @router.post("/paths/{pid}/steps/{idx}/claim")
@@ -148,6 +254,8 @@ async def claim_step(pid: str, idx: int, user: dict = Depends(get_current_user))
         await create_notification(user["id"], "achievement", "أكملت مساراً كاملاً! 🛤️",
                                   f"{p['title']} · +100 خبرة إضافية")
         await log_activity(user, "path_completed", pid, f"أكمل مسار {p['title']}")
+        cert_code = await _ensure_path_certificate(user, p)
+        return {"ok": True, "xp": xp, "certificate_code": cert_code, "path_completed": True}
     return {"ok": True, "xp": xp}
 
 
@@ -281,6 +389,14 @@ class ChallengeBody(BaseModel):
 @router.get("/reading-challenges")
 async def list_challenges(user: dict = Depends(get_current_user)):
     docs = await db.reading_challenges.find({}).sort("created_at", -1).limit(30).to_list(30)
+    # Earned "reading champion" badge name for the viewer (if any).
+    champ_badge_name = None
+    try:
+        if await db.user_badges.find_one({"user_id": user["id"], "badge_key": "reading-champion"}):
+            bdef = await db.skill_badges.find_one({"key": "reading-champion"})
+            champ_badge_name = (bdef or {}).get("name") or "بطل القراءة"
+    except Exception:
+        champ_badge_name = None
     out = []
     today = datetime.now(timezone.utc).date().isoformat()
     for c in docs:
@@ -293,6 +409,20 @@ async def list_challenges(user: dict = Depends(get_current_user)):
         d["members"] = members
         d["member_count"] = len(members)
         d["joined"] = any(m["user_id"] == user["id"] for m in members)
+        me = next((m for m in members if m["user_id"] == user["id"]), None)
+        d["my_pages"] = me["pages"] if me else 0
+        d["my_completed"] = bool(me and me["pages"] >= d["target_pages"])
+        if d["my_completed"]:
+            try:
+                from routes.badges_routes import award_badge
+                await award_badge(user["id"], "reading-champion", "system", auto=True)
+                if champ_badge_name is None and await db.user_badges.find_one(
+                        {"user_id": user["id"], "badge_key": "reading-champion"}):
+                    bdef = await db.skill_badges.find_one({"key": "reading-champion"})
+                    champ_badge_name = (bdef or {}).get("name") or "بطل القراءة"
+            except Exception:
+                pass
+        d["earned_badge_name"] = champ_badge_name if d["my_completed"] else None
         out.append(d)
     return out
 
@@ -334,6 +464,53 @@ async def join_challenge(cid: str, user: dict = Depends(get_current_user)):
     await db.reading_challenges.update_one({"_id": oid(cid)},
         {"$push": {"members": {"user_id": user["id"], "name": user["name"], "joined_at": now_iso()}}})
     return {"ok": True}
+
+
+@router.get("/reading-challenges/monthly")
+async def monthly_challenge(user: dict = Depends(get_current_user)):
+    import calendar as _cal
+    now = datetime.now(timezone.utc)
+    month_start = f"{now.year:04d}-{now.month:02d}-01"
+    last_day = _cal.monthrange(now.year, now.month)[1]
+    ends_at = f"{now.year:04d}-{now.month:02d}-{last_day:02d}"
+    finished_filter = {"percent": {"$gte": 95}, "updated_at": {"$gte": month_start}}
+    my_finished = await db.reading_progress.count_documents(
+        {**finished_filter, "user_id": user["id"]})
+    rows = await db.reading_progress.aggregate([
+        {"$match": finished_filter},
+        {"$group": {"_id": "$user_id", "books": {"$sum": 1}}},
+        {"$sort": {"books": -1}},
+        {"$limit": 10},
+    ]).to_list(10)
+    leaderboard = []
+    for r in rows:
+        u = await db.users.find_one({"_id": oid(r["_id"])}, {"name": 1, "avatar_url": 1})
+        leaderboard.append({"user_id": r["_id"],
+                            "name": (u or {}).get("name", "طالب"),
+                            "avatar_url": (u or {}).get("avatar_url"),
+                            "books": int(r["books"])})
+    return {"target_books": 3, "my_finished": int(my_finished),
+            "leaderboard": leaderboard, "ends_at": ends_at,
+            "month": f"{now.year:04d}-{now.month:02d}"}
+
+
+class InviteBody(BaseModel):
+    user_id: str
+
+
+@router.post("/reading-challenges/{cid}/invite")
+async def invite_to_challenge(cid: str, body: InviteBody, user: dict = Depends(get_current_user)):
+    c = await db.reading_challenges.find_one({"_id": oid(cid)})
+    if not c:
+        raise HTTPException(status_code=404, detail="التحدي غير موجود")
+    target = await db.users.find_one({"_id": oid(body.user_id)}, {"name": 1})
+    if not target:
+        raise HTTPException(status_code=404, detail="المستخدم غير موجود")
+    await create_notification(body.user_id, "challenge",
+                              "دعوة لتحدّي قراءة 📚",
+                              f"يدعوك {user['name']} للانضمام إلى تحدّي «{c['title']}»",
+                              "/reading-challenges")
+    return {"sent": True}
 
 
 # ---------------- Focus rooms ----------------
