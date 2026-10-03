@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate, useParams } from "react-router-dom";
 import { Layout, PageLoader, EmptyState } from "@/components/Layout";
 import api, { apiErr } from "@/lib/api";
@@ -9,18 +10,35 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
-import NotifyPanel from "@/components/admin/NotifyPanel";
-import UsersPanel from "@/components/admin/UsersPanel";
-import ClubsPanel from "@/components/admin/ClubsPanel";
+import AdminBooks from "@/components/admin/AdminBooks";
+import AdminBadges from "@/components/admin/AdminBadges";
+import AdminCertificates from "@/components/admin/AdminCertificates";
+import AdminNews from "@/components/admin/AdminNews";
+import AdminBanners from "@/components/admin/AdminBanners";
+import AdminLanding from "@/components/admin/AdminLanding";
+import AdminUsers from "@/components/admin/AdminUsers";
+import AdminNotify from "@/components/admin/AdminNotify";
+import AdminUser360 from "@/components/admin/AdminUser360";
+import AdminExports from "@/components/admin/AdminExports";
+import AdminEventsCompetitions from "@/components/admin/AdminEventsCompetitions";
+import AdminCalendar from "@/components/admin/AdminCalendar";
+import AdminCoding from "@/components/admin/AdminCoding";
+import AdminPaths from "@/components/admin/AdminPaths";
+import AdminClubs from "@/components/admin/AdminClubs";
+import AdminTheme from "@/components/admin/AdminTheme";
+import AdminReports from "@/components/admin/AdminReports";
+import AdminErrors from "@/components/admin/AdminErrors";
+import AdminHealth from "@/components/admin/AdminHealth";
+import AdminPoints from "@/components/admin/AdminPoints";
+import AdminAudit from "@/components/admin/AdminAudit";
 import { toast } from "sonner";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area, CartesianGrid } from "recharts";
-import { LayoutDashboard, ShieldCheck, Users, BookOpen, Calendar, Trophy, Newspaper, Settings, ScrollText, Plus, Check, X, Megaphone, PenLine, Medal, Award, Upload, Trash2, Search, MessageSquare, MessagesSquare, Activity, Smartphone, UserPlus, FileCheck, Rocket, Zap, ArrowLeft, Star, Heart, ThumbsUp, Flag, CalendarCheck, Crown, Download, UserSearch, Link2, CalendarDays, Code2, FlaskConical, Terminal, Palette, Globe2, Route as RouteIcon, Bug, Copy } from "lucide-react";
+import { LayoutDashboard, ShieldCheck, Users, BookOpen, Calendar, Trophy, Newspaper, Settings, ScrollText, Plus, Check, X, Megaphone, PenLine, Medal, Award, Upload, Trash2, Search, MessageSquare, MessagesSquare, Activity, Smartphone, UserPlus, FileCheck, Rocket, Zap, ArrowLeft, Star, Heart, ThumbsUp, Flag, CalendarCheck, Crown, Download, UserSearch, Link2, CalendarDays, Code2, FlaskConical, Terminal, Palette, Globe2, Route as RouteIcon, Bug, Copy, LayoutGrid } from "lucide-react";
 import { THEME_PRESETS, applyTheme } from "@/lib/theme";
 import { timeAgo } from "@/components/NotificationsPanel";
 import { motion } from "framer-motion";
 import { FadeUp, Stagger, Item } from "@/components/anim";
-import { CodingAdminPanel, ThemePanel, ReportsPanel, HealthPanel, LandingPanel, PathsAdminPanel, AnalyticsV2, ErrorsPanel, CertificatesPanelV2 } from "@/pages/AdminExtra";
-import { ExportPanel, User360Panel } from "@/pages/AdminPanels2";
+import { AnalyticsV2 } from "@/pages/AdminExtra";
 import AdminOverview from "@/components/admin/AdminOverview";
 import AdminReviewDesk from "@/components/admin/AdminReviewDesk";
 import AdminStudioReview from "@/components/admin/AdminStudioReview";
@@ -53,15 +71,24 @@ const NAV = [
   { k: "audit", l: "سجل العمليات", icon: ScrollText, perm: "audit.view" },
 ];
 const COLORS = ["#2563EB", "#059669", "#D97706", "#7C3AED", "#0891B2", "#E11D48", "#0A192F"];
+const NAV_GROUPS = [
+  { l: "الرئيسية", keys: ["overview"] },
+  { l: "المراجعة والمحتوى", keys: ["moderation", "studio", "books", "news", "banners", "landing"] },
+  { l: "الأعضاء والمجتمع", keys: ["users", "user360", "clubs", "notify"] },
+  { l: "البرامج والأنشطة", keys: ["content", "calendar", "coding", "paths", "badges", "certificates"] },
+  { l: "النظام", keys: ["theme", "points", "reports", "errors", "healthsys", "exports", "audit"] },
+];
 
 export default function Admin() {
-  const { hasPerm } = useAuth();
+  const { hasPerm, user } = useAuth();
   const nav = useNavigate();
   const params = useParams();
   const tabs = NAV.filter((n) => Array.isArray(n.perm) ? n.perm.some((p) => hasPerm(p)) : hasPerm(n.perm));
   const urlTab = (params["*"] || "").split("/")[0];
   const validUrlTab = tabs.some((t) => t.k === urlTab) ? urlTab : null;
   const [tab, setTab] = useState(validUrlTab || tabs[0]?.k || "overview");
+  const [sheet, setSheet] = useState(false);
+  const [pend, setPend] = useState(null);
 
   // deep-link support: /admin/studio opens the studio review tab (used by notifications)
   useEffect(() => {
@@ -69,20 +96,114 @@ export default function Admin() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [validUrlTab]);
 
+  // pending counts for nav badges (same endpoint the overview uses · defensive)
+  useEffect(() => {
+    api.get("/admin/overview").then((r) => setPend(r.data || {})).catch(() => setPend(null));
+  }, [tab]);
+
   const goTab = (k) => { setTab(k); nav(`/admin/${k}`, { replace: true }); };
+
+  const pendCount = (k) => {
+    if (!pend) return 0;
+    if (k === "moderation") return (pend.books_pending || 0) + (pend.activities_pending || 0);
+    if (k === "studio") return pend.works_pending || 0;
+    if (k === "users") return pend.teachers_pending || 0;
+    if (k === "reports") return pend.reports_open || 0;
+    return 0;
+  };
+  const PEND_KEYS = ["moderation", "studio", "users", "reports"];
+  const totalPending = PEND_KEYS.reduce((s, k) => s + pendCount(k), 0);
+  const firstPendingTab = PEND_KEYS.find((k) => pendCount(k) > 0 && tabs.some((t) => t.k === k));
+  const activeTab = tabs.find((t) => t.k === tab);
+  const ActiveIcon = activeTab?.icon;
+  const groupedTabs = NAV_GROUPS.map((g) => ({ ...g, items: g.keys.map((k) => tabs.find((t) => t.k === k)).filter(Boolean) })).filter((g) => g.items.length);
+  const ungroupedTabs = tabs.filter((t) => !NAV_GROUPS.some((g) => g.keys.includes(t.k)));
 
   return (
     <Layout noFooter>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 overflow-x-hidden">
-        <h1 className="font-head text-2xl font-extrabold text-slate-900 mb-6">لوحة الإدارة</h1>
-        <div className="grid lg:grid-cols-[220px_minmax(0,1fr)] gap-6">
-          <aside className="lg:sticky lg:top-20 self-start min-w-0">
-            <div className="flex lg:flex-col gap-1 overflow-x-auto bg-white rounded-2xl p-2 border border-slate-100 ft-shadow">
-              {tabs.map((n) => (
-                <button key={n.k} data-testid={`admin-tab-${n.k}`} onClick={() => goTab(n.k)} className={`flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition-colors ${tab === n.k ? "bg-emerald-600 text-white" : "text-slate-600 hover:bg-slate-100"}`}>
-                  <n.icon className="w-4 h-4" />{n.l}
+      <div className="mx-auto w-full max-w-[1440px] px-3 py-5 sm:px-5 lg:px-8 lg:py-8">
+        {/* glass topbar */}
+        <header className="ft-hero-gradient relative mb-5 overflow-hidden rounded-[26px] px-5 py-5 text-white ft-shadow sm:px-7 sm:py-6 lg:mb-7">
+          <div className="pointer-events-none absolute -top-16 -start-16 h-48 w-48 rounded-full bg-white/10 blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-20 -end-10 h-52 w-52 rounded-full bg-emerald-300/20 blur-3xl" />
+          <div className="relative flex flex-wrap items-center gap-3 sm:gap-4">
+            <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-white/15 ring-1 ring-white/25 backdrop-blur-sm sm:h-14 sm:w-14">
+              <ShieldCheck className="h-6 w-6 sm:h-7 sm:w-7" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <h1 className="font-head text-xl font-extrabold leading-tight sm:text-2xl">لوحة الإدارة</h1>
+              <p className="mt-0.5 flex items-center gap-1.5 text-xs text-white/75 sm:text-sm">
+                {ActiveIcon && <ActiveIcon className="h-4 w-4 shrink-0" />}
+                <span className="truncate">القسم الحالي: {activeTab?.l || "…"}{user?.name ? ` · أهلاً ${user.name}` : ""}</span>
+              </p>
+            </div>
+            {totalPending > 0 && firstPendingTab && (
+              <button type="button" onClick={() => goTab(firstPendingTab)} data-testid="admin-shell-pending" className="flex items-center gap-2 rounded-full bg-amber-400 px-4 py-2 text-sm font-extrabold text-amber-950 shadow-lg shadow-amber-500/30 transition hover:bg-amber-300">
+                <span className="relative flex h-2.5 w-2.5">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-700 opacity-60" />
+                  <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-amber-800" />
+                </span>
+                {totalPending} بانتظار إجراءك
+              </button>
+            )}
+          </div>
+        </header>
+
+        {/* mobile: scrollable tab chips + all-sections shortcut */}
+        <div className="mb-4 flex items-center gap-2 lg:hidden">
+          <div className="flex flex-1 gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {tabs.map((n) => {
+              const active = tab === n.k;
+              return (
+                <button key={n.k} data-testid={`admin-tab-${n.k}`} onClick={() => goTab(n.k)} className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3.5 py-2 text-[13px] font-bold transition-all ${active ? "bg-gradient-to-l from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-600/30" : "border border-slate-200 bg-white text-slate-600"}`}>
+                  <n.icon className="h-4 w-4" />{n.l}
+                  {pendCount(n.k) > 0 && <span className={`grid h-4 min-w-4 place-items-center rounded-full px-1 text-[9px] font-extrabold ${active ? "bg-white text-emerald-700" : "bg-rose-500 text-white"}`}>{pendCount(n.k) > 99 ? "+99" : pendCount(n.k)}</span>}
                 </button>
+              );
+            })}
+          </div>
+          <button type="button" onClick={() => setSheet(true)} data-testid="admin-all-sections-btn" aria-label="كل الأقسام" className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-slate-200 bg-white text-slate-700 ft-shadow">
+            <LayoutGrid className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="grid items-start gap-6 lg:grid-cols-[250px_minmax(0,1fr)]">
+          {/* desktop: grouped glass sidebar */}
+          <aside className="sticky top-24 hidden max-h-[calc(100dvh-7.5rem)] min-w-0 self-start overflow-y-auto rounded-[24px] border border-slate-100 bg-white/85 p-3 ft-shadow backdrop-blur-xl lg:block">
+            <div className="space-y-5">
+              {groupedTabs.map((g) => (
+                <div key={g.l}>
+                  <div className="px-3 pb-1.5 text-[11px] font-extrabold tracking-wide text-slate-400">{g.l}</div>
+                  <div className="space-y-0.5">
+                    {g.items.map((n) => {
+                      const active = tab === n.k;
+                      return (
+                        <button key={n.k} data-testid={`admin-tab-${n.k}`} onClick={() => goTab(n.k)} className={`flex w-full items-center gap-2.5 rounded-2xl px-3 py-2.5 text-sm font-bold transition-all ${active ? "bg-gradient-to-l from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-600/30" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"}`}>
+                          <n.icon className="h-[18px] w-[18px] shrink-0" />
+                          <span className="truncate">{n.l}</span>
+                          {pendCount(n.k) > 0 && <span className={`ms-auto grid h-5 min-w-5 place-items-center rounded-full px-1.5 text-[10px] font-extrabold ${active ? "bg-white text-emerald-700" : "bg-rose-500 text-white"}`}>{pendCount(n.k) > 99 ? "+99" : pendCount(n.k)}</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
               ))}
+              {ungroupedTabs.length > 0 && (
+                <div>
+                  <div className="px-3 pb-1.5 text-[11px] font-extrabold tracking-wide text-slate-400">أخرى</div>
+                  <div className="space-y-0.5">
+                    {ungroupedTabs.map((n) => {
+                      const active = tab === n.k;
+                      return (
+                        <button key={n.k} data-testid={`admin-tab-${n.k}`} onClick={() => goTab(n.k)} className={`flex w-full items-center gap-2.5 rounded-2xl px-3 py-2.5 text-sm font-bold transition-all ${active ? "bg-gradient-to-l from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-600/30" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"}`}>
+                          <n.icon className="h-[18px] w-[18px] shrink-0" />
+                          <span className="truncate">{n.l}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           </aside>
           <div className="min-w-0" key={tab}>
@@ -90,31 +211,67 @@ export default function Admin() {
             {tab === "overview" && <AdminOverview onJump={goTab} tabs={tabs} />}
             {tab === "moderation" && <AdminReviewDesk />}
             {tab === "studio" && <AdminStudioReview />}
-            {tab === "books" && <BooksPanel />}
-            {tab === "badges" && <BadgesPanel />}
-            {tab === "certificates" && <CertificatesPanelV2 />}
-            {tab === "users" && <UsersPanel />}
-            {tab === "user360" && <User360Panel />}
-            {tab === "notify" && <NotifyPanel />}
-            {tab === "content" && <ContentPanel />}
-            {tab === "news" && <NewsPanel />}
-            {tab === "banners" && <BannersPanel />}
-            {tab === "theme" && <ThemePanel />}
-            {tab === "reports" && <ReportsPanel />}
-            {tab === "errors" && <ErrorsPanel />}
-            {tab === "healthsys" && <HealthPanel />}
-            {tab === "landing" && <LandingPanel />}
-            {tab === "calendar" && <CalendarPanel />}
-            {tab === "coding" && <CodingAdminPanel />}
-            {tab === "paths" && <PathsAdminPanel />}
-            {tab === "exports" && <ExportPanel />}
-            {tab === "clubs" && <ClubsPanel />}
-            {tab === "points" && <PointsPanel />}
-            {tab === "audit" && <AuditPanel />}
+            {tab === "books" && <AdminBooks />}
+            {tab === "badges" && <AdminBadges />}
+            {tab === "certificates" && <AdminCertificates />}
+            {tab === "users" && <AdminUsers />}
+            {tab === "user360" && <AdminUser360 />}
+            {tab === "notify" && <AdminNotify />}
+            {tab === "content" && <AdminEventsCompetitions />}
+            {tab === "news" && <AdminNews />}
+            {tab === "banners" && <AdminBanners />}
+            {tab === "theme" && <AdminTheme />}
+            {tab === "reports" && <AdminReports />}
+            {tab === "errors" && <AdminErrors />}
+            {tab === "healthsys" && <AdminHealth />}
+            {tab === "landing" && <AdminLanding />}
+            {tab === "calendar" && <AdminCalendar />}
+            {tab === "coding" && <AdminCoding />}
+            {tab === "paths" && <AdminPaths />}
+            {tab === "exports" && <AdminExports />}
+            {tab === "clubs" && <AdminClubs />}
+            {tab === "points" && <AdminPoints />}
+            {tab === "audit" && <AdminAudit />}
             </div>
           </div>
         </div>
       </div>
+
+      {/* mobile: all-sections bottom sheet */}
+      {sheet && createPortal(
+        <div className="fixed inset-0 z-[95] lg:hidden">
+          <div className="absolute inset-0 bg-slate-950/50 backdrop-blur-sm" onClick={() => setSheet(false)} />
+          <div className="absolute inset-x-0 bottom-0 max-h-[84dvh] overflow-y-auto rounded-t-[28px] bg-white p-5 pb-9 ft-shadow">
+            <div className="mx-auto mb-4 h-1.5 w-11 rounded-full bg-slate-300" onClick={() => setSheet(false)} />
+            <div className="mb-4 flex items-center justify-between">
+              <span className="font-head text-base font-extrabold text-slate-900">كل أقسام الإدارة</span>
+              <button type="button" onClick={() => setSheet(false)} aria-label="إغلاق" className="grid h-8 w-8 place-items-center rounded-full bg-slate-100 text-slate-500">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="space-y-5">
+              {groupedTabs.map((g) => (
+                <div key={g.l}>
+                  <div className="pb-2 text-[11px] font-extrabold tracking-wide text-slate-400">{g.l}</div>
+                  <div className="grid grid-cols-3 gap-2">
+                    {g.items.map((n) => {
+                      const active = tab === n.k;
+                      return (
+                        <button key={n.k} data-testid={`admin-tab-${n.k}`} onClick={() => { goTab(n.k); setSheet(false); }} className={`relative flex flex-col items-center gap-1.5 rounded-2xl px-2 py-3.5 text-[11px] font-bold transition-all ${active ? "bg-gradient-to-b from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-600/30" : "border border-slate-200 bg-slate-50/60 text-slate-600"}`}>
+                          <n.icon className="h-5 w-5" />
+                          <span className="text-center leading-tight">{n.l}</span>
+                          {pendCount(n.k) > 0 && <span className={`absolute end-1.5 top-1.5 grid h-4 min-w-4 place-items-center rounded-full px-1 text-[9px] font-extrabold ${active ? "bg-white text-emerald-700" : "bg-rose-500 text-white"}`}>{pendCount(n.k) > 99 ? "+99" : pendCount(n.k)}</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </Layout>
   );
 }
