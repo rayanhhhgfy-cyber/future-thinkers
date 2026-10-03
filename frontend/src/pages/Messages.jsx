@@ -16,6 +16,44 @@ const EMOJIS = ["😀", "😂", "😍", "🤩", "😊", "🙂", "😉", "😎", 
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+/* Aurora Messenger · keyframes that index.css does not provide */
+const MSG_CSS = `
+@keyframes msg-in-other { from { opacity: 0; transform: translateX(16px) translateY(6px) scale(.96); } to { opacity: 1; transform: none; } }
+@keyframes msg-in-me { from { opacity: 0; transform: translateX(-16px) translateY(6px) scale(.96); } to { opacity: 1; transform: none; } }
+.msg-in-other { animation: msg-in-other .38s cubic-bezier(.22,1,.36,1) both; }
+.msg-in-me { animation: msg-in-me .38s cubic-bezier(.22,1,.36,1) both; }
+@keyframes msg-pop { 0% { transform: scale(.4); opacity: 0; } 60% { transform: scale(1.2); opacity: 1; } 100% { transform: scale(1); } }
+.msg-pop { animation: msg-pop .32s cubic-bezier(.22,1,.36,1) both; }
+@keyframes msg-dot { 0%, 60%, 100% { transform: translateY(0); opacity: .45; } 30% { transform: translateY(-4px); opacity: 1; } }
+.msg-dot { animation: msg-dot 1.15s ease-in-out infinite; }
+@keyframes msg-slide-layer { from { opacity: .35; transform: translateX(-30px); } to { opacity: 1; transform: none; } }
+.msg-slide-layer { animation: msg-slide-layer .4s cubic-bezier(.22,1,.36,1) both; }
+@keyframes aurora-drift { 0%, 100% { transform: translate(0,0) scale(1); } 50% { transform: translate(26px,-20px) scale(1.09); } }
+.aurora-blob { animation: aurora-drift 15s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .msg-in-me, .msg-in-other, .msg-pop, .msg-slide-layer, .aurora-blob, .msg-dot { animation: none !important; }
+}
+`;
+
+/* deterministic per-user cover gradients for the thread header */
+const COVER_GRADIENTS = [
+  "linear-gradient(120deg,#0ea5e9,#6366f1 55%,#a855f7)",
+  "linear-gradient(120deg,#059669,#0d9488 55%,#38bdf8)",
+  "linear-gradient(120deg,#f59e0b,#f97316 55%,#ef4444)",
+  "linear-gradient(120deg,#8b5cf6,#6366f1 55%,#0ea5e9)",
+  "linear-gradient(120deg,#ec4899,#f43f5e 55%,#f59e0b)",
+  "linear-gradient(120deg,#0d9488,#22c55e 55%,#a3e635)",
+  "linear-gradient(120deg,#334155,#0f766e 55%,#10b981)",
+  "linear-gradient(120deg,#7c3aed,#2563eb 55%,#06b6d4)",
+];
+
+function coverGradient(seed) {
+  const s = String(seed || "");
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return COVER_GRADIENTS[h % COVER_GRADIENTS.length];
+}
+
 function sameDay(a, b) {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 }
@@ -56,7 +94,7 @@ function TypingDots({ light = false }) {
       {[0, 1, 2].map((i) => (
         <span
           key={i}
-          className={`w-1.5 h-1.5 rounded-full animate-pulse-soft ${light ? "bg-white/80" : "bg-slate-400"}`}
+          className={`msg-dot w-1.5 h-1.5 rounded-full ${light ? "bg-white/85" : "bg-slate-400"}`}
           style={{ animationDelay: `${i * 0.18}s` }}
         />
       ))}
@@ -164,6 +202,21 @@ export default function Messages() {
     const t = setInterval(() => loadConvs(true), 20000);
     return () => clearInterval(t);
   }, [user, loadConvs]);
+
+  /* warm up people suggestions once · powers the quick-start rail + picker */
+  useEffect(() => {
+    if (!user || suggestions) return undefined;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data } = await api.get("/leaderboard", { params: { limit: 30 } });
+        if (cancelled) return;
+        const rows = Array.isArray(data) ? data : data?.items || [];
+        setSuggestions(rows.filter((x) => x.id !== user?.id));
+      } catch { if (!cancelled) setSuggestions([]); }
+    })();
+    return () => { cancelled = true; };
+  }, [user, suggestions]);
 
   /* deep link /messages?to=<userId>: land straight in that chat */
   useEffect(() => {
@@ -403,6 +456,11 @@ export default function Messages() {
     openConversation(person.id, { id: person.id, name: person.name, avatar_url: person.avatar_url });
   };
 
+  const quickStart = (person) => {
+    setBlocked(false);
+    openConversation(person.id, { id: person.id, name: person.name, avatar_url: person.avatar_url });
+  };
+
   const insertEmoji = (emoji) => {
     const el = textareaRef.current;
     if (!el) { setText((t) => t + emoji); return; }
@@ -446,6 +504,18 @@ export default function Messages() {
     return out;
   }, [msgs]);
 
+  /* quick-start people: conversation partners first, then suggested members */
+  const quickPeople = useMemo(() => {
+    const seen = new Set();
+    const out = [];
+    const push = (p) => {
+      if (p?.id && p.id !== myId && !seen.has(p.id)) { seen.add(p.id); out.push(p); }
+    };
+    (convs || []).forEach((c) => push(c.other));
+    (suggestions || []).forEach((p) => push(p));
+    return out.slice(0, 12);
+  }, [convs, suggestions, myId]);
+
   if (!ready) return (<Layout><PageLoader /></Layout>);
   if (!user) {
     return (
@@ -466,6 +536,7 @@ export default function Messages() {
   const visibleConvs = (convs || []).filter((c) => !filter.trim() || (c.other?.name || "").includes(filter.trim()));
   const pickerList = pickerResults ?? suggestions ?? [];
   const overlayOpen = menuFor !== null || reactFor !== null || headerMenu;
+  const cover = coverGradient(activeId || activeOther?.name);
 
   const renderBubble = (m, firstInGroup, lastInGroup) => {
     const mine = !!m.from_me;
@@ -478,39 +549,47 @@ export default function Messages() {
     const tailMine = "rounded-ee-md";
     const tailOther = "rounded-es-md";
     return (
-      <div className={`flex ${mine ? "justify-end" : "justify-start"} ${firstInGroup ? "mt-3" : "mt-1"}`}>
-        <div className={`relative max-w-[85%] sm:max-w-[72%] lg:max-w-[68%] ${mine ? "items-end" : "items-start"} flex flex-col`}>
+      <div className={`flex items-end gap-2 ${mine ? "justify-end" : "justify-start"} ${firstInGroup ? "mt-3.5" : "mt-1"}`}>
+        {!mine && (lastInGroup ? (
+          <span className="shrink-0 rounded-full shadow-md">
+            <Avatar person={activeOther} size="w-8 h-8" text="text-[11px]" />
+          </span>
+        ) : (
+          <span aria-hidden="true" className="w-8 shrink-0" />
+        ))}
+        <div className={`relative flex max-w-[80%] flex-col sm:max-w-[70%] lg:max-w-[64%] ${mine ? "msg-in-me items-end" : "msg-in-other items-start"}`}>
           {/* hover quick actions */}
           {canAct && (
-            <div className={`absolute -top-3 z-20 ${mine ? "left-1" : "right-1"} flex items-center gap-0.5 rounded-full bg-white border border-slate-200 shadow-lg px-0.5 py-0.5 transition-all ${reactFor === m.id || menuFor === m.id ? "opacity-100" : "opacity-0 group-hover:opacity-100 focus-within:opacity-100"}`}>
+            <div className={`absolute -top-3 z-20 ${mine ? "left-1" : "right-1"} flex items-center gap-0.5 rounded-full bg-white/90 backdrop-blur px-0.5 py-0.5 shadow-lg ring-1 ring-white/70 transition-all ${reactFor === m.id || menuFor === m.id ? "opacity-100" : "opacity-0 group-hover:opacity-100 focus-within:opacity-100"}`}>
               <button
                 type="button"
                 aria-label="تفاعل سريع"
                 onClick={() => { setReactFor(reactFor === m.id ? null : m.id); setMenuFor(null); }}
-                className="pressable w-7 h-7 grid place-items-center rounded-full text-slate-400 hover:text-amber-500 hover:bg-amber-50 transition"
+                className="pressable grid h-7 w-7 place-items-center rounded-full text-slate-400 transition hover:bg-amber-50 hover:text-amber-500"
               >
-                <SmilePlus className="w-4 h-4" />
+                <SmilePlus className="h-4 w-4" />
               </button>
               <button
                 type="button"
                 aria-label="خيارات الرسالة"
                 onClick={() => { setMenuFor(menuFor === m.id ? null : m.id); setReactFor(null); }}
-                className="pressable w-7 h-7 grid place-items-center rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition"
+                className="pressable grid h-7 w-7 place-items-center rounded-full text-slate-400 transition hover:bg-slate-50 hover:text-slate-600"
               >
-                <MoreVertical className="w-4 h-4" />
+                <MoreVertical className="h-4 w-4" />
               </button>
             </div>
           )}
 
           {/* quick react bar */}
           {reactFor === m.id && (
-            <div className={`absolute -top-12 z-30 ${mine ? "left-0" : "right-0"} animate-scale-in flex items-center gap-0.5 rounded-full bg-white border border-slate-200 shadow-xl px-1.5 py-1`}>
-              {QUICK_REACT.map((e) => (
+            <div className={`absolute -top-12 z-30 ${mine ? "left-0" : "right-0"} flex items-center gap-0.5 rounded-full bg-white/95 px-1.5 py-1 shadow-[0_16px_36px_-12px_rgba(15,23,42,0.4)] ring-1 ring-white/70 backdrop-blur`}>
+              {QUICK_REACT.map((e, i) => (
                 <button
                   key={e}
                   type="button"
                   onClick={() => toggleReact(m, e)}
-                  className="pressable w-8 h-8 grid place-items-center rounded-full text-lg hover:bg-slate-100 hover:scale-125 transition"
+                  style={{ animationDelay: `${i * 35}ms` }}
+                  className="msg-pop pressable grid h-8 w-8 place-items-center rounded-full text-lg transition hover:scale-125 hover:bg-slate-100"
                   aria-label={`تفاعل ${e}`}
                 >
                   {e}
@@ -521,17 +600,17 @@ export default function Messages() {
 
           {/* actions menu */}
           {menuFor === m.id && (
-            <div className={`absolute top-5 z-30 ${mine ? "left-0" : "right-0"} animate-scale-in w-40 overflow-hidden rounded-2xl bg-white border border-slate-200 shadow-xl py-1`}>
-              <button type="button" onClick={() => startReply(m)} className="w-full flex items-center gap-2 px-3.5 py-2.5 text-[13px] font-semibold text-slate-600 hover:bg-slate-50 transition text-start">
-                <Reply className="w-4 h-4 -scale-x-100" /> ردّ
+            <div className={`absolute top-5 z-30 ${mine ? "left-0" : "right-0"} w-40 animate-scale-in overflow-hidden rounded-2xl bg-white/95 py-1 shadow-[0_16px_36px_-12px_rgba(15,23,42,0.4)] ring-1 ring-white/60 backdrop-blur-xl`}>
+              <button type="button" onClick={() => startReply(m)} className="flex w-full items-center gap-2 px-3.5 py-2.5 text-start text-[13px] font-semibold text-slate-600 transition hover:bg-slate-50">
+                <Reply className="h-4 w-4 -scale-x-100" /> ردّ
               </button>
               {mine && (
                 <>
-                  <button type="button" onClick={() => startEdit(m)} className="w-full flex items-center gap-2 px-3.5 py-2.5 text-[13px] font-semibold text-slate-600 hover:bg-slate-50 transition text-start">
-                    <Pencil className="w-4 h-4" /> تعديل
+                  <button type="button" onClick={() => startEdit(m)} className="flex w-full items-center gap-2 px-3.5 py-2.5 text-start text-[13px] font-semibold text-slate-600 transition hover:bg-slate-50">
+                    <Pencil className="h-4 w-4" /> تعديل
                   </button>
-                  <button type="button" onClick={() => { setMenuFor(null); setConfirmDelete(m); }} className="w-full flex items-center gap-2 px-3.5 py-2.5 text-[13px] font-semibold text-rose-500 hover:bg-rose-50 transition text-start">
-                    <Trash2 className="w-4 h-4" /> حذف
+                  <button type="button" onClick={() => { setMenuFor(null); setConfirmDelete(m); }} className="flex w-full items-center gap-2 px-3.5 py-2.5 text-start text-[13px] font-semibold text-rose-500 transition hover:bg-rose-50">
+                    <Trash2 className="h-4 w-4" /> حذف
                   </button>
                 </>
               )}
@@ -544,40 +623,42 @@ export default function Messages() {
             onPointerUp={cancelLongPress}
             onPointerLeave={cancelLongPress}
             onContextMenu={(e) => { if (canAct) { e.preventDefault(); setReactFor(m.id); setMenuFor(null); } }}
-            className={`animate-fade-up px-4 py-2.5 rounded-[1.25rem] select-text ${mine
-              ? `ft-btn-primary text-white shadow-md ${lastInGroup ? tailMine : ""}`
-              : `bg-white border border-slate-100 text-slate-700 shadow-sm ${lastInGroup ? tailOther : ""}`
+            className={`select-text rounded-[22px] px-4 py-3 ${deleted
+              ? "bg-white/70 text-slate-400 shadow-sm ring-1 ring-white/80 backdrop-blur"
+              : mine
+                ? `ft-btn-primary text-white shadow-[0_14px_30px_-12px_rgba(15,23,42,0.45)] ${lastInGroup ? tailMine : ""}`
+                : `bg-white/90 text-slate-700 shadow-[0_10px_24px_-12px_rgba(15,23,42,0.28)] ring-1 ring-white backdrop-blur ${lastInGroup ? tailOther : ""}`
               } ${pending ? "opacity-75" : ""}`}
           >
             {deleted ? (
-              <p className="text-[13px] italic text-slate-400 flex items-center gap-1.5">
-                <Ban className="w-3.5 h-3.5 shrink-0" /> رسالة محذوفة
+              <p className="flex items-center gap-1.5 text-[13px] italic">
+                <Ban className="h-3.5 w-3.5 shrink-0" /> رسالة محذوفة
               </p>
             ) : (
               <>
                 {m.reply && (m.reply.text || m.reply.name) && (
-                  <div className={`mb-2 rounded-xl px-3 py-2 border-s-[3px] ${mine ? "bg-white/15 border-white/70" : "bg-slate-50 ft-border-accent"}`}>
+                  <div className={`mb-2 rounded-xl border-s-[3px] px-3 py-2 ${mine ? "border-white/70 bg-white/15" : "ft-border-accent bg-slate-50"}`}>
                     <span className={`block text-[11px] font-bold ${mine ? "text-white" : "ft-text-accent"}`}>{m.reply.name || "رسالة"}</span>
                     <span className={`block text-[11px] leading-relaxed line-clamp-2 ${mine ? "text-white/75" : "text-slate-400"}`}>{m.reply.text}</span>
                   </div>
                 )}
-                <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">{m.body}</p>
-                <span className={`mt-1 flex items-center gap-1.5 text-[10px] ${mine ? "text-white/60 justify-end" : "text-slate-300 justify-start"}`}>
+                <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">{m.body}</p>
+                <span className={`mt-1 flex items-center gap-1.5 text-[10px] ${mine ? "justify-end text-white/60" : "justify-start text-slate-300"}`}>
                   {m.edited && !pending && <span>تم التعديل ·</span>}
                   <span>{m.at ? clockTime(m.at) : ""}</span>
                   {mine && (pending
                     ? <span>تُرسل الآن…</span>
                     : typeof m.seen === "boolean" && (m.seen
-                      ? <CheckCheck className="w-3.5 h-3.5 text-sky-200" />
-                      : <Check className="w-3.5 h-3.5" />))}
+                      ? <CheckCheck className="h-3.5 w-3.5 text-sky-200" />
+                      : <Check className="h-3.5 w-3.5" />))}
                 </span>
               </>
             )}
           </div>
 
-          {/* reaction chips */}
+          {/* reaction chips · float over the bubble's bottom edge */}
           {reactions.length > 0 && (
-            <div className={`flex flex-wrap gap-1 -mt-2 relative z-10 ${mine ? "justify-end pe-2" : "justify-start ps-2"}`}>
+            <div className={`relative z-10 -mt-2.5 flex flex-wrap gap-1 ${mine ? "justify-end pe-2" : "justify-start ps-2"}`}>
               {reactions.map(([emoji, users]) => {
                 const mineReact = myId ? users.includes(myId) : false;
                 return (
@@ -585,7 +666,7 @@ export default function Messages() {
                     key={emoji}
                     type="button"
                     onClick={() => toggleReact(m, emoji)}
-                    className={`pressable inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[11px] font-bold shadow-sm transition ${mineReact ? "ft-bg-soft ft-border-accent ft-text-accent" : "bg-white border-slate-200 text-slate-500 hover:border-slate-300"}`}
+                    className={`pressable inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[11px] font-bold shadow-sm backdrop-blur transition ${mineReact ? "ft-bg-soft ft-border-accent ft-text-accent" : "border-slate-200 bg-white/90 text-slate-500 hover:border-slate-300"}`}
                   >
                     <span className="text-[13px] leading-none">{emoji}</span> {users.length}
                   </button>
@@ -600,311 +681,418 @@ export default function Messages() {
 
   return (
     <Layout>
-      <div className="max-w-6xl xl:max-w-[1400px] mx-auto px-4 lg:px-6 py-6 sm:py-8">
-        {/* hero */}
-        <div className="animate-fade-up relative overflow-hidden rounded-[2rem] ft-hero-gradient grain px-5 py-7 sm:px-10 sm:py-9 mb-6">
-          <div className="pointer-events-none absolute -top-24 -left-24 w-72 h-72 rounded-full bg-emerald-400/25 blur-3xl" />
-          <div className="pointer-events-none absolute -bottom-32 right-16 w-80 h-80 rounded-full bg-teal-300/15 blur-3xl" />
-          <MessageCircle className="pointer-events-none absolute -left-8 -bottom-12 w-44 h-44 text-white/[0.07] -rotate-12" />
-          <Send className="pointer-events-none absolute right-10 -top-10 w-28 h-28 text-white/[0.05] rotate-12 hidden sm:block" aria-hidden="true" />
-          <div className="relative flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white/15 backdrop-blur ring-1 ring-white/25 text-white text-xs font-bold shadow-lg">
-                <MessageCircle className="w-3.5 h-3.5" /> تواصل مباشر وآمن
-              </span>
-              <h1 className="font-head text-3xl sm:text-4xl font-extrabold text-white mt-3 leading-tight">الرسائل الخاصة</h1>
-              <p className="text-white/75 text-sm sm:text-base mt-2 max-w-xl leading-relaxed">تحدّث مع زملائك في النادي، نسّقوا مشاريعكم، وتبادلوا الأفكار لحظة بلحظة.</p>
-              {(totalUnread > 0 || !!convs?.length) && (
-                <div className="mt-4 flex flex-wrap gap-2">
-                  {totalUnread > 0 && (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 backdrop-blur ring-1 ring-white/20 text-white text-[11px] font-bold">
-                      <Inbox className="w-3.5 h-3.5" /> لديك {totalUnread} رسالة غير مقروءة
-                    </span>
-                  )}
-                  {!!convs?.length && (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 backdrop-blur ring-1 ring-white/20 text-white text-[11px] font-bold">
-                      <MessageCircle className="w-3.5 h-3.5" /> {convs.length} محادثة
-                    </span>
-                  )}
+      <style>{MSG_CSS}</style>
+      <div className="relative mx-auto max-w-[1440px] px-3 pb-6 pt-3 sm:px-5 sm:pt-4 lg:px-8">
+        {/* aurora stage */}
+        <section
+          className="grain relative overflow-hidden rounded-[30px] px-3 py-4 sm:rounded-[38px] sm:px-5 sm:py-5 lg:px-6"
+          style={{
+            background:
+              "radial-gradient(760px 440px at 10% -10%, color-mix(in srgb, var(--ft-accent, #10b981) 22%, transparent), transparent 62%)," +
+              "radial-gradient(720px 460px at 98% 112%, color-mix(in srgb, var(--ft-grad-b, #065f46) 20%, transparent), transparent 64%)," +
+              "radial-gradient(520px 320px at 82% -18%, rgba(56,189,248,.16), transparent 62%)," +
+              "linear-gradient(165deg, #f4f8f6 0%, #e9f1ed 58%, #eef4f1 100%)",
+          }}
+        >
+          <div
+            aria-hidden="true"
+            className="aurora-blob pointer-events-none absolute -top-28 start-[8%] h-72 w-72 rounded-full blur-3xl"
+            style={{ background: "color-mix(in srgb, var(--ft-accent, #10b981) 26%, transparent)" }}
+          />
+          <div
+            aria-hidden="true"
+            className="aurora-blob pointer-events-none absolute -bottom-32 end-[4%] h-80 w-80 rounded-full blur-3xl"
+            style={{ background: "rgba(56,189,248,.18)", animationDelay: "-6s" }}
+          />
+
+          <div className="relative z-10">
+            {/* compact title row */}
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3 px-1">
+              <div className="flex items-center gap-3">
+                <span className="ft-icon-tile grid h-11 w-11 shrink-0 place-items-center rounded-2xl shadow-lg">
+                  <MessageCircle className="h-5 w-5" />
+                </span>
+                <div>
+                  <h1 className="font-head text-2xl font-extrabold leading-tight text-slate-800 sm:text-3xl">الرسائل</h1>
+                  <p className="text-xs text-slate-500 sm:text-[13px]">تحدّث مع زملائك في النادي لحظة بلحظة</p>
                 </div>
-              )}
-            </div>
-            <button onClick={openPicker} className="pressable inline-flex items-center gap-1.5 min-h-[44px] px-5 rounded-full bg-white text-sm font-bold ft-text-accent shadow-lg hover:bg-white/90 transition shrink-0">
-              <PenSquare className="w-4 h-4" /> رسالة جديدة
-            </button>
-          </div>
-        </div>
-
-        {/* two-pane messenger */}
-        <div className="animate-fade-up d-1 relative overflow-hidden bg-white rounded-[2rem] border border-slate-100 ft-shadow-lg grid lg:grid-cols-[340px_minmax(0,1fr)] h-[min(720px,calc(100dvh-270px))] min-h-[430px]">
-          <span className="absolute inset-x-0 top-0 h-1 ft-grad-bar z-10" />
-
-          {/* conversation list */}
-          <aside className={`${activeId ? "hidden lg:flex" : "flex"} flex-col min-h-0 border-slate-100 lg:border-l bg-slate-50/60`}>
-            <div className="p-3.5 pb-2.5">
-              <div className="relative">
-                <Search className="w-4 h-4 text-slate-300 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                <input
-                  value={filter}
-                  onChange={(e) => setFilter(e.target.value)}
-                  placeholder="ابحث في محادثاتك…"
-                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 ps-4 pe-10 py-2.5 text-sm outline-none focus:ring-2 ft-ring-accent focus:bg-white transition"
-                />
               </div>
+              <button
+                onClick={openPicker}
+                className="pressable inline-flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-full ft-btn-primary px-5 text-sm font-bold text-white shadow-lg transition hover:scale-[1.03]"
+              >
+                <PenSquare className="h-4 w-4" /> رسالة جديدة
+              </button>
             </div>
-            <div className="flex-1 overflow-y-auto px-2.5 pb-3 space-y-1">
-              {convs === null ? (
-                <div className="grid place-items-center py-14"><Loader2 className="w-7 h-7 animate-spin ft-text-accent" /></div>
-              ) : convsError ? (
-                <ErrorState error={convsError} onRetry={() => loadConvs()} context="messages-list" />
-              ) : visibleConvs.length === 0 ? (
-                <EmptyState
-                  icon={MessageCircle}
-                  title={filter.trim() ? "لا نتائج مطابقة" : "لا محادثات بعد"}
-                  desc={filter.trim() ? "جرّب كلمة أخرى" : "ابدأ أول محادثة مع زميل في النادي"}
-                  action={!filter.trim() && (
-                    <button onClick={openPicker} className="pressable inline-flex min-h-[44px] items-center gap-1.5 rounded-full ft-btn-primary px-5 text-xs font-bold text-white shadow-md">
-                      <PenSquare className="w-4 h-4" /> رسالة جديدة
-                    </button>
-                  )}
-                />
-              ) : visibleConvs.map((c, i) => {
-                const o = c.other || {};
-                const isActive = o.id === activeId;
-                const lastMine = !!(c.last_from_me ?? c.last_mine ?? c.last_by_me);
-                const showSeen = lastMine && typeof c.last_seen === "boolean";
-                return (
-                  <button
-                    key={c.id || o.id}
-                    onClick={() => { setBlocked(false); openConversation(o.id, o); }}
-                    style={{ animationDelay: `${Math.min(i, 8) * 50}ms` }}
-                    className={`animate-fade-up w-full flex items-center gap-3 p-3 rounded-2xl text-start transition ${isActive ? "ft-bg-soft ring-1 ft-ring-accent shadow-sm" : "hover:bg-white hover:shadow-sm"}`}
-                  >
-                    <Avatar person={o} />
-                    <span className="flex-1 min-w-0">
-                      <span className="flex items-center justify-between gap-2">
-                        <span className="font-head font-bold text-[15px] text-slate-800 truncate">{o.name || "مستخدم"}</span>
-                        {c.last_at && <span className="text-[10px] text-slate-300 shrink-0">{timeAgo(c.last_at)}</span>}
-                      </span>
-                      <span className="flex items-center justify-between gap-2 mt-0.5">
-                        {c.other_typing ? (
-                          <span className="inline-flex items-center gap-1.5 text-xs font-bold ft-text-accent">
-                            يكتب الآن <TypingDots />
-                          </span>
-                        ) : (
-                          <span className={`flex items-center gap-1 text-xs truncate ${c.unread > 0 ? "text-slate-700 font-bold" : "text-slate-400"}`}>
-                            {showSeen && (c.last_seen
-                              ? <CheckCheck className="w-3.5 h-3.5 ft-text-accent shrink-0" />
-                              : <Check className="w-3.5 h-3.5 text-slate-300 shrink-0" />)}
-                            <span className="truncate">{lastMine && c.last_message ? `أنت: ${c.last_message}` : c.last_message || "ابدأ المحادثة"}</span>
-                          </span>
-                        )}
-                        {c.unread > 0 && (
-                          <span className="shrink-0 min-w-[22px] h-[22px] px-1 rounded-full ft-btn-primary text-white text-[11px] font-bold grid place-items-center shadow">
-                            {c.unread}
-                          </span>
-                        )}
-                      </span>
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </aside>
 
-          {/* chat pane */}
-          <section className={`${activeId ? "flex" : "hidden lg:flex"} flex-col min-h-0 relative`}>
-            {!activeId ? (
-              <div className="flex-1 grid place-items-center p-6 bg-slate-50/50">
-                <EmptyState icon={MessageCircle} title="اختر محادثة" desc="اختر محادثة من القائمة أو ابدأ رسالة جديدة" />
-              </div>
-            ) : (
-              <>
-                {/* chat header */}
-                <div className="relative z-30 flex items-center gap-3 px-4 py-3 glass border-b border-slate-100 shrink-0">
-                  <button
-                    onClick={() => setActiveId(null)}
-                    aria-label="رجوع إلى المحادثات"
-                    className="pressable lg:hidden w-10 h-10 grid place-items-center rounded-xl text-slate-400 hover:bg-slate-50 hover:text-slate-600 transition shrink-0"
-                  >
-                    <ArrowRight className="w-5 h-5" />
-                  </button>
-                  <Avatar person={activeOther} size="w-10 h-10" text="text-sm" />
-                  <div className="flex-1 min-w-0">
-                    {activeOther?.name
-                      ? <Link to={`/profile/${activeId}`} className="font-head font-bold text-[15px] text-slate-800 ft-hover-text-accent transition-colors block truncate">{activeOther.name}</Link>
-                      : <span className="font-head font-bold text-[15px] text-slate-400 block">جارٍ التحميل…</span>}
-                    {otherTyping ? (
-                      <span className="flex items-center gap-1.5 text-[11px] font-bold ft-text-accent animate-pulse-soft">
-                        يكتب الآن <TypingDots />
+            {/* floating glass panels */}
+            <div className="relative grid h-[calc(100dvh-262px)] min-h-[440px] gap-4 lg:h-[calc(100dvh-244px)] lg:min-h-[540px] lg:grid-cols-[372px_minmax(0,1fr)] lg:gap-5">
+              {/* ── list panel ── */}
+              <aside className="flex min-h-0 animate-fade-up flex-col overflow-hidden rounded-[28px] bg-white/70 shadow-[0_24px_60px_-24px_rgba(15,23,42,0.38)] ring-1 ring-white/60 backdrop-blur-xl">
+                <div className="px-4 pb-3 pt-4">
+                  <div className="flex items-center gap-3">
+                    <Avatar person={user} size="w-11 h-11" text="text-base" />
+                    <div className="min-w-0 flex-1">
+                      <h2 className="font-head text-[15px] font-extrabold text-slate-800">محادثاتي</h2>
+                      <p className="truncate text-[11px] text-slate-400">{user?.name || ""}</p>
+                    </div>
+                    {totalUnread > 0 && (
+                      <span
+                        className="inline-flex shrink-0 items-center gap-1.5 rounded-full ft-btn-primary px-3 py-1.5 text-[11px] font-bold text-white"
+                        style={{ boxShadow: "0 8px 20px -6px color-mix(in srgb, var(--ft-accent, #10b981) 70%, transparent)" }}
+                      >
+                        <Inbox className="h-3.5 w-3.5" /> {totalUnread} غير مقروءة
                       </span>
-                    ) : (
-                      <span className="text-[11px] text-slate-300">محادثة خاصة</span>
+                    )}
+                    {!!convs?.length && totalUnread === 0 && (
+                      <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-white/70 px-3 py-1.5 text-[11px] font-bold text-slate-500 ring-1 ring-white/70 backdrop-blur">
+                        <MessageCircle className="h-3.5 w-3.5" /> {convs.length} محادثة
+                      </span>
                     )}
                   </div>
-                  <div className="relative shrink-0">
-                    <button
-                      onClick={() => setHeaderMenu((v) => !v)}
-                      aria-label="خيارات المحادثة"
-                      className="pressable w-10 h-10 grid place-items-center rounded-xl text-slate-400 hover:bg-slate-50 hover:text-slate-600 transition"
-                    >
-                      <MoreVertical className="w-5 h-5" />
-                    </button>
-                    {headerMenu && (
-                      <div className="absolute top-11 end-0 z-40 animate-scale-in w-48 overflow-hidden rounded-2xl bg-white border border-slate-200 shadow-xl py-1">
-                        <Link
-                          to={`/profile/${activeId}`}
-                          onClick={() => setHeaderMenu(false)}
-                          className="w-full flex items-center gap-2 px-3.5 py-2.5 text-[13px] font-semibold text-slate-600 hover:bg-slate-50 transition text-start"
-                        >
-                          <MessageCircle className="w-4 h-4" /> عرض الملف الشخصي
-                        </Link>
-                        <button
-                          type="button"
-                          onClick={() => { setHeaderMenu(false); setConfirmBlock(true); }}
-                          className={`w-full flex items-center gap-2 px-3.5 py-2.5 text-[13px] font-semibold transition text-start ${blocked ? "text-slate-600 hover:bg-slate-50" : "text-rose-500 hover:bg-rose-50"}`}
-                        >
-                          <Ban className="w-4 h-4" /> {blocked ? "إلغاء الحظر" : "حظر هذا المستخدم"}
-                        </button>
+
+                  {/* quick-start avatar rail */}
+                  {quickPeople.length > 0 && (
+                    <div className="mt-4">
+                      <p className="mb-2 text-[11px] font-bold text-slate-400">ابدأ بسرعة</p>
+                      <div className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                        {quickPeople.map((p) => {
+                          const conv = (convs || []).find((c) => c.other?.id === p.id);
+                          return (
+                            <button
+                              key={p.id}
+                              type="button"
+                              onClick={() => quickStart(p)}
+                              className="pressable group flex w-[62px] shrink-0 flex-col items-center gap-1.5"
+                            >
+                              <span
+                                className="relative rounded-full p-[2.5px] shadow-md transition duration-300 group-hover:scale-105"
+                                style={{ background: "linear-gradient(135deg, var(--ft-grad-b, #065f46), var(--ft-accent, #10b981))" }}
+                              >
+                                <Avatar person={p} size="w-12 h-12" text="text-base" />
+                                {(conv?.unread || 0) > 0 && (
+                                  <span
+                                    className="absolute -end-0.5 -top-0.5 h-3.5 w-3.5 rounded-full ft-btn-primary ring-2 ring-white"
+                                    style={{ boxShadow: "0 0 0 4px color-mix(in srgb, var(--ft-accent, #10b981) 30%, transparent)" }}
+                                  />
+                                )}
+                              </span>
+                              <span className="w-full truncate text-center text-[10px] font-semibold text-slate-500 transition group-hover:text-slate-700">
+                                {(p.name || "مستخدم").split(" ")[0]}
+                              </span>
+                            </button>
+                          );
+                        })}
                       </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* messages */}
-                <div
-                  ref={scrollRef}
-                  onScroll={onScroll}
-                  className="flex-1 overflow-y-auto px-4 py-4 min-h-0"
-                  style={{
-                    backgroundColor: "#f8fafc",
-                    backgroundImage: "radial-gradient(circle, rgba(15,23,42,0.055) 1px, transparent 1px)",
-                    backgroundSize: "22px 22px",
-                  }}
-                >
-                  {overlayOpen && (
-                    <div
-                      className="fixed inset-0 z-10"
-                      onClick={() => { setMenuFor(null); setReactFor(null); setHeaderMenu(false); }}
-                    />
-                  )}
-                  {msgs === null ? (
-                    <div className="grid place-items-center py-14 relative z-0"><Loader2 className="w-7 h-7 animate-spin ft-text-accent" /></div>
-                  ) : threadError ? (
-                    <ErrorState error={threadError} onRetry={() => openConversation(activeId, activeOther)} context="messages-thread" />
-                  ) : msgs.length === 0 ? (
-                    <EmptyState icon={MessageCircle} title="لا رسائل بعد" desc="أرسل أول رسالة وابدأ المحادثة" />
-                  ) : (
-                    <div className="relative z-20 max-w-3xl mx-auto w-full pb-1">
-                      {renderItems.map((item) => (item.sep ? (
-                        <div key={item.key} className="flex justify-center my-4">
-                          <span className="px-3.5 py-1 rounded-full bg-white border border-slate-200/80 shadow-sm text-[11px] font-bold text-slate-400">
-                            {item.label}
-                          </span>
-                        </div>
-                      ) : (
-                        <div key={item.key} className="group">
-                          {renderBubble(item.m, item.firstInGroup, item.lastInGroup)}
-                        </div>
-                      )))}
-                      {otherTyping && (
-                        <div className="flex justify-start mt-3">
-                          <div className="animate-fade-up bg-white border border-slate-100 shadow-sm rounded-[1.25rem] rounded-es-md px-4 py-3">
-                            <TypingDots />
-                          </div>
-                        </div>
-                      )}
                     </div>
                   )}
+
+                  {/* glass search */}
+                  <div className="relative mt-3">
+                    <Search className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <input
+                      value={filter}
+                      onChange={(e) => setFilter(e.target.value)}
+                      placeholder="ابحث في محادثاتك…"
+                      className="w-full rounded-full border border-white/70 bg-white/60 py-2.5 pe-10 ps-4 text-sm shadow-inner outline-none backdrop-blur transition focus:bg-white/90 focus:ring-2 ft-ring-accent"
+                    />
+                  </div>
                 </div>
 
-                {/* composer */}
-                <div className="relative z-20 p-3 sm:p-4 bg-white border-t border-slate-100 shrink-0 shadow-[0_-10px_30px_-18px_rgba(15,23,42,0.18)]">
-                  <div className="max-w-3xl mx-auto w-full">
-                    {editingId && (
-                      <div className="animate-fade-up mb-2.5 flex items-center gap-2.5 rounded-2xl ft-bg-soft ft-border-accent border px-3.5 py-2.5">
-                        <Pencil className="w-4 h-4 ft-text-accent shrink-0" />
-                        <span className="flex-1 text-xs font-bold ft-text-accent">تعديل الرسالة</span>
-                        <button
-                          type="button"
-                          onClick={() => { setEditingId(null); setText(""); }}
-                          aria-label="إلغاء التعديل"
-                          className="pressable w-7 h-7 grid place-items-center rounded-full bg-white text-slate-400 hover:text-slate-600 shadow-sm"
-                        >
-                          <X className="w-3.5 h-3.5" />
+                {/* conversation cards */}
+                <div className="min-h-0 flex-1 space-y-2 overflow-y-auto px-3 pb-3">
+                  {convs === null ? (
+                    <div className="grid place-items-center py-14"><Loader2 className="h-7 w-7 animate-spin ft-text-accent" /></div>
+                  ) : convsError ? (
+                    <ErrorState error={convsError} onRetry={() => loadConvs()} context="messages-list" />
+                  ) : visibleConvs.length === 0 ? (
+                    <EmptyState
+                      icon={MessageCircle}
+                      title={filter.trim() ? "لا نتائج مطابقة" : "لا محادثات بعد"}
+                      desc={filter.trim() ? "جرّب كلمة أخرى" : "ابدأ أول محادثة مع زميل في النادي"}
+                      action={!filter.trim() && (
+                        <button onClick={openPicker} className="pressable inline-flex min-h-[44px] items-center gap-1.5 rounded-full ft-btn-primary px-5 text-xs font-bold text-white shadow-md">
+                          <PenSquare className="h-4 w-4" /> رسالة جديدة
                         </button>
-                      </div>
-                    )}
-                    {replyTo && !editingId && (
-                      <div className="animate-fade-up mb-2.5 flex items-center gap-2.5 rounded-2xl bg-slate-50 border border-slate-200/80 border-s-[3px] ft-border-accent px-3.5 py-2.5">
-                        <Reply className="w-4 h-4 ft-text-accent shrink-0 -scale-x-100" />
-                        <span className="flex-1 min-w-0">
-                          <span className="block text-[11px] font-bold ft-text-accent">ردّ على {replyTo.name}</span>
-                          <span className="block text-[11px] text-slate-400 truncate">{replyTo.text}</span>
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => setReplyTo(null)}
-                          aria-label="إلغاء الرد"
-                          className="pressable w-7 h-7 grid place-items-center rounded-full bg-white text-slate-400 hover:text-slate-600 shadow-sm shrink-0"
-                        >
-                          <X className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    )}
-                    <div className="relative flex items-end gap-2.5">
-                      {/* emoji popover */}
-                      {emojiOpen && (
-                        <div className="absolute bottom-[calc(100%+10px)] start-0 z-40 animate-scale-in w-[290px] max-w-[86vw] rounded-3xl bg-white border border-slate-200 shadow-2xl p-3">
-                          <span className="absolute inset-x-0 top-0 h-1 ft-grad-bar rounded-t-3xl" />
-                          <div className="grid grid-cols-8 gap-0.5 pt-1">
-                            {EMOJIS.map((e) => (
-                              <button
-                                key={e}
-                                type="button"
-                                onClick={() => insertEmoji(e)}
-                                className="pressable w-8 h-8 grid place-items-center rounded-xl text-lg hover:bg-slate-100 hover:scale-110 transition"
-                                aria-label={`إدراج ${e}`}
-                              >
-                                {e}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
                       )}
+                    />
+                  ) : visibleConvs.map((c, i) => {
+                    const o = c.other || {};
+                    const isActive = o.id === activeId;
+                    const lastMine = !!(c.last_from_me ?? c.last_mine ?? c.last_by_me);
+                    const showSeen = lastMine && typeof c.last_seen === "boolean";
+                    return (
                       <button
-                        type="button"
-                        onClick={() => setEmojiOpen((v) => !v)}
-                        aria-label="إيموجي"
-                        className={`pressable shrink-0 w-12 h-12 grid place-items-center rounded-2xl border transition ${emojiOpen ? "ft-bg-soft ft-border-accent ft-text-accent" : "border-slate-200 bg-slate-50 text-slate-400 hover:text-amber-500 hover:bg-amber-50"}`}
+                        key={c.id || o.id}
+                        onClick={() => { setBlocked(false); openConversation(o.id, o); }}
+                        style={{
+                          animationDelay: `${Math.min(i, 8) * 50}ms`,
+                          ...(isActive ? {
+                            boxShadow:
+                              "inset 0 0 0 2px color-mix(in srgb, var(--ft-accent, #10b981) 55%, white)," +
+                              "0 16px 34px -16px color-mix(in srgb, var(--ft-accent, #10b981) 60%, transparent)",
+                          } : undefined),
+                        }}
+                        className={`flex w-full animate-fade-up items-center gap-3 rounded-3xl p-3 text-start ring-1 backdrop-blur transition duration-300 hover:-translate-y-0.5 hover:bg-white/85 hover:shadow-[0_14px_30px_-12px_rgba(15,23,42,0.25)] ${isActive
+                          ? "bg-white/85 ring-white/80"
+                          : "bg-white/55 shadow-[0_6px_20px_-10px_rgba(15,23,42,0.18)] ring-white/70"}`}
                       >
-                        <Smile className="w-5 h-5" />
+                        <Avatar person={o} />
+                        <span className="min-w-0 flex-1">
+                          <span className="flex items-center justify-between gap-2">
+                            <span className="truncate font-head text-[15px] font-bold text-slate-800">{o.name || "مستخدم"}</span>
+                            {c.last_at && <span className="shrink-0 text-[10px] text-slate-400">{timeAgo(c.last_at)}</span>}
+                          </span>
+                          <span className="mt-0.5 flex items-center justify-between gap-2">
+                            {c.other_typing ? (
+                              <span className="inline-flex items-center gap-1.5 text-xs font-bold ft-text-accent">
+                                يكتب الآن <TypingDots />
+                              </span>
+                            ) : (
+                              <span className={`flex items-center gap-1 truncate text-xs ${c.unread > 0 ? "font-bold text-slate-700" : "text-slate-400"}`}>
+                                {showSeen && (c.last_seen
+                                  ? <CheckCheck className="h-3.5 w-3.5 shrink-0 ft-text-accent" />
+                                  : <Check className="h-3.5 w-3.5 shrink-0 text-slate-300" />)}
+                                <span className="truncate">{lastMine && c.last_message ? `أنت: ${c.last_message}` : c.last_message || "ابدأ المحادثة"}</span>
+                              </span>
+                            )}
+                            {c.unread > 0 && (
+                              <span
+                                className="grid h-[22px] min-w-[22px] shrink-0 place-items-center rounded-full px-1 text-[11px] font-bold text-white ft-btn-primary"
+                                style={{ boxShadow: "0 6px 16px -4px color-mix(in srgb, var(--ft-accent, #10b981) 65%, transparent)" }}
+                              >
+                                {c.unread}
+                              </span>
+                            )}
+                          </span>
+                        </span>
                       </button>
-                      <textarea
-                        ref={textareaRef}
-                        value={text}
-                        onChange={onComposerChange}
-                        onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
-                        rows={1}
-                        maxLength={2000}
-                        placeholder={editingId ? "عدّل رسالتك…" : "اكتب رسالتك…"}
-                        className="flex-1 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-relaxed outline-none focus:ring-2 ft-ring-accent focus:bg-white transition resize-none max-h-36"
+                    );
+                  })}
+                </div>
+              </aside>
+
+              {/* ── thread panel ── */}
+              <section
+                className={`min-h-0 flex-col overflow-hidden rounded-[28px] bg-white/70 shadow-[0_24px_60px_-24px_rgba(15,23,42,0.38)] ring-1 ring-white/60 backdrop-blur-xl ${activeId
+                  ? "msg-slide-layer absolute inset-0 z-20 flex lg:relative lg:inset-auto lg:z-auto"
+                  : "hidden animate-fade-up d-1 lg:relative lg:flex"}`}
+              >
+                {!activeId ? (
+                  <div className="grid flex-1 place-items-center p-6">
+                    <EmptyState icon={MessageCircle} title="اختر محادثة" desc="اختر محادثة من القائمة أو ابدأ رسالة جديدة" />
+                  </div>
+                ) : (
+                  <>
+                    {/* cover header */}
+                    <div className="relative shrink-0">
+                      <div
+                        className="h-[84px] sm:h-[94px]"
+                        style={{
+                          backgroundImage: `radial-gradient(rgba(255,255,255,.22) 1.2px, transparent 1.4px), ${cover}`,
+                          backgroundSize: "16px 16px, cover",
+                        }}
                       />
                       <button
-                        onClick={send}
-                        disabled={sending || !text.trim()}
-                        aria-label={editingId ? "حفظ التعديل" : "إرسال"}
-                        className="pressable shrink-0 w-12 h-12 grid place-items-center rounded-2xl ft-btn-primary text-white shadow-lg disabled:opacity-50"
+                        onClick={() => setActiveId(null)}
+                        aria-label="رجوع إلى المحادثات"
+                        className="pressable absolute start-3 top-3 z-20 grid h-10 w-10 place-items-center rounded-full bg-white/25 text-white ring-1 ring-white/40 backdrop-blur transition hover:bg-white/40 lg:hidden"
                       >
-                        {sending ? <Loader2 className="w-5 h-5 animate-spin" /> : editingId ? <Check className="w-5 h-5" /> : <Send className="w-5 h-5 -scale-x-100" />}
+                        <ArrowRight className="h-5 w-5" />
                       </button>
+                      <div className="absolute end-3 top-3 z-30">
+                        <button
+                          onClick={() => setHeaderMenu((v) => !v)}
+                          aria-label="خيارات المحادثة"
+                          className="pressable grid h-10 w-10 place-items-center rounded-full bg-white/25 text-white ring-1 ring-white/40 backdrop-blur transition hover:bg-white/40"
+                        >
+                          <MoreVertical className="h-5 w-5" />
+                        </button>
+                        {headerMenu && (
+                          <div className="absolute end-0 top-12 z-40 w-48 animate-scale-in overflow-hidden rounded-2xl bg-white/95 py-1 shadow-[0_16px_36px_-12px_rgba(15,23,42,0.4)] ring-1 ring-white/60 backdrop-blur-xl">
+                            <Link
+                              to={`/profile/${activeId}`}
+                              onClick={() => setHeaderMenu(false)}
+                              className="flex w-full items-center gap-2 px-3.5 py-2.5 text-start text-[13px] font-semibold text-slate-600 transition hover:bg-slate-50"
+                            >
+                              <MessageCircle className="h-4 w-4" /> عرض الملف الشخصي
+                            </Link>
+                            <button
+                              type="button"
+                              onClick={() => { setHeaderMenu(false); setConfirmBlock(true); }}
+                              className={`flex w-full items-center gap-2 px-3.5 py-2.5 text-start text-[13px] font-semibold transition ${blocked ? "text-slate-600 hover:bg-slate-50" : "text-rose-500 hover:bg-rose-50"}`}
+                            >
+                              <Ban className="h-4 w-4" /> {blocked ? "إلغاء الحظر" : "حظر هذا المستخدم"}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                      <div className="relative z-10 -mt-9 flex items-end gap-3 px-4 pb-3">
+                        <span className="shrink-0 rounded-full shadow-[0_12px_26px_-10px_rgba(15,23,42,0.55)]">
+                          <Avatar person={activeOther} size="w-16 h-16" text="text-xl" />
+                        </span>
+                        <div className="min-w-0 flex-1 pb-0.5">
+                          {activeOther?.name
+                            ? <Link to={`/profile/${activeId}`} className="ft-hover-text-accent block truncate font-head text-base font-bold text-slate-800 transition-colors">{activeOther.name}</Link>
+                            : <span className="block font-head text-base font-bold text-slate-400">جارٍ التحميل…</span>}
+                          {otherTyping ? (
+                            <span className="flex items-center gap-1.5 text-[11px] font-bold ft-text-accent">
+                              يكتب الآن <TypingDots />
+                            </span>
+                          ) : blocked ? (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-rose-400">
+                              <Ban className="h-3 w-3" /> محظور
+                            </span>
+                          ) : (
+                            <span className="text-[11px] text-slate-400">محادثة خاصة</span>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
-              </>
-            )}
-          </section>
-        </div>
+
+                    {/* message canvas */}
+                    <div
+                      ref={scrollRef}
+                      onScroll={onScroll}
+                      className="relative min-h-0 flex-1 overflow-y-auto px-3 py-4 sm:px-4"
+                      style={{
+                        backgroundImage:
+                          "radial-gradient(circle, rgba(15,23,42,0.05) 1px, transparent 1.2px)," +
+                          "radial-gradient(420px 220px at 0% 0%, color-mix(in srgb, var(--ft-accent, #10b981) 7%, transparent), transparent 70%)," +
+                          "radial-gradient(420px 220px at 100% 100%, color-mix(in srgb, var(--ft-grad-b, #065f46) 6%, transparent), transparent 70%)",
+                        backgroundSize: "22px 22px, 100% 100%, 100% 100%",
+                      }}
+                    >
+                      {overlayOpen && (
+                        <div
+                          className="fixed inset-0 z-10"
+                          onClick={() => { setMenuFor(null); setReactFor(null); setHeaderMenu(false); }}
+                        />
+                      )}
+                      {msgs === null ? (
+                        <div className="relative z-0 grid place-items-center py-14"><Loader2 className="h-7 w-7 animate-spin ft-text-accent" /></div>
+                      ) : threadError ? (
+                        <ErrorState error={threadError} onRetry={() => openConversation(activeId, activeOther)} context="messages-thread" />
+                      ) : msgs.length === 0 ? (
+                        <EmptyState icon={MessageCircle} title="لا رسائل بعد" desc="أرسل أول رسالة وابدأ المحادثة" />
+                      ) : (
+                        <div className="relative z-20 mx-auto w-full max-w-3xl pb-1">
+                          {renderItems.map((item) => (item.sep ? (
+                            <div key={item.key} className="my-4 flex justify-center">
+                              <span className="rounded-full bg-white/70 px-3.5 py-1 text-[11px] font-bold text-slate-500 shadow-sm ring-1 ring-white/70 backdrop-blur">
+                                {item.label}
+                              </span>
+                            </div>
+                          ) : (
+                            <div key={item.key} className="group">
+                              {renderBubble(item.m, item.firstInGroup, item.lastInGroup)}
+                            </div>
+                          )))}
+                          {otherTyping && (
+                            <div className="mt-3.5 flex items-end gap-2">
+                              <span className="shrink-0 rounded-full shadow-md">
+                                <Avatar person={activeOther} size="w-8 h-8" text="text-[11px]" />
+                              </span>
+                              <div className="animate-fade-up rounded-[20px] rounded-es-md bg-white/90 px-4 py-3 shadow-[0_10px_24px_-12px_rgba(15,23,42,0.28)] ring-1 ring-white backdrop-blur">
+                                <TypingDots />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* floating composer dock */}
+                    <div className="relative z-20 shrink-0 px-3 pb-[max(0.8rem,env(safe-area-inset-bottom))] pt-1 sm:px-4">
+                      <div className="relative mx-auto w-full max-w-3xl rounded-[26px] bg-white/80 p-2 shadow-[0_18px_44px_-16px_rgba(15,23,42,0.4)] ring-1 ring-white/70 backdrop-blur-xl">
+                        {emojiOpen && (
+                          <div className="absolute bottom-[calc(100%+10px)] start-0 z-40 w-[290px] max-w-[86vw] animate-scale-in rounded-3xl bg-white/95 p-3 shadow-2xl ring-1 ring-white/60 backdrop-blur-xl">
+                            <span className="absolute inset-x-0 top-0 h-1 rounded-t-3xl ft-grad-bar" />
+                            <div className="grid grid-cols-8 gap-0.5 pt-1">
+                              {EMOJIS.map((e) => (
+                                <button
+                                  key={e}
+                                  type="button"
+                                  onClick={() => insertEmoji(e)}
+                                  className="pressable grid h-8 w-8 place-items-center rounded-xl text-lg transition hover:scale-110 hover:bg-slate-100"
+                                  aria-label={`إدراج ${e}`}
+                                >
+                                  {e}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {editingId && (
+                          <div className="ft-border-accent ft-bg-soft mb-2 flex animate-fade-up items-center gap-2.5 rounded-2xl border px-3.5 py-2.5">
+                            <Pencil className="h-4 w-4 shrink-0 ft-text-accent" />
+                            <span className="flex-1 text-xs font-bold ft-text-accent">تعديل الرسالة</span>
+                            <button
+                              type="button"
+                              onClick={() => { setEditingId(null); setText(""); }}
+                              aria-label="إلغاء التعديل"
+                              className="pressable grid h-7 w-7 place-items-center rounded-full bg-white text-slate-400 shadow-sm hover:text-slate-600"
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        )}
+                        {replyTo && !editingId && (
+                          <div className="ft-border-accent mb-2 flex animate-fade-up items-center gap-2.5 rounded-2xl border border-slate-200/80 border-s-[3px] bg-slate-50/80 px-3.5 py-2.5">
+                            <Reply className="h-4 w-4 shrink-0 -scale-x-100 ft-text-accent" />
+                            <span className="min-w-0 flex-1">
+                              <span className="block text-[11px] font-bold ft-text-accent">ردّ على {replyTo.name}</span>
+                              <span className="block truncate text-[11px] text-slate-400">{replyTo.text}</span>
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setReplyTo(null)}
+                              aria-label="إلغاء الرد"
+                              className="pressable grid h-7 w-7 shrink-0 place-items-center rounded-full bg-white text-slate-400 shadow-sm hover:text-slate-600"
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        )}
+
+                        <div className="flex items-end gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setEmojiOpen((v) => !v)}
+                            aria-label="إيموجي"
+                            className={`pressable grid h-11 w-11 shrink-0 place-items-center rounded-full transition ${emojiOpen ? "ft-bg-soft ft-text-accent" : "text-slate-400 hover:bg-amber-50 hover:text-amber-500"}`}
+                          >
+                            <Smile className="h-5 w-5" />
+                          </button>
+                          <textarea
+                            ref={textareaRef}
+                            value={text}
+                            onChange={onComposerChange}
+                            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
+                            rows={1}
+                            maxLength={2000}
+                            placeholder={editingId ? "عدّل رسالتك…" : "اكتب رسالتك…"}
+                            className="max-h-36 flex-1 resize-none border-0 bg-transparent px-2 py-2.5 text-sm leading-relaxed outline-none placeholder:text-slate-400 focus:ring-0"
+                          />
+                          <button
+                            onClick={send}
+                            disabled={sending || !text.trim()}
+                            aria-label={editingId ? "حفظ التعديل" : "إرسال"}
+                            className="pressable grid h-11 w-11 shrink-0 place-items-center rounded-full ft-btn-primary text-white shadow-lg transition hover:scale-105 disabled:opacity-50 disabled:hover:scale-100"
+                            style={{ boxShadow: "0 10px 24px -8px color-mix(in srgb, var(--ft-accent, #10b981) 70%, transparent)" }}
+                          >
+                            {sending ? <Loader2 className="h-5 w-5 animate-spin" /> : editingId ? <Check className="h-5 w-5" /> : <Send className="h-5 w-5 -scale-x-100" />}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </section>
+            </div>
+          </div>
+        </section>
       </div>
 
       {/* click-away for composer popovers */}
@@ -912,39 +1100,39 @@ export default function Messages() {
         <div className="fixed inset-0 z-10" onClick={() => setEmojiOpen(false)} />
       )}
 
-      {/* delete confirmation · styled dialog */}
+      {/* delete confirmation · styled glass dialog */}
       {confirmDelete && (
-        <div className="fixed inset-0 z-50 grid place-items-center p-4 bg-slate-900/50 backdrop-blur-sm" onClick={() => setConfirmDelete(null)}>
-          <div className="relative bg-white rounded-3xl w-full max-w-sm overflow-hidden animate-scale-in ft-shadow-lg p-6 text-center" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 grid place-items-center bg-slate-900/50 p-4 backdrop-blur-sm" onClick={() => setConfirmDelete(null)}>
+          <div className="relative w-full max-w-sm animate-scale-in overflow-hidden rounded-[26px] bg-white/90 p-6 text-center shadow-[0_24px_60px_-24px_rgba(15,23,42,0.45)] ring-1 ring-white/60 backdrop-blur-xl" onClick={(e) => e.stopPropagation()}>
             <span className="absolute inset-x-0 top-0 h-1 bg-gradient-to-l from-rose-400 to-rose-600" />
-            <div className="w-14 h-14 mx-auto rounded-2xl bg-rose-50 text-rose-500 grid place-items-center">
-              <Trash2 className="w-7 h-7" />
+            <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-rose-50 text-rose-500">
+              <Trash2 className="h-7 w-7" />
             </div>
-            <h3 className="font-head font-extrabold text-slate-800 mt-4">حذف هذه الرسالة؟</h3>
-            <p className="text-sm text-slate-400 mt-1.5 leading-relaxed">ستختفي الرسالة من المحادثة عند الطرفين ولن يمكن التراجع.</p>
-            <div className="flex gap-2.5 mt-6">
-              <button onClick={() => setConfirmDelete(null)} className="pressable flex-1 min-h-[44px] rounded-full bg-slate-100 text-sm font-bold text-slate-600 hover:bg-slate-200 transition">إلغاء</button>
-              <button onClick={doDelete} className="pressable flex-1 min-h-[44px] rounded-full bg-rose-500 text-sm font-bold text-white shadow-lg hover:bg-rose-600 transition">حذف</button>
+            <h3 className="mt-4 font-head font-extrabold text-slate-800">حذف هذه الرسالة؟</h3>
+            <p className="mt-1.5 text-sm leading-relaxed text-slate-400">ستختفي الرسالة من المحادثة عند الطرفين ولن يمكن التراجع.</p>
+            <div className="mt-6 flex gap-2.5">
+              <button onClick={() => setConfirmDelete(null)} className="pressable min-h-[44px] flex-1 rounded-full bg-slate-100 text-sm font-bold text-slate-600 transition hover:bg-slate-200">إلغاء</button>
+              <button onClick={doDelete} className="pressable min-h-[44px] flex-1 rounded-full bg-rose-500 text-sm font-bold text-white shadow-lg transition hover:bg-rose-600">حذف</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* block confirmation · styled dialog */}
+      {/* block confirmation · styled glass dialog */}
       {confirmBlock && (
-        <div className="fixed inset-0 z-50 grid place-items-center p-4 bg-slate-900/50 backdrop-blur-sm" onClick={() => setConfirmBlock(false)}>
-          <div className="relative bg-white rounded-3xl w-full max-w-sm overflow-hidden animate-scale-in ft-shadow-lg p-6 text-center" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 grid place-items-center bg-slate-900/50 p-4 backdrop-blur-sm" onClick={() => setConfirmBlock(false)}>
+          <div className="relative w-full max-w-sm animate-scale-in overflow-hidden rounded-[26px] bg-white/90 p-6 text-center shadow-[0_24px_60px_-24px_rgba(15,23,42,0.45)] ring-1 ring-white/60 backdrop-blur-xl" onClick={(e) => e.stopPropagation()}>
             <span className="absolute inset-x-0 top-0 h-1 bg-gradient-to-l from-rose-400 to-rose-600" />
-            <div className="w-14 h-14 mx-auto rounded-2xl bg-rose-50 text-rose-500 grid place-items-center">
-              <Ban className="w-7 h-7" />
+            <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-rose-50 text-rose-500">
+              <Ban className="h-7 w-7" />
             </div>
-            <h3 className="font-head font-extrabold text-slate-800 mt-4">{blocked ? "إلغاء حظر هذا المستخدم؟" : "حظر هذا المستخدم؟"}</h3>
-            <p className="text-sm text-slate-400 mt-1.5 leading-relaxed">
+            <h3 className="mt-4 font-head font-extrabold text-slate-800">{blocked ? "إلغاء حظر هذا المستخدم؟" : "حظر هذا المستخدم؟"}</h3>
+            <p className="mt-1.5 text-sm leading-relaxed text-slate-400">
               {blocked ? "ستعود قادراً على تبادل الرسائل معه." : "لن تتمكنا من تبادل الرسائل بعد الآن حتى تلغي الحظر."}
             </p>
-            <div className="flex gap-2.5 mt-6">
-              <button onClick={() => setConfirmBlock(false)} className="pressable flex-1 min-h-[44px] rounded-full bg-slate-100 text-sm font-bold text-slate-600 hover:bg-slate-200 transition">إلغاء</button>
-              <button onClick={doBlock} className={`pressable flex-1 min-h-[44px] rounded-full text-sm font-bold text-white shadow-lg transition ${blocked ? "ft-btn-primary" : "bg-rose-500 hover:bg-rose-600"}`}>
+            <div className="mt-6 flex gap-2.5">
+              <button onClick={() => setConfirmBlock(false)} className="pressable min-h-[44px] flex-1 rounded-full bg-slate-100 text-sm font-bold text-slate-600 transition hover:bg-slate-200">إلغاء</button>
+              <button onClick={doBlock} className={`pressable min-h-[44px] flex-1 rounded-full text-sm font-bold text-white shadow-lg transition ${blocked ? "ft-btn-primary" : "bg-rose-500 hover:bg-rose-600"}`}>
                 {blocked ? "إلغاء الحظر" : "حظر"}
               </button>
             </div>
@@ -952,43 +1140,43 @@ export default function Messages() {
         </div>
       )}
 
-      {/* new message picker */}
+      {/* new message picker · glass */}
       {pickerOpen && (
-        <div className="fixed inset-0 z-50 grid place-items-center p-4 bg-slate-900/50 backdrop-blur-sm" onClick={() => setPickerOpen(false)}>
-          <div className="relative bg-white rounded-3xl w-full max-w-md max-h-[75vh] overflow-hidden flex flex-col animate-scale-in ft-shadow-lg" onClick={(e) => e.stopPropagation()}>
-            <span className="absolute inset-x-0 top-0 h-1 ft-grad-bar z-10" />
-            <div className="flex items-center justify-between p-4 border-b border-slate-100">
-              <h3 className="font-head font-bold flex items-center gap-2"><PenSquare className="w-5 h-5 ft-text-accent" /> رسالة جديدة</h3>
-              <button onClick={() => setPickerOpen(false)} aria-label="إغلاق" className="w-11 h-11 grid place-items-center rounded-full hover:bg-slate-100"><X className="w-4 h-4" /></button>
+        <div className="fixed inset-0 z-50 grid place-items-center bg-slate-900/50 p-4 backdrop-blur-sm" onClick={() => setPickerOpen(false)}>
+          <div className="relative flex max-h-[75vh] w-full max-w-md animate-scale-in flex-col overflow-hidden rounded-[26px] bg-white/90 shadow-[0_24px_60px_-24px_rgba(15,23,42,0.45)] ring-1 ring-white/60 backdrop-blur-xl" onClick={(e) => e.stopPropagation()}>
+            <span className="absolute inset-x-0 top-0 z-10 h-1 ft-grad-bar" />
+            <div className="flex items-center justify-between border-b border-slate-100 p-4">
+              <h3 className="flex items-center gap-2 font-head font-bold"><PenSquare className="h-5 w-5 ft-text-accent" /> رسالة جديدة</h3>
+              <button onClick={() => setPickerOpen(false)} aria-label="إغلاق" className="grid h-11 w-11 place-items-center rounded-full hover:bg-slate-100"><X className="h-4 w-4" /></button>
             </div>
             <div className="p-3.5 pb-2">
               <div className="relative">
-                <Search className="w-4 h-4 text-slate-300 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <Search className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                 <input
                   autoFocus
                   value={pickerQuery}
                   onChange={(e) => setPickerQuery(e.target.value)}
                   placeholder="ابحث باسم زميل…"
-                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 ps-4 pe-10 py-2.5 text-sm outline-none focus:ring-2 ft-ring-accent focus:bg-white transition"
+                  className="w-full rounded-full border border-white/70 bg-white/60 py-2.5 pe-10 ps-4 text-sm shadow-inner outline-none backdrop-blur transition focus:bg-white/90 focus:ring-2 ft-ring-accent"
                 />
               </div>
-              {pickerQuery.trim().length < 2 && <p className="text-[11px] text-slate-300 mt-2">اكتب حرفين على الأقل للبحث · أو اختر من المتصدرين</p>}
+              {pickerQuery.trim().length < 2 && <p className="mt-2 text-[11px] text-slate-400">اكتب حرفين على الأقل للبحث · أو اختر من المتصدرين</p>}
             </div>
-            <div className="overflow-y-auto p-3 pt-1 space-y-1 min-h-[120px]">
+            <div className="min-h-[120px] space-y-1 overflow-y-auto p-3 pt-1">
               {pickerLoading ? (
-                <div className="grid place-items-center py-10"><Loader2 className="w-6 h-6 animate-spin ft-text-accent" /></div>
+                <div className="grid place-items-center py-10"><Loader2 className="h-6 w-6 animate-spin ft-text-accent" /></div>
               ) : pickerList.length === 0 ? (
-                <p className="text-sm text-slate-400 text-center py-8">{pickerResults ? "لا نتائج مطابقة" : "لا أسماء متاحة حالياً"}</p>
+                <p className="py-8 text-center text-sm text-slate-400">{pickerResults ? "لا نتائج مطابقة" : "لا أسماء متاحة حالياً"}</p>
               ) : pickerList.map((p) => (
-                <button key={p.id} onClick={() => startChat(p)} className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-slate-50 text-start transition">
+                <button key={p.id} onClick={() => startChat(p)} className="flex w-full items-center gap-3 rounded-2xl p-2.5 text-start transition hover:bg-white/80">
                   <Avatar person={p} size="w-10 h-10" text="text-sm" />
-                  <span className="flex-1 min-w-0">
-                    <span className="font-semibold text-sm text-slate-800 truncate block">{p.name}</span>
-                    <span className="text-[11px] text-slate-400 block truncate">
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-semibold text-slate-800">{p.name}</span>
+                    <span className="block truncate text-[11px] text-slate-400">
                       {p.school_name || (p.level ? `المستوى ${p.level}` : "")}{p.xp != null ? ` · ${p.xp} XP` : ""}
                     </span>
                   </span>
-                  <MessageCircle className="w-4 h-4 text-slate-300 shrink-0" />
+                  <MessageCircle className="h-4 w-4 shrink-0 text-slate-300" />
                 </button>
               ))}
             </div>
