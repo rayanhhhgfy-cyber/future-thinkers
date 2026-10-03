@@ -10,6 +10,7 @@ import { Flame, Trophy, BookOpen, Crown, Calendar, Zap, Award, TrendingUp, Trend
 import * as Icons from "lucide-react";
 import { FadeUp, Stagger, Item } from "@/components/anim";
 import { WeeklyGoals, ActivityHeatmap, UpcomingDeadlines, DailyChallenge, SavedItems, Suggestions, AchievementsShowcase } from "@/components/dashboard/widgets";
+import { ContinueRail, StarterChecklist, MyActivityTimeline } from "@/components/dashboard/ux";
 import { timeAgo } from "@/components/NotificationsPanel";
 import BookCover from "@/components/BookCover";
 
@@ -219,6 +220,12 @@ export default function Dashboard() {
           <Item><StatCard icon={Crown} label="تصنيف الشطرنج" value={data.chess_rating} color="#0A192F" /></Item>
           <Item><StatCard icon={MessagesSquare} label="مشاركاتك" value={data.posts} color="#059669" /></Item>
         </Stagger>
+
+        {/* continue where you left off + starter checklist */}
+        <div className="order-3 space-y-6 mb-6">
+          <ContinueRail data={data} />
+          <StarterChecklist data={data} />
+        </div>
 
         {/* my week in numbers */}
         <div className="order-4"><WeeklyNumbers /></div>
@@ -502,6 +509,7 @@ export default function Dashboard() {
               </Link>
             </section>
             </FadeUp>
+            <MyActivityTimeline />
           </div>
         </div>
 

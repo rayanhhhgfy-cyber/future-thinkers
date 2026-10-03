@@ -6,8 +6,9 @@ import api, { apiErr } from "@/lib/api";
 import { toast } from "sonner";
 import {
   KeyRound, Eye, EyeOff, Settings as SettingsIcon, BellRing, User, Target, Shield,
-  Download, Palette, Sparkles, AlertTriangle, BookOpen, Crown, Rocket, Heart, Award, Check,
+  Download, Palette, Sparkles, AlertTriangle, BookOpen, Crown, Rocket, Heart, Award, Check, Type, RotateCcw,
 } from "lucide-react";
+import { FONT_SCALE_STEPS, getFontScale, applyFontScale } from "@/lib/fontscale";
 import { isPushSupported, pushPermission, enablePush, disablePush, backendPushEnabled } from "@/lib/push";
 import { COVERS, coverCls, FRAME_RING } from "@/lib/cosmetics";
 
@@ -61,6 +62,7 @@ export default function Settings() {
   const [pushOn, setPushOn] = useState(null);
   const [pushBusy, setPushBusy] = useState(false);
   const [confirmDeactivate, setConfirmDeactivate] = useState(false);
+  const [fontScale, setFontScale] = useState(() => getFontScale());
   const pushSupported = isPushSupported();
   const pushDenied = pushSupported && pushPermission() === "denied";
 
@@ -103,6 +105,11 @@ export default function Settings() {
       else toast.error("فشل اختبار الدفع · تأكد من تفعيل الإشعارات");
     } catch (e) { toast.error(apiErr(e, "تعذّر اختبار الدفع")); }
     setPushBusy(false);
+  };
+
+  const pickFontScale = (key) => {
+    setFontScale(applyFontScale(key));
+    toast.success("تم تطبيق حجم الخط على المنصة ✓");
   };
 
   const exportData = async () => {
@@ -169,6 +176,7 @@ export default function Settings() {
               <a href="#settings-profile" className="flex items-center gap-2.5 min-h-[44px] px-3 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"><User className="w-4 h-4 text-slate-400" />الملف الشخصي</a>
               <a href="#settings-appearance" className="flex items-center gap-2.5 min-h-[44px] px-3 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"><Palette className="w-4 h-4 text-slate-400" />غلاف الملف والإطارات</a>
               <a href="#settings-goal" className="flex items-center gap-2.5 min-h-[44px] px-3 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"><Target className="w-4 h-4 text-slate-400" />هدف القراءة اليومي</a>
+              <a href="#settings-display" className="flex items-center gap-2.5 min-h-[44px] px-3 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"><Type className="w-4 h-4 text-slate-400" />حجم الخط</a>
               <a href="#settings-notifications" className="flex items-center gap-2.5 min-h-[44px] px-3 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"><BellRing className="w-4 h-4 text-slate-400" />الإشعارات</a>
               <a href="#settings-privacy" className="flex items-center gap-2.5 min-h-[44px] px-3 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"><Shield className="w-4 h-4 text-slate-400" />الخصوصية</a>
               <a href="#settings-data" className="flex items-center gap-2.5 min-h-[44px] px-3 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"><Download className="w-4 h-4 text-slate-400" />بياناتي</a>
@@ -244,6 +252,37 @@ export default function Settings() {
             {[10, 20, 30, 50, 100].map((n) => (
               <button key={n} onClick={() => setGoal(n)} className={`px-3 py-1.5 min-h-[40px] lg:px-4 rounded-full text-xs lg:text-sm font-bold ${goal === n ? "ft-btn-solid" : "bg-slate-100 text-slate-600 ft-hover-bg-soft"}`}>{n}</button>
             ))}
+          </div>
+        </Card>
+        </div>
+
+        {/* font size */}
+        <div id="settings-display" className="scroll-mt-24 lg:scroll-mt-28">
+        <Card icon={Type} color="#DB2777" title="حجم الخط" desc="كبّر أو صغّر نصوص المنصة كلها لتصبح القراءة أريح لعينيك · يُطبّق فوراً ويُحفظ على هذا الجهاز.">
+          <div className="grid grid-cols-4 gap-2 mb-4" role="radiogroup" aria-label="حجم الخط">
+            {FONT_SCALE_STEPS.map((s) => (
+              <button key={s.key} type="button" role="radio" aria-checked={fontScale === s.key} onClick={() => pickFontScale(s.key)}
+                className={`relative flex flex-col items-center justify-center gap-1 min-h-[76px] rounded-2xl border transition-all ${fontScale === s.key ? "border-pink-400 bg-pink-50 ring-2 ring-pink-200" : "border-slate-200 bg-slate-50/60 hover:bg-slate-100"}`}>
+                <span className={`font-head font-extrabold text-slate-800 leading-none ${s.glyphCls}`}>{s.glyph}</span>
+                <span className="text-[11px] font-bold text-slate-500">{s.label}</span>
+                {fontScale === s.key && <Check className="w-3.5 h-3.5 text-pink-600 absolute top-2 left-2" />}
+              </button>
+            ))}
+          </div>
+          <div className="rounded-2xl bg-slate-50 ring-1 ring-slate-100 px-4 py-3.5 mb-4">
+            <div className="font-head font-bold text-slate-800">هكذا تبدو نصوص المنصة</div>
+            <p className="text-sm text-slate-500 leading-relaxed">القراءة اليومية تصنع عقلاً أقوى · جرّب الأحجام واختر ما يريح عينك أثناء تصفّح الكتب والمشاريع.</p>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <button onClick={() => pickFontScale(FONT_SCALE_STEPS[Math.max(0, FONT_SCALE_STEPS.findIndex((s) => s.key === fontScale) - 1)].key)}
+              className="pressable inline-flex items-center gap-1.5 px-4 py-2 min-h-[44px] rounded-xl bg-slate-100 text-slate-700 text-sm font-extrabold hover:bg-slate-200">A− تصغير</button>
+            <button onClick={() => pickFontScale(FONT_SCALE_STEPS[Math.min(FONT_SCALE_STEPS.length - 1, FONT_SCALE_STEPS.findIndex((s) => s.key === fontScale) + 1)].key)}
+              className="pressable inline-flex items-center gap-1.5 px-4 py-2 min-h-[44px] rounded-xl bg-slate-100 text-slate-700 text-sm font-extrabold hover:bg-slate-200">A+ تكبير</button>
+            {fontScale !== "m" && (
+              <button onClick={() => pickFontScale("m")} className="pressable inline-flex items-center gap-1.5 px-4 py-2 min-h-[44px] rounded-xl text-pink-700 text-sm font-bold hover:bg-pink-50">
+                <RotateCcw className="w-4 h-4" /> إعادة تعيين
+              </button>
+            )}
           </div>
         </Card>
         </div>

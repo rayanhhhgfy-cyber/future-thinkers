@@ -226,6 +226,11 @@ html[data-radius="round"] .rounded-\[2rem\] { border-radius: 2.5rem; }
 /* Density (Tailwind spacing/type are rem-based, so the root size scales the UI) */
 html[data-density="compact"] { font-size: 15px; }
 html[data-density="spacious"] { font-size: 17px; }
+/* Personal font scale (user setting in Settings · after density so a personal
+   choice wins when set; unset = the theme density/default rules above apply) */
+html[data-fontscale="s"] { font-size: 14px; }
+html[data-fontscale="l"] { font-size: 18px; }
+html[data-fontscale="xl"] { font-size: 20.5px; }
 /* Shadow depth */
 html[data-shadow="soft"] .ft-shadow { box-shadow: 0 2px 12px -6px rgba(15, 23, 42, 0.08); }
 html[data-shadow="soft"] .ft-shadow-lg { box-shadow: 0 10px 28px -12px rgba(15, 23, 42, 0.14); }
