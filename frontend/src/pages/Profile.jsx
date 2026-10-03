@@ -202,6 +202,16 @@ export default function Profile() {
                   {p.is_following ? <><UserCheck className="w-4 h-4" /> تتابعه</> : <><UserPlus className="w-4 h-4" /> متابعة</>}
                 </button>
               )}
+              {!isMine && user && (
+                <div className="flex items-center gap-2">
+                  <Link to={`/messages?to=${id}`} className="pressable inline-flex items-center gap-1.5 px-4 py-2.5 min-h-[44px] rounded-full bg-white text-slate-900 text-sm font-extrabold shadow-lg hover:bg-white/90">
+                    <Icons.MessageCircle className="w-4 h-4" /> مراسلة
+                  </Link>
+                  <Link to={`/portfolio/${id}`} className="pressable inline-flex items-center gap-1.5 px-4 py-2.5 min-h-[44px] rounded-full bg-white/15 backdrop-blur text-sm font-bold hover:bg-white/25">
+                    <Icons.Briefcase className="w-4 h-4" /> ملف الإنجاز
+                  </Link>
+                </div>
+              )}
               {isMine && (
                 <Link to="/settings" className="pressable inline-flex items-center px-5 py-2.5 min-h-[44px] rounded-full bg-white/15 backdrop-blur text-sm font-bold hover:bg-white/25">تعديل ملفي</Link>
               )}

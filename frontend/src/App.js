@@ -48,6 +48,14 @@ const Stats = lazy(() => import("@/pages/Stats"));
 const ChessPuzzle = lazy(() => import("@/pages/ChessPuzzle"));
 const VerifyCertificate = lazy(() => import("@/pages/VerifyCertificate"));
 const CertificatesWall = lazy(() => import("@/pages/CertificatesWall"));
+const Messages = lazy(() => import("@/pages/Messages"));
+const Circles = lazy(() => import("@/pages/Circles"));
+const HelpBoard = lazy(() => import("@/pages/HelpBoard"));
+const QuizLive = lazy(() => import("@/pages/QuizLive"));
+const Portfolio = lazy(() => import("@/pages/Portfolio"));
+const SeasonCup = lazy(() => import("@/pages/SeasonCup"));
+const ClassReport = lazy(() => import("@/pages/ClassReport"));
+const Members = lazy(() => import("@/pages/Members"));
 const BookReviews = lazy(() => import("@/pages/BookReviews"));
 const Admin = lazy(() => import("@/pages/Admin"));
 
@@ -107,6 +115,14 @@ function AnimatedRoutes() {
       <Route path="/chess/puzzle" element={<Protected><ChessPuzzle /></Protected>} />
       <Route path="/verify/:code" element={<VerifyCertificate />} />
       <Route path="/certificates-wall" element={<CertificatesWall />} />
+      <Route path="/messages" element={<Protected><Messages /></Protected>} />
+      <Route path="/circles" element={<Protected><Circles /></Protected>} />
+      <Route path="/help" element={<Protected><HelpBoard /></Protected>} />
+      <Route path="/quiz-live" element={<Protected><QuizLive /></Protected>} />
+      <Route path="/season-cup" element={<SeasonCup />} />
+      <Route path="/class-report" element={<Protected><ClassReport /></Protected>} />
+      <Route path="/members" element={<Members />} />
+      <Route path="/portfolio/:id" element={<Portfolio />} />
       <Route path="/paths" element={<Protected><Paths /></Protected>} />
       <Route path="/community" element={<Protected><Community /></Protected>} />
       <Route path="/calendar" element={<Calendar />} />

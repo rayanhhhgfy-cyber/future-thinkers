@@ -5,6 +5,7 @@ import {
   Bell, Search, Menu, X, LogOut, User, LayoutDashboard, Shield, Settings,
   BookOpen, Sparkles, Users, Calendar, Trophy, Newspaper, Rocket, Crown,
   Gamepad2, Flame, ChevronLeft, ChevronDown, Puzzle, BarChart3, Route as RouteIcon, MessagesSquare, CalendarDays, Target, Timer, Award,
+  Mail, HelpCircle, Zap,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { EASE } from "@/components/anim";
@@ -33,23 +34,31 @@ const DISCOVER_LINKS = [
   { to: "/calendar", label: "التقويم", icon: CalendarDays, tint: "bg-indigo-100 text-indigo-600" },
   { to: "/reading-challenges", label: "تحديات القراءة", icon: Target, tint: "bg-teal-100 text-teal-600" },
   { to: "/focus", label: "غرف التركيز", icon: Timer, tint: "bg-slate-200 text-slate-700" },
+  { to: "/messages", label: "الرسائل", icon: Mail, tint: "bg-cyan-100 text-cyan-600" },
 ];
 
 const PRIMARY_LINKS = DISCOVER_LINKS.slice(0, 6);
 const MORE_GROUPS = [
   { title: "التنافس والنقاط", items: [
     { to: "/leaderboard", label: "المتصدرون", icon: Crown, tint: "bg-yellow-100 text-yellow-600" },
+    { to: "/quiz-live", label: "مسابقات حية", icon: Zap, tint: "bg-orange-100 text-orange-600" },
+    { to: "/season-cup", label: "كأس المدارس", icon: Trophy, tint: "bg-amber-100 text-amber-600" },
     { to: "/points", label: "نقاطي وإنجازاتي", icon: Sparkles, tint: "bg-amber-100 text-amber-600" },
     { to: "/chess/puzzle", label: "لغز اليوم", icon: Puzzle, tint: "bg-orange-100 text-orange-600" },
   ]},
   { title: "التعلم والنمو", items: [
     { to: "/paths", label: "مسارات التعلم", icon: RouteIcon, tint: "bg-emerald-100 text-emerald-700" },
+    { to: "/circles", label: "دوائر الدراسة", icon: Users, tint: "bg-teal-100 text-teal-600" },
+    { to: "/help", label: "أسئلة وأجوبة", icon: HelpCircle, tint: "bg-sky-100 text-sky-600" },
     { to: "/reading-challenges", label: "تحديات القراءة", icon: Target, tint: "bg-teal-100 text-teal-600" },
     { to: "/focus", label: "غرف التركيز", icon: Timer, tint: "bg-slate-200 text-slate-700" },
     { to: "/stats", label: "إحصائياتي", icon: BarChart3, tint: "bg-blue-100 text-blue-600" },
+    { to: "/class-report", label: "تقرير المدرسة", icon: BarChart3, tint: "bg-indigo-100 text-indigo-600" },
   ]},
   { title: "المجتمع", items: [
     { to: "/community", label: "ساحة المجتمع", icon: MessagesSquare, tint: "bg-rose-100 text-rose-600" },
+    { to: "/messages", label: "رسائل خاصة", icon: Mail, tint: "bg-cyan-100 text-cyan-600" },
+    { to: "/members", label: "الأعضاء", icon: Users, tint: "bg-emerald-100 text-emerald-600" },
     { to: "/news", label: "الأخبار", icon: Newspaper, tint: "bg-sky-100 text-sky-600" },
     { to: "/calendar", label: "التقويم", icon: CalendarDays, tint: "bg-indigo-100 text-indigo-600" },
     { to: "/certificates-wall", label: "جدار الشهادات", icon: Award, tint: "bg-amber-100 text-amber-600" },
