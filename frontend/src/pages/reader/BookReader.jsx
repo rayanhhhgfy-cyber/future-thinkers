@@ -23,7 +23,7 @@ function loadPdfjs() {
 }
 
 const ZOOM_STEPS = [0.6, 0.8, 1, 1.25, 1.5, 2, 2.5];
-const RENDER_AHEAD_BEHIND = 3; // pages rendered around the visible one
+const PRELOAD = 1; // neighbor pages kept rendered so page turns are instant
 
 /* Reader backdrop themes · applied to the reader container/pages desk.
    The PDF pages themselves stay white; the theme colors the space around
@@ -102,10 +102,13 @@ const THEME_UI = {
   },
 };
 
-function PageView({ pdf, pageNumber, scale, active, onSize, isCurrent, theme }) {
-  const wrapRef = useRef(null);
+/* One page sheet on the stage. Renders its canvas at the given scale and
+   reports the page's natural size so the parent can compute fit-contain.
+   Neighbor pages stay mounted (hidden) so turning is instant. */
+function StagePage({ pdf, pageNumber, scale, onSize, isCurrent, theme, animateCls }) {
   const canvasRef = useRef(null);
   const [size, setSize] = useState(null); // {w,h} at scale=1
+  const [dim, setDim] = useState(null); // rendered CSS size at `scale`
   const [ready, setReady] = useState(false);
 
   // Learn the page's natural size once (cheap: no rendering yet).
@@ -120,9 +123,9 @@ function PageView({ pdf, pageNumber, scale, active, onSize, isCurrent, theme }) 
     return () => { dead = true; };
   }, [pdf, pageNumber, onSize]);
 
-  // Render to canvas only while the page is near the viewport.
+  // Render to canvas at the stage scale (fit-contain × zoom multiplier).
   useEffect(() => {
-    if (!active || !size) return;
+    if (!scale) return;
     let dead = false;
     let task = null;
     setReady(false);
@@ -136,6 +139,7 @@ function PageView({ pdf, pageNumber, scale, active, onSize, isCurrent, theme }) 
       canvas.height = Math.max(1, Math.floor(viewport.height * dpr));
       canvas.style.width = `${viewport.width}px`;
       canvas.style.height = `${viewport.height}px`;
+      setDim({ w: viewport.width, h: viewport.height });
       const ctx = canvas.getContext("2d", { alpha: false });
       ctx.fillStyle = "#ffffff";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -147,24 +151,22 @@ function PageView({ pdf, pageNumber, scale, active, onSize, isCurrent, theme }) 
       task.promise.then(() => { if (!dead) setReady(true); }).catch(() => {});
     }).catch(() => {});
     return () => { dead = true; if (task) { try { task.cancel(); } catch {} } };
-  }, [pdf, pageNumber, scale, active, size]);
+  }, [pdf, pageNumber, scale]);
 
-  const w = size ? size.w * scale : 600;
-  const h = size ? size.h * scale : 800;
   const ui = THEME_UI[theme] || THEME_UI.night;
+  const w = dim ? dim.w : size ? size.w * (scale || 1) : 600;
+  const h = dim ? dim.h : size ? size.h * (scale || 1) : 800;
 
   return (
     <div
-      ref={wrapRef}
       data-page={pageNumber}
-      className={`relative mx-auto rounded-md lg:rounded-lg overflow-hidden bg-white ${ui.sheet} transition-[opacity,transform] duration-500 ${active ? (ready ? "opacity-100 translate-y-0" : "opacity-70 translate-y-1.5") : ""}`}
-      style={{ width: w, height: h, maxWidth: "100%" }}
+      className={`relative shrink-0 m-auto rounded-md lg:rounded-lg overflow-hidden bg-white ${ui.sheet} ${animateCls || ""}`}
+      style={{ width: w, height: h }}
     >
-      {active ? (
-        <canvas ref={canvasRef} className="block" />
-      ) : (
+      <canvas ref={canvasRef} className="block" />
+      {!ready && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-white text-slate-300">
-          <BookOpen className="w-8 h-8" />
+          <BookOpen className="w-8 h-8 animate-pulse" />
           <span className="text-xs font-medium">صفحة {pageNumber}</span>
         </div>
       )}
@@ -188,9 +190,11 @@ export default function BookReader({ book, pdfUrl, onClose, onProgress, initialP
   const [numPages, setNumPages] = useState(0);
   const [loadPct, setLoadPct] = useState(0);
   const [error, setError] = useState(null);
-  const [zoomIdx, setZoomIdx] = useState(2); // 1x
-  const [fitScale, setFitScale] = useState(1);
+  const [zoomIdx, setZoomIdx] = useState(2); // 1x · multiplier on fit-contain
   const [currentPage, setCurrentPage] = useState(1);
+  const [navDir, setNavDir] = useState(0); // 1 next · -1 prev · drives the sheet transition
+  const [dims, setDims] = useState({}); // natural page sizes {n: {w,h}}
+  const [stageBox, setStageBox] = useState({ w: 0, h: 0 });
   const [barsVisible, setBarsVisible] = useState(true);
   const [markingDone, setMarkingDone] = useState(false);
   const [pageBookmarks, setPageBookmarks] = useState([]);
@@ -205,15 +209,28 @@ export default function BookReader({ book, pdfUrl, onClose, onProgress, initialP
   const [offlineReading, setOfflineReading] = useState(false);
   const [railOpen, setRailOpen] = useState(true);
 
-  const scrollRef = useRef(null);
-  const pageTops = useRef({});
-  const page1Width = useRef(0);
+  const stageRef = useRef(null);
+  const panWrapRef = useRef(null);
+  const resumedRef = useRef(false);
   const hideTimer = useRef(null);
-  const jumpedOnce = useRef(false);
   const progressTimer = useRef(null);
   const pdfRef = useRef(null);
+  const wheelAcc = useRef(0);
+  const wheelLastAt = useRef(0);
+  const wheelLockUntil = useRef(0);
+  const touchStart = useRef(null);
 
-  const scale = fitScale * ZOOM_STEPS[zoomIdx];
+  const zoomStep = ZOOM_STEPS[zoomIdx];
+  const zoomed = zoomStep > 1;
+  // Fit the whole page inside the stage: never clipped, nothing to scroll
+  // at the 1.0 multiplier. Derived live from the stage box + page size.
+  const fitContain = useMemo(() => {
+    const d = dims[currentPage];
+    if (!d || !stageBox.w || !stageBox.h) return null;
+    return Math.max(0.05, Math.min((stageBox.w - 36) / d.w, (stageBox.h - 36) / d.h));
+  }, [dims, currentPage, stageBox]);
+  const effScale = fitContain ? fitContain * zoomStep : null;
+  const scaleUi = effScale || 1;
   const theme = READER_THEMES.find((t) => t.id === themeId) || READER_THEMES[2];
   const desk = theme.desk;
   const ui = THEME_UI[theme.id] || THEME_UI.night;
@@ -231,30 +248,24 @@ export default function BookReader({ book, pdfUrl, onClose, onProgress, initialP
 
   useEffect(() => { pokeBars(); return () => { if (hideTimer.current) clearTimeout(hideTimer.current); }; }, [pokeBars]);
 
-  // Measure the container to compute the fit-to-width scale (from page 1).
-  // The sheet is capped at a comfortable reading width on wide screens so
-  // pages float on the desk instead of stretching edge to edge.
-  const measure = useCallback(() => {
-    const el = scrollRef.current;
-    const w1 = page1Width.current;
-    if (el && w1) setFitScale(Math.max(0.2, (Math.min(el.clientWidth, 952) - 32) / w1));
+  // Measure the stage so fit-contain always matches the real box (window
+  // resizes and rail toggles both flow through the ResizeObserver).
+  useEffect(() => {
+    const el = stageRef.current;
+    if (!el) return;
+    setStageBox({ w: el.clientWidth, h: el.clientHeight });
+    if (typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver((entries) => {
+      const r = entries[0]?.contentRect;
+      if (r) setStageBox({ w: Math.round(r.width), h: Math.round(r.height) });
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
   }, []);
 
-  const handlePageSize = useCallback((n, w) => {
-    if (n === 1 && w && page1Width.current !== w) {
-      page1Width.current = w;
-      measure();
-    }
-  }, [measure]);
-
-  useEffect(() => { measure(); }, [measure, numPages]);
-  useEffect(() => { measure(); }, [measure, railOpen]);
-
-  useEffect(() => {
-    const onResize = () => measure();
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
-  }, [measure]);
+  const handlePageSize = useCallback((n, w, h) => {
+    setDims((prev) => (prev[n] && prev[n].w === w && prev[n].h === h ? prev : { ...prev, [n]: { w, h } }));
+  }, []);
 
   // Load the document (pdf.js itself is fetched from CDN on first open).
   // A locally downloaded copy (IndexedDB) wins over the network so a saved
@@ -297,7 +308,7 @@ export default function BookReader({ book, pdfUrl, onClose, onProgress, initialP
     };
   }, [pdfUrl, signedPdfUrl, offlineBookId]);
 
-  // Lock body scroll while the reader is open (the pages scroll inside).
+  // Lock body scroll while the reader is open.
   useEffect(() => {
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -306,25 +317,51 @@ export default function BookReader({ book, pdfUrl, onClose, onProgress, initialP
     return () => { document.body.style.overflow = prev; window.removeEventListener("keydown", onKey); };
   }, [onClose]);
 
-  // Desktop keyboard: arrows / PageUp / PageDown / Space scroll the desk,
-  // + and - zoom, 0 or F fits the width. Ignored while typing in inputs.
+  // The current page is the single source of truth · every navigation
+  // (dock, slider, wheel, swipe, keyboard, bookmarks) goes through here.
+  const goToPage = useCallback((n) => {
+    const target = numPages ? Math.min(numPages, Math.max(1, n)) : Math.max(1, n);
+    setNavDir(target > currentPage ? 1 : target < currentPage ? -1 : 0);
+    setCurrentPage(target);
+    pokeBars();
+  }, [currentPage, numPages, pokeBars]);
+
+  // Resume once at the saved progress.
+  useEffect(() => {
+    if (!pdf || numPages === 0 || resumedRef.current) return;
+    resumedRef.current = true;
+    if (initialPercent > 2) {
+      setCurrentPage(Math.min(numPages, Math.max(1, Math.round((initialPercent / 100) * numPages))));
+    }
+  }, [pdf, numPages, initialPercent]);
+
+  // Keep the page in range when the document changes.
+  useEffect(() => {
+    if (numPages && currentPage > numPages) setCurrentPage(numPages);
+  }, [numPages, currentPage]);
+
+  // A fresh page starts its pan at the top when zoomed in.
+  useEffect(() => {
+    const w = panWrapRef.current;
+    if (w) { w.scrollTop = 0; w.scrollLeft = 0; }
+  }, [currentPage]);
+
+  // Desktop keyboard: arrows / PageUp / PageDown / Space turn pages,
+  // + and - zoom, 0 or F returns to fit. Ignored while typing in inputs.
   useEffect(() => {
     if (!pdf || error) return;
     const onKey = (e) => {
       const t = e.target;
       if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable)) return;
       if (showNotes) return;
-      const el = scrollRef.current;
-      if (!el) return;
-      const jump = el.clientHeight * 0.85;
-      if (e.key === "ArrowDown" || e.key === "PageDown" || (e.key === " " && !e.shiftKey)) {
+      if (e.key === "ArrowDown" || e.key === "PageDown" || e.key === "ArrowLeft" || (e.key === " " && !e.shiftKey)) {
         if (t && t.tagName === "BUTTON" && e.key === " ") return;
         e.preventDefault();
-        el.scrollBy({ top: jump, behavior: "smooth" });
-      } else if (e.key === "ArrowUp" || e.key === "PageUp" || (e.key === " " && e.shiftKey)) {
+        goToPage(currentPage + 1);
+      } else if (e.key === "ArrowUp" || e.key === "PageUp" || e.key === "ArrowRight" || (e.key === " " && e.shiftKey)) {
         if (t && t.tagName === "BUTTON" && e.key === " ") return;
         e.preventDefault();
-        el.scrollBy({ top: -jump, behavior: "smooth" });
+        goToPage(currentPage - 1);
       } else if (e.key === "+" || e.key === "=") {
         setZoomIdx((i) => Math.min(ZOOM_STEPS.length - 1, i + 1));
         pokeBars();
@@ -338,61 +375,7 @@ export default function BookReader({ book, pdfUrl, onClose, onProgress, initialP
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [pdf, error, pokeBars, showNotes]);
-
-  // Track the current page from scroll position.
-  const updateCurrent = useCallback(() => {
-    const el = scrollRef.current;
-    if (!el || numPages === 0) return;
-    const probe = el.scrollTop + el.clientHeight * 0.35;
-    let cur = 1;
-    for (let n = 1; n <= numPages; n++) {
-      const top = pageTops.current[n];
-      if (top == null) continue;
-      if (top <= probe) cur = n; else break;
-    }
-    setCurrentPage((prev) => (prev === cur ? prev : cur));
-  }, [numPages]);
-
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    let raf = 0;
-    const onScroll = () => {
-      pokeBars();
-      if (raf) return;
-      raf = requestAnimationFrame(() => { raf = 0; updateCurrent(); });
-    };
-    el.addEventListener("scroll", onScroll, { passive: true });
-    return () => el.removeEventListener("scroll", onScroll);
-  }, [updateCurrent, pokeBars]);
-
-  // Measure each page's offsetTop once laid out (and re-measure after zoom
-  // changes, since page heights change with the scale).
-  useEffect(() => {
-    if (!pdf || numPages === 0) return;
-    const t = setTimeout(() => {
-      const el = scrollRef.current;
-      if (!el) return;
-      const map = {};
-      el.querySelectorAll("[data-page]").forEach((d) => {
-        map[Number(d.dataset.page)] = d.offsetTop;
-      });
-      pageTops.current = map;
-      measure();
-      updateCurrent();
-      // Jump to the saved progress once.
-      if (!jumpedOnce.current && initialPercent > 2) {
-        jumpedOnce.current = true;
-        const target = Math.min(numPages, Math.max(1, Math.round((initialPercent / 100) * numPages)));
-        const top = map[target];
-        if (top != null) el.scrollTop = Math.max(0, top - 12);
-      } else {
-        jumpedOnce.current = true;
-      }
-    }, 350);
-    return () => clearTimeout(t);
-  }, [pdf, numPages, zoomIdx, fitScale, measure, updateCurrent, initialPercent]);
+  }, [pdf, error, pokeBars, showNotes, goToPage, currentPage]);
 
   // Persist reading progress (debounced) · percent + current page.
   useEffect(() => {
@@ -404,17 +387,46 @@ export default function BookReader({ book, pdfUrl, onClose, onProgress, initialP
     return () => { if (progressTimer.current) clearTimeout(progressTimer.current); };
   }, [currentPage, numPages, onProgress]);
 
-  const goToPage = (n, smooth = true) => {
-    const el = scrollRef.current;
-    const top = pageTops.current[n];
-    if (el && top != null) el.scrollTo({ top: Math.max(0, top - 12), behavior: smooth ? "smooth" : "auto" });
-    setCurrentPage(n);
+  // Mouse wheel turns pages at fit zoom (accumulate, then lock briefly so
+  // one gesture = one page). When zoomed in, the wheel pans the page.
+  const handleWheel = (e) => {
+    if (zoomed || !pdf || error) return;
     pokeBars();
+    const now = Date.now();
+    if (now - wheelLastAt.current > 250) wheelAcc.current = 0;
+    wheelLastAt.current = now;
+    wheelAcc.current += e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY;
+    if (now < wheelLockUntil.current) return;
+    if (Math.abs(wheelAcc.current) >= 40) {
+      const dir = wheelAcc.current > 0 ? 1 : -1;
+      wheelAcc.current = 0;
+      wheelLockUntil.current = now + 400;
+      goToPage(currentPage + dir);
+    }
   };
 
-  /* zoom presets · absolute scales (fit = current fit-to-width step) */
+  // Vertical swipe turns pages at fit zoom; when zoomed, touch pans.
+  const handleTouchStart = (e) => {
+    const t = e.touches?.[0];
+    if (t) touchStart.current = { x: t.clientX, y: t.clientY };
+    pokeBars();
+  };
+  const handleTouchEnd = (e) => {
+    const s = touchStart.current;
+    touchStart.current = null;
+    if (!s || zoomed || !pdf || error) return;
+    const t = e.changedTouches?.[0];
+    if (!t) return;
+    const dy = s.y - t.clientY;
+    const dx = s.x - t.clientX;
+    if (Math.abs(dy) > 48 && Math.abs(dy) > Math.abs(dx)) {
+      goToPage(currentPage + (dy > 0 ? 1 : -1));
+    }
+  };
+
+  /* zoom presets · absolute scales (fit = current fit-contain step) */
   const setAbsZoom = (abs) => {
-    const target = abs / (fitScale || 1);
+    const target = abs / (fitContain || 1);
     let best = 2, bd = Infinity;
     ZOOM_STEPS.forEach((s, i) => { const d = Math.abs(s - target); if (d < bd) { bd = d; best = i; } });
     setZoomIdx(best);
@@ -506,12 +518,32 @@ export default function BookReader({ book, pdfUrl, onClose, onProgress, initialP
     try { await onProgress(100); } finally { setMarkingDone(false); }
   };
 
-  const near = (n) => Math.abs(n - currentPage) <= RENDER_AHEAD_BEHIND;
+  const setPanRef = (el) => { panWrapRef.current = el; };
+
+  const stagePages = pdf && !error
+    ? [currentPage - PRELOAD, currentPage, currentPage + PRELOAD].filter((n) => n >= 1 && n <= numPages)
+    : [];
 
   const ringC = 2 * Math.PI * 30;
 
   return (
-    <div className={`fixed inset-0 z-[80] flex flex-col transition-colors duration-500 ${ui.text}`} dir="rtl" data-testid="pdf-reader" style={{ background: desk }}>
+    <div
+      className={`fixed inset-0 z-[80] flex flex-col transition-colors duration-500 ${ui.text}`}
+      dir="rtl"
+      data-testid="pdf-reader"
+      style={{ background: desk }}
+      onMouseMove={pokeBars}
+      onPointerDown={pokeBars}
+    >
+      <style>{`
+        @keyframes reader-in-next { from { opacity: 0; transform: translateX(-30px) scale(0.995); } to { opacity: 1; transform: none; } }
+        @keyframes reader-in-prev { from { opacity: 0; transform: translateX(30px) scale(0.995); } to { opacity: 1; transform: none; } }
+        @keyframes reader-in-fade { from { opacity: 0; } to { opacity: 1; } }
+        .reader-page-next { animation: reader-in-next 0.32s cubic-bezier(0.22, 0.8, 0.3, 1) both; }
+        .reader-page-prev { animation: reader-in-prev 0.32s cubic-bezier(0.22, 0.8, 0.3, 1) both; }
+        .reader-page-fade { animation: reader-in-fade 0.25s ease both; }
+      `}</style>
+
       {/* ambient glow + vignette */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className={`absolute -top-32 right-1/4 w-96 h-96 rounded-full blur-[110px] transition-colors duration-500 ${ui.glowA}`} />
@@ -643,18 +675,18 @@ export default function BookReader({ book, pdfUrl, onClose, onProgress, initialP
         </div>
       </div>
 
-      {/* desk: pages column + reading rail */}
+      {/* desk: page stage + reading rail */}
       <div className="relative z-[5] flex flex-1 min-h-0">
-        {/* pages */}
+        {/* stage · one whole page at a time, movement only between pages */}
         <div
-          ref={scrollRef}
-          onPointerDown={pokeBars}
-          onTouchStart={pokeBars}
-          className="relative flex-1 min-w-0 overflow-y-auto overscroll-contain"
-          style={{ WebkitOverflowScrolling: "touch" }}
+          ref={stageRef}
+          onWheel={handleWheel}
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+          className={`relative flex-1 min-w-0 overflow-hidden overscroll-contain ${zoomed ? "" : "touch-none"}`}
         >
           {error ? (
-            <div className="min-h-full flex items-center justify-center p-6">
+            <div className="h-full flex items-center justify-center p-6">
               <div className={`max-w-sm w-full text-center border rounded-[28px] p-8 ${ui.glass}`}>
                 <div className="w-14 h-14 mx-auto rounded-2xl bg-rose-500/15 flex items-center justify-center">
                   <AlertTriangle className="w-7 h-7 text-rose-500" />
@@ -689,7 +721,7 @@ export default function BookReader({ book, pdfUrl, onClose, onProgress, initialP
               </div>
             </div>
           ) : !pdf ? (
-            <div className="min-h-full flex items-center justify-center p-6">
+            <div className="h-full flex items-center justify-center p-6">
               <div className={`text-center border rounded-[28px] px-8 sm:px-12 py-9 max-w-sm w-full ${ui.glass}`}>
                 {book?.cover_url ? (
                   <img
@@ -731,20 +763,28 @@ export default function BookReader({ book, pdfUrl, onClose, onProgress, initialP
               </div>
             </div>
           ) : (
-            <div className="py-6 sm:py-9 px-3 sm:px-6 xl:px-10 space-y-6 sm:space-y-8 pb-36">
-              {Array.from({ length: numPages }, (_, i) => i + 1).map((n) => (
-                <PageView
-                  key={`${n}-${zoomIdx}`}
-                  pdf={pdf}
-                  pageNumber={n}
-                  scale={scale}
-                  active={near(n)}
-                  onSize={handlePageSize}
-                  isCurrent={n === currentPage}
-                  theme={themeId}
-                />
-              ))}
-            </div>
+            stagePages.map((n) => {
+              const isCur = n === currentPage;
+              return (
+                <div
+                  key={n}
+                  ref={isCur ? setPanRef : undefined}
+                  aria-hidden={!isCur}
+                  className={`absolute inset-0 flex ${isCur ? (zoomed ? "overflow-auto" : "overflow-hidden") : "overflow-hidden invisible pointer-events-none"}`}
+                  style={{ zIndex: isCur ? 2 : 1 }}
+                >
+                  <StagePage
+                    pdf={pdf}
+                    pageNumber={n}
+                    scale={effScale}
+                    onSize={handlePageSize}
+                    isCurrent={isCur}
+                    theme={themeId}
+                    animateCls={isCur ? (navDir > 0 ? "reader-page-next" : navDir < 0 ? "reader-page-prev" : "reader-page-fade") : ""}
+                  />
+                </div>
+              );
+            })
           )}
         </div>
 
@@ -867,13 +907,13 @@ export default function BookReader({ book, pdfUrl, onClose, onProgress, initialP
                 </button>
                 <button
                   onClick={() => setAbsZoom(1)}
-                  className={`h-8 px-3 rounded-full text-[11px] font-bold transition tabular-nums ${Math.abs(scale - 1) < 0.12 ? "bg-amber-400 text-slate-950" : ui.btn}`}
+                  className={`h-8 px-3 rounded-full text-[11px] font-bold transition tabular-nums ${Math.abs(scaleUi - 1) < 0.12 ? "bg-amber-400 text-slate-950" : ui.btn}`}
                 >
                   100%
                 </button>
                 <button
                   onClick={() => setAbsZoom(1.5)}
-                  className={`h-8 px-3 rounded-full text-[11px] font-bold transition tabular-nums ${Math.abs(scale - 1.5) < 0.12 ? "bg-amber-400 text-slate-950" : ui.btn}`}
+                  className={`h-8 px-3 rounded-full text-[11px] font-bold transition tabular-nums ${Math.abs(scaleUi - 1.5) < 0.12 ? "bg-amber-400 text-slate-950" : ui.btn}`}
                 >
                   150%
                 </button>
@@ -909,7 +949,7 @@ export default function BookReader({ book, pdfUrl, onClose, onProgress, initialP
                   min={1}
                   max={Math.max(1, numPages)}
                   value={currentPage}
-                  onChange={(e) => goToPage(Number(e.target.value), false)}
+                  onChange={(e) => goToPage(Number(e.target.value))}
                   data-testid="reader-page-slider"
                   className="flex-1 accent-emerald-400 h-1.5 cursor-pointer min-w-0"
                   aria-label="الصفحة"
@@ -949,7 +989,7 @@ export default function BookReader({ book, pdfUrl, onClose, onProgress, initialP
                 <button
                   onClick={() => goToPage(1)}
                   className={`h-11 w-11 sm:h-10 sm:w-10 shrink-0 rounded-2xl hidden sm:flex items-center justify-center transition ${ui.btn}`}
-                  aria-label="العودة للأعلى"
+                  aria-label="العودة للأول"
                   title="العودة لأول صفحة"
                 >
                   <ChevronUp className="w-4 h-4" />
