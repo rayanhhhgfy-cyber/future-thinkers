@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { PenLine, BookOpen, Feather, ScrollText, Heart, Clock, CheckCircle2, XCircle, Send, Trash2, Plus, Star, Sparkles, Search, Eye, LayoutGrid, FolderOpen } from "lucide-react";
+import { PenLine, BookOpen, Feather, ScrollText, Heart, Clock, CheckCircle2, XCircle, Send, Trash2, Plus, Star, Sparkles, Search, Eye, LayoutGrid, FolderOpen, MessageSquare, Crown, TrendingUp } from "lucide-react";
 import { FadeUp, Stagger, Item } from "@/components/anim";
 import BookmarkButton from "@/components/BookmarkButton";
 
@@ -49,16 +49,24 @@ export default function Studio() {
   const [mine, setMine] = useState([]);
   const [gallery, setGallery] = useState({ items: [], total: 0 });
   const [filter, setFilter] = useState("");
+  const [sort, setSort] = useState("newest");
+  const [spotlight, setSpotlight] = useState(null);
   const [q, setQ] = useState("");
   const [editing, setEditing] = useState(null); // work being edited or "new"
   const [form, setForm] = useState({ title: "", type: "article", content: "", excerpt: "" });
   const [saving, setSaving] = useState(false);
 
   const loadMine = () => api.get("/studio/works/me").then((r) => setMine(r.data)).catch(() => {});
-  const loadGallery = () => api.get("/studio/published", { params: { type: filter || undefined, q: q || undefined } }).then((r) => setGallery(r.data)).catch(() => {});
+  const loadGallery = () => api.get("/studio/published", { params: { type: filter || undefined, q: q || undefined, sort: sort === "newest" ? undefined : sort } }).then((r) => setGallery(r.data)).catch(() => {});
 
   useEffect(() => { loadMine(); }, []);
-  useEffect(() => { loadGallery(); }, [filter]);
+  useEffect(() => { loadGallery(); }, [filter, sort]);
+  useEffect(() => {
+    api.get("/studio/spotlight").then((r) => {
+      const d = r.data;
+      setSpotlight(Array.isArray(d) ? d : (d?.items || d?.creators || d?.spotlight || []));
+    }).catch(() => {});
+  }, []);
 
   const startNew = () => { setForm({ title: "", type: "article", content: "", excerpt: "" }); setEditing("new"); };
   const startEdit = (w) => { setForm({ title: w.title, type: w.type, content: w.content, excerpt: w.excerpt || "" }); setEditing(w); };
@@ -136,8 +144,8 @@ export default function Studio() {
           </div>
         </FadeUp>
 
-        {/* tabs · sticky glass segmented control */}
-        <div className="sticky top-20 z-40 mb-6 sm:mb-8">
+        {/* tabs · glass segmented control */}
+        <div className="relative mb-6 sm:mb-8">
           <div className="glass rounded-full p-1.5 border border-white/70 ft-shadow-lg flex w-full sm:w-fit max-w-full">
             {[["gallery", "معرض الأعمال", LayoutGrid, gallery.total], ["mine", "أعمالي", FolderOpen, mine.length]].map(([k, l, Icon, count]) => (
               <button key={k} onClick={() => setTab(k)} className={`pressable flex-1 sm:flex-none min-h-[44px] px-4 sm:px-7 rounded-full text-sm font-extrabold transition-all flex items-center justify-center gap-2 whitespace-nowrap ${tab === k ? "bg-gradient-to-l from-violet-600 to-fuchsia-600 text-white shadow-lg shadow-violet-300/60" : "text-slate-500 hover:text-slate-800 hover:bg-white/60"}`}>
@@ -150,6 +158,39 @@ export default function Studio() {
 
         {tab === "gallery" && (
           <>
+            {spotlight && spotlight.length > 0 && (
+              <div className="relative mb-6 sm:mb-8 overflow-hidden rounded-[1.75rem] border border-amber-100 bg-gradient-to-l from-amber-50 via-white to-violet-50 ft-shadow p-4 sm:p-5 animate-fade-up">
+                <Crown className="absolute -left-4 -bottom-7 w-28 h-28 text-amber-200/40 -rotate-12 pointer-events-none" />
+                <div className="relative flex items-center gap-2.5 mb-4">
+                  <span className="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 grid place-items-center shadow-lg shadow-amber-200 shrink-0"><Crown className="w-5 h-5 text-white" /></span>
+                  <div>
+                    <div className="font-head font-extrabold text-slate-900 leading-tight">مبدع الأسبوع</div>
+                    <div className="text-[11px] text-slate-400 font-semibold">أكثر المبدعين إعجاباً هذا الأسبوع</div>
+                  </div>
+                  <span className="mr-auto inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 text-[11px] font-extrabold"><Sparkles className="w-3 h-3" /> في الأضواء</span>
+                </div>
+                <div className="relative flex gap-3 overflow-x-auto pb-1 -mb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                  {spotlight.slice(0, 5).map((c, i) => {
+                    const cid = c.id || c.user_id || c.author_id;
+                    const likesW = c.likes_this_week ?? c.weekly_likes ?? c.week_likes ?? c.likes ?? 0;
+                    const nm = c.name || c.author_name || "مبدع";
+                    const g = ["from-violet-500 to-fuchsia-600", "from-blue-500 to-indigo-600", "from-rose-500 to-pink-600", "from-emerald-500 to-teal-600", "from-amber-500 to-orange-600"][i % 5];
+                    return (
+                      <button key={cid || i} onClick={() => cid && nav(`/profile/${cid}`)} className="pressable group shrink-0 flex items-center gap-3 bg-white rounded-2xl ring-1 ring-slate-100 pl-4 pr-2.5 py-2.5 shadow-sm hover:shadow-lg hover:ring-amber-200 transition-all text-right">
+                        <span className="relative shrink-0">
+                          {(c.avatar_url || c.avatar) ? <img src={c.avatar_url || c.avatar} alt="" className="w-11 h-11 rounded-full object-cover ring-2 ring-amber-100" /> : <span className={`w-11 h-11 rounded-full bg-gradient-to-br ${g} text-white grid place-items-center font-extrabold ring-2 ring-amber-100`}>{nm.trim()?.[0]}</span>}
+                          <span className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 text-white text-[10px] font-extrabold grid place-items-center ring-2 ring-white shadow">{i + 1}</span>
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block font-extrabold text-sm text-slate-800 truncate max-w-[110px] group-hover:text-violet-700 transition-colors">{nm}</span>
+                          <span className="flex items-center gap-1 text-[11px] font-bold text-rose-500"><Heart className="w-3 h-3 fill-current" />{likesW} هذا الأسبوع</span>
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
             <div className="flex flex-wrap items-center gap-2 mb-6 sm:mb-8">
               <button onClick={() => setFilter("")} className={`pressable min-h-[44px] px-5 rounded-full text-sm font-bold transition-all ${!filter ? "bg-slate-900 text-white shadow-lg shadow-slate-300" : "bg-white border border-slate-200 text-slate-600 hover:border-violet-300 hover:text-violet-700"}`}>الكل</button>
               {TYPES.map((t) => {
@@ -161,6 +202,13 @@ export default function Studio() {
                   </button>
                 );
               })}
+              <div className="flex items-center gap-1 rounded-full bg-white border border-slate-200 p-1 shadow-sm">
+                {[["newest", "الأحدث", null], ["likes", "الأكثر إعجاباً", Heart], ["trending", "الرائجة", TrendingUp]].map(([v, l, Ic]) => (
+                  <button key={v} onClick={() => setSort(v)} className={`pressable min-h-[38px] px-3.5 rounded-full text-xs font-extrabold flex items-center gap-1 transition-all ${sort === v ? (v === "trending" ? "bg-gradient-to-l from-amber-500 to-rose-500 text-white shadow-md shadow-rose-200" : "bg-slate-900 text-white shadow") : "text-slate-500 hover:text-slate-800"}`}>
+                    {Ic && <Ic className="w-3.5 h-3.5" />}{l}
+                  </button>
+                ))}
+              </div>
               <div className="mr-auto flex gap-2 w-full sm:w-auto mt-2 sm:mt-0">
                 <div className="relative flex-1 sm:flex-none">
                   <Search className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -194,6 +242,7 @@ export default function Studio() {
                       <div className="mt-5 pt-4 border-t border-slate-100 flex items-center gap-2.5 text-xs text-slate-400">
                         <span className={`w-8 h-8 rounded-full bg-gradient-to-br ${meta.avatar} ring-2 ring-white shadow text-white grid place-items-center font-extrabold text-xs shrink-0`}>{w.author_name?.trim()?.[0]}</span>
                         <span className="font-bold text-slate-500 truncate">بقلم {w.author_name}</span>
+                        {w.comments_count != null && <span className="inline-flex items-center gap-1 shrink-0 font-bold text-slate-400"><MessageSquare className="w-3.5 h-3.5" />{w.comments_count}</span>}
                       </div>
                     </div>
                   </button>
@@ -227,6 +276,7 @@ export default function Studio() {
                         <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full ring-1 font-bold ${meta.soft}`}>{w.type_label}</span>
                         <span className="inline-flex items-center gap-1"><Eye className="w-3.5 h-3.5" />{w.views} مشاهدة</span>
                         <span className="inline-flex items-center gap-1"><Heart className="w-3.5 h-3.5" />{w.likes} إعجاب</span>
+                        {w.comments_count != null && <span className="inline-flex items-center gap-1"><MessageSquare className="w-3.5 h-3.5" />{w.comments_count} تعليق</span>}
                       </div>
                       {w.excerpt && <p className="text-sm text-slate-500 leading-relaxed line-clamp-2 mt-3">{w.excerpt}</p>}
                       {w.status === "rejected" && w.review_note && (

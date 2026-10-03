@@ -6,7 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { ArrowRight, Heart, Eye, Star, Feather, ScrollText, PenLine, BookOpen, Trash2, Send, Sparkles } from "lucide-react";
+import { ArrowRight, Heart, Eye, Star, Feather, ScrollText, PenLine, BookOpen, Trash2, Send, Sparkles, MessageSquare } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import BookmarkButton from "@/components/BookmarkButton";
 import ReportButton from "@/components/ReportButton";
@@ -56,6 +56,49 @@ export default function StudioWork() {
   const [liked, setLiked] = useState(false);
   const [likes, setLikes] = useState(0);
   const [burst, setBurst] = useState(0);
+  const [comments, setComments] = useState([]);
+  const [commentsOn, setCommentsOn] = useState(false);
+  const [cText, setCText] = useState("");
+  const [cPosting, setCPosting] = useState(false);
+
+  const normComments = (d) => (Array.isArray(d) ? d : (d?.items || d?.comments || []));
+  const loadComments = async () => {
+    try {
+      const cm = await api.get(`/studio/works/${id}/comments`);
+      setComments(normComments(cm.data)); setCommentsOn(true);
+    } catch { setCommentsOn(false); }
+  };
+
+  const postComment = async () => {
+    if (!user) return toast.info("سجّل الدخول للتعليق");
+    if (!cText.trim()) return;
+    setCPosting(true);
+    try {
+      await api.post(`/studio/works/${id}/comments`, { text: cText.trim() });
+      setCText("");
+      toast.success("نُشر تعليقك ✍️");
+      loadComments();
+    } catch (e) { toast.error(apiErr(e)); }
+    setCPosting(false);
+  };
+
+  const delComment = async (c) => {
+    if (!window.confirm("حذف تعليقك؟")) return;
+    try {
+      await api.delete(`/studio/works/${id}/comments/${c.id}`);
+      setComments((cs) => cs.filter((x) => x.id !== c.id));
+      toast.success("حُذف التعليق");
+    } catch (e) { toast.error(apiErr(e)); }
+  };
+
+  const cName = (c) => c.user_name || c.author_name || c.name || "قارئ";
+  const cBody = (c) => c.text || c.body || "";
+  const cMine = (c) => !!user && (c.mine || String(c.user_id ?? c.author_id ?? "") === String(user.id));
+  const cWhen = (c) => {
+    const d = c.created_at || c.at || c.date;
+    if (!d) return "";
+    try { return new Date(d).toLocaleDateString("ar-EG", { day: "numeric", month: "short" }); } catch { return ""; }
+  };
 
   const load = async () => {
     try {
@@ -63,6 +106,7 @@ export default function StudioWork() {
       setWork(data); setLiked(!!data.liked); setLikes(data.likes || 0); setMyStars(data.my_stars || 0);
       const r = await api.get(`/studio/works/${id}/reviews`).catch(() => ({ data: [] }));
       setReviews(r.data || []);
+      loadComments();
       if (data.status === "published") {
         const rel = await api.get("/studio/published", { params: { type: data.type, limit: 4 } }).catch(() => ({ data: { items: [] } }));
         setRelated((rel.data.items || []).filter((w) => w.id !== id).slice(0, 3));
@@ -150,7 +194,7 @@ export default function StudioWork() {
         <div className="max-w-4xl xl:max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-10 py-8 sm:py-10 lg:py-12 xl:grid xl:grid-cols-[minmax(0,1fr)_340px] xl:gap-10 xl:items-start">
           {/* like bar */}
           <FadeUp className="xl:col-start-2 xl:row-start-1">
-            <div className="sticky top-20 z-30 flex flex-wrap items-center justify-between gap-3 glass rounded-[1.6rem] border border-white/70 ft-shadow-lg p-4 sm:px-5 mb-6 xl:sticky xl:top-24 xl:mb-0 xl:p-5">
+            <div className="relative flex flex-wrap items-center justify-between gap-3 glass rounded-[1.6rem] border border-white/70 ft-shadow-lg p-4 sm:px-5 mb-6 xl:mb-0 xl:p-5">
               <div className="flex items-center gap-3 min-w-0">
                 <div className="relative">
                   <motion.button
@@ -267,6 +311,63 @@ export default function StudioWork() {
               )}
             </section>
           </FadeUp>
+
+          {/* comments */}
+          {commentsOn && (
+            <FadeUp>
+              <section className="bg-white rounded-[2rem] sm:rounded-[2.5rem] border border-slate-100 ft-shadow-lg p-6 sm:p-8 lg:p-10 mb-8">
+                <h2 className="font-head text-xl sm:text-2xl lg:text-[1.7rem] font-extrabold mb-1 flex items-center gap-2.5 flex-wrap">
+                  <span className="w-10 h-10 rounded-2xl bg-gradient-to-br from-violet-500 to-fuchsia-600 grid place-items-center shadow-lg shadow-violet-200"><MessageSquare className="w-5 h-5 text-white" /></span> تعليقات القرّاء
+                  {comments.length > 0 && <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-violet-50 text-violet-600 ring-1 ring-violet-100">{comments.length} تعليق</span>}
+                </h2>
+                <p className="text-sm text-slate-400 mb-6">شارك الكاتب انطباعك وتساؤلاتك حول العمل</p>
+
+                {user ? (
+                  <div className="flex gap-3 mb-6">
+                    <span className="w-11 h-11 rounded-2xl bg-gradient-to-br from-violet-500 to-fuchsia-600 text-white grid place-items-center font-extrabold text-sm shrink-0 shadow-lg shadow-violet-200 ring-2 ring-white self-start">{user.name?.trim()?.[0]}</span>
+                    <div className="flex-1 min-w-0">
+                      <Textarea value={cText} onChange={(e) => setCText(e.target.value)}
+                        placeholder="اكتب تعليقك على هذا العمل..." className="rounded-2xl bg-slate-50/80 focus:bg-white" rows={3} />
+                      <Button onClick={postComment} disabled={cPosting || !cText.trim()} className="pressable rounded-full min-h-[44px] px-5 mt-2.5 bg-gradient-to-l from-violet-600 to-fuchsia-600 hover:from-violet-700 hover:to-fuchsia-700 text-white shadow-lg shadow-violet-200 disabled:opacity-50">
+                        <Send className="w-4 h-4 ml-1" /> {cPosting ? "جارٍ النشر..." : "نشر التعليق"}
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <button onClick={() => nav("/login")} className="pressable w-full mb-6 flex items-center gap-3 p-4 rounded-[1.4rem] border border-dashed border-violet-200 bg-violet-50/50 text-sm font-bold text-violet-700 hover:bg-violet-50 transition-colors">
+                    <MessageSquare className="w-5 h-5 shrink-0" /> سجّل الدخول لتشارك في التعليقات
+                  </button>
+                )}
+
+                {comments.length === 0 ? (
+                  <div className="text-center py-6 text-slate-400 text-sm">لا تعليقات بعد · كن أول من يعلّق!</div>
+                ) : (
+                  <div className="space-y-3">
+                    {comments.map((c, i) => (
+                      <div key={c.id || i} className="flex gap-3 animate-fade-up" style={{ animationDelay: `${Math.min(i, 8) * 50}ms` }}>
+                        <span className={`w-10 h-10 rounded-2xl bg-gradient-to-br ${t.g} text-white grid place-items-center font-extrabold text-sm shrink-0 shadow-md ring-2 ring-white self-start`}>{cName(c).trim()?.[0]}</span>
+                        <div className="flex-1 min-w-0 bg-violet-50/60 rounded-2xl rounded-tr-md px-4 py-3.5 ring-1 ring-violet-100/70">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 min-w-0 flex-wrap">
+                              <span className="font-extrabold text-sm text-slate-800">{cName(c)}</span>
+                              {cMine(c) && <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-violet-600 text-white">أنت</span>}
+                              {cWhen(c) && <span className="text-[11px] text-slate-400 font-semibold">{cWhen(c)}</span>}
+                            </div>
+                            {cMine(c) && (
+                              <button onClick={() => delComment(c)} className="pressable text-slate-300 hover:text-rose-500 transition-colors p-1 shrink-0" aria-label="حذف التعليق">
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
+                          <p className="text-sm text-slate-600 leading-relaxed mt-1.5 whitespace-pre-wrap">{cBody(c)}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </section>
+            </FadeUp>
+          )}
           </main>
 
           {/* related */}

@@ -10,11 +10,194 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import * as Icons from "lucide-react";
-import { Users, MessageSquare, Heart, Plus, Crown, Trophy, Swords, ArrowRight } from "lucide-react";
+import { Users, MessageSquare, Heart, Plus, Crown, Trophy, Swords, ArrowRight, Megaphone, Pin, Trash2, Send, Flame } from "lucide-react";
 import { ChessArena } from "@/components/ChessArena";
 import { CodingPanel, ProjectsPanel, DebatesPanel } from "@/components/ClubPanels";
 
 const SPECIAL_INIT = { chess: "main", programming: "coding", innovation: "projects", debate: "debates" };
+
+function fmtWhen(d) {
+  if (!d) return "";
+  try { return new Date(d).toLocaleDateString("ar-EG", { day: "numeric", month: "short", year: "numeric" }); } catch { return ""; }
+}
+
+function ClubAnnouncements({ slug, club, color }) {
+  const { user } = useAuth();
+  const [items, setItems] = useState(null);
+  const [gone, setGone] = useState(false);
+  const [text, setText] = useState("");
+  const [posting, setPosting] = useState(false);
+
+  const canManage = !!(
+    (club && (club.is_manager || club.is_owner || club.is_admin ||
+      ["manager", "owner", "admin"].includes(club.my_role) ||
+      (user && club.manager_id && String(club.manager_id) === String(user.id)) ||
+      (user && club.owner_id && String(club.owner_id) === String(user.id)) ||
+      (user && Array.isArray(club.managers) && club.managers.some((m) => String((m && m.id) ?? m) === String(user.id))))) ||
+    (user && (user.role === "admin" || user.role === "super_admin"))
+  );
+
+  const load = async () => {
+    try {
+      const { data } = await api.get(`/clubs/${slug}/announcements`);
+      setItems(Array.isArray(data) ? data : (data.items || data.announcements || []));
+    } catch { setGone(true); }
+  };
+  useEffect(() => { load(); }, [slug]);
+
+  const post = async () => {
+    if (!text.trim() || posting) return;
+    setPosting(true);
+    try {
+      await api.post(`/clubs/${slug}/announcements`, { text: text.trim() });
+      toast.success("نُشر الإعلان وسيصل الأعضاء إشعاراً 📣");
+      setText("");
+      load();
+    } catch (e) { toast.error(apiErr(e)); }
+    setPosting(false);
+  };
+
+  const remove = async (a) => {
+    if (!window.confirm("حذف هذا الإعلان؟")) return;
+    try {
+      await api.delete(`/clubs/${slug}/announcements/${a.id}`);
+      setItems((xs) => (xs || []).filter((x) => x.id !== a.id));
+      toast.success("حُذف الإعلان");
+    } catch (e) { toast.error(apiErr(e)); }
+  };
+
+  const aText = (a) => a.text || a.body || "";
+  const aName = (a) => a.author_name || a.user_name || a.name || "إدارة النادي";
+  const canDel = (a) => canManage || (!!user && String(a.user_id ?? a.author_id ?? "") === String(user.id));
+
+  if (gone || items === null) return null;
+  if (!items.length && !canManage) return null;
+
+  return (
+    <section className="mb-6 animate-fade-up">
+      <div className="flex items-center gap-2.5 mb-4">
+        <span className="w-10 h-10 rounded-2xl grid place-items-center text-white shadow-lg shrink-0" style={{ background: `linear-gradient(135deg, ${color}, ${color}B3)`, boxShadow: `0 10px 22px -8px ${color}` }}><Megaphone className="w-5 h-5" /></span>
+        <div>
+          <h2 className="font-head font-extrabold text-lg sm:text-xl text-slate-900 leading-tight">إعلانات النادي</h2>
+          <p className="text-[11px] sm:text-xs text-slate-400 font-semibold">أحدث مستجدات وإعلانات إدارة النادي</p>
+        </div>
+        {items.length > 0 && <span className="mr-auto text-[11px] font-extrabold px-2.5 py-1 rounded-full text-white shadow" style={{ background: `linear-gradient(135deg, ${color}, ${color}B3)` }}>{items.length} إعلان</span>}
+      </div>
+
+      {canManage && (
+        <div className="relative overflow-hidden bg-white rounded-3xl sm:rounded-[1.75rem] border border-slate-100 ft-shadow p-4 sm:p-5 mb-4">
+          <span className="absolute inset-y-0 right-0 w-1.5" style={{ background: `linear-gradient(180deg, ${color}, ${color}66)` }} />
+          <Textarea value={text} onChange={(e) => setText(e.target.value)} placeholder="اكتب إعلاناً لأعضاء النادي... اجتماع، مسابقة، موعد مهم" className="rounded-2xl bg-slate-50/70 focus:bg-white min-h-[84px]" />
+          <div className="flex items-center justify-between gap-3 mt-3 flex-wrap">
+            <span className="text-[11px] text-slate-400 font-semibold">يصل الإعلان كإشعار لجميع أعضاء النادي</span>
+            <Button onClick={post} disabled={posting || !text.trim()} className="pressable rounded-full min-h-[44px] px-5 text-white shadow-lg disabled:opacity-50" style={{ background: `linear-gradient(135deg, ${color}, ${color}B3)` }}>
+              <Send className="w-4 h-4 ml-1" /> {posting ? "جارٍ النشر..." : "نشر الإعلان"}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      <div className="space-y-3">
+        {items.map((a, i) => (
+          <article key={a.id || i} className="group relative overflow-hidden bg-white rounded-3xl sm:rounded-[1.75rem] border border-slate-100 ft-shadow p-4 sm:p-5 animate-fade-up" style={{ animationDelay: `${Math.min(i, 6) * 60}ms` }}>
+            <span className="absolute inset-y-0 right-0 w-1.5" style={{ background: `linear-gradient(180deg, ${color}, ${color}55)` }} />
+            <div className="flex items-start gap-3">
+              <span className="w-11 h-11 rounded-2xl text-white grid place-items-center font-head font-extrabold shrink-0 shadow-lg ring-4 ring-slate-50" style={{ background: `linear-gradient(135deg, ${color}, ${color}B3)` }}>{aName(a).trim()?.[0]}</span>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="inline-flex items-center gap-1 text-[10px] font-extrabold px-2 py-0.5 rounded-full text-white" style={{ background: `linear-gradient(135deg, ${color}, ${color}B3)` }}><Pin className="w-3 h-3" /> مثبّت</span>
+                  <span className="font-extrabold text-sm text-slate-800">{aName(a)}</span>
+                  {fmtWhen(a.created_at || a.at) && <span className="text-[11px] text-slate-400 font-semibold">{fmtWhen(a.created_at || a.at)}</span>}
+                  {canDel(a) && (
+                    <button onClick={() => remove(a)} className="pressable mr-auto text-slate-300 hover:text-rose-500 transition-colors p-1 shrink-0" aria-label="حذف الإعلان">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+                <p className="text-sm sm:text-[15px] text-slate-600 leading-relaxed mt-2 whitespace-pre-wrap">{aText(a)}</p>
+              </div>
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function ClubLeaders({ slug, color }) {
+  const [period, setPeriod] = useState("total");
+  const [rows, setRows] = useState(null);
+  const [gone, setGone] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    setRows(null);
+    setGone(false);
+    (async () => {
+      try {
+        const { data } = await api.get(`/clubs/${slug}/leaders`, { params: period === "month" ? { period: "month" } : {} });
+        if (!alive) return;
+        setRows(Array.isArray(data) ? data : (data.items || data.leaders || data.members || []));
+      } catch {
+        try {
+          const { data } = await api.get(`/clubs/${slug}/members`);
+          if (!alive) return;
+          setRows(Array.isArray(data) ? data : (data.items || data.members || []));
+        } catch { if (alive) setGone(true); }
+      }
+    })();
+    return () => { alive = false; };
+  }, [slug, period]);
+
+  if (gone) return null;
+  const val = (r) => (period === "month" ? (r.month_xp ?? r.monthly_xp ?? r.xp ?? 0) : (r.xp ?? r.total_xp ?? r.rating ?? 0));
+  const sorted = rows ? [...rows].sort((a, b) => val(b) - val(a)).slice(0, 20) : null;
+  const max = sorted && sorted.length ? Math.max(1, val(sorted[0])) : 1;
+  const medals = ["from-amber-300 to-amber-500 shadow-amber-500/30", "from-slate-200 to-slate-400 shadow-slate-400/30", "from-orange-300 to-amber-600 shadow-orange-500/30"];
+
+  return (
+    <div className="bg-white rounded-[1.4rem] sm:rounded-3xl border border-slate-100 ft-shadow overflow-hidden animate-fade-up">
+      <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-2.5 flex-wrap" style={{ background: `linear-gradient(270deg, ${color}14, transparent 65%)` }}>
+        <span className="w-9 h-9 rounded-xl grid place-items-center text-white shadow-md shrink-0" style={{ background: `linear-gradient(135deg, ${color}, ${color}B3)` }}><Trophy className="w-4 h-4" /></span>
+        <div className="min-w-0">
+          <div className="font-head font-extrabold text-slate-800 leading-tight">متصدرو النادي</div>
+          <div className="text-[11px] text-slate-400 font-semibold">{period === "month" ? "سباق هذا الشهر بين الأعضاء" : "الترتيب الكلي حسب النقاط"}</div>
+        </div>
+        <div className="mr-auto flex items-center gap-1 rounded-full bg-slate-100/80 ring-1 ring-slate-200/60 p-1">
+          {[["total", "الإجمالي"], ["month", "هذا الشهر"]].map(([v, l]) => (
+            <button key={v} onClick={() => setPeriod(v)} className={`pressable min-h-[34px] px-3.5 rounded-full text-[11px] font-extrabold flex items-center gap-1 transition-all ${period === v ? "text-white shadow" : "text-slate-500 hover:text-slate-800"}`} style={period === v ? { background: `linear-gradient(135deg, ${color}, ${color}B3)` } : undefined}>
+              {v === "month" && <Flame className="w-3 h-3" />}{l}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {!sorted ? <PageLoader /> : sorted.length === 0 ? (
+        <div className="px-5 py-10 text-center text-sm text-slate-400">لا أعضاء بعد في هذا الترتيب</div>
+      ) : sorted.map((r, idx) => {
+        const v = val(r);
+        const rid = r.id || r.user_id;
+        return (
+          <Link key={rid || idx} to={rid ? `/profile/${rid}` : "#"} className={`group flex items-center gap-3 px-4 sm:px-5 py-3 sm:py-3.5 border-b border-slate-50 last:border-0 transition-colors hover:bg-slate-50/70 ${idx === 0 ? "bg-amber-50/50" : idx === 1 ? "bg-slate-50/60" : idx === 2 ? "bg-orange-50/40" : ""}`}>
+            <span className={`w-8 h-8 sm:w-9 sm:h-9 rounded-xl grid place-items-center text-sm font-extrabold shrink-0 ${idx < 3 ? `bg-gradient-to-br text-white shadow-lg ${medals[idx]}` : "bg-slate-100 text-slate-500"}`}>{idx + 1}</span>
+            <span className={`rounded-full text-white grid place-items-center font-head font-extrabold shrink-0 ${idx === 0 ? "w-11 h-11 text-base ring-4 ring-amber-100" : "w-9 h-9 text-sm"}`} style={{ background: `linear-gradient(135deg, ${color}, ${color}B3)` }}>{r.name?.[0]}</span>
+            <span className="flex-1 min-w-0">
+              <span className="font-bold text-slate-800 truncate flex items-center gap-1.5">{r.name}{idx === 0 && <Crown className="w-4 h-4 text-amber-500 shrink-0" />}</span>
+              <span className="block text-xs text-slate-400 truncate">{r.school_name || ""}</span>
+              <span className="mt-1.5 block h-1.5 max-w-[190px] rounded-full bg-slate-100 overflow-hidden">
+                <span className="block h-full rounded-full transition-all duration-700" style={{ width: `${Math.max(4, Math.round((v / max) * 100))}%`, background: `linear-gradient(90deg, ${color}, ${color}B3)` }} />
+              </span>
+            </span>
+            <span className="text-end shrink-0">
+              <span className="block font-head font-extrabold text-slate-900">{v}</span>
+              <span className="block text-[10px] font-bold text-slate-400">{period === "month" ? "XP الشهر" : "XP"}</span>
+            </span>
+          </Link>
+        );
+      })}
+    </div>
+  );
+}
 
 function DialogueForum({ slug }) {
   const { user } = useAuth();
@@ -144,7 +327,8 @@ export default function ClubDetail() {
     innovation: [["projects", "المشاريع"], ["forum", "النقاشات"], ["members", "الأعضاء"]],
     debate: [["debates", "المناظرات"], ["forum", "النقاشات"], ["members", "الأعضاء"]],
   };
-  const tabs = SPECIAL[slug] || [["forum", "النقاشات"], ["leaderboard", "الصدارة"], ["members", "الأعضاء"]];
+  const tabsBase = SPECIAL[slug] || [["forum", "النقاشات"], ["leaderboard", "الصدارة"], ["members", "الأعضاء"]];
+  const tabs = [...tabsBase, ["leaders", "متصدرو النادي"]];
   const defaultTab = tabs[0][0];
   const activeTab = tab === "main" && slug !== "chess" ? defaultTab : (tab === "main" ? "main" : tab);
   const arenaWide = slug === "chess" && activeTab === "main";
@@ -182,7 +366,7 @@ export default function ClubDetail() {
       </div>
 
       <div className="max-w-7xl xl:max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-        <div className="sticky top-16 z-40 bg-white/90 backdrop-blur-md rounded-2xl sm:rounded-[1.4rem] border border-slate-100 ft-shadow p-1.5 mb-6 flex gap-1 overflow-x-auto whitespace-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="relative bg-white/90 backdrop-blur-md rounded-2xl sm:rounded-[1.4rem] border border-slate-100 ft-shadow p-1.5 mb-6 flex gap-1 overflow-x-auto whitespace-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {tabs.map(([v, l]) => (
             <button key={v} data-testid={`club-tab-${v}`} onClick={() => setTab(v)} className={`pressable shrink-0 min-h-[44px] px-4 sm:px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === v ? "text-white shadow-lg scale-[1.02]" : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"}`} style={activeTab === v ? { background: `linear-gradient(135deg, ${club.color}, ${club.color}B3)`, boxShadow: `0 8px 20px -8px ${club.color}` } : undefined}>{l}</button>
           ))}
@@ -190,6 +374,7 @@ export default function ClubDetail() {
 
         <div className={arenaWide ? "items-start" : "lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-6 xl:gap-8 items-start"}>
           <div className="min-w-0">
+            <ClubAnnouncements slug={slug} club={club} color={club.color} />
             {slug === "chess" && activeTab === "main" && <ChessArena />}
             {activeTab === "coding" && <CodingPanel />}
             {activeTab === "projects" && <ProjectsPanel />}
@@ -197,10 +382,11 @@ export default function ClubDetail() {
             {activeTab === "forum" && <DialogueForum slug={slug} />}
             {activeTab === "leaderboard" && <ClubLeaderboard slug={slug} />}
             {activeTab === "members" && <MembersList slug={slug} />}
+            {activeTab === "leaders" && <ClubLeaders slug={slug} color={club.color} />}
           </div>
 
           {!arenaWide && (
-          <aside className="hidden lg:block lg:sticky lg:top-[9.5rem] space-y-4">
+          <aside className="hidden lg:block space-y-4">
             <div className="overflow-hidden rounded-[1.75rem] border border-slate-100 bg-white ft-shadow">
               <div className="relative px-5 pb-5 pt-6 text-white" style={{ background: `linear-gradient(135deg, ${club.color}, #0A192F)` }}>
                 <Icon className="pointer-events-none absolute -left-6 -bottom-8 h-28 w-28 -rotate-12 text-white/10" />
