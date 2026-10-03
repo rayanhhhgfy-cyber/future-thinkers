@@ -163,8 +163,8 @@ export function Navbar() {
     return () => { try { ws && ws.close(); } catch {} };
   }, [user, nav]);
 
-  // admin has its own chrome · the user site navigation (header + drawer + mobile tab bar) disappears entirely on /admin
-  if (loc.pathname.startsWith("/admin")) return null;
+  // on /admin: keep the full user header, hide ONLY the bottom mobile tab bar (admin has its own bottom bar)
+  const inAdmin = loc.pathname.startsWith("/admin");
 
   return (
   <>
@@ -298,7 +298,7 @@ export function Navbar() {
 
       {searchOpen && <GlobalSearch onClose={() => setSearchOpen(false)} />}
     </header>
-    <MobileTabBar user={user} pathname={loc.pathname} dmUnread={dmUnread} onExplore={() => setOpen(true)} />
+    {!inAdmin && <MobileTabBar user={user} pathname={loc.pathname} dmUnread={dmUnread} onExplore={() => setOpen(true)} />}
   </>
   );
 }
