@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   X, Download, ZoomIn, ZoomOut, Check, Loader2,
-  AlertTriangle, ExternalLink, ChevronUp, BookOpen,
-  Bookmark, BookmarkCheck, Trash2,
+  AlertTriangle, ExternalLink, ChevronUp, ChevronLeft, ChevronRight, BookOpen,
+  Bookmark, BookmarkCheck, Trash2, PanelLeft,
   Sun, Coffee, Moon, StickyNote, Plus, NotebookText, WifiOff,
 } from "lucide-react";
 import api, { apiErr } from "@/lib/api";
@@ -29,15 +29,84 @@ const RENDER_AHEAD_BEHIND = 3; // pages rendered around the visible one
    The PDF pages themselves stay white; the theme colors the space around
    them so long reading sessions feel easy on the eyes. */
 const READER_THEMES = [
-  { id: "light", label: "فاتح", desk: "#E9E6DF", icon: Sun },
-  { id: "sepia", label: "سيبيا", desk: "#F5E9D3", icon: Coffee },
-  { id: "night", label: "ليلي", desk: "#111827", icon: Moon },
+  { id: "light", label: "فاتح", desk: "#EFE9DE", icon: Sun },
+  { id: "sepia", label: "سيبيا", desk: "#EDDCB8", icon: Coffee },
+  { id: "night", label: "ليلي", desk: "#0B1120", icon: Moon },
 ];
 
-function PageView({ pdf, pageNumber, scale, active, onSize }) {
+/* Per-theme chrome (bars, dock, rail, sheets) · the theme tints the studio
+   around the pages while the PDF sheets themselves stay paper-white. */
+const THEME_UI = {
+  night: {
+    text: "text-white",
+    glass: "bg-slate-950/70 border-white/10 text-white backdrop-blur-xl shadow-[0_18px_50px_-12px_rgba(0,0,0,0.8)]",
+    btn: "bg-white/10 hover:bg-white/20 text-white",
+    chip: "bg-white/10 text-slate-100",
+    muted: "text-slate-300/75",
+    rail: "bg-slate-950/60 border-white/10 backdrop-blur-xl shadow-[0_18px_50px_-16px_rgba(0,0,0,0.75)]",
+    track: "bg-white/10",
+    hoverSoft: "hover:bg-white/[0.07]",
+    glowA: "bg-indigo-600/25",
+    glowB: "bg-emerald-600/20",
+    sheet: "shadow-[0_0_0_1px_rgba(255,255,255,0.05),0_0_55px_rgba(251,191,36,0.06),0_28px_60px_-15px_rgba(0,0,0,0.85)]",
+    sheetRing: "",
+    vignette: true,
+    sheetNote: "bg-slate-900/[0.97] border-white/10 text-white",
+    sheetRow: "bg-white/[0.05] border-white/[0.07]",
+    sheetText: "text-slate-100",
+    sheetInput: "bg-white/[0.06] border-white/10 text-white placeholder:text-slate-500 focus:border-amber-300/50 focus:ring-amber-300/20",
+    sheetMuted: "text-slate-400",
+    sheetSub: "text-slate-500",
+  },
+  light: {
+    text: "text-slate-800",
+    glass: "bg-white/75 border-slate-900/[0.06] text-slate-800 backdrop-blur-xl shadow-[0_18px_45px_-14px_rgba(70,55,25,0.35)]",
+    btn: "bg-slate-900/[0.06] hover:bg-slate-900/10 text-slate-700",
+    chip: "bg-slate-900/[0.06] text-slate-700",
+    muted: "text-slate-500",
+    rail: "bg-white/70 border-slate-900/[0.06] backdrop-blur-xl shadow-[0_18px_45px_-16px_rgba(70,55,25,0.3)]",
+    track: "bg-slate-900/10",
+    hoverSoft: "hover:bg-slate-900/[0.05]",
+    glowA: "bg-amber-200/40",
+    glowB: "bg-white/50",
+    sheet: "shadow-[0_1px_3px_rgba(60,45,20,0.12),0_18px_45px_-12px_rgba(60,45,20,0.35)] ring-1 ring-slate-900/[0.06]",
+    sheetRing: "",
+    vignette: false,
+    sheetNote: "bg-white/[0.97] border-slate-900/10 text-slate-800",
+    sheetRow: "bg-slate-900/[0.04] border-slate-900/[0.06]",
+    sheetText: "text-slate-700",
+    sheetInput: "bg-slate-900/[0.04] border-slate-900/10 text-slate-800 placeholder:text-slate-400 focus:border-amber-500/50 focus:ring-amber-500/20",
+    sheetMuted: "text-slate-500",
+    sheetSub: "text-slate-400",
+  },
+  sepia: {
+    text: "text-[#43301b]",
+    glass: "bg-[#fff8ea]/85 border-amber-900/10 text-[#43301b] backdrop-blur-xl shadow-[0_18px_45px_-14px_rgba(90,60,20,0.4)]",
+    btn: "bg-amber-900/[0.08] hover:bg-amber-900/[0.14] text-[#5b4125]",
+    chip: "bg-amber-900/[0.08] text-[#5b4125]",
+    muted: "text-[#8a6b48]",
+    rail: "bg-[#fff6e3]/80 border-amber-900/10 backdrop-blur-xl shadow-[0_18px_45px_-16px_rgba(90,60,20,0.35)]",
+    track: "bg-amber-900/10",
+    hoverSoft: "hover:bg-amber-900/[0.07]",
+    glowA: "bg-amber-500/25",
+    glowB: "bg-orange-500/15",
+    sheet: "shadow-[0_2px_6px_rgba(90,60,20,0.18),0_22px_50px_-12px_rgba(90,60,20,0.45)] ring-1 ring-amber-900/10",
+    sheetRing: "",
+    vignette: false,
+    sheetNote: "bg-[#fff8ea]/[0.98] border-amber-900/15 text-[#43301b]",
+    sheetRow: "bg-amber-900/[0.05] border-amber-900/[0.08]",
+    sheetText: "text-[#4a3520]",
+    sheetInput: "bg-amber-900/[0.05] border-amber-900/15 text-[#43301b] placeholder:text-[#a07d52] focus:border-amber-600/50 focus:ring-amber-600/20",
+    sheetMuted: "text-[#8a6b48]",
+    sheetSub: "text-[#a5835c]",
+  },
+};
+
+function PageView({ pdf, pageNumber, scale, active, onSize, isCurrent, theme }) {
   const wrapRef = useRef(null);
   const canvasRef = useRef(null);
   const [size, setSize] = useState(null); // {w,h} at scale=1
+  const [ready, setReady] = useState(false);
 
   // Learn the page's natural size once (cheap: no rendering yet).
   useEffect(() => {
@@ -56,6 +125,7 @@ function PageView({ pdf, pageNumber, scale, active, onSize }) {
     if (!active || !size) return;
     let dead = false;
     let task = null;
+    setReady(false);
     pdf.getPage(pageNumber).then((page) => {
       if (dead) return;
       const canvas = canvasRef.current;
@@ -74,19 +144,20 @@ function PageView({ pdf, pageNumber, scale, active, onSize }) {
         viewport,
         transform: [dpr, 0, 0, dpr, 0, 0],
       });
-      task.promise.catch(() => {});
+      task.promise.then(() => { if (!dead) setReady(true); }).catch(() => {});
     }).catch(() => {});
     return () => { dead = true; if (task) { try { task.cancel(); } catch {} } };
   }, [pdf, pageNumber, scale, active, size]);
 
   const w = size ? size.w * scale : 600;
   const h = size ? size.h * scale : 800;
+  const ui = THEME_UI[theme] || THEME_UI.night;
 
   return (
     <div
       ref={wrapRef}
       data-page={pageNumber}
-      className="relative mx-auto rounded-lg overflow-hidden shadow-[0_10px_40px_rgba(0,0,0,0.45)] bg-white"
+      className={`relative mx-auto rounded-md lg:rounded-lg overflow-hidden bg-white ${ui.sheet} transition-[opacity,transform] duration-500 ${active ? (ready ? "opacity-100 translate-y-0" : "opacity-70 translate-y-1.5") : ""}`}
       style={{ width: w, height: h, maxWidth: "100%" }}
     >
       {active ? (
@@ -97,8 +168,13 @@ function PageView({ pdf, pageNumber, scale, active, onSize }) {
           <span className="text-xs font-medium">صفحة {pageNumber}</span>
         </div>
       )}
-      <div className="absolute bottom-2 left-2 text-[10px] font-semibold bg-black/55 text-white px-2 py-0.5 rounded-full backdrop-blur-sm">
-        {pageNumber}
+      {theme === "sepia" && (
+        <div className="absolute inset-0 pointer-events-none bg-amber-300/10 mix-blend-multiply" aria-hidden="true" />
+      )}
+      <div
+        className={`absolute bottom-3 left-3 text-[10px] font-bold px-2.5 py-1 rounded-full backdrop-blur-md tabular-nums transition-colors ${isCurrent ? "bg-amber-400 text-slate-950 shadow-lg" : "bg-black/50 text-white/90"}`}
+      >
+        {isCurrent ? `صفحة ${pageNumber}` : pageNumber}
       </div>
     </div>
   );
@@ -127,6 +203,7 @@ export default function BookReader({ book, pdfUrl, onClose, onProgress, initialP
   const [noteText, setNoteText] = useState("");
   const [addingNote, setAddingNote] = useState(false);
   const [offlineReading, setOfflineReading] = useState(false);
+  const [railOpen, setRailOpen] = useState(true);
 
   const scrollRef = useRef(null);
   const pageTops = useRef({});
@@ -137,7 +214,10 @@ export default function BookReader({ book, pdfUrl, onClose, onProgress, initialP
   const pdfRef = useRef(null);
 
   const scale = fitScale * ZOOM_STEPS[zoomIdx];
-  const desk = (READER_THEMES.find((t) => t.id === themeId) || READER_THEMES[2]).desk;
+  const theme = READER_THEMES.find((t) => t.id === themeId) || READER_THEMES[2];
+  const desk = theme.desk;
+  const ui = THEME_UI[theme.id] || THEME_UI.night;
+  const pct = numPages ? Math.round((currentPage / numPages) * 100) : 0;
 
   useEffect(() => {
     try { localStorage.setItem("ft-reader-theme", themeId); } catch {}
@@ -152,10 +232,12 @@ export default function BookReader({ book, pdfUrl, onClose, onProgress, initialP
   useEffect(() => { pokeBars(); return () => { if (hideTimer.current) clearTimeout(hideTimer.current); }; }, [pokeBars]);
 
   // Measure the container to compute the fit-to-width scale (from page 1).
+  // The sheet is capped at a comfortable reading width on wide screens so
+  // pages float on the desk instead of stretching edge to edge.
   const measure = useCallback(() => {
     const el = scrollRef.current;
     const w1 = page1Width.current;
-    if (el && w1) setFitScale(Math.max(0.2, (el.clientWidth - 32) / w1));
+    if (el && w1) setFitScale(Math.max(0.2, (Math.min(el.clientWidth, 952) - 32) / w1));
   }, []);
 
   const handlePageSize = useCallback((n, w) => {
@@ -166,6 +248,7 @@ export default function BookReader({ book, pdfUrl, onClose, onProgress, initialP
   }, [measure]);
 
   useEffect(() => { measure(); }, [measure, numPages]);
+  useEffect(() => { measure(); }, [measure, railOpen]);
 
   useEffect(() => {
     const onResize = () => measure();
@@ -223,6 +306,40 @@ export default function BookReader({ book, pdfUrl, onClose, onProgress, initialP
     return () => { document.body.style.overflow = prev; window.removeEventListener("keydown", onKey); };
   }, [onClose]);
 
+  // Desktop keyboard: arrows / PageUp / PageDown / Space scroll the desk,
+  // + and - zoom, 0 or F fits the width. Ignored while typing in inputs.
+  useEffect(() => {
+    if (!pdf || error) return;
+    const onKey = (e) => {
+      const t = e.target;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable)) return;
+      if (showNotes) return;
+      const el = scrollRef.current;
+      if (!el) return;
+      const jump = el.clientHeight * 0.85;
+      if (e.key === "ArrowDown" || e.key === "PageDown" || (e.key === " " && !e.shiftKey)) {
+        if (t && t.tagName === "BUTTON" && e.key === " ") return;
+        e.preventDefault();
+        el.scrollBy({ top: jump, behavior: "smooth" });
+      } else if (e.key === "ArrowUp" || e.key === "PageUp" || (e.key === " " && e.shiftKey)) {
+        if (t && t.tagName === "BUTTON" && e.key === " ") return;
+        e.preventDefault();
+        el.scrollBy({ top: -jump, behavior: "smooth" });
+      } else if (e.key === "+" || e.key === "=") {
+        setZoomIdx((i) => Math.min(ZOOM_STEPS.length - 1, i + 1));
+        pokeBars();
+      } else if (e.key === "-" || e.key === "_") {
+        setZoomIdx((i) => Math.max(0, i - 1));
+        pokeBars();
+      } else if (e.key === "0" || e.key === "f" || e.key === "F") {
+        setZoomIdx(2);
+        pokeBars();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [pdf, error, pokeBars, showNotes]);
+
   // Track the current page from scroll position.
   const updateCurrent = useCallback(() => {
     const el = scrollRef.current;
@@ -275,7 +392,7 @@ export default function BookReader({ book, pdfUrl, onClose, onProgress, initialP
       }
     }, 350);
     return () => clearTimeout(t);
-  }, [pdf, numPages, zoomIdx, measure, updateCurrent, initialPercent]);
+  }, [pdf, numPages, zoomIdx, fitScale, measure, updateCurrent, initialPercent]);
 
   // Persist reading progress (debounced) · percent + current page.
   useEffect(() => {
@@ -287,10 +404,10 @@ export default function BookReader({ book, pdfUrl, onClose, onProgress, initialP
     return () => { if (progressTimer.current) clearTimeout(progressTimer.current); };
   }, [currentPage, numPages, onProgress]);
 
-  const goToPage = (n) => {
+  const goToPage = (n, smooth = true) => {
     const el = scrollRef.current;
     const top = pageTops.current[n];
-    if (el && top != null) el.scrollTop = Math.max(0, top - 12);
+    if (el && top != null) el.scrollTo({ top: Math.max(0, top - 12), behavior: smooth ? "smooth" : "auto" });
     setCurrentPage(n);
     pokeBars();
   };
@@ -391,234 +508,376 @@ export default function BookReader({ book, pdfUrl, onClose, onProgress, initialP
 
   const near = (n) => Math.abs(n - currentPage) <= RENDER_AHEAD_BEHIND;
 
+  const ringC = 2 * Math.PI * 30;
+
   return (
-    <div className="fixed inset-0 z-[80] text-white flex flex-col transition-colors duration-500" dir="rtl" data-testid="pdf-reader" style={{ background: desk }}>
-      {/* ambient glow */}
+    <div className={`fixed inset-0 z-[80] flex flex-col transition-colors duration-500 ${ui.text}`} dir="rtl" data-testid="pdf-reader" style={{ background: desk }}>
+      {/* ambient glow + vignette */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute -top-32 right-1/4 w-96 h-96 bg-indigo-600/25 rounded-full blur-[110px]" />
-        <div className="absolute -bottom-32 left-1/4 w-96 h-96 bg-emerald-600/20 rounded-full blur-[110px]" />
+        <div className={`absolute -top-32 right-1/4 w-96 h-96 rounded-full blur-[110px] transition-colors duration-500 ${ui.glowA}`} />
+        <div className={`absolute -bottom-32 left-1/4 w-96 h-96 rounded-full blur-[110px] transition-colors duration-500 ${ui.glowB}`} />
+        {ui.vignette && (
+          <div className="absolute inset-0" style={{ background: "radial-gradient(ellipse at center, transparent 52%, rgba(0,0,0,0.5) 100%)" }} />
+        )}
       </div>
 
       {/* top bar */}
-      <div
-        className={`relative z-10 transition-all duration-300 ${barsVisible ? "translate-y-0 opacity-100" : "-translate-y-full opacity-0"}`}
-      >
-        <div className="bg-gradient-to-b from-black/70 to-transparent px-3 sm:px-5 pt-3 pb-6">
-          <div className="flex items-center gap-2 sm:gap-3">
-            <button
-              onClick={onClose}
-              data-testid="reader-close-btn"
-              className="w-10 h-10 shrink-0 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md flex items-center justify-center transition"
-              aria-label="إغلاق"
-            >
-              <X className="w-5 h-5" />
-            </button>
-            <div className="flex-1 min-w-0">
-              <div className="font-bold text-sm sm:text-base truncate">{book?.title}</div>
-              <div className="text-[11px] sm:text-xs text-slate-300/80 truncate">{book?.author}</div>
-            </div>
-            <div className="shrink-0 text-xs font-bold bg-white/10 backdrop-blur-md rounded-full px-3 py-1.5 tabular-nums">
-              {numPages > 0 ? `${currentPage} / ${numPages}` : "…"}
-            </div>
-            {offlineReading && (
-              <span data-testid="reader-offline-chip" className="shrink-0 inline-flex items-center gap-1 text-[11px] font-extrabold bg-emerald-500/20 text-emerald-200 border border-emerald-300/30 rounded-full px-2.5 py-1.5">
-                <WifiOff className="w-3.5 h-3.5" /> محمّل
-              </span>
-            )}
-            <div className="relative shrink-0">
+      <div className={`relative z-10 transition-all duration-300 ${barsVisible ? "translate-y-0 opacity-100" : "-translate-y-full opacity-0 pointer-events-none"}`}>
+        <div className="px-2.5 sm:px-5 pt-2.5 sm:pt-3.5">
+          <div className={`border rounded-[22px] px-3 sm:px-4 py-2.5 ${ui.glass}`}>
+            <div className="flex items-center gap-2 sm:gap-3">
               <button
-                onClick={togglePageBookmark}
-                data-testid="reader-bookmark-btn"
-                className={`w-10 h-10 rounded-full backdrop-blur-md flex items-center justify-center transition ${currentBookmarked ? "bg-amber-400 text-slate-950" : "bg-white/10 hover:bg-white/20"}`}
-                aria-label="إشارة مرجعية لهذه الصفحة"
-                title={currentBookmarked ? "إزالة الإشارة من هذه الصفحة" : "ضع إشارة على هذه الصفحة"}
+                onClick={onClose}
+                data-testid="reader-close-btn"
+                className={`w-10 h-10 shrink-0 rounded-full flex items-center justify-center transition ${ui.btn}`}
+                aria-label="إغلاق"
               >
-                {currentBookmarked ? <BookmarkCheck className="w-5 h-5" /> : <Bookmark className="w-5 h-5" />}
+                <X className="w-5 h-5" />
               </button>
-              {pageBookmarks.length > 0 && (
-                <button
-                  onClick={() => { setShowBookmarks((s) => !s); pokeBars(); }}
-                  data-testid="reader-bookmarks-list-btn"
-                  className="absolute -bottom-1 -left-1 min-w-5 h-5 px-1 rounded-full bg-indigo-500 text-[10px] font-extrabold grid place-items-center border-2 border-[#0b1020]"
-                  aria-label="كل الإشارات"
-                >
-                  {pageBookmarks.length}
-                </button>
-              )}
-              {showBookmarks && (
-                <div className="absolute top-12 left-0 w-60 max-h-72 overflow-y-auto rounded-2xl bg-slate-900/95 border border-white/10 backdrop-blur-xl shadow-2xl p-2" dir="rtl">
-                  <div className="text-[11px] font-bold text-slate-400 px-2 py-1.5">إشاراتي في هذا الكتاب</div>
-                  {pageBookmarks.map((bm) => (
-                    <div key={bm.id} className="flex items-center gap-1 rounded-xl hover:bg-white/[0.07] px-2 py-1.5 group">
-                      <button
-                        onClick={() => { goToPage(bm.page); setShowBookmarks(false); }}
-                        className="flex-1 text-right text-sm flex items-center gap-2"
-                      >
-                        <Bookmark className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
-                        <span className={bm.page === currentPage ? "font-bold text-amber-300" : ""}>صفحة {bm.page}</span>
-                      </button>
-                      <button
-                        onClick={() => deletePageBookmark(bm)}
-                        className="w-7 h-7 grid place-items-center rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 opacity-0 group-hover:opacity-100 transition"
-                        aria-label="حذف الإشارة"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-            <button
-              onClick={openNotes}
-              data-testid="reader-notes-btn"
-              className="relative w-10 h-10 shrink-0 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md flex items-center justify-center transition"
-              aria-label="ملاحظاتي"
-              title="ملاحظاتي على الكتاب"
-            >
-              <NotebookText className="w-5 h-5" />
-              {notesLoaded && notes.length > 0 && (
-                <span className="absolute -bottom-1 -left-1 min-w-5 h-5 px-1 rounded-full bg-amber-400 text-slate-950 text-[10px] font-extrabold grid place-items-center border-2 border-transparent">
-                  {notes.length}
+              <div className="flex-1 min-w-0">
+                <div className="font-bold text-sm sm:text-base truncate">{book?.title}</div>
+                <div className={`text-[11px] sm:text-xs truncate ${ui.muted}`}>{book?.author}</div>
+              </div>
+              <div className={`shrink-0 text-xs font-bold rounded-full px-3 py-1.5 tabular-nums ${ui.chip}`}>
+                {numPages > 0 ? `${currentPage} / ${numPages}` : "…"}
+              </div>
+              {offlineReading && (
+                <span data-testid="reader-offline-chip" className="shrink-0 inline-flex items-center gap-1 text-[11px] font-extrabold bg-emerald-500/20 text-emerald-600 dark:text-emerald-200 border border-emerald-500/30 rounded-full px-2.5 py-1.5">
+                  <WifiOff className="w-3.5 h-3.5" /> محمّل
                 </span>
               )}
-            </button>
-            <a
-              href={signedPdfUrl}
-              download
-              className="w-10 h-10 shrink-0 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md hidden sm:flex items-center justify-center transition"
-              aria-label="تحميل"
-              title="تحميل الكتاب"
-            >
-              <Download className="w-5 h-5" />
-            </a>
-            <button
-              onClick={markComplete}
-              disabled={markingDone}
-              data-testid="reader-complete-btn"
-              className="h-10 shrink-0 rounded-full bg-emerald-500 hover:bg-emerald-400 text-white text-xs sm:text-sm font-bold px-3 sm:px-4 flex items-center gap-1.5 transition disabled:opacity-60"
-            >
-              <Check className="w-4 h-4" />
-              <span className="hidden sm:inline">{markingDone ? "جارٍ الحفظ…" : "أكملت الكتاب"}</span>
-              <span className="sm:hidden">تم</span>
-            </button>
-          </div>
-          {/* progress hairline */}
-          <div className="mt-3 h-1 rounded-full bg-white/10 overflow-hidden">
-            <div
-              className="h-full rounded-full bg-gradient-to-l from-emerald-400 to-teal-300 transition-all duration-500"
-              style={{ width: `${numPages ? Math.round((currentPage / numPages) * 100) : 0}%` }}
-            />
+              <div className="relative shrink-0">
+                <button
+                  onClick={togglePageBookmark}
+                  data-testid="reader-bookmark-btn"
+                  className={`w-10 h-10 rounded-full flex items-center justify-center transition ${currentBookmarked ? "bg-amber-400 text-slate-950 shadow-lg" : ui.btn}`}
+                  aria-label="إشارة مرجعية لهذه الصفحة"
+                  title={currentBookmarked ? "إزالة الإشارة من هذه الصفحة" : "ضع إشارة على هذه الصفحة"}
+                >
+                  {currentBookmarked ? <BookmarkCheck className="w-5 h-5" /> : <Bookmark className="w-5 h-5" />}
+                </button>
+                {pageBookmarks.length > 0 && (
+                  <button
+                    onClick={() => { setShowBookmarks((s) => !s); pokeBars(); }}
+                    data-testid="reader-bookmarks-list-btn"
+                    className="absolute -bottom-1 -left-1 min-w-5 h-5 px-1 rounded-full bg-indigo-500 text-white text-[10px] font-extrabold grid place-items-center border-2 border-white/70 shadow"
+                    aria-label="كل الإشارات"
+                  >
+                    {pageBookmarks.length}
+                  </button>
+                )}
+                {showBookmarks && (
+                  <div className={`absolute top-12 left-0 w-60 max-h-72 overflow-y-auto rounded-2xl border p-2 shadow-2xl ${ui.glass}`} dir="rtl">
+                    <div className={`text-[11px] font-bold px-2 py-1.5 ${ui.muted}`}>إشاراتي في هذا الكتاب</div>
+                    {pageBookmarks.map((bm) => (
+                      <div key={bm.id} className={`flex items-center gap-1 rounded-xl px-2 py-1.5 group transition ${ui.hoverSoft}`}>
+                        <button
+                          onClick={() => { goToPage(bm.page); setShowBookmarks(false); }}
+                          className="flex-1 text-right text-sm flex items-center gap-2"
+                        >
+                          <Bookmark className="w-3.5 h-3.5 text-amber-500 fill-amber-400" />
+                          <span className={bm.page === currentPage ? "font-bold text-amber-500" : ""}>صفحة {bm.page}</span>
+                        </button>
+                        <button
+                          onClick={() => deletePageBookmark(bm)}
+                          className="w-7 h-7 grid place-items-center rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 opacity-0 group-hover:opacity-100 transition"
+                          aria-label="حذف الإشارة"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <button
+                onClick={openNotes}
+                data-testid="reader-notes-btn"
+                className={`relative w-10 h-10 shrink-0 rounded-full flex items-center justify-center transition ${ui.btn}`}
+                aria-label="ملاحظاتي"
+                title="ملاحظاتي على الكتاب"
+              >
+                <NotebookText className="w-5 h-5" />
+                {notesLoaded && notes.length > 0 && (
+                  <span className="absolute -bottom-1 -left-1 min-w-5 h-5 px-1 rounded-full bg-amber-400 text-slate-950 text-[10px] font-extrabold grid place-items-center border-2 border-white/70 shadow">
+                    {notes.length}
+                  </span>
+                )}
+              </button>
+              <a
+                href={signedPdfUrl}
+                download
+                className={`w-10 h-10 shrink-0 rounded-full hidden sm:flex items-center justify-center transition ${ui.btn}`}
+                aria-label="تحميل"
+                title="تحميل الكتاب"
+              >
+                <Download className="w-5 h-5" />
+              </a>
+              <button
+                onClick={() => { setRailOpen((o) => !o); pokeBars(); }}
+                className={`w-10 h-10 shrink-0 rounded-full hidden xl:flex items-center justify-center transition ${ui.btn}`}
+                aria-label={railOpen ? "إخفاء لوحة القراءة" : "إظهار لوحة القراءة"}
+                title={railOpen ? "إخفاء لوحة القراءة" : "إظهار لوحة القراءة"}
+              >
+                <PanelLeft className="w-5 h-5" />
+              </button>
+              <button
+                onClick={markComplete}
+                disabled={markingDone}
+                data-testid="reader-complete-btn"
+                className="h-10 shrink-0 rounded-full bg-emerald-500 hover:bg-emerald-400 text-white text-xs sm:text-sm font-bold px-3 sm:px-4 flex items-center gap-1.5 transition disabled:opacity-60 shadow-lg shadow-emerald-500/25"
+              >
+                <Check className="w-4 h-4" />
+                <span className="hidden sm:inline">{markingDone ? "جارٍ الحفظ…" : "أكملت الكتاب"}</span>
+                <span className="sm:hidden">تم</span>
+              </button>
+            </div>
+            {/* progress hairline */}
+            <div className={`mt-2.5 h-1 rounded-full overflow-hidden ${ui.track}`}>
+              <div
+                className="h-full rounded-full bg-gradient-to-l from-emerald-400 to-teal-300 transition-all duration-500"
+                style={{ width: `${pct}%` }}
+              />
+            </div>
           </div>
         </div>
       </div>
 
-      {/* pages */}
-      <div
-        ref={scrollRef}
-        onPointerDown={pokeBars}
-        onTouchStart={pokeBars}
-        className="relative z-[5] flex-1 overflow-y-auto overscroll-contain"
-        style={{ WebkitOverflowScrolling: "touch" }}
-      >
-        {error ? (
-          <div className="min-h-full flex items-center justify-center p-6">
-            <div className="max-w-sm w-full text-center bg-slate-950/85 border border-white/10 rounded-3xl p-8 backdrop-blur-md shadow-2xl">
-              <div className="w-14 h-14 mx-auto rounded-2xl bg-rose-500/15 flex items-center justify-center">
-                <AlertTriangle className="w-7 h-7 text-rose-400" />
-              </div>
-              <h3 className="font-bold text-lg mt-4">تعذر فتح الكتاب</h3>
-              <p className="text-sm text-slate-300/80 mt-2 leading-relaxed">
-                حدثت مشكلة أثناء تحميل صفحات الكتاب. يمكنك المحاولة مجدداً أو فتحه في تبويب جديد.
-              </p>
-              <div className="flex flex-col gap-2 mt-6">
-                <button
-                  onClick={() => window.location.reload()}
-                  className="h-11 rounded-xl bg-white/10 hover:bg-white/15 font-bold text-sm transition"
-                >
-                  إعادة المحاولة
-                </button>
-                <a
-                  href={signedPdfUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="h-11 rounded-xl bg-indigo-500 hover:bg-indigo-400 font-bold text-sm flex items-center justify-center gap-2 transition"
-                >
-                  <ExternalLink className="w-4 h-4" /> فتح في تبويب جديد
-                </a>
-                <a
-                  href={signedPdfUrl}
-                  download
-                  className="h-11 rounded-xl bg-white/10 hover:bg-white/15 font-bold text-sm flex items-center justify-center gap-2 transition"
-                >
-                  <Download className="w-4 h-4" /> تحميل الكتاب
-                </a>
-              </div>
-            </div>
-          </div>
-        ) : !pdf ? (
-          <div className="min-h-full flex items-center justify-center p-6">
-            <div className="text-center rounded-3xl bg-slate-950/85 border border-white/10 px-10 py-8 shadow-2xl">
-              <div className="relative w-20 h-20 mx-auto">
-                <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-indigo-500/40 to-emerald-500/40 blur-xl" />
-                <div className="relative w-20 h-20 rounded-3xl bg-white/[0.07] border border-white/10 flex items-center justify-center">
-                  <Loader2 className="w-9 h-9 text-indigo-300 animate-spin" />
+      {/* desk: pages column + reading rail */}
+      <div className="relative z-[5] flex flex-1 min-h-0">
+        {/* pages */}
+        <div
+          ref={scrollRef}
+          onPointerDown={pokeBars}
+          onTouchStart={pokeBars}
+          className="relative flex-1 min-w-0 overflow-y-auto overscroll-contain"
+          style={{ WebkitOverflowScrolling: "touch" }}
+        >
+          {error ? (
+            <div className="min-h-full flex items-center justify-center p-6">
+              <div className={`max-w-sm w-full text-center border rounded-[28px] p-8 ${ui.glass}`}>
+                <div className="w-14 h-14 mx-auto rounded-2xl bg-rose-500/15 flex items-center justify-center">
+                  <AlertTriangle className="w-7 h-7 text-rose-500" />
+                </div>
+                <h3 className="font-bold text-lg mt-4">تعذر فتح الكتاب</h3>
+                <p className={`text-sm mt-2 leading-relaxed ${ui.muted}`}>
+                  حدثت مشكلة أثناء تحميل صفحات الكتاب. يمكنك المحاولة مجدداً أو فتحه في تبويب جديد.
+                </p>
+                <div className="flex flex-col gap-2 mt-6">
+                  <button
+                    onClick={() => window.location.reload()}
+                    className={`h-11 rounded-xl font-bold text-sm transition border border-transparent ${ui.btn}`}
+                  >
+                    إعادة المحاولة
+                  </button>
+                  <a
+                    href={signedPdfUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="h-11 rounded-xl bg-indigo-500 hover:bg-indigo-400 text-white font-bold text-sm flex items-center justify-center gap-2 transition"
+                  >
+                    <ExternalLink className="w-4 h-4" /> فتح في تبويب جديد
+                  </a>
+                  <a
+                    href={signedPdfUrl}
+                    download
+                    className={`h-11 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition border border-transparent ${ui.btn}`}
+                  >
+                    <Download className="w-4 h-4" /> تحميل الكتاب
+                  </a>
                 </div>
               </div>
-              <h3 className="font-bold text-lg mt-5">جارٍ تجهيز الكتاب…</h3>
-              <p className="text-sm text-slate-300/70 mt-1 tabular-nums">{loadPct}%</p>
-              <div className="w-56 h-1.5 mx-auto mt-4 rounded-full bg-white/10 overflow-hidden">
-                <div
-                  className="h-full rounded-full bg-gradient-to-l from-indigo-400 to-emerald-300 transition-all duration-300"
-                  style={{ width: `${loadPct}%` }}
-                />
+            </div>
+          ) : !pdf ? (
+            <div className="min-h-full flex items-center justify-center p-6">
+              <div className={`text-center border rounded-[28px] px-8 sm:px-12 py-9 max-w-sm w-full ${ui.glass}`}>
+                {book?.cover_url ? (
+                  <img
+                    src={book.cover_url}
+                    alt={book?.title || "غلاف الكتاب"}
+                    className="w-24 h-36 object-cover mx-auto rounded-lg shadow-[0_16px_35px_-10px_rgba(0,0,0,0.55)] ring-1 ring-black/10"
+                  />
+                ) : (
+                  <div className="w-[4.5rem] h-[6.75rem] mx-auto rounded-lg bg-gradient-to-br from-indigo-500/70 to-emerald-500/70 flex items-center justify-center shadow-[0_16px_35px_-10px_rgba(0,0,0,0.55)]">
+                    <BookOpen className="w-8 h-8 text-white/90" />
+                  </div>
+                )}
+                <h3 className="font-bold text-base sm:text-lg mt-5 leading-snug">{book?.title || "جارٍ تجهيز الكتاب…"}</h3>
+                {book?.author && <p className={`text-xs sm:text-sm mt-1 ${ui.muted}`}>{book.author}</p>}
+                <div className="relative w-[76px] h-[76px] mx-auto mt-6">
+                  <svg viewBox="0 0 76 76" className="w-full h-full -rotate-90">
+                    <circle cx="38" cy="38" r="30" fill="none" strokeWidth="6" className="stroke-slate-400/25" />
+                    <circle
+                      cx="38" cy="38" r="30" fill="none" strokeWidth="6" strokeLinecap="round"
+                      stroke="url(#reader-load-grad)"
+                      strokeDasharray={ringC}
+                      strokeDashoffset={ringC * (1 - loadPct / 100)}
+                      className="transition-all duration-300"
+                    />
+                    <defs>
+                      <linearGradient id="reader-load-grad" x1="0" y1="0" x2="1" y2="1">
+                        <stop offset="0%" stopColor="#818cf8" />
+                        <stop offset="100%" stopColor="#34d399" />
+                      </linearGradient>
+                    </defs>
+                  </svg>
+                  <div className="absolute inset-0 grid place-items-center">
+                    <span className="text-sm font-extrabold tabular-nums">{loadPct}%</span>
+                  </div>
+                </div>
+                <p className={`text-[11px] mt-3 flex items-center justify-center gap-1.5 ${ui.muted}`}>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" /> جارٍ تجهيز صفحات الكتاب…
+                </p>
               </div>
             </div>
-          </div>
-        ) : (
-          <div className="py-6 px-4 space-y-5 pb-32">
-            {Array.from({ length: numPages }, (_, i) => i + 1).map((n) => (
-              <PageView
-                key={`${n}-${zoomIdx}`}
-                pdf={pdf}
-                pageNumber={n}
-                scale={scale}
-                active={near(n)}
-                onSize={handlePageSize}
-              />
-            ))}
-          </div>
+          ) : (
+            <div className="py-6 sm:py-9 px-3 sm:px-6 xl:px-10 space-y-6 sm:space-y-8 pb-36">
+              {Array.from({ length: numPages }, (_, i) => i + 1).map((n) => (
+                <PageView
+                  key={`${n}-${zoomIdx}`}
+                  pdf={pdf}
+                  pageNumber={n}
+                  scale={scale}
+                  active={near(n)}
+                  onSize={handlePageSize}
+                  isCurrent={n === currentPage}
+                  theme={themeId}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* reading rail · desktop only */}
+        {pdf && !error && railOpen && (
+          <aside className="hidden xl:flex w-[292px] shrink-0 flex-col gap-4 overflow-y-auto py-5 pe-5 ps-1">
+            <div className={`border rounded-[24px] p-5 ${ui.rail}`}>
+              <div className="flex items-center gap-4">
+                <div className="relative w-[68px] h-[68px] shrink-0">
+                  <svg viewBox="0 0 76 76" className="w-full h-full -rotate-90">
+                    <circle cx="38" cy="38" r="30" fill="none" strokeWidth="6" className="stroke-slate-400/25" />
+                    <circle
+                      cx="38" cy="38" r="30" fill="none" strokeWidth="6" strokeLinecap="round"
+                      stroke="url(#reader-rail-grad)"
+                      strokeDasharray={ringC}
+                      strokeDashoffset={ringC * (1 - pct / 100)}
+                      className="transition-all duration-500"
+                    />
+                    <defs>
+                      <linearGradient id="reader-rail-grad" x1="0" y1="0" x2="1" y2="1">
+                        <stop offset="0%" stopColor="#34d399" />
+                        <stop offset="100%" stopColor="#2dd4bf" />
+                      </linearGradient>
+                    </defs>
+                  </svg>
+                  <div className="absolute inset-0 grid place-items-center">
+                    <span className="text-[13px] font-extrabold tabular-nums">{pct}%</span>
+                  </div>
+                </div>
+                <div className="min-w-0">
+                  <div className="text-sm font-extrabold tabular-nums">صفحة {currentPage} من {numPages}</div>
+                  <div className={`text-[11px] mt-1 ${ui.muted}`}>
+                    {numPages - currentPage > 0 ? `تبقّى ${numPages - currentPage} صفحة على النهاية` : "وصلت إلى آخر صفحة"}
+                  </div>
+                </div>
+              </div>
+              <div className={`mt-4 h-1.5 rounded-full overflow-hidden ${ui.track}`}>
+                <div className="h-full rounded-full bg-gradient-to-l from-emerald-400 to-teal-300 transition-all duration-500" style={{ width: `${pct}%` }} />
+              </div>
+            </div>
+
+            <div className={`border rounded-[24px] p-4 ${ui.rail}`}>
+              <div className={`text-[11px] font-bold px-1 pb-2.5 ${ui.muted}`}>مظهر القراءة</div>
+              <div className="flex gap-2">
+                {READER_THEMES.map((t) => {
+                  const TIcon = t.icon;
+                  const activeTheme = themeId === t.id;
+                  return (
+                    <button
+                      key={t.id}
+                      onClick={() => { setThemeId(t.id); pokeBars(); }}
+                      className={`flex-1 h-11 rounded-2xl text-[11px] font-bold flex items-center justify-center gap-1.5 transition ${activeTheme ? "bg-amber-400 text-slate-950 shadow-lg" : ui.btn}`}
+                      title={`مظهر ${t.label}`}
+                    >
+                      <span className="w-3.5 h-3.5 rounded-full ring-1 ring-black/15 shrink-0" style={{ background: t.desk }} />
+                      <TIcon className="w-3.5 h-3.5" />
+                      {t.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className={`border rounded-[24px] p-4 ${ui.rail}`}>
+              <div className="flex items-center justify-between px-1 pb-2.5">
+                <span className={`text-[11px] font-bold ${ui.muted}`}>صفحاتي المعلّمة</span>
+                <span className={`text-[10px] font-extrabold rounded-full px-2 py-0.5 tabular-nums ${ui.chip}`}>{pageBookmarks.length}</span>
+              </div>
+              {pageBookmarks.length === 0 ? (
+                <p className={`text-[11px] leading-relaxed px-1 ${ui.muted}`}>لا إشارات بعد · اضغط زر الإشارة أثناء القراءة وستجد صفحاتك هنا للرجوع السريع.</p>
+              ) : (
+                <div className="flex flex-wrap gap-1.5">
+                  {pageBookmarks.map((bm) => (
+                    <button
+                      key={bm.id}
+                      onClick={() => goToPage(bm.page)}
+                      className={`h-9 px-3 rounded-full text-[11px] font-bold inline-flex items-center gap-1.5 transition tabular-nums ${bm.page === currentPage ? "bg-amber-400 text-slate-950 shadow" : ui.btn}`}
+                    >
+                      <Bookmark className="w-3 h-3 fill-amber-400 text-amber-500" />
+                      صفحة {bm.page}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <button
+              onClick={openNotes}
+              className={`border rounded-[24px] p-4 text-start transition ${ui.rail} ${ui.hoverSoft}`}
+            >
+              <div className="flex items-center gap-3">
+                <span className="w-10 h-10 rounded-2xl bg-amber-400/15 text-amber-500 grid place-items-center shrink-0">
+                  <NotebookText className="w-5 h-5" />
+                </span>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-extrabold">ملاحظاتي</div>
+                  <div className={`text-[11px] mt-0.5 ${ui.muted}`}>
+                    {notesLoaded ? (notes.length ? `${notes.length} ملاحظة محفوظة` : "لا ملاحظات بعد") : "دوّن أفكارك أثناء القراءة"}
+                  </div>
+                </div>
+                <ChevronLeft className="w-4 h-4 opacity-50 shrink-0" />
+              </div>
+            </button>
+          </aside>
         )}
       </div>
 
-      {/* bottom control bar */}
+      {/* bottom floating control dock */}
       {pdf && !error && (
-        <div
-          className={`relative z-10 transition-all duration-300 ${barsVisible ? "translate-y-0 opacity-100" : "translate-y-full opacity-0"}`}
-        >
-          <div className="bg-gradient-to-t from-black/70 to-transparent px-3 sm:px-5 pt-8 pb-4">
-            <div className="max-w-2xl mx-auto bg-white/[0.08] border border-white/10 backdrop-blur-xl rounded-2xl px-3 sm:px-4 py-2.5 shadow-2xl">
+        <div className={`relative z-10 transition-all duration-300 ${barsVisible ? "translate-y-0 opacity-100" : "translate-y-full opacity-0 pointer-events-none"}`}>
+          <div className="px-2.5 sm:px-5 pt-1 pb-[max(0.65rem,env(safe-area-inset-bottom))] sm:pb-5">
+            <div className={`max-w-3xl mx-auto border rounded-[26px] px-3 sm:px-5 py-3 ${ui.glass}`}>
               {/* zoom presets + reader themes */}
-              <div className="flex items-center justify-center gap-1.5 sm:gap-2 flex-wrap mb-2.5" dir="rtl">
+              <div className="flex items-center justify-center gap-1.5 sm:gap-2 flex-wrap mb-3" dir="rtl">
                 <button
                   onClick={() => { setZoomIdx(2); pokeBars(); }}
-                  className={`h-8 px-3 rounded-full text-[11px] font-bold transition ${zoomIdx === 2 ? "bg-amber-400 text-slate-950" : "bg-white/10 hover:bg-white/20 text-slate-200"}`}
+                  className={`h-8 px-3 rounded-full text-[11px] font-bold transition ${zoomIdx === 2 ? "bg-amber-400 text-slate-950" : ui.btn}`}
                 >
                   ملاءمة الشاشة
                 </button>
                 <button
                   onClick={() => setAbsZoom(1)}
-                  className={`h-8 px-3 rounded-full text-[11px] font-bold transition tabular-nums ${Math.abs(scale - 1) < 0.12 ? "bg-amber-400 text-slate-950" : "bg-white/10 hover:bg-white/20 text-slate-200"}`}
+                  className={`h-8 px-3 rounded-full text-[11px] font-bold transition tabular-nums ${Math.abs(scale - 1) < 0.12 ? "bg-amber-400 text-slate-950" : ui.btn}`}
                 >
                   100%
                 </button>
                 <button
                   onClick={() => setAbsZoom(1.5)}
-                  className={`h-8 px-3 rounded-full text-[11px] font-bold transition tabular-nums ${Math.abs(scale - 1.5) < 0.12 ? "bg-amber-400 text-slate-950" : "bg-white/10 hover:bg-white/20 text-slate-200"}`}
+                  className={`h-8 px-3 rounded-full text-[11px] font-bold transition tabular-nums ${Math.abs(scale - 1.5) < 0.12 ? "bg-amber-400 text-slate-950" : ui.btn}`}
                 >
                   150%
                 </button>
-                <span className="w-px h-5 bg-white/15 mx-1 hidden sm:block" aria-hidden="true" />
+                <span className={`w-px h-5 mx-1 hidden sm:block ${ui.track}`} aria-hidden="true" />
                 {READER_THEMES.map((t) => {
                   const TIcon = t.icon;
                   return (
@@ -626,7 +885,7 @@ export default function BookReader({ book, pdfUrl, onClose, onProgress, initialP
                       key={t.id}
                       data-testid={`reader-theme-${t.id}`}
                       onClick={() => { setThemeId(t.id); pokeBars(); }}
-                      className={`h-8 pl-2.5 pr-2 rounded-full text-[11px] font-bold flex items-center gap-1 transition ${themeId === t.id ? "bg-amber-400 text-slate-950" : "bg-white/10 hover:bg-white/20 text-slate-200"}`}
+                      className={`h-8 pl-2.5 pr-2 rounded-full text-[11px] font-bold flex items-center gap-1 transition ${themeId === t.id ? "bg-amber-400 text-slate-950" : ui.btn}`}
                       title={`مظهر ${t.label}`}
                     >
                       <TIcon className="w-3.5 h-3.5" />
@@ -636,43 +895,65 @@ export default function BookReader({ book, pdfUrl, onClose, onProgress, initialP
                 })}
               </div>
               <div className="flex items-center gap-2 sm:gap-3">
-              <button
-                onClick={() => setZoomIdx((i) => Math.max(0, i - 1))}
-                disabled={zoomIdx === 0}
-                className="w-9 h-9 shrink-0 rounded-xl bg-white/10 hover:bg-white/20 disabled:opacity-30 flex items-center justify-center transition"
-                aria-label="تصغير"
-              >
-                <ZoomOut className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => setZoomIdx((i) => Math.min(ZOOM_STEPS.length - 1, i + 1))}
-                disabled={zoomIdx === ZOOM_STEPS.length - 1}
-                className="w-9 h-9 shrink-0 rounded-xl bg-white/10 hover:bg-white/20 disabled:opacity-30 flex items-center justify-center transition"
-                aria-label="تكبير"
-              >
-                <ZoomIn className="w-4 h-4" />
-              </button>
-              <span className="text-[11px] font-bold text-slate-300 tabular-nums w-11 text-center shrink-0">
-                {Math.round(ZOOM_STEPS[zoomIdx] * 100)}%
-              </span>
-              <input
-                type="range"
-                min={1}
-                max={Math.max(1, numPages)}
-                value={currentPage}
-                onChange={(e) => goToPage(Number(e.target.value))}
-                data-testid="reader-page-slider"
-                className="flex-1 accent-emerald-400 h-1.5 cursor-pointer"
-                aria-label="الصفحة"
-              />
-              <button
-                onClick={() => goToPage(1)}
-                className="w-9 h-9 shrink-0 rounded-xl bg-white/10 hover:bg-white/20 flex items-center justify-center transition"
-                aria-label="العودة للأعلى"
-                title="العودة لأول صفحة"
-              >
-                <ChevronUp className="w-4 h-4" />
-              </button>
+                <button
+                  onClick={() => goToPage(Math.max(1, currentPage - 1))}
+                  disabled={currentPage <= 1}
+                  className={`h-11 w-11 sm:h-10 sm:w-10 shrink-0 rounded-2xl flex items-center justify-center transition disabled:opacity-30 ${ui.btn}`}
+                  aria-label="الصفحة السابقة"
+                  title="الصفحة السابقة"
+                >
+                  <ChevronRight className="w-5 h-5" />
+                </button>
+                <input
+                  type="range"
+                  min={1}
+                  max={Math.max(1, numPages)}
+                  value={currentPage}
+                  onChange={(e) => goToPage(Number(e.target.value), false)}
+                  data-testid="reader-page-slider"
+                  className="flex-1 accent-emerald-400 h-1.5 cursor-pointer min-w-0"
+                  aria-label="الصفحة"
+                />
+                <button
+                  onClick={() => goToPage(Math.min(numPages, currentPage + 1))}
+                  disabled={currentPage >= numPages}
+                  className={`h-11 w-11 sm:h-10 sm:w-10 shrink-0 rounded-2xl flex items-center justify-center transition disabled:opacity-30 ${ui.btn}`}
+                  aria-label="الصفحة التالية"
+                  title="الصفحة التالية"
+                >
+                  <ChevronLeft className="w-5 h-5" />
+                </button>
+                <span className={`hidden md:inline-flex shrink-0 items-center text-[11px] font-bold rounded-full px-3 py-1.5 tabular-nums ${ui.chip}`}>
+                  صفحة {currentPage} من {numPages} · {pct}٪
+                </span>
+                <span className={`w-px h-5 hidden sm:block ${ui.track}`} aria-hidden="true" />
+                <button
+                  onClick={() => setZoomIdx((i) => Math.max(0, i - 1))}
+                  disabled={zoomIdx === 0}
+                  className={`h-11 w-11 sm:h-10 sm:w-10 shrink-0 rounded-2xl disabled:opacity-30 flex items-center justify-center transition ${ui.btn}`}
+                  aria-label="تصغير"
+                >
+                  <ZoomOut className="w-4 h-4" />
+                </button>
+                <span className={`text-[11px] font-bold tabular-nums w-11 text-center shrink-0 hidden sm:inline ${ui.muted}`}>
+                  {Math.round(ZOOM_STEPS[zoomIdx] * 100)}%
+                </span>
+                <button
+                  onClick={() => setZoomIdx((i) => Math.min(ZOOM_STEPS.length - 1, i + 1))}
+                  disabled={zoomIdx === ZOOM_STEPS.length - 1}
+                  className={`h-11 w-11 sm:h-10 sm:w-10 shrink-0 rounded-2xl disabled:opacity-30 flex items-center justify-center transition ${ui.btn}`}
+                  aria-label="تكبير"
+                >
+                  <ZoomIn className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => goToPage(1)}
+                  className={`h-11 w-11 sm:h-10 sm:w-10 shrink-0 rounded-2xl hidden sm:flex items-center justify-center transition ${ui.btn}`}
+                  aria-label="العودة للأعلى"
+                  title="العودة لأول صفحة"
+                >
+                  <ChevronUp className="w-4 h-4" />
+                </button>
               </div>
             </div>
           </div>
@@ -683,18 +964,18 @@ export default function BookReader({ book, pdfUrl, onClose, onProgress, initialP
       {showNotes && (
         <div className="absolute inset-0 z-30" dir="rtl">
           <div className="absolute inset-0 bg-black/55 backdrop-blur-[2px]" onClick={() => setShowNotes(false)} />
-          <div className="absolute inset-x-0 bottom-0 max-h-[78vh] flex flex-col rounded-t-[28px] bg-slate-900/97 border-t border-white/10 shadow-2xl">
-            <div className="flex items-center gap-2.5 px-5 pt-4 pb-3 border-b border-white/[0.07]">
-              <span className="w-9 h-9 rounded-xl bg-amber-400/15 text-amber-300 grid place-items-center shrink-0">
+          <div className={`absolute inset-x-0 bottom-0 max-h-[78vh] flex flex-col rounded-t-[28px] border-t shadow-2xl ${ui.sheetNote}`}>
+            <div className="flex items-center gap-2.5 px-5 pt-4 pb-3 border-b border-current/10">
+              <span className="w-9 h-9 rounded-xl bg-amber-400/15 text-amber-500 grid place-items-center shrink-0">
                 <NotebookText className="w-5 h-5" />
               </span>
               <div className="flex-1 min-w-0">
                 <div className="font-head font-extrabold text-sm">ملاحظاتي</div>
-                <div className="text-[11px] text-slate-400">أنت الآن في الصفحة {currentPage}</div>
+                <div className={`text-[11px] ${ui.sheetMuted}`}>أنت الآن في الصفحة {currentPage}</div>
               </div>
               <button
                 onClick={() => setShowNotes(false)}
-                className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 grid place-items-center transition shrink-0"
+                className={`w-9 h-9 rounded-full grid place-items-center transition shrink-0 ${ui.btn}`}
                 aria-label="إغلاق الملاحظات"
               >
                 <X className="w-4 h-4" />
@@ -703,34 +984,34 @@ export default function BookReader({ book, pdfUrl, onClose, onProgress, initialP
 
             <div className="flex-1 overflow-y-auto px-5 py-3 space-y-2">
               {notesErr && (
-                <div className="rounded-xl bg-rose-500/10 border border-rose-400/20 text-rose-200 text-xs font-semibold px-3 py-2.5">{notesErr}</div>
+                <div className="rounded-xl bg-rose-500/10 border border-rose-400/20 text-rose-500 text-xs font-semibold px-3 py-2.5">{notesErr}</div>
               )}
               {!notesLoaded ? (
-                <div className="flex items-center justify-center gap-2 py-8 text-slate-400 text-sm">
+                <div className={`flex items-center justify-center gap-2 py-8 text-sm ${ui.sheetMuted}`}>
                   <Loader2 className="w-4 h-4 animate-spin" /> جارٍ تحميل ملاحظاتك…
                 </div>
               ) : notes.length === 0 ? (
                 <div className="text-center py-8">
-                  <StickyNote className="w-9 h-9 mx-auto text-slate-600" />
-                  <p className="text-sm text-slate-400 mt-3 leading-relaxed">لا ملاحظات بعد · اكتب أول ملاحظة لك على الصفحة {currentPage} وستجدها هنا دائماً.</p>
+                  <StickyNote className={`w-9 h-9 mx-auto ${ui.sheetSub}`} />
+                  <p className={`text-sm mt-3 leading-relaxed ${ui.sheetMuted}`}>لا ملاحظات بعد · اكتب أول ملاحظة لك على الصفحة {currentPage} وستجدها هنا دائماً.</p>
                 </div>
               ) : (
                 notes.map((n) => (
-                  <div key={n.id || n._id} className="flex items-start gap-2.5 rounded-2xl bg-white/[0.05] border border-white/[0.07] px-3.5 py-3 group">
+                  <div key={n.id || n._id} className={`flex items-start gap-2.5 rounded-2xl border px-3.5 py-3 group ${ui.sheetRow}`}>
                     <button
                       onClick={() => { if (n.page) { goToPage(n.page); setShowNotes(false); } }}
-                      className="shrink-0 rounded-full bg-amber-400/15 text-amber-300 text-[11px] font-extrabold px-2.5 py-1 tabular-nums"
+                      className="shrink-0 rounded-full bg-amber-400/15 text-amber-600 text-[11px] font-extrabold px-2.5 py-1 tabular-nums"
                       title="الانتقال إلى الصفحة"
                     >
                       ص {n.page}
                     </button>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm leading-relaxed text-slate-100 whitespace-pre-wrap break-words">{n.text}</p>
-                      {n.created_at && <div className="text-[10px] text-slate-500 mt-1 tabular-nums">{String(n.created_at).slice(0, 10)}</div>}
+                      <p className={`text-sm leading-relaxed whitespace-pre-wrap break-words ${ui.sheetText}`}>{n.text}</p>
+                      {n.created_at && <div className={`text-[10px] mt-1 tabular-nums ${ui.sheetSub}`}>{String(n.created_at).slice(0, 10)}</div>}
                     </div>
                     <button
                       onClick={() => deleteNote(n)}
-                      className="w-8 h-8 shrink-0 grid place-items-center rounded-lg text-slate-500 hover:text-rose-300 hover:bg-rose-500/10 transition"
+                      className={`w-8 h-8 shrink-0 grid place-items-center rounded-lg transition ${ui.sheetSub} hover:text-rose-500 hover:bg-rose-500/10`}
                       aria-label="حذف الملاحظة"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -740,7 +1021,7 @@ export default function BookReader({ book, pdfUrl, onClose, onProgress, initialP
               )}
             </div>
 
-            <div className="px-5 pb-5 pt-3 border-t border-white/[0.07] bg-slate-900">
+            <div className="px-5 pb-5 pt-3 border-t border-current/10">
               <div className="flex items-end gap-2">
                 <textarea
                   data-testid="note-text-input"
@@ -748,7 +1029,7 @@ export default function BookReader({ book, pdfUrl, onClose, onProgress, initialP
                   onChange={(ev) => setNoteText(ev.target.value)}
                   rows={2}
                   placeholder={`أضف ملاحظة على الصفحة ${currentPage}…`}
-                  className="flex-1 resize-none rounded-2xl bg-white/[0.06] border border-white/10 focus:border-amber-300/50 focus:ring-2 focus:ring-amber-300/20 outline-none px-3.5 py-2.5 text-sm placeholder:text-slate-500"
+                  className={`flex-1 resize-none rounded-2xl border focus:ring-2 outline-none px-3.5 py-2.5 text-sm ${ui.sheetInput}`}
                 />
                 <button
                   data-testid="add-note-btn"
