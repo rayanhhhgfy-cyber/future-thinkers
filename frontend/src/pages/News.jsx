@@ -295,42 +295,58 @@ export default function News() {
                           <span className="rounded-full bg-white/15 px-3 py-1.5 text-xs font-bold text-white ring-1 ring-white/25 backdrop-blur">{featured.category}</span>
                           <span className="ms-auto hidden items-center gap-1.5 rounded-full bg-slate-950/40 px-3 py-1.5 text-[11px] font-extrabold tracking-wide text-white/80 ring-1 ring-white/15 backdrop-blur sm:inline-flex"><Flame className="h-3.5 w-3.5 text-orange-400" /> قصة الغلاف</span>
                         </div>
-                        <div className="relative w-full p-5 sm:p-8 lg:p-10 xl:p-12">
-                          <h3 className="font-head max-w-4xl text-3xl font-extrabold leading-snug text-white line-clamp-3 sm:text-4xl lg:text-[2.9rem] lg:leading-[1.25] xl:text-5xl">{featured.title}</h3>
-                          {expanded !== featured.id && <p className="mt-3 max-w-3xl text-sm leading-loose text-white/80 line-clamp-2 sm:text-base">{featured.body}</p>}
-                          <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-white/15 pt-5 sm:gap-3">
-                            <span className="inline-flex items-center gap-2 rounded-full bg-white/10 py-1 pl-4 pr-1 text-xs font-bold text-white ring-1 ring-white/20 backdrop-blur sm:text-sm">
-                              <span className="grid h-8 w-8 place-items-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-sm font-extrabold text-white">{featured.author_name?.[0]}</span>
-                              {featured.author_name}
-                            </span>
-                            {(featured.date || featured.created_at) && (
-                              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3.5 py-2 text-xs font-bold text-white ring-1 ring-white/20 backdrop-blur sm:text-sm"><CalendarDays className="h-4 w-4 text-sky-300" />{featured.date || String(featured.created_at).slice(0, 10)}</span>
-                            )}
-                            {featured.views != null && (
-                              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3.5 py-2 text-xs font-bold text-white ring-1 ring-white/20 backdrop-blur sm:text-sm"><Eye className="h-4 w-4 text-cyan-300" />{featured.views} قراءة</span>
-                            )}
-                            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3.5 py-2 text-xs font-bold text-white ring-1 ring-white/20 backdrop-blur sm:text-sm"><Clock3 className="h-4 w-4 text-emerald-300" />{readMinutes(featured.body)} دقائق قراءة</span>
-                            {featured.body?.length > 140 && (
-                              <button onClick={() => toggle(featured.id)} className="pressable inline-flex min-h-[44px] items-center gap-1.5 rounded-full bg-white px-5 text-xs font-extrabold text-slate-900 shadow-lg transition hover:bg-blue-50 sm:text-sm">
-                                {expanded === featured.id ? "إظهار أقل" : "اقرأ القصة كاملة"}
-                                <ArrowLeft className={`h-4 w-4 transition-transform duration-300 ${expanded === featured.id ? "-rotate-90" : "group-hover:-translate-x-0.5"}`} />
-                              </button>
-                            )}
-                          </div>
-                          {expanded === featured.id && (
-                            <div className="mt-6 rounded-[1.4rem] bg-white p-5 text-slate-800 shadow-2xl animate-fade-up sm:rounded-3xl sm:p-7">
-                              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-slate-100 pb-4">
-                                <span className="flex items-center gap-2 text-sm font-bold text-slate-700">
-                                  <span className="grid h-9 w-9 place-items-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-xs font-extrabold text-white">{featured.author_name?.[0]}</span>
-                                  {featured.author_name}
+                        <div className={`relative w-full p-5 sm:p-8 lg:p-10 xl:p-12 ${expanded === featured.id ? "pt-24 sm:pt-28 lg:pt-32" : ""}`}>
+                          {expanded !== featured.id && (
+                            <>
+                              <h3 className="font-head max-w-4xl text-3xl font-extrabold leading-snug text-white break-words line-clamp-3 sm:text-4xl lg:text-[2.9rem] lg:leading-[1.25] xl:text-5xl">{featured.title}</h3>
+                              <p className="mt-3 max-w-3xl text-sm leading-loose text-white/80 line-clamp-2 sm:text-base">{featured.body}</p>
+                              <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-white/15 pt-5 sm:gap-3">
+                                <span className="inline-flex items-center gap-2 rounded-full bg-white/10 py-1 pl-4 pr-1 text-xs font-bold text-white ring-1 ring-white/20 backdrop-blur sm:text-sm">
+                                  <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-sm font-extrabold text-white">{featured.author_name?.[0] || "؟"}</span>
+                                  <span className="min-w-0 break-words">{featured.author_name}</span>
                                 </span>
-                                {(featured.date || featured.created_at) && <span className="flex items-center gap-1.5 text-xs font-semibold text-slate-400"><CalendarDays className="h-3.5 w-3.5 text-blue-600" />{featured.date || String(featured.created_at).slice(0, 10)}</span>}
-                                <span className="flex items-center gap-1.5 text-xs font-semibold text-slate-400"><Clock3 className="h-3.5 w-3.5 text-emerald-600" />{readMinutes(featured.body)} دقائق قراءة</span>
+                                {(featured.date || featured.created_at) && (
+                                  <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3.5 py-2 text-xs font-bold text-white ring-1 ring-white/20 backdrop-blur sm:text-sm"><CalendarDays className="h-4 w-4 text-sky-300" />{featured.date || String(featured.created_at).slice(0, 10)}</span>
+                                )}
+                                {featured.views != null && (
+                                  <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3.5 py-2 text-xs font-bold text-white ring-1 ring-white/20 backdrop-blur sm:text-sm"><Eye className="h-4 w-4 text-cyan-300" />{featured.views} قراءة</span>
+                                )}
+                                <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3.5 py-2 text-xs font-bold text-white ring-1 ring-white/20 backdrop-blur sm:text-sm"><Clock3 className="h-4 w-4 text-emerald-300" />{readMinutes(featured.body)} دقائق قراءة</span>
+                                {featured.body?.length > 140 && (
+                                  <button onClick={() => toggle(featured.id)} className="pressable inline-flex min-h-[44px] items-center gap-1.5 rounded-full bg-white px-5 text-xs font-extrabold text-slate-900 shadow-lg transition hover:bg-blue-50 sm:text-sm">
+                                    اقرأ القصة كاملة
+                                    <ArrowLeft className="h-4 w-4 transition-transform duration-300 group-hover:-translate-x-0.5" />
+                                  </button>
+                                )}
                               </div>
-                              <p className="mt-4 whitespace-pre-wrap text-[15px] leading-[2] text-slate-700 sm:text-base">{featured.body}</p>
+                            </>
+                          )}
+                          {expanded === featured.id && (
+                            <div className="rounded-[1.4rem] bg-white p-5 text-slate-800 shadow-2xl animate-fade-up sm:rounded-3xl sm:p-7 lg:p-9">
+                              {featured.category && <span className="inline-flex rounded-full ft-bg-soft px-3 py-1 text-[11px] font-extrabold ft-text-accent ring-1 ft-ring-accent">{featured.category}</span>}
+                              <h3 className="font-head mt-3 break-words text-2xl font-extrabold leading-snug text-slate-900 sm:text-3xl sm:leading-snug lg:text-4xl">{featured.title}</h3>
+                              <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-slate-100 pb-4">
+                                <span className="flex items-center gap-2 text-sm font-bold text-slate-700">
+                                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-sm font-extrabold text-white">{featured.author_name?.[0] || "؟"}</span>
+                                  <span className="min-w-0">
+                                    <span className="block break-words leading-tight">{featured.author_name}</span>
+                                    <span className="block text-[11px] font-semibold text-slate-400">كاتب الخبر</span>
+                                  </span>
+                                </span>
+                                <span className="ms-auto flex flex-wrap items-center gap-1.5">
+                                  {(featured.date || featured.created_at) && <span className="inline-flex items-center gap-1 rounded-full bg-slate-50 px-2.5 py-1 text-[11px] font-bold text-slate-400 ring-1 ring-slate-100"><CalendarDays className="h-3 w-3 text-blue-500" />{featured.date || String(featured.created_at).slice(0, 10)}</span>}
+                                  {featured.views != null && <span className="inline-flex items-center gap-1 rounded-full bg-slate-50 px-2.5 py-1 text-[11px] font-bold text-slate-400 ring-1 ring-slate-100"><Eye className="h-3 w-3 text-cyan-600" />{featured.views} قراءة</span>}
+                                  <span className="inline-flex items-center gap-1 rounded-full bg-slate-50 px-2.5 py-1 text-[11px] font-bold text-slate-400 ring-1 ring-slate-100"><Clock3 className="h-3 w-3 text-emerald-500" />{readMinutes(featured.body)} دقائق قراءة</span>
+                                </span>
+                              </div>
+                              <p className="mt-5 whitespace-pre-wrap text-[15px] leading-[2.05] text-slate-700 sm:text-base sm:leading-[2.1]">{featured.body}</p>
                               <div className="mt-6 border-t border-slate-100 pt-5">
                                 <NewsComments newsId={featured.id} />
                               </div>
+                              <button onClick={() => toggle(featured.id)} className="pressable mt-5 inline-flex min-h-[40px] items-center gap-1.5 text-sm font-extrabold text-slate-400 transition hover:text-slate-600">
+                                إظهار أقل
+                                <ArrowLeft className="h-4 w-4 -rotate-90 transition-transform duration-300" />
+                              </button>
                             </div>
                           )}
                         </div>
@@ -360,9 +376,11 @@ export default function News() {
                                       )}
                                       <span className="inline-flex items-center gap-1 rounded-full bg-slate-50 px-2.5 py-1 text-[11px] font-bold text-slate-400 ring-1 ring-slate-100"><Clock3 className="h-3 w-3 text-emerald-500" />{readMinutes(n.body)} دقائق</span>
                                     </div>
-                                    <button onClick={() => toggle(n.id)} className="pressable mt-2.5 block w-full text-start">
-                                      <h3 className="font-head text-lg font-bold leading-snug text-slate-900 line-clamp-2 transition-colors group-hover:text-blue-800 sm:text-xl">{n.title}</h3>
-                                    </button>
+                                    {expanded !== n.id && (
+                                      <button onClick={() => toggle(n.id)} className="pressable mt-2.5 block w-full text-start">
+                                        <h3 className="font-head break-words text-lg font-bold leading-snug text-slate-900 line-clamp-2 transition-colors group-hover:text-blue-800 sm:text-xl">{n.title}</h3>
+                                      </button>
+                                    )}
                                     {expanded !== n.id && <p className="mt-1.5 text-sm leading-relaxed text-slate-500 line-clamp-2 sm:line-clamp-3">{n.body}</p>}
                                     <div className="mt-3.5 flex flex-wrap items-center gap-x-3 gap-y-2">
                                       <span className="flex items-center gap-2 text-xs font-bold text-slate-500">
@@ -397,7 +415,9 @@ export default function News() {
                                 {expanded === n.id && (
                                   <div className="border-t border-slate-100 bg-slate-50/60 px-4 py-5 animate-fade-up sm:px-6 sm:py-6">
                                     <div className="rounded-[1.4rem] bg-white p-5 ring-1 ring-slate-100 sm:rounded-3xl sm:p-7">
-                                      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                                      {n.category && <span className="inline-flex rounded-full ft-bg-soft px-3 py-1 text-[11px] font-extrabold ft-text-accent ring-1 ft-ring-accent">{n.category}</span>}
+                                      <h3 className="font-head mt-3 break-words text-xl font-extrabold leading-snug text-slate-900 sm:text-2xl">{n.title}</h3>
+                                      <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-slate-100 pb-4">
                                         <span className="flex items-center gap-2 text-sm font-bold text-slate-700">
                                           <span className="grid h-10 w-10 place-items-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-sm font-extrabold text-white">{n.author_name?.[0]}</span>
                                           <span>
