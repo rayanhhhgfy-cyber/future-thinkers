@@ -59,7 +59,15 @@ api.interceptors.request.use(async (config) => {
     const rawCt = typeof config.headers?.get === "function"
       ? config.headers.get("Content-Type")
       : config.headers?.["Content-Type"];
-    const contentType = typeof rawCt === "string" ? rawCt : "";
+    // Multipart bodies are serialized by the browser with a random boundary,
+    // so the signed content type is the bare media type (the server canonical
+    // drops parameters the same way).
+    const dAny = config.data;
+    const contentType = (typeof FormData !== "undefined" && dAny instanceof FormData)
+      ? "multipart/form-data"
+      : (typeof Blob !== "undefined" && dAny instanceof Blob)
+        ? (dAny.type || "")
+        : (typeof rawCt === "string" ? rawCt : "");
     const { headers, canonical } = await signRequestV2({
       method, path, query, bodyStr, contentType,
     });

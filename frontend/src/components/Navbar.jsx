@@ -70,6 +70,7 @@ export function Navbar() {
   const nav = useNavigate();
   const loc = useLocation();
   const [open, setOpen] = useState(false);
+  const [dmUnread, setDmUnread] = useState(0);
   const [unread, setUnread] = useState(0);
   const [notifOpen, setNotifOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -114,6 +115,18 @@ export function Navbar() {
   useEffect(() => { loadUnread(); const t = setInterval(loadUnread, 20000); return () => clearInterval(t); }, [loadUnread, loc.pathname]);
   useEffect(() => { setOpen(false); }, [loc.pathname]);
 
+  // private-message unread count for the mobile tab bar
+  useEffect(() => {
+    if (!user) { setDmUnread(0); return undefined; }
+    let alive = true;
+    const fetchDm = async () => {
+      try { const { data } = await api.get("/dm/unread-count"); if (alive) setDmUnread(data?.count || 0); } catch {}
+    };
+    fetchDm();
+    const t = setInterval(fetchDm, 25000);
+    return () => { alive = false; clearInterval(t); };
+  }, [user, loc.pathname]);
+
   // lock body scroll while the mobile drawer is open
   useEffect(() => {
     if (!open) return;
@@ -150,6 +163,7 @@ export function Navbar() {
   }, [user, nav]);
 
   return (
+  <>
     <header className="sticky top-0 z-50 px-3 sm:px-5 lg:px-8 pt-[max(0.6rem,env(safe-area-inset-top))]">
       <div className={`max-w-[1440px] mx-auto glass rounded-[22px] border border-white/60 ring-1 ring-slate-900/5 px-3.5 sm:px-5 lg:px-6 h-16 lg:h-[68px] flex items-center justify-between gap-3 transition-shadow duration-300 ${scrolled ? "shadow-[0_20px_48px_-16px_rgba(15,23,42,0.38)]" : "shadow-[0_10px_30px_-14px_rgba(15,23,42,0.22)]"}`}>
         <div className="flex items-center gap-8 min-w-0">
@@ -278,6 +292,48 @@ export function Navbar() {
 
       {searchOpen && <GlobalSearch onClose={() => setSearchOpen(false)} />}
     </header>
+    <MobileTabBar user={user} pathname={loc.pathname} dmUnread={dmUnread} onExplore={() => setOpen(true)} />
+  </>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* MobileTabBar · app-style bottom navigation for phones: every major  */
+/* section one thumb away, with a live private-message badge.         */
+/* ------------------------------------------------------------------ */
+function MobileTabBar({ user, pathname, dmUnread, onExplore }) {
+  if (pathname.startsWith("/messages") || /^\/ventures\/.+/.test(pathname)) return null;
+  const tabs = [
+    { to: user ? "/dashboard" : "/", label: "الرئيسية", icon: LayoutDashboard },
+    { to: "/library", label: "المكتبة", icon: BookOpen },
+    { to: "/messages", label: "الرسائل", icon: Mail, badge: user ? dmUnread : 0 },
+    { action: onExplore, label: "استكشف", icon: Sparkles },
+    { to: user ? `/profile/${user.id}` : "/login", label: "حسابي", icon: User },
+  ];
+  return (
+    <nav className="lg:hidden fixed bottom-0 inset-x-0 z-40" style={{ paddingBottom: "env(safe-area-inset-bottom)" }} data-testid="mobile-tabbar">
+      <div className="mx-3 mb-3 rounded-[26px] glass border border-white/60 ring-1 ring-slate-900/5 shadow-[0_18px_44px_-14px_rgba(15,23,42,0.4)] px-2 py-1.5 grid grid-cols-5">
+        {tabs.map((t) => {
+          const active = t.to && (pathname === t.to || (t.to !== "/" && pathname.startsWith(t.to + "/")));
+          const Inner = (
+            <>
+              <span className={`relative w-11 h-8 grid place-items-center rounded-full transition-all ${active ? "ft-icon-tile text-white shadow-md scale-105" : "text-slate-500"}`}>
+                <t.icon className="w-5 h-5" />
+                {!!t.badge && (
+                  <span className="absolute -top-1 -left-1 min-w-[18px] h-[18px] px-1 rounded-full bg-rose-500 text-white text-[10px] font-black grid place-items-center ring-2 ring-white shadow">{t.badge > 99 ? "99+" : t.badge}</span>
+                )}
+              </span>
+              <span className={`text-[10px] font-extrabold leading-none ${active ? "ft-text-accent" : "text-slate-500"}`}>{t.label}</span>
+            </>
+          );
+          return t.action ? (
+            <button key={t.label} onClick={t.action} className="pressable flex flex-col items-center gap-1 py-1.5 rounded-2xl active:bg-slate-100/70 min-h-[52px] justify-center">{Inner}</button>
+          ) : (
+            <Link key={t.label} to={t.to} className="pressable flex flex-col items-center gap-1 py-1.5 rounded-2xl active:bg-slate-100/70 min-h-[52px] justify-center">{Inner}</Link>
+          );
+        })}
+      </div>
+    </nav>
   );
 }
 
@@ -419,6 +475,33 @@ function MobileDrawer({ open, onClose, user, gam, isStaff, pathname, nav, logout
                   })}
                 </div>
               </div>
+
+              {/* every section · grouped (mirrors the desktop explore menu) */}
+              {MORE_GROUPS.map((g, gi) => (
+                <div key={g.title}>
+                  <div className="text-xs font-bold text-slate-400 mb-2 px-1">{g.title}</div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {g.items.map((l, i) => {
+                      const active = pathname === l.to || pathname.startsWith(l.to + "/");
+                      return (
+                        <motion.div
+                          key={l.to}
+                          initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: 0.15 + gi * 0.06 + i * 0.04, duration: 0.3, ease: EASE }}
+                        >
+                          <Link
+                            to={l.to}
+                            className={`flex flex-col gap-2 p-3.5 rounded-3xl border active:scale-[0.97] transition ${active ? "ft-bg-soft ft-border-accent" : "bg-slate-50 border-slate-100 hover:bg-slate-100/70"}`}
+                          >
+                            <span className={`w-10 h-10 rounded-2xl grid place-items-center ${l.tint} shrink-0`}><l.icon className="w-5 h-5" /></span>
+                            <span className={`font-bold text-[13px] leading-tight ${active ? "ft-text-accent" : "text-slate-700"}`}>{l.label}</span>
+                          </Link>
+                        </motion.div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
 
               {/* play */}
               <div>
