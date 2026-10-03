@@ -7,14 +7,27 @@ the circle's members list.
 import secrets
 import string
 import uuid
+from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel, Field
 from db import db, oid, now_iso
 from auth import get_current_user
+from services import award_xp, create_notification
 
 router = APIRouter(prefix="/api/circles")
 
 _CODE_ALPHABET = string.ascii_uppercase + string.digits
+
+try:
+    _AMMAN = ZoneInfo("Asia/Amman")
+except Exception:  # pragma: no cover - tzdata missing fallback
+    _AMMAN = timezone(timedelta(hours=3))
+
+
+def _week_key() -> str:
+    iso = datetime.now(_AMMAN).isocalendar()
+    return f"{iso[0]}-W{iso[1]:02d}"
 
 
 async def _new_code() -> str:
@@ -45,9 +58,56 @@ async def _members_with_contrib(circle):
         "id": m["id"],
         "name": m.get("name", ""),
         "contribution": _contribution(m, xp_by_id),
+        "week_xp": max(0, xp_by_id.get(m["id"], 0) - m.get("week_base", m.get("snapshot", 0))),
     } for m in circle.get("members", [])]
     rows.sort(key=lambda r: -r["contribution"])
     return rows
+
+
+async def _ensure_week(circle):
+    """لقطة أسبوعية كسولة: عند تغيّر أسبوع عمّان تُعاد قاعدة XP الأسبوعية لكل عضو."""
+    key = _week_key()
+    members = circle.get("members", [])
+    if all(m.get("week_key") == key for m in members):
+        return circle
+    xp_by_id = await _xp_map([m["id"] for m in members])
+    changed = False
+    for m in members:
+        if m.get("week_key") != key:
+            m["week_key"] = key
+            m["week_base"] = xp_by_id.get(m["id"], m.get("snapshot", 0))
+            changed = True
+    if changed:
+        await db.study_circles.update_one({"id": circle["id"]}, {"$set": {"members": members}})
+    return circle
+
+
+async def _challenge_view(circle):
+    """عرض التحدي الحالي + إتمام المكافأة مرة واحدة عند بلوغ الهدف."""
+    ch = circle.get("challenge")
+    if not ch:
+        return None
+    xp_by_id = await _xp_map([m["id"] for m in circle.get("members", [])])
+    base = ch.get("base") or {}
+    progress = sum(max(0, xp_by_id.get(m["id"], 0) - base.get(m["id"], xp_by_id.get(m["id"], 0)))
+                   for m in circle.get("members", []))
+    done = bool(ch.get("done"))
+    if not done and progress >= ch.get("target", 0) and ch.get("target", 0) > 0:
+        # إغلاق ذرّي: أول طلب يقلب done يمنح المكافأة وحده · تمنع الازدواج
+        res = await db.study_circles.update_one(
+            {"id": circle["id"], "challenge.done": {"$ne": True}},
+            {"$set": {"challenge.done": True}})
+        done = True
+        ch["done"] = True
+        if res.modified_count:
+            for m in circle.get("members", []):
+                await award_xp(m["id"], 20, f"إكمال تحدي الدائرة: {ch.get('title', '')}", circle["id"])
+                await create_notification(m["id"], "circle_challenge_done",
+                                          "اكتمل تحدي الدائرة 🏆",
+                                          f"حقق فريقكم هدف «{ch.get('title', '')}» وحصل كل عضو على +20 XP",
+                                          "/circles")
+    return {"title": ch.get("title", ""), "target": ch.get("target", 0),
+            "progress": progress, "ends_at": ch.get("ends_at"), "done": done}
 
 
 async def _summary(circle, me):
@@ -111,6 +171,7 @@ async def create_circle(body: CreateBody, user: dict = Depends(get_current_user)
 async def list_circles(user: dict = Depends(get_current_user)):
     me = user["id"]
     circles = await db.study_circles.find({}).sort("created_at", -1).to_list(50)
+    circles = [await _ensure_week(c) for c in circles]
     return {"items": [await _summary(c, me) for c in circles]}
 
 
@@ -142,14 +203,97 @@ async def get_circle(circle_id: str, user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=404, detail="الدائرة غير موجودة")
     if not any(m["id"] == me for m in circle.get("members", [])):
         raise HTTPException(status_code=403, detail="لست عضواً في هذه الدائرة")
+    circle = await _ensure_week(circle)
+    members = await _members_with_contrib(circle)
     return {
         "id": circle["id"],
         "name": circle["name"],
         "code": circle["code"],
         "goal": circle.get("goal", ""),
         "owner_id": circle["owner_id"],
-        "members": await _members_with_contrib(circle),
+        "members": members,
+        "weekly_goal": int(circle.get("weekly_goal") or 0),
+        "week_total": sum(m["week_xp"] for m in members),
+        "challenge": await _challenge_view(circle),
     }
+
+
+# ---------------- محادثة الدائرة ----------------
+class MessageBody(BaseModel):
+    text: str = Field(min_length=1, max_length=1000)
+
+
+async def _member_circle(circle_id: str, me: str) -> dict:
+    circle = await db.study_circles.find_one({"id": circle_id})
+    if not circle:
+        raise HTTPException(status_code=404, detail="الدائرة غير موجودة")
+    if not any(m["id"] == me for m in circle.get("members", [])):
+        raise HTTPException(status_code=403, detail="لست عضواً في هذه الدائرة")
+    return circle
+
+
+def _msg_item(m: dict, me: str) -> dict:
+    return {"id": str(m["_id"]),
+            "user": {"id": m.get("user_id"), "name": m.get("name", "")},
+            "text": m.get("text", ""), "at": m.get("at"), "mine": m.get("user_id") == me}
+
+
+@router.get("/{circle_id}/messages")
+async def list_messages(circle_id: str, user: dict = Depends(get_current_user)):
+    me = user["id"]
+    await _member_circle(circle_id, me)
+    docs = await db.circle_messages.find({"circle_id": circle_id}).sort("at", -1).to_list(100)
+    docs.reverse()
+    return {"items": [_msg_item(m, me) for m in docs]}
+
+
+@router.post("/{circle_id}/messages")
+async def post_message(circle_id: str, body: MessageBody, user: dict = Depends(get_current_user)):
+    me = user["id"]
+    await _member_circle(circle_id, me)
+    m = {"circle_id": circle_id, "user_id": me, "name": user.get("name", ""),
+         "text": body.text.strip(), "at": now_iso()}
+    res = await db.circle_messages.insert_one(m)
+    m["_id"] = res.inserted_id
+    return _msg_item(m, me)
+
+
+# ---------------- الهدف الأسبوعي والتحدي ----------------
+class WeeklyGoalBody(BaseModel):
+    xp: int = Field(ge=0, le=100000)
+
+
+class ChallengeBody(BaseModel):
+    title: str = Field(min_length=1, max_length=120)
+    target_xp: int = Field(gt=0, le=1000000)
+    days: int = Field(default=7, ge=1, le=90)
+
+
+@router.put("/{circle_id}/weekly-goal")
+async def set_weekly_goal(circle_id: str, body: WeeklyGoalBody, user: dict = Depends(get_current_user)):
+    me = user["id"]
+    circle = await _member_circle(circle_id, me)
+    if circle["owner_id"] != me:
+        raise HTTPException(status_code=403, detail="فقط مالك الدائرة يضبط الهدف الأسبوعي")
+    await db.study_circles.update_one({"id": circle_id}, {"$set": {"weekly_goal": int(body.xp)}})
+    return {"weekly_goal": int(body.xp)}
+
+
+@router.post("/{circle_id}/challenge")
+async def set_challenge(circle_id: str, body: ChallengeBody, user: dict = Depends(get_current_user)):
+    me = user["id"]
+    circle = await _member_circle(circle_id, me)
+    if circle["owner_id"] != me:
+        raise HTTPException(status_code=403, detail="فقط مالك الدائرة يطلق التحديات")
+    xp_by_id = await _xp_map([m["id"] for m in circle.get("members", [])])
+    ends = (datetime.now(timezone.utc) + timedelta(days=body.days)).isoformat()
+    challenge = {"title": body.title.strip(), "target": int(body.target_xp),
+                 "ends_at": ends,
+                 "base": {m["id"]: xp_by_id.get(m["id"], 0) for m in circle.get("members", [])},
+                 "done": False}
+    await db.study_circles.update_one({"id": circle_id}, {"$set": {"challenge": challenge}})
+    return {"challenge": {"title": challenge["title"], "target": challenge["target"],
+                          "progress": 0, "ends_at": ends, "done": False}}
 
 
 @router.post("/{circle_id}/leave")

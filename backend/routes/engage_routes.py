@@ -469,6 +469,66 @@ async def get_room(rid: str, user: dict = Depends(get_current_user)):
     return ser(r)
 
 
+# ---------------- Focus: من يركّز الآن + الأهداف الأسبوعية ----------------
+@router.get("/focus/now")
+async def focus_now(user: dict = Depends(get_current_user)):
+    cutoff = (datetime.now(timezone.utc) - timedelta(hours=3)).isoformat().replace("+00:00", "Z")
+    docs = await db.focus_rooms.find({"updated_at": {"$gte": cutoff}}).to_list(100)
+    best = {}
+    for d in docs:
+        for m in d.get("members", []):
+            uid = m.get("user_id")
+            if not uid:
+                continue
+            mins = int(m.get("focus_min", 0))
+            if uid not in best or mins > best[uid]["minutes"]:
+                best[uid] = {"id": uid, "name": m.get("name", ""),
+                             "minutes": mins, "mood": d.get("mood", "violet")}
+    items = sorted(best.values(), key=lambda x: -x["minutes"])[:20]
+    return {"items": items}
+
+
+class FocusGoalBody(BaseModel):
+    weekly_minutes: int
+
+
+@router.get("/focus/goal")
+async def get_focus_goal(user: dict = Depends(get_current_user)):
+    u = await db.users.find_one({"_id": oid(user["id"])}, {"focus_goal": 1})
+    return {"weekly_minutes": int((u or {}).get("focus_goal") or 300)}
+
+
+@router.put("/focus/goal")
+async def set_focus_goal(body: FocusGoalBody, user: dict = Depends(get_current_user)):
+    goal = int(body.weekly_minutes)
+    if goal < 10 or goal > 10080:
+        raise HTTPException(status_code=400, detail="هدف أسبوعي غير صالح")
+    await db.users.update_one({"_id": oid(user["id"])}, {"$set": {"focus_goal": goal}})
+    return {"weekly_minutes": goal}
+
+
+@router.get("/focus/my-week")
+async def focus_my_week(user: dict = Depends(get_current_user)):
+    u = await db.users.find_one({"_id": oid(user["id"])}, {"focus_goal": 1})
+    goal = int((u or {}).get("focus_goal") or 300)
+    rows = await db.focus_sessions.find({"user_id": user["id"]}).to_list(1000)
+    today = datetime.now(timezone.utc).date()
+    by_day = {}
+    for r in rows:
+        day = str(r.get("at", ""))[:10]
+        by_day[day] = by_day.get(day, 0) + int(r.get("minutes", 0))
+    days = []
+    total = 0
+    for i in range(6, -1, -1):
+        d = today - timedelta(days=i)
+        key = d.strftime("%Y-%m-%d")
+        mins = int(by_day.get(key, 0))
+        total += mins
+        days.append({"date": key, "minutes": mins})
+    pct = min(100, round(total * 100 / goal)) if goal > 0 else 0
+    return {"minutes": total, "goal": goal, "pct": pct, "days": days}
+
+
 # ---------------- Event reminders ----------------
 class RemindBody(BaseModel):
     event_id: str
