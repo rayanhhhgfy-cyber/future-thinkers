@@ -183,7 +183,7 @@ export default function Ventures() {
       </div>
 
       <div className="max-w-7xl xl:max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-8 relative isolate">
-        <div id="ventures-toolbar" className="sticky top-[calc(4rem+env(safe-area-inset-top))] z-40 isolate scroll-mt-28">
+        <div id="ventures-toolbar" className="relative isolate">
           <div className="relative overflow-hidden bg-white/85 backdrop-blur-xl rounded-[1.4rem] sm:rounded-3xl border border-white/60 ring-1 ring-slate-200/60 ft-shadow-lg p-4 sm:p-5 space-y-4">
             <span className="pointer-events-none absolute inset-x-0 top-0 h-1 ft-grad-bar opacity-90" />
             <div className="relative">
@@ -295,7 +295,7 @@ export default function Ventures() {
                 const teamPctCard = Math.min(100, Math.round(((v.team_count || 0) / Math.max(1, v.max_members || 1)) * 100));
                 return (
                   <div key={v.id} style={{ animationDelay: `${Math.min(i, 11) * 60}ms` }}
-                    className="group relative isolate z-0 bg-white rounded-[1.6rem] border border-slate-100 ft-shadow hover-lift flex flex-col overflow-hidden animate-fade-up transition-shadow duration-300 hover:ring-2 ft-ring-accent hover:shadow-[0_24px_50px_-16px_color-mix(in_srgb,var(--ft-accent)_35%,transparent)]">
+                    className="group relative isolate z-0 bg-white rounded-[1.6rem] border border-slate-100 ft-shadow flex flex-col overflow-hidden animate-fade-up transition-shadow duration-300 hover:ring-2 ft-ring-accent hover:shadow-[0_24px_50px_-16px_color-mix(in_srgb,var(--ft-accent)_35%,transparent)]">
                     <div className={`relative isolate h-28 sm:h-32 lg:h-36 shrink-0 overflow-hidden bg-gradient-to-l ${meta.grad}`}>
                       <CatIcon className="pointer-events-none absolute -left-4 -bottom-7 w-32 h-32 text-white/20 -rotate-12 transition-transform duration-500 group-hover:scale-110 group-hover:-rotate-6" />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-white/10" />
