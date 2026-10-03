@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import api, { apiErr } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
@@ -8,9 +8,13 @@ import { toast } from "sonner";
 import {
   Users, Plus, Copy, Check, Trash2, LogOut, Crown, Target, Trophy,
   X, Loader2, Search, Hash, ArrowRight, UserPlus, Sparkles,
+  MessageCircle, Send, Lock, Pencil, Swords, PartyPopper, Timer, Flame,
 } from "lucide-react";
 
 const fmt = (n) => Number(n || 0).toLocaleString("en-US");
+const timeFmt = (iso) => {
+  try { return new Date(iso).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }); } catch { return ""; }
+};
 
 function Avatar({ person, size = "w-11 h-11", text = "text-base" }) {
   if (person?.avatar_url) {
@@ -48,6 +52,21 @@ export default function Circles() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [busyAction, setBusyAction] = useState(false);
 
+  /* detail tabs + new features */
+  const [tab, setTab] = useState("members");
+  const [messages, setMessages] = useState(null);
+  const [chatText, setChatText] = useState("");
+  const [sending, setSending] = useState(false);
+  const [chatState, setChatState] = useState("idle"); // idle | ok | forbidden | hidden
+  const chatScrollRef = useRef(null);
+  const [goalInput, setGoalInput] = useState("");
+  const [goalEditing, setGoalEditing] = useState(false);
+  const [goalSaving, setGoalSaving] = useState(false);
+  const [chTitle, setChTitle] = useState("");
+  const [chTarget, setChTarget] = useState("");
+  const [chDays, setChDays] = useState("");
+  const [chSaving, setChSaving] = useState(false);
+
   const load = useCallback(async (quiet = false) => {
     try {
       const { data } = await api.get("/circles");
@@ -72,8 +91,95 @@ export default function Circles() {
     }
   }, []);
 
-  const openCircle = (id) => { setActiveId(id); loadDetail(id); };
+  const openCircle = (id) => {
+    setTab("members");
+    setMessages(null);
+    setChatState("idle");
+    setChatText("");
+    setGoalEditing(false);
+    setActiveId(id);
+    loadDetail(id);
+  };
   const backToList = () => { setActiveId(null); setDetail(null); load(true); };
+
+  /* ---- circle chat ---- */
+  const loadChat = useCallback(async (quiet = false) => {
+    if (!activeId) return;
+    try {
+      const { data } = await api.get(`/circles/${activeId}/messages`);
+      setMessages(Array.isArray(data) ? data : data?.items || []);
+      setChatState("ok");
+    } catch (e) {
+      const st = e?.response?.status;
+      if (st === 403) setChatState("forbidden");
+      else if (!quiet) setChatState("hidden");
+    }
+  }, [activeId]);
+
+  useEffect(() => {
+    if (!activeId || chatState === "forbidden" || chatState === "hidden") return;
+    loadChat();
+    const t = setInterval(() => loadChat(true), 4000);
+    return () => clearInterval(t);
+  }, [activeId, chatState, loadChat]);
+
+  useEffect(() => {
+    if (chatState === "hidden" && tab === "chat") setTab("members");
+  }, [chatState, tab]);
+
+  useEffect(() => {
+    const el = chatScrollRef.current;
+    if (el && tab === "chat") el.scrollTop = el.scrollHeight;
+  }, [messages, tab]);
+
+  const sendChat = async () => {
+    const text = chatText.trim();
+    if (!text || sending || !activeId) return;
+    setSending(true);
+    try {
+      const { data } = await api.post(`/circles/${activeId}/messages`, { text });
+      setChatText("");
+      const msg = data?.message || data;
+      if (msg && msg.id) setMessages((prev) => [...(prev || []), msg]);
+      else await loadChat(true);
+    } catch (e) {
+      if (e?.response?.status === 403) setChatState("forbidden");
+      else toast.error(apiErr(e));
+    }
+    setSending(false);
+  };
+
+  /* ---- weekly goal ---- */
+  const saveGoal = async () => {
+    const xp = Number(goalInput);
+    if (!xp || xp <= 0) { toast.error("أدخل هدفًا صحيحًا بالنقاط"); return; }
+    if (goalSaving || !activeId) return;
+    setGoalSaving(true);
+    try {
+      await api.put(`/circles/${activeId}/weekly-goal`, { xp });
+      toast.success("تم تعيين هدف الأسبوع");
+      setGoalEditing(false);
+      await loadDetail(activeId);
+    } catch (e) { toast.error(apiErr(e)); }
+    setGoalSaving(false);
+  };
+
+  /* ---- circle challenge ---- */
+  const createChallenge = async () => {
+    const title = chTitle.trim();
+    const target_xp = Number(chTarget);
+    const days = Number(chDays);
+    if (!title || !target_xp || target_xp <= 0 || !days || days <= 0) { toast.error("أكمل بيانات التحدي أولاً"); return; }
+    if (chSaving || !activeId) return;
+    setChSaving(true);
+    try {
+      await api.post(`/circles/${activeId}/challenge`, { title, target_xp, days });
+      toast.success("بدأ تحدي الدائرة");
+      setChTitle(""); setChTarget(""); setChDays("");
+      await loadDetail(activeId);
+    } catch (e) { toast.error(apiErr(e)); }
+    setChSaving(false);
+  };
 
   const create = async () => {
     const n = name.trim();
@@ -158,6 +264,282 @@ export default function Circles() {
   if (activeId) {
     const members = [...(detail?.members || [])].sort((a, b) => (b.contribution || 0) - (a.contribution || 0));
     const isOwner = detail && String(detail.owner_id) === String(user.id);
+
+    /* weekly goal */
+    const weeklyGoal = detail?.weekly_goal != null ? Number(detail.weekly_goal) : null;
+    const weekTotal = Number(detail?.week_total || 0);
+    const goalPct = weeklyGoal ? Math.min(100, Math.round((weekTotal / weeklyGoal) * 100)) : 0;
+    const showGoalCard = weeklyGoal != null || isOwner;
+    const RING_R = 52;
+    const RING_C = 2 * Math.PI * RING_R;
+
+    /* challenge */
+    const challenge = detail?.challenge || null;
+    const chPct = challenge?.target ? Math.min(100, Math.round(((challenge.progress || 0) / challenge.target) * 100)) : 0;
+    const chDaysLeft = challenge?.ends_at
+      ? Math.max(0, Math.ceil((new Date(challenge.ends_at).getTime() - Date.now()) / 86400000))
+      : null;
+
+    const tabs = [
+      { key: "members", label: "الأعضاء والهدف", icon: Users, dot: false },
+      ...(chatState !== "hidden" ? [{ key: "chat", label: "المحادثة", icon: MessageCircle, dot: false }] : []),
+      { key: "challenge", label: "التحدي", icon: Swords, dot: !!(challenge && !challenge.done) },
+    ];
+
+    const goalCard = showGoalCard ? (
+      <div className="relative overflow-hidden bg-white rounded-[2rem] border border-slate-100 ft-shadow-lg p-6" data-testid="weekly-goal">
+        <span className="absolute inset-x-0 top-0 h-1 ft-grad-bar" />
+        <Target className="pointer-events-none absolute -left-6 -bottom-8 w-28 h-28 text-slate-900/[0.04] -rotate-12" aria-hidden="true" />
+        <div className="relative flex flex-col sm:flex-row items-center gap-5 sm:gap-7">
+          <div className="relative shrink-0">
+            <svg viewBox="0 0 120 120" className="w-28 h-28 sm:w-32 sm:h-32 -rotate-90">
+              <circle cx="60" cy="60" r={RING_R} fill="none" strokeWidth="10" className="stroke-slate-100" />
+              <circle cx="60" cy="60" r={RING_R} fill="none" strokeWidth="10" strokeLinecap="round"
+                stroke="var(--ft-accent)" strokeDasharray={RING_C}
+                strokeDashoffset={RING_C - (RING_C * goalPct) / 100}
+                className="transition-all duration-700" />
+            </svg>
+            <span className="absolute inset-0 grid place-items-center">
+              <span className="text-center">
+                <span className="block font-head text-2xl font-extrabold text-slate-800">{goalPct}%</span>
+                <span className="block text-[10px] font-bold text-slate-400">من الهدف</span>
+              </span>
+            </span>
+          </div>
+          <div className="flex-1 w-full text-center sm:text-start">
+            <h3 className="font-head font-extrabold text-slate-800 flex items-center gap-2 justify-center sm:justify-start">
+              <Target className="w-5 h-5 ft-text-accent" /> هدف الأسبوع
+            </h3>
+            {weeklyGoal ? (
+              <>
+                <p className="font-head text-2xl sm:text-3xl font-extrabold text-slate-800 mt-2">
+                  هدف الأسبوع: {fmt(weekTotal)} <span className="text-slate-300 text-lg">/ {fmt(weeklyGoal)} نقطة</span>
+                </p>
+                <p className="text-xs text-slate-400 mt-1">
+                  {weekTotal >= weeklyGoal
+                    ? "أنجزتم هدف هذا الأسبوع · عمل رائع"
+                    : `متبقي ${fmt(Math.max(0, weeklyGoal - weekTotal))} نقطة للوصول إلى الهدف`}
+                </p>
+                <span className="mt-3 block h-2.5 rounded-full bg-slate-100 overflow-hidden max-w-md mx-auto sm:mx-0">
+                  <span className="block h-full rounded-full ft-grad-bar transition-all duration-700" style={{ width: `${goalPct}%` }} />
+                </span>
+              </>
+            ) : (
+              <p className="text-sm text-slate-400 mt-2 leading-relaxed">لم يحدد القائد هدفًا لهذا الأسبوع بعد</p>
+            )}
+            {isOwner && (
+              goalEditing ? (
+                <div className="flex flex-wrap items-center gap-2 mt-4 justify-center sm:justify-start">
+                  <input
+                    type="number" min="1" inputMode="numeric" autoFocus
+                    value={goalInput}
+                    onChange={(e) => setGoalInput(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") saveGoal(); }}
+                    placeholder="الهدف بالنقاط"
+                    className="w-40 min-h-[44px] rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm outline-none focus:ring-2 ft-ring-accent focus:bg-white transition"
+                  />
+                  <button onClick={saveGoal} disabled={goalSaving} className="pressable min-h-[44px] px-4 rounded-xl ft-btn-primary text-white text-xs font-bold inline-flex items-center gap-1.5 shadow-md disabled:opacity-60">
+                    {goalSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />} حفظ الهدف
+                  </button>
+                  <button onClick={() => setGoalEditing(false)} disabled={goalSaving} className="pressable min-h-[44px] px-4 rounded-xl border border-slate-200 text-xs font-bold text-slate-500 hover:bg-slate-50 transition disabled:opacity-60">إلغاء</button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => { setGoalInput(weeklyGoal ? String(weeklyGoal) : ""); setGoalEditing(true); }}
+                  className="pressable mt-4 inline-flex items-center gap-1.5 min-h-[40px] px-4 rounded-full ft-bg-soft ft-text-accent ring-1 ft-ring-accent text-xs font-bold"
+                >
+                  <Pencil className="w-3.5 h-3.5" /> {weeklyGoal ? "تعديل الهدف" : "تعيين الهدف"}
+                </button>
+              )
+            )}
+          </div>
+        </div>
+      </div>
+    ) : null;
+
+    const chatPanel = (
+      <div className="relative overflow-hidden bg-white rounded-[2rem] border border-slate-100 ft-shadow-lg" data-testid="circle-chat">
+        <span className="absolute inset-x-0 top-0 h-1 ft-grad-bar" />
+        <div className="flex items-center gap-2.5 px-5 sm:px-7 pt-6 pb-4">
+          <span className="w-9 h-9 rounded-xl ft-icon-tile grid place-items-center shadow-md"><MessageCircle className="w-4 h-4" /></span>
+          <h2 className="font-head font-extrabold text-lg text-slate-800">محادثة الدائرة</h2>
+          <span className="text-[11px] text-slate-400">حديث الأعضاء داخل الدائرة</span>
+        </div>
+        {chatState === "forbidden" ? (
+          <div className="px-6 pb-9 pt-3 text-center">
+            <div className="w-14 h-14 mx-auto rounded-full ft-bg-soft ring-1 ft-ring-accent grid place-items-center ft-text-accent">
+              <Lock className="w-6 h-6" />
+            </div>
+            <p className="font-head font-bold text-slate-700 mt-3">المحادثة للأعضاء فقط</p>
+            <p className="text-sm text-slate-400 mt-1 leading-relaxed">انضم إلى الدائرة لتشارك في الحديث مع الأعضاء</p>
+          </div>
+        ) : (
+          <>
+            <div ref={chatScrollRef} className="h-[360px] sm:h-[430px] overflow-y-auto px-4 sm:px-5 py-4 space-y-3 bg-gradient-to-b from-slate-50/90 via-slate-50/40 to-white">
+              {messages === null ? (
+                <div className="grid place-items-center h-full"><Loader2 className="w-6 h-6 animate-spin ft-text-accent" /></div>
+              ) : messages.length === 0 ? (
+                <div className="grid place-items-center h-full text-center px-6">
+                  <div>
+                    <span className="w-14 h-14 mx-auto rounded-full bg-white ring-1 ring-slate-100 grid place-items-center ft-shadow">
+                      <MessageCircle className="w-6 h-6 text-slate-300" />
+                    </span>
+                    <p className="text-sm font-bold text-slate-400 mt-3">لا رسائل بعد</p>
+                    <p className="text-[11px] text-slate-300 mt-0.5">كن أول من يبدأ الحديث في الدائرة</p>
+                  </div>
+                </div>
+              ) : (
+                messages.map((msg) => {
+                  const mine = msg.mine != null ? !!msg.mine : String(msg.user?.id) === String(user.id);
+                  return (
+                    <div key={msg.id} className={`flex items-end gap-2 animate-fade-up ${mine ? "flex-row-reverse" : ""}`}>
+                      {!mine && <Avatar person={msg.user} size="w-8 h-8" text="text-xs" />}
+                      <div className={`max-w-[78%] sm:max-w-[68%] px-3.5 py-2.5 shadow-sm ${mine
+                        ? "ft-btn-primary text-white rounded-3xl rounded-bl-md"
+                        : "bg-white ring-1 ring-slate-100 text-slate-700 rounded-3xl rounded-br-md"}`}>
+                        {!mine && <span className="block text-[10px] font-bold ft-text-accent mb-0.5">{msg.user?.name}</span>}
+                        <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">{msg.text}</p>
+                        <span className={`block text-[9px] mt-1 text-end font-bold ${mine ? "text-white/70" : "text-slate-300"}`}>{timeFmt(msg.at)}</span>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+            <div className="border-t border-slate-100 p-3 sm:p-4 flex items-center gap-2 bg-white">
+              <input
+                value={chatText}
+                onChange={(e) => setChatText(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") sendChat(); }}
+                placeholder="اكتب رسالة للدائرة…"
+                data-testid="circle-chat-input"
+                className="flex-1 min-w-0 min-h-[48px] rounded-full border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:ring-2 ft-ring-accent focus:bg-white transition"
+              />
+              <button
+                onClick={sendChat}
+                disabled={sending || !chatText.trim()}
+                aria-label="إرسال الرسالة"
+                className="pressable w-12 h-12 shrink-0 rounded-full ft-btn-primary text-white grid place-items-center shadow-md disabled:opacity-50"
+              >
+                {sending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5 -scale-x-100" />}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    );
+
+    const challengePanel = challenge?.done ? (
+      <div className="relative overflow-hidden rounded-[2rem] ft-hero-gradient grain px-6 py-9 sm:px-9 text-center ft-shadow-lg" data-testid="circle-challenge">
+        <div className="pointer-events-none absolute -top-20 -right-16 w-64 h-64 rounded-full bg-amber-300/25 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-24 -left-10 w-64 h-64 rounded-full bg-emerald-400/25 blur-3xl" />
+        <div className="relative">
+          <span className="w-16 h-16 mx-auto rounded-full bg-white/15 backdrop-blur ring-1 ring-white/30 grid place-items-center shadow-xl">
+            <PartyPopper className="w-8 h-8 text-amber-200" />
+          </span>
+          <h2 className="font-head text-2xl sm:text-3xl font-extrabold text-white mt-4">اكتمل التحدي</h2>
+          <p className="text-white/85 font-bold mt-1.5">{challenge.title}</p>
+          <p className="text-white/60 text-sm mt-2">حققت الدائرة {fmt(challenge.progress)} من {fmt(challenge.target)} نقطة · أحسنتم جميعًا</p>
+          <span className="inline-flex items-center gap-1.5 mt-4 px-3.5 py-1.5 rounded-full bg-white/15 backdrop-blur ring-1 ring-white/25 text-white text-xs font-bold">
+            <Trophy className="w-3.5 h-3.5" /> تحدٍّ منجز
+          </span>
+        </div>
+      </div>
+    ) : challenge ? (
+      <div className="relative overflow-hidden bg-white rounded-[2rem] border border-slate-100 ft-shadow-lg" data-testid="circle-challenge">
+        <div className="relative overflow-hidden ft-hero-gradient grain px-6 py-6 sm:px-8">
+          <div className="pointer-events-none absolute -top-16 -left-16 w-52 h-52 rounded-full bg-orange-400/25 blur-3xl" />
+          <div className="relative flex flex-wrap items-center gap-3">
+            <span className="w-11 h-11 rounded-2xl bg-white/15 backdrop-blur ring-1 ring-white/25 grid place-items-center shadow-lg">
+              <Swords className="w-5 h-5 text-white" />
+            </span>
+            <div className="flex-1 min-w-0">
+              <span className="text-[11px] font-bold text-white/60">تحدي الدائرة الجاري</span>
+              <h2 className="font-head font-extrabold text-white text-lg sm:text-xl leading-snug truncate">{challenge.title}</h2>
+            </div>
+            {chDaysLeft != null && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/15 backdrop-blur ring-1 ring-white/25 text-white text-[11px] font-bold shrink-0">
+                <Timer className="w-3.5 h-3.5" /> {chDaysLeft > 0 ? `متبقي ${fmt(chDaysLeft)} يوم` : "اليوم الأخير"}
+              </span>
+            )}
+          </div>
+        </div>
+        <div className="p-6 sm:p-8">
+          <div className="flex items-end justify-between gap-3 flex-wrap">
+            <p className="font-head text-3xl font-extrabold text-slate-800">
+              {fmt(challenge.progress)} <span className="text-slate-300 text-lg">/ {fmt(challenge.target)} نقطة</span>
+            </p>
+            <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full ft-bg-soft ft-text-accent ring-1 ft-ring-accent text-xs font-bold">
+              <Flame className="w-3.5 h-3.5" /> {chPct}% من الهدف
+            </span>
+          </div>
+          <span className="mt-4 block h-3.5 rounded-full bg-slate-100 overflow-hidden">
+            <span className="block h-full rounded-full ft-grad-bar transition-all duration-700" style={{ width: `${chPct}%` }} />
+          </span>
+          <p className="text-xs text-slate-400 mt-3 leading-relaxed">
+            {chPct >= 100
+              ? "وصلتم إلى الهدف · بانتظار إعلان الاكتمال"
+              : `متبقي ${fmt(Math.max(0, (challenge.target || 0) - (challenge.progress || 0)))} نقطة · كل مساهمة من الأعضاء تقرّب الدائرة من خط النهاية`}
+          </p>
+        </div>
+      </div>
+    ) : isOwner ? (
+      <div className="relative overflow-hidden bg-white rounded-[2rem] border border-slate-100 ft-shadow-lg p-6 sm:p-7" data-testid="circle-challenge">
+        <span className="absolute inset-x-0 top-0 h-1 ft-grad-bar" />
+        <h2 className="font-head font-extrabold text-lg text-slate-800 flex items-center gap-2.5">
+          <span className="w-9 h-9 rounded-xl ft-icon-tile grid place-items-center shadow-md"><Swords className="w-4 h-4" /></span>
+          إطلاق تحدٍّ للدائرة
+        </h2>
+        <p className="text-xs text-slate-400 mt-2 leading-relaxed">حدّد هدفًا جماعيًا بالنقاط ومدة زمنية، وتابعوا تقدم الدائرة معًا حتى خط النهاية</p>
+        <div className="space-y-3.5 mt-5">
+          <div>
+            <label className="block text-xs font-bold text-slate-500 mb-1.5">عنوان التحدي</label>
+            <input
+              value={chTitle}
+              onChange={(e) => setChTitle(e.target.value)}
+              maxLength={80}
+              placeholder="مثال: ماراثون الألف نقطة"
+              className="w-full min-h-[48px] rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:ring-2 ft-ring-accent focus:bg-white transition"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-bold text-slate-500 mb-1.5">الهدف (نقاط XP)</label>
+              <input
+                type="number" min="1" inputMode="numeric"
+                value={chTarget}
+                onChange={(e) => setChTarget(e.target.value)}
+                placeholder="1000"
+                className="w-full min-h-[48px] rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:ring-2 ft-ring-accent focus:bg-white transition"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-500 mb-1.5">المدة (أيام)</label>
+              <input
+                type="number" min="1" inputMode="numeric"
+                value={chDays}
+                onChange={(e) => setChDays(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") createChallenge(); }}
+                placeholder="7"
+                className="w-full min-h-[48px] rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:ring-2 ft-ring-accent focus:bg-white transition"
+              />
+            </div>
+          </div>
+          <button
+            onClick={createChallenge}
+            disabled={chSaving || !chTitle.trim() || !chTarget || !chDays}
+            className="pressable w-full min-h-[48px] rounded-2xl ft-btn-primary text-white text-sm font-bold shadow-md disabled:opacity-50 inline-flex items-center justify-center gap-1.5"
+          >
+            {chSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Swords className="w-4 h-4" />} بدء التحدي
+          </button>
+        </div>
+      </div>
+    ) : (
+      <div className="bg-white rounded-[2rem] border border-slate-100 ft-shadow-lg">
+        <EmptyState icon={Swords} title="لا تحدٍّ نشط حاليًا" desc="حين يطلق قائد الدائرة تحدٍّ جماعيًا سيظهر تقدمه هنا" />
+      </div>
+    );
+
     return (
       <Layout>
         <div className="max-w-5xl xl:max-w-[1200px] mx-auto px-4 lg:px-6 py-6 sm:py-8">
@@ -217,9 +599,33 @@ export default function Circles() {
                 </div>
               </div>
 
+              {/* detail tabs */}
+              <div className="flex gap-1.5 p-1.5 mb-5 rounded-full bg-white border border-slate-100 ft-shadow overflow-x-auto animate-fade-up" role="tablist">
+                {tabs.map((t) => {
+                  const TabIcon = t.icon;
+                  const active = tab === t.key;
+                  return (
+                    <button
+                      key={t.key}
+                      role="tab"
+                      aria-selected={active}
+                      onClick={() => setTab(t.key)}
+                      className={`pressable relative flex-1 inline-flex items-center justify-center gap-1.5 min-h-[44px] px-3 rounded-full text-xs sm:text-sm font-bold whitespace-nowrap transition ${active ? "ft-btn-primary text-white shadow-md" : "text-slate-500 hover:bg-slate-50 hover:text-slate-700"}`}
+                    >
+                      <TabIcon className="w-4 h-4 shrink-0" /> {t.label}
+                      {t.dot && <span className={`w-2 h-2 rounded-full shrink-0 ${active ? "bg-amber-300" : "bg-orange-400 animate-pulse"}`} />}
+                    </button>
+                  );
+                })}
+              </div>
+
               <div className="grid lg:grid-cols-[minmax(0,1fr)_310px] gap-5 items-start">
-              {/* members leaderboard */}
-              <div className="bg-white rounded-[2rem] border border-slate-100 ft-shadow-lg overflow-hidden relative min-w-0">
+              <div className="min-w-0 space-y-5">
+              {tab === "members" && (
+                <>
+                {goalCard}
+                {/* members leaderboard */}
+                <div className="bg-white rounded-[2rem] border border-slate-100 ft-shadow-lg overflow-hidden relative min-w-0">
                 <span className="absolute inset-x-0 top-0 h-1 ft-grad-bar" />
                 <div className="flex items-center gap-2 px-5 sm:px-7 pt-6 pb-4">
                   <Trophy className="w-5 h-5 ft-text-accent" />
@@ -249,7 +655,14 @@ export default function Circles() {
                                 )}
                                 {me && <span className="px-2 py-0.5 rounded-full ft-bg-soft ft-text-accent ring-1 ft-ring-accent text-[10px] font-bold shrink-0">أنت</span>}
                               </span>
-                              <span className="text-[11px] text-slate-400">مساهمة داخل الدائرة</span>
+                              <span className="flex items-center gap-1.5 flex-wrap">
+                                <span className="text-[11px] text-slate-400">مساهمة داخل الدائرة</span>
+                                {m.week_xp != null && (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full ft-bg-soft ft-text-accent ring-1 ft-ring-accent text-[10px] font-bold">
+                                    <Flame className="w-3 h-3" /> هذا الأسبوع · {fmt(m.week_xp)} XP
+                                  </span>
+                                )}
+                              </span>
                               <span className="mt-1.5 block h-1.5 max-w-[180px] rounded-full bg-slate-100 overflow-hidden">
                                 <span className="block h-full rounded-full ft-grad-bar transition-all duration-500" style={{ width: `${members[0]?.contribution ? Math.min(100, Math.round(((m.contribution || 0) / members[0].contribution) * 100)) : 0}%` }} />
                               </span>
@@ -264,6 +677,11 @@ export default function Circles() {
                     })}
                   </ul>
                 )}
+                </div>
+                </>
+              )}
+              {tab === "chat" && chatState !== "hidden" && chatPanel}
+              {tab === "challenge" && challengePanel}
               </div>
 
               {/* about rail */}
