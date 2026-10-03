@@ -4,6 +4,7 @@ import api from "@/lib/api";
 import {
   Trophy, Crown, Users, BookOpen, GraduationCap, Sparkles, Medal,
 } from "lucide-react";
+import CupExtras from "@/components/CupExtras";
 
 /* كأس المدارس · schools earn cup points from every member's reading, chess
    and coding across the season · bold podium + rich standings. */
@@ -88,6 +89,8 @@ export default function SeasonCup() {
             )}
           </div>
         </header>
+
+        <CupExtras />
 
         <div className="mt-8 sm:mt-10">
           {state === "loading" && <PageLoader />}

@@ -32,7 +32,7 @@ export default function AdminBadges() {
   const [selBadge, setSelBadge] = useState("");
   const [awarding, setAwarding] = useState(false);
   const [creating, setCreating] = useState(false);
-  const [form, setForm] = useState({ key: "", name: "", description: "", criteria: "", icon: "Award", color: "#059669" });
+  const [form, setForm] = useState({ key: "", name: "", description: "", criteria: "", icon: "Award", color: "#059669", seasonal: false, starts_at: "", ends_at: "", metric: "books", target: 1 });
 
   const load = async () => { const { data } = await api.get("/badges"); setDefs(data); };
   useEffect(() => { load(); }, []);
@@ -54,8 +54,15 @@ export default function AdminBadges() {
 
   const create = async () => {
     if (!form.key.trim() || !form.name.trim()) return toast.error("المفتاح والاسم مطلوبان");
+    if (form.seasonal && (!form.starts_at || !form.ends_at)) return toast.error("حدد بداية ونهاية الموسم");
     setCreating(true);
-    try { await api.post("/badges", form); toast.success("أُضيفت الشارة"); setForm({ key: "", name: "", description: "", criteria: "", icon: "Award", color: "#059669" }); load(); }
+    const payload = {
+      ...form,
+      target: Number(form.target) || 1,
+      starts_at: form.seasonal && form.starts_at ? new Date(form.starts_at).toISOString() : null,
+      ends_at: form.seasonal && form.ends_at ? new Date(form.ends_at).toISOString() : null,
+    };
+    try { await api.post("/badges", payload); toast.success(form.seasonal ? "أُضيفت الشارة الموسمية" : "أُضيفت الشارة"); setForm({ key: "", name: "", description: "", criteria: "", icon: "Award", color: "#059669", seasonal: false, starts_at: "", ends_at: "", metric: "books", target: 1 }); load(); }
     catch (e) { toast.error(apiErr(e)); }
     setCreating(false);
   };
@@ -163,6 +170,26 @@ export default function AdminBadges() {
               </div>
             </div>
             <div><Label>الأيقونة (lucide)</Label><Input value={form.icon} onChange={(e) => setForm({ ...form, icon: e.target.value })} placeholder="Award" className="rounded-xl mt-1.5 min-h-[44px] bg-slate-50 focus:bg-white" dir="ltr" /></div>
+            <div className="sm:col-span-2 rounded-2xl border border-amber-100 bg-amber-50/60 px-4 py-3.5">
+              <label className="flex items-center gap-2.5 cursor-pointer">
+                <input type="checkbox" checked={!!form.seasonal} onChange={(e) => setForm({ ...form, seasonal: e.target.checked })} className="w-4.5 h-4.5 w-5 h-5 accent-amber-500" />
+                <span className="text-sm font-extrabold text-slate-800">شارة موسمية · تُمنح تلقائياً عند بلوغ الهدف ثم تختفي</span>
+              </label>
+              {form.seasonal && (
+                <div className="grid sm:grid-cols-2 gap-3 mt-3.5">
+                  <div><Label>بداية الموسم</Label><Input type="datetime-local" value={form.starts_at} onChange={(e) => setForm({ ...form, starts_at: e.target.value })} className="rounded-xl mt-1.5 min-h-[44px] bg-white" /></div>
+                  <div><Label>نهاية الموسم</Label><Input type="datetime-local" value={form.ends_at} onChange={(e) => setForm({ ...form, ends_at: e.target.value })} className="rounded-xl mt-1.5 min-h-[44px] bg-white" /></div>
+                  <div><Label>يُقاس بـ</Label>
+                    <select value={form.metric} onChange={(e) => setForm({ ...form, metric: e.target.value })} className="w-full rounded-xl mt-1.5 min-h-[44px] bg-white border border-slate-200 px-3 text-sm outline-none">
+                      <option value="books">كتب منتهية خلال الموسم</option>
+                      <option value="pages">صفحات مقروءة خلال الموسم</option>
+                      <option value="quizzes">اختبارات فهم ناجحة</option>
+                    </select>
+                  </div>
+                  <div><Label>الهدف المطلوب</Label><Input type="number" min="1" value={form.target} onChange={(e) => setForm({ ...form, target: e.target.value })} className="rounded-xl mt-1.5 min-h-[44px] bg-white" /></div>
+                </div>
+              )}
+            </div>
           </div>
           <Button onClick={create} disabled={creating} className="pressable mt-4 rounded-xl min-h-[46px] px-6 w-full sm:w-auto"><Plus className="w-4 h-4 ml-1.5" /> {creating ? "جارٍ الإضافة..." : "إضافة الشارة"}</Button>
         </Section>
@@ -182,7 +209,7 @@ export default function AdminBadges() {
               <Item key={d.key} className="flex items-start gap-3.5 p-4 rounded-2xl border border-slate-100 bg-gradient-to-l from-slate-50/80 to-white hover:border-amber-200 transition-colors">
                 <span className="w-12 h-12 rounded-2xl grid place-items-center text-white shrink-0 shadow" style={{ background: d.color || "#059669" }}><Medal className="w-6 h-6" /></span>
                 <div className="min-w-0">
-                  <div className="font-head font-extrabold text-slate-800 leading-snug">{d.name}</div>
+                  <div className="font-head font-extrabold text-slate-800 leading-snug">{d.name}{d.seasonal ? <span className="mr-2 align-middle text-[9px] font-black px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-700 ring-1 ring-amber-400/40">موسمية</span> : null}</div>
                   <div className="text-xs text-slate-400 mt-1 leading-relaxed">{d.criteria || d.description || "شارة تقدير من إدارة المنصة"}</div>
                   <div className="text-[10px] font-mono text-slate-300 mt-1.5" dir="ltr">{d.key}</div>
                 </div>
