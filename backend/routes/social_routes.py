@@ -117,6 +117,26 @@ async def global_search(q: str, request: Request):
     }
 
 
+# ---------------- Members directory ----------------
+@router.get("/users/directory")
+async def users_directory(q: str = "", school: str = "", limit: int = 60,
+                          viewer: dict = Depends(get_optional_user)):
+    filt: dict = {"role": {"$in": ["student", "teacher"]},
+                  "status": {"$nin": ["deactivated", "banned", "pending"]}}
+    if q:
+        filt["name"] = {"$regex": q, "$options": "i"}
+    if school:
+        filt["school_name"] = {"$regex": school, "$options": "i"}
+    lim = max(1, min(int(limit or 60), 100))
+    docs = await db.users.find(filt).sort("xp", -1).limit(lim).to_list(lim)
+    return {"items": [{
+        "id": str(u["_id"]), "name": u.get("name"), "role": u.get("role"),
+        "school_name": u.get("school_name"), "xp": u.get("xp", 0),
+        "level": u.get("level", 1), "chess_rating": u.get("chess_rating", 1200),
+        "avatar_url": u.get("avatar_url"),
+    } for u in docs]}
+
+
 # ---------------- Public profile ----------------
 @router.get("/users/{uid}/profile")
 async def public_profile(uid: str, viewer: dict = Depends(get_optional_user)):

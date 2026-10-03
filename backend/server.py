@@ -38,6 +38,13 @@ from routes.engage_routes import router as engage_router
 from routes.errors_routes import router as errors_router
 from routes.goals_routes import router as goals_router
 from routes.uploads_routes import router as uploads_router
+from routes.dm_routes import router as dm_router
+from routes.circles_routes import router as circles_router
+from routes.qa_routes import router as qa_router
+from routes.quizlive_routes import router as quizlive_router
+from routes.portfolio_routes import router as portfolio_router
+from routes.reports_routes import router as reports_router
+from routes.cups_routes import router as cups_router
 from ws import hub
 import jwt
 from bson import ObjectId
@@ -53,7 +60,9 @@ for r in (auth_router, geo_router, books_router, files_router, community_router,
           chess_router, events_router, leaderboard_router, social_router,
           content_router, admin_router, coding_router, showcase_router, cert_router,
           push_router, studio_router, badges_router, ventures_router, goals_router,
-          uploads_router, library_router, engage_router, errors_router):
+          uploads_router, library_router, engage_router, errors_router,
+          dm_router, circles_router, qa_router, quizlive_router,
+          portfolio_router, reports_router, cups_router):
     app.include_router(r)
 
 
