@@ -63,7 +63,7 @@ export default function Competitions() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-10 xl:max-w-[1440px] xl:grid xl:grid-cols-[250px_minmax(0,1fr)] xl:items-start xl:gap-8">
-        <div className="sticky top-[calc(4rem+env(safe-area-inset-top))] z-30 mb-6 flex gap-2 overflow-x-auto rounded-[1.4rem] border border-white/60 bg-white/85 p-2 shadow-xl shadow-slate-900/[0.04] ring-1 ring-slate-200/60 backdrop-blur-xl [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:flex-wrap sm:overflow-visible xl:top-24 xl:mb-0 xl:flex-col xl:flex-nowrap xl:gap-2.5 xl:rounded-3xl xl:p-3">
+        <div className="relative mb-6 flex gap-2 overflow-x-auto rounded-[1.4rem] border border-white/60 bg-white/85 p-2 shadow-xl shadow-slate-900/[0.04] ring-1 ring-slate-200/60 backdrop-blur-xl [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:flex-wrap sm:overflow-visible xl:mb-0 xl:flex-col xl:flex-nowrap xl:gap-2.5 xl:rounded-3xl xl:p-3">
           <span className="hidden px-2 pb-0.5 pt-1 text-xs font-extrabold text-slate-400 xl:block">تصنيف المسابقات</span>
           <button data-testid="competition-type-all" onClick={() => setType("")} className={`pressable flex min-h-[44px] shrink-0 items-center rounded-full px-4 py-2 text-sm font-bold transition-all xl:w-full ${!type ? "bg-slate-900 text-white shadow-lg shadow-slate-900/20" : "bg-slate-100/80 text-slate-600 hover:bg-slate-200"}`}>الكل</button>
           {Object.entries(TYPE_META).map(([k, m]) => {

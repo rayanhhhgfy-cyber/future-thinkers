@@ -1,10 +1,11 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { Layout, EmptyState } from "@/components/Layout";
 import api, { fileUrl } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Calendar, MapPin, Users, Globe, Building2, CalendarDays, Wifi } from "lucide-react";
+import PullToRefresh from "@/components/PullToRefresh";
+import { Calendar, MapPin, Users, Globe, Building2, CalendarDays, Wifi, Star, Hourglass } from "lucide-react";
 
 const SCOPE = { national: "وطنية", directorate: "مديرية", school: "مدرسة" };
 const MONTHS = ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"];
@@ -13,10 +14,15 @@ export default function Events() {
   const { hasPerm } = useAuth();
   const [data, setData] = useState(null);
   const [scope, setScope] = useState("");
-  useEffect(() => { setData(null); api.get("/events", { params: { scope: scope || undefined } }).then((r) => setData(r.data)); }, [scope]);
+  const load = useCallback(async () => {
+    const r = await api.get("/events", { params: { scope: scope || undefined } });
+    setData(r.data);
+  }, [scope]);
+  useEffect(() => { setData(null); load().catch(() => setData({ items: [], total: 0 })); }, [load]);
 
   return (
     <Layout>
+      <PullToRefresh onRefresh={load}>
       <div className="ft-hero-gradient grain relative overflow-hidden text-white">
         <CalendarDays className="pointer-events-none absolute -bottom-14 -left-12 h-72 w-72 rotate-12 text-white/10 sm:h-96 sm:w-96" />
         <CalendarDays className="pointer-events-none absolute -top-10 right-[12%] hidden h-40 w-40 -rotate-12 text-white/[0.06] lg:block" />
@@ -53,7 +59,7 @@ export default function Events() {
       </div>
 
       <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10 xl:max-w-[1440px] xl:py-12">
-        <div className="sticky top-[calc(4rem+env(safe-area-inset-top))] z-30 mb-6">
+        <div className="relative mb-6">
           <div className="flex gap-2 overflow-x-auto rounded-[1.75rem] border border-slate-200/70 bg-white/85 p-2 ft-shadow-lg backdrop-blur-xl [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:flex-wrap sm:overflow-visible sm:rounded-full">
             {[["", "الكل"], ["national", "وطنية"], ["directorate", "مديرية"], ["school", "مدرسة"]].map(([v, l]) => (
               <button key={v} onClick={() => setScope(v)} data-testid={`event-scope-${v || "all"}`} className={`pressable min-h-[2.75rem] shrink-0 rounded-full px-5 py-2 text-sm font-bold transition-all ${scope === v ? "bg-gradient-to-l from-blue-600 to-emerald-500 text-white shadow-lg shadow-blue-600/25" : "bg-slate-100/80 text-slate-600 hover:bg-slate-200 hover:text-slate-800"}`}>{l}</button>
@@ -84,6 +90,12 @@ export default function Events() {
                         {e.mode === "online" ? <Wifi className="h-3.5 w-3.5" /> : <MapPin className="h-3.5 w-3.5" />}
                         {e.mode === "online" ? "عن بُعد" : "حضوري"}
                       </span>
+                      {Number(e.rating_count) > 0 && (
+                        <span className="absolute bottom-3 left-3 z-10 inline-flex items-center gap-1 rounded-full bg-slate-950/55 px-2.5 py-1 text-[11px] font-bold text-white backdrop-blur-md">
+                          <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+                          {Number(e.rating_avg).toFixed(1)} ({e.rating_count})
+                        </span>
+                      )}
                       {(dateDay || dateMonth) && (
                         <div className="absolute bottom-3 right-3 z-10 min-w-[3.75rem] rounded-2xl bg-white/90 px-3 py-2 text-center shadow-[0_14px_30px_-10px_rgba(2,6,23,0.5)] ring-1 ring-white/70 backdrop-blur-md transition-transform duration-500 group-hover:-translate-y-1">
                           <div className="font-head text-xl font-extrabold leading-none text-slate-900">{dateDay}</div>
@@ -105,8 +117,15 @@ export default function Events() {
                         </div>
                       </div>
                       <div className="mt-auto pt-5">
-                        <div className="flex items-center justify-between gap-3 text-xs font-bold text-slate-500">
-                          <span className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5 text-blue-600" />{e.registered_count}/{e.capacity} مسجّل</span>
+                        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 text-xs font-bold text-slate-500">
+                          {capacity > 0 && registered >= capacity ? (
+                            <>
+                              <span className="flex items-center gap-1.5 text-orange-600"><Users className="h-3.5 w-3.5" />اكتملت المقاعد</span>
+                              {Number(e.waitlist_count) > 0 && <span className="flex items-center gap-1 text-amber-600"><Hourglass className="h-3.5 w-3.5" />{e.waitlist_count} بقائمة الانتظار</span>}
+                            </>
+                          ) : (
+                            <span className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5 text-blue-600" />{e.registered_count}/{e.capacity} مسجّل</span>
+                          )}
                           <span className="font-head text-sm text-blue-600">{Math.round(capacityPct)}%</span>
                         </div>
                         <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100">
@@ -120,6 +139,7 @@ export default function Events() {
             </div>
           )}
       </div>
+      </PullToRefresh>
     </Layout>
   );
 }

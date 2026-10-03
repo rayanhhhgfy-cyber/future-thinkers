@@ -6,7 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { Calendar, MapPin, Users, Globe, ArrowRight, Building2, QrCode, CheckCircle2, CalendarDays, Wifi, Clock, CalendarPlus, Loader2, ScanLine, BadgeCheck } from "lucide-react";
+import { Calendar, MapPin, Users, Globe, ArrowRight, Building2, QrCode, CheckCircle2, CalendarDays, Wifi, Clock, CalendarPlus, Loader2, ScanLine, BadgeCheck, Star, Share2, Link2, Hourglass } from "lucide-react";
 
 const MONTHS = ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"];
 
@@ -19,6 +19,10 @@ export default function EventDetail() {
   const [checkinCode, setCheckinCode] = useState("");
   const [checkinBusy, setCheckinBusy] = useState(false);
   const [lastCheckedIn, setLastCheckedIn] = useState("");
+  const [myStars, setMyStars] = useState(0);
+  const [rateText, setRateText] = useState("");
+  const [rateBusy, setRateBusy] = useState(false);
+  const [rated, setRated] = useState(false);
 
   const load = async () => { try { const { data } = await api.get(`/events/${id}`); setE(data); } catch { nav("/events"); } };
   useEffect(() => { load(); }, [id]);
@@ -41,6 +45,17 @@ export default function EventDetail() {
     return () => { alive = false; };
   }, [id, user, e?.is_registered]);
 
+  /* Prefill my existing rating (when the API returns one) once per event. */
+  useEffect(() => {
+    if (!e?.id) return;
+    const mine = e.my_rating;
+    const stars = typeof mine === "number" ? mine : mine?.stars;
+    if (stars) { setMyStars(Number(stars) || 0); setRated(true); }
+    const txt = (typeof mine === "object" && mine?.text) || e.my_rating_text;
+    if (txt) setRateText(txt);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [e?.id]);
+
   const canManage = !!user && (hasPerm("event.manage") || ["admin", "super_admin"].includes(user.role));
 
   const doCheckin = async () => {
@@ -60,7 +75,13 @@ export default function EventDetail() {
 
   const register = async () => {
     if (!user) return nav("/login");
-    try { const { data } = await api.post(`/events/${id}/register`); toast.success(data.waitlist ? "أُضفت لقائمة الانتظار" : "تم تسجيلك بنجاح!"); load(); }
+    try {
+      const { data } = await api.post(`/events/${id}/register`);
+      const wl = data.waitlisted ?? data.waitlist;
+      const pos = data.position ?? data.waitlist_position;
+      toast.success(wl ? `أُضفت إلى قائمة الانتظار${pos ? ` · رقم ${pos}` : ""}` : "تم تسجيلك بنجاح!");
+      load();
+    }
     catch (err) { toast.error(apiErr(err)); }
   };
   const unregister = async () => { await api.post(`/events/${id}/unregister`); toast.info("ألغيت تسجيلك"); load(); };
@@ -71,6 +92,45 @@ export default function EventDetail() {
       const a = document.createElement("a"); a.href = url; a.download = `event-${id}.pdf`; a.click();
       URL.revokeObjectURL(url);
     } catch (err) { toast.error(apiErr(err)); }
+  };
+
+  /* Share the event · native share sheet when available, clipboard copy
+     as fallback, always with toast feedback. */
+  const copyLink = async () => {
+    const url = window.location.href;
+    try { await navigator.clipboard.writeText(url); toast.success("تم نسخ رابط الفعالية"); return; }
+    catch { /* clipboard unavailable (permissions / insecure context) */ }
+    try {
+      const ta = document.createElement("textarea");
+      ta.value = url; ta.style.position = "fixed"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+      toast.success("تم نسخ رابط الفعالية");
+    } catch { toast.error("تعذّر نسخ الرابط"); }
+  };
+  const shareEvent = async () => {
+    const url = window.location.href;
+    if (navigator.share) {
+      try { await navigator.share({ title: e.title, text: e.title, url }); return; }
+      catch { return; /* user dismissed the share sheet */ }
+    }
+    copyLink();
+  };
+
+  /* Submit (or update) the attendee rating for this event. */
+  const submitRate = async () => {
+    if (!myStars || rateBusy) return;
+    setRateBusy(true);
+    try {
+      const { data } = await api.post(`/events/${id}/rate`, { stars: myStars, text: rateText.trim() || undefined });
+      setRated(true);
+      toast.success("شكراً · تم حفظ تقييمك");
+      if (data && (data.rating_avg != null || data.rating_count != null)) {
+        setE((prev) => (prev ? { ...prev, rating_avg: data.rating_avg ?? prev.rating_avg, rating_count: data.rating_count ?? prev.rating_count } : prev));
+      }
+    } catch (err) { toast.error(apiErr(err)); }
+    setRateBusy(false);
   };
 
   /* Build an .ics calendar file client-side from the event date/time and
@@ -128,6 +188,16 @@ export default function EventDetail() {
   const capacity = Number(e.capacity) || 0;
   const registered = Number(e.registered_count) || 0;
   const capacityPct = capacity > 0 ? Math.min(100, Math.max(0, (registered / capacity) * 100)) : 0;
+  /* Registration state for the current user · my_status from the API when
+     present, otherwise the legacy is_registered flag. */
+  const myStatus = e.my_status || null;
+  const isWaitlisted = myStatus === "waitlisted" || myStatus === "waitlist";
+  const isRegistered = !isWaitlisted && (myStatus === "registered" || myStatus === "confirmed" || !!e.is_registered);
+  const waitPos = e.waitlist_position ?? e.my_waitlist_position ?? null;
+  const isFull = capacity > 0 && registered >= capacity;
+  const ratingAvg = Number(e.rating_avg) || 0;
+  const ratingCount = Number(e.rating_count) || 0;
+  const attended = !!(myReg?.attended || e.checked_in);
 
   return (
     <Layout>
@@ -160,6 +230,12 @@ export default function EventDetail() {
               <Clock className="h-3.5 w-3.5" />
               {e.date} {e.time}
             </span>
+            {ratingCount > 0 && (
+              <span className="inline-flex min-h-[2.25rem] items-center gap-1.5 rounded-full bg-slate-950/50 px-3 py-1 text-xs font-bold text-white backdrop-blur-md">
+                <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+                {ratingAvg.toFixed(1)} · {ratingCount} تقييم
+              </span>
+            )}
           </div>
           <h1 className="font-head mt-4 max-w-3xl text-3xl font-extrabold leading-[1.2] animate-fade-up d-1 sm:text-4xl sm:leading-[1.2] lg:text-[3.4rem] xl:max-w-4xl 2xl:text-6xl">{e.title}</h1>
           <p className="mt-3.5 flex items-center gap-2 font-semibold text-slate-200 animate-fade-up d-2">
@@ -170,8 +246,8 @@ export default function EventDetail() {
       </div>
 
       <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8 lg:grid lg:grid-cols-[minmax(0,1fr)_370px] lg:items-start lg:gap-8 lg:px-8 lg:py-10 xl:max-w-[1440px] xl:gap-10">
-        {/* capacity + CTA (sticky action bar on mobile · registration rail on desktop) */}
-        <div className="sticky bottom-3 z-30 rounded-[1.4rem] border border-slate-100 bg-white/95 p-4 ft-shadow-lg backdrop-blur-xl animate-fade-up sm:p-6 lg:col-start-2 lg:row-start-1 lg:bottom-auto lg:top-24">
+        {/* capacity + CTA (registration card · scrolls with the page) */}
+        <div className="relative rounded-[1.4rem] border border-slate-100 bg-white/95 p-4 ft-shadow-lg backdrop-blur-xl animate-fade-up sm:p-6 lg:col-start-2 lg:row-start-1">
           <div className="flex flex-col gap-4 sm:gap-5">
             <div className="min-w-0 flex-1">
               <div className="flex items-center justify-between gap-3 text-xs font-bold text-slate-500 sm:text-sm">
@@ -182,11 +258,24 @@ export default function EventDetail() {
                 <div className="h-full rounded-full ft-grad-bar transition-all duration-700" style={{ width: `${capacityPct}%` }} />
               </div>
               <div className="mt-2 hidden text-[11px] font-semibold text-slate-400 sm:block">نسبة المقاعد المحجوزة حتى الآن</div>
+              {Number(e.waitlist_count) > 0 && (
+                <div className="mt-2.5 inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1.5 text-[11px] font-extrabold text-amber-700 ring-1 ring-amber-200/70">
+                  <Hourglass className="h-3.5 w-3.5" /> {e.waitlist_count} في قائمة الانتظار
+                </div>
+              )}
             </div>
-            {e.is_registered ? (
+            {isRegistered ? (
               <Button data-testid="unregister-event-btn" onClick={unregister} variant="outline" className="pressable h-12 w-full shrink-0 rounded-2xl px-7 text-base font-bold">إلغاء التسجيل</Button>
+            ) : isWaitlisted ? (
+              <div className="w-full shrink-0 space-y-2.5">
+                <div data-testid="event-waitlist-state" className="flex items-center justify-center gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-center text-sm font-extrabold text-amber-800">
+                  <Hourglass className="h-4 w-4 shrink-0" />
+                  أنت في قائمة الانتظار{waitPos ? ` · رقم ${waitPos}` : ""}
+                </div>
+                <Button data-testid="cancel-waitlist-btn" onClick={unregister} variant="outline" className="pressable h-12 w-full rounded-2xl px-7 text-base font-bold">إلغاء الانتظار</Button>
+              </div>
             ) : (
-              <Button data-testid="register-event-btn" onClick={register} className="pressable h-12 w-full shrink-0 rounded-2xl ft-btn-primary px-8 text-base font-bold shadow-lg">سجّل الآن</Button>
+              <Button data-testid="register-event-btn" onClick={register} className="pressable h-12 w-full shrink-0 rounded-2xl ft-btn-primary px-8 text-base font-bold shadow-lg">{isFull ? "انضم لقائمة الانتظار" : "سجّل الآن"}</Button>
             )}
             <button
               data-testid="add-to-calendar-btn"
@@ -195,6 +284,23 @@ export default function EventDetail() {
             >
               <CalendarPlus className="h-4 w-4" /> أضف إلى التقويم
             </button>
+            {/* share row */}
+            <div className="flex gap-2.5">
+              <button
+                data-testid="share-event-btn"
+                onClick={shareEvent}
+                className="pressable flex h-11 min-h-[44px] flex-1 items-center justify-center gap-2 rounded-2xl bg-slate-950 text-sm font-bold text-white shadow-lg transition hover:bg-slate-800"
+              >
+                <Share2 className="h-4 w-4" /> مشاركة
+              </button>
+              <button
+                data-testid="copy-event-link-btn"
+                onClick={copyLink}
+                className="pressable flex h-11 min-h-[44px] flex-1 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white text-sm font-bold text-slate-700 transition hover:bg-slate-50"
+              >
+                <Link2 className="h-4 w-4" /> نسخ الرابط
+              </button>
+            </div>
           </div>
         </div>
 
@@ -215,6 +321,16 @@ export default function EventDetail() {
                 <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-amber-50 text-amber-600"><Users className="h-4 w-4" /></span>
                 <span className="font-semibold text-slate-600">{Math.max(0, capacity - registered)} مقعد متبقٍ من {capacity}</span>
               </div>
+              <div className="flex items-center gap-3">
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-amber-50 text-amber-500"><Star className="h-4 w-4" /></span>
+                <span className="font-semibold text-slate-600">{ratingCount > 0 ? `${ratingAvg.toFixed(1)} من 5 · ${ratingCount} تقييم` : "لا تقييمات بعد"}</span>
+              </div>
+              {Number(e.waitlist_count) > 0 && (
+                <div className="flex items-center gap-3">
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-orange-50 text-orange-500"><Hourglass className="h-4 w-4" /></span>
+                  <span className="font-semibold text-slate-600">{e.waitlist_count} في قائمة الانتظار</span>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -255,6 +371,49 @@ export default function EventDetail() {
                   <Button data-testid="download-event-cert-btn" onClick={downloadCert} variant="outline" size="sm" className="pressable mt-5 min-h-[2.85rem] rounded-xl border-emerald-200 bg-white/90 px-4 font-extrabold text-emerald-700 shadow-md transition hover:-translate-y-0.5 hover:bg-white"><CheckCircle2 className="ml-1 h-4 w-4" />تنزيل شهادة المشاركة</Button>
                 </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* attendee rating · appears after check-in */}
+        {user && attended && (
+          <div data-testid="event-rate-card" className="relative mt-7 overflow-hidden rounded-[1.7rem] border border-amber-100 bg-gradient-to-bl from-amber-50/90 via-white to-white p-6 ft-shadow-lg animate-fade-up d-3 sm:rounded-[2rem] sm:p-7 lg:col-start-1">
+            <div className="absolute inset-x-6 top-0 h-1 rounded-b-full bg-gradient-to-l from-amber-300 via-amber-400 to-amber-300" aria-hidden="true" />
+            <div className="flex items-center gap-3">
+              <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-lg shadow-amber-500/25"><Star className="h-6 w-6" /></span>
+              <div>
+                <div className="font-head text-lg font-black text-slate-900">قيّم الفعالية</div>
+                <p className="mt-0.5 text-xs font-semibold leading-relaxed text-slate-400">حضرت الفعالية · رأيك يساعدنا نطوّر الفعاليات القادمة</p>
+              </div>
+            </div>
+            <div className="mt-5 flex items-center gap-1.5" dir="ltr">
+              {[1, 2, 3, 4, 5].map((n) => (
+                <button key={n} data-testid={`rate-star-${n}`} onClick={() => setMyStars(n)} aria-label={`تقييم ${n} من 5`} className="pressable grid h-11 w-11 place-items-center rounded-2xl transition hover:bg-amber-100">
+                  <Star className={`h-7 w-7 transition-all duration-200 ${n <= myStars ? "scale-110 fill-amber-400 text-amber-400" : "text-slate-300"}`} />
+                </button>
+              ))}
+              {myStars > 0 && <span className="ms-2 font-head text-lg font-extrabold text-amber-600">{myStars}/5</span>}
+            </div>
+            <textarea
+              data-testid="rate-text"
+              value={rateText}
+              onChange={(ev) => setRateText(ev.target.value)}
+              rows={2}
+              maxLength={500}
+              placeholder="اكتب انطباعك باختصار · اختياري"
+              className="mt-3 w-full resize-none rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-inner outline-none transition focus:ring-2 focus:ring-amber-300"
+            />
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <Button
+                data-testid="rate-submit-btn"
+                onClick={submitRate}
+                disabled={!myStars || rateBusy}
+                className="pressable h-11 min-h-[44px] rounded-2xl bg-gradient-to-l from-amber-500 to-orange-500 px-6 font-extrabold text-white shadow-lg shadow-amber-500/25 transition disabled:opacity-50"
+              >
+                {rateBusy ? <Loader2 className="ml-1 h-4 w-4 animate-spin" /> : <Star className="ml-1 h-4 w-4" />}
+                {rated ? "تحديث تقييمي" : "إرسال التقييم"}
+              </Button>
+              {rated && <span className="inline-flex items-center gap-1.5 text-sm font-bold text-emerald-600"><CheckCircle2 className="h-4 w-4" /> تم حفظ تقييمك · شكراً</span>}
             </div>
           </div>
         )}
