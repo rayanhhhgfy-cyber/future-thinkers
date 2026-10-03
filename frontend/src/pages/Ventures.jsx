@@ -408,7 +408,7 @@ export default function Ventures() {
                   جدار اكتشاف المشاريع · مباشر
                 </span>
                 <h1 className="font-head text-[1.9rem] leading-tight sm:text-4xl lg:text-[2.6rem] font-extrabold mt-2.5">
-                  مشاريع <span className="ft-text-gradient">الطلاب</span> 🚀
+                  مشاريع <span className="ft-hero-gradient-text">الطلاب</span> 🚀
                 </h1>
               </div>
               {ventures && (

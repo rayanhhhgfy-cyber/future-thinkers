@@ -125,7 +125,7 @@ export default function Library() {
               <span className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-[11px] font-bold text-white ring-1 ring-white/20 backdrop-blur">
                 <LibraryIcon className="h-3.5 w-3.5" /> مكتبة النادي
               </span>
-              <h1 className="mt-4 font-head text-4xl font-extrabold leading-[1.15] sm:text-5xl lg:text-6xl">المكتبة <span className="animate-gradient-text ft-text-gradient">الرقمية</span></h1>
+              <h1 className="mt-4 font-head text-4xl font-extrabold leading-[1.15] sm:text-5xl lg:text-6xl">المكتبة <span className="animate-gradient-text ft-hero-gradient-text">الرقمية</span></h1>
               <p className="mt-3 max-w-xl leading-relaxed text-slate-300 sm:text-lg">اقرأ في العلوم والثقافة والأدب والبرمجة والفلسفة وأكثر.</p>
               <div className="mt-5 flex flex-wrap gap-2">
                 {data && <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3.5 py-2 text-xs font-bold ring-1 ring-white/15 backdrop-blur"><BookOpen className="h-4 w-4 ft-text-accent-bright" /> {data.total} كتاب متاح</span>}

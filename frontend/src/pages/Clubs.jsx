@@ -26,7 +26,7 @@ export default function Clubs() {
         <div className="max-w-7xl xl:max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 lg:py-20 relative">
           <div className="animate-fade-up max-w-3xl">
             <span className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full bg-white/10 border border-white/15 ft-text-accent-bright backdrop-blur"><Users className="w-3.5 h-3.5" /> مجتمع الطلاب المبدعين</span>
-            <h1 className="font-head text-[2rem] leading-[1.15] sm:text-4xl lg:text-[3.4rem] font-extrabold mt-4">الأندية <span className="ft-text-gradient">الطلابية</span></h1>
+            <h1 className="font-head text-[2rem] leading-[1.15] sm:text-4xl lg:text-[3.4rem] font-extrabold mt-4">الأندية <span className="ft-hero-gradient-text">الطلابية</span></h1>
             <p className="text-slate-300 mt-3 max-w-2xl text-[15px] leading-relaxed sm:text-base sm:leading-loose">مساحات تفاعلية للقراءة والحوار والشطرنج والبرمجة والعلوم والابتكار والمناظرات والأدب وريادة الأعمال.</p>
           </div>
           <div className="grid grid-cols-1 min-[430px]:grid-cols-3 gap-3 mt-8 sm:mt-10 animate-fade-up" style={{ animationDelay: "120ms" }}>
