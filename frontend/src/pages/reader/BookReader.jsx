@@ -24,6 +24,13 @@ const PDFJS_DOC_OPTIONS = {
   cMapUrl: PDFJS_CMAP_URL,
   cMapPacked: true,
   standardFontDataUrl: PDFJS_STANDARD_FONTS_URL,
+  wasmUrl: `/pdfjs/wasm/`,
+  /* Paint glyphs as vector paths straight from the font program instead of
+     converting embedded Type1/CFF subsets to OpenType for FontFace. The
+     FontFace conversion drops glyphs from many real-world book PDFs
+     (letters vanish mid-word while their spacing stays) · path painting
+     renders every letter exactly as the book's font defines it. */
+  disableFontFace: true,
 };
 
 function loadPdfjs() {
@@ -47,6 +54,26 @@ function loadPdfjs() {
     };
     install(typeof Map !== "undefined" && Map.prototype);
     install(typeof WeakMap !== "undefined" && WeakMap.prototype);
+    /* pdf.js 6 also leans on these newer APIs (glyph math in the CFF
+       parser, promise plumbing). Older browsers throw without them. */
+    if (typeof Math !== "undefined" && typeof Math.sumPrecise !== "function") {
+      Math.sumPrecise = (xs) => {
+        let s = 0, c = 0;
+        for (const x of xs) {
+          const t = s + x;
+          c += Math.abs(s) >= Math.abs(x) ? (s - t) + x : (x - t) + s;
+          s = t;
+        }
+        return s + c;
+      };
+    }
+    if (typeof Promise !== "undefined" && typeof Promise.withResolvers !== "function") {
+      Promise.withResolvers = () => {
+        let resolve, reject;
+        const promise = new Promise((res, rej) => { resolve = res; reject = rej; });
+        return { promise, resolve, reject };
+      };
+    }
   } catch {}
   return import(/* webpackIgnore: true */ PDFJS_LIB_URL).then((lib) => {
     lib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER_URL;
@@ -71,7 +98,7 @@ const READER_THEMES = [
 const THEME_UI = {
   night: {
     text: "text-white",
-    glass: "bg-slate-950/70 border-white/10 text-white backdrop-blur-xl shadow-[0_18px_50px_-12px_rgba(0,0,0,0.8)]",
+    glass: "bg-slate-950/55 border-white/15 text-white backdrop-blur-2xl backdrop-saturate-150 shadow-[0_18px_50px_-12px_rgba(0,0,0,0.8)]",
     btn: "bg-white/10 hover:bg-white/20 text-white",
     chip: "bg-white/10 text-slate-100",
     muted: "text-slate-300/75",
@@ -92,7 +119,7 @@ const THEME_UI = {
   },
   light: {
     text: "text-slate-800",
-    glass: "bg-white/75 border-slate-900/[0.06] text-slate-800 backdrop-blur-xl shadow-[0_18px_45px_-14px_rgba(70,55,25,0.35)]",
+    glass: "bg-white/60 border-white/60 text-slate-800 backdrop-blur-2xl backdrop-saturate-150 shadow-[0_18px_45px_-14px_rgba(70,55,25,0.35)]",
     btn: "bg-slate-900/[0.06] hover:bg-slate-900/10 text-slate-700",
     chip: "bg-slate-900/[0.06] text-slate-700",
     muted: "text-slate-500",
@@ -113,7 +140,7 @@ const THEME_UI = {
   },
   sepia: {
     text: "text-[#43301b]",
-    glass: "bg-[#fff8ea]/85 border-amber-900/10 text-[#43301b] backdrop-blur-xl shadow-[0_18px_45px_-14px_rgba(90,60,20,0.4)]",
+    glass: "bg-[#fff8ea]/70 border-amber-900/10 text-[#43301b] backdrop-blur-2xl backdrop-saturate-150 shadow-[0_18px_45px_-14px_rgba(90,60,20,0.4)]",
     btn: "bg-amber-900/[0.08] hover:bg-amber-900/[0.14] text-[#5b4125]",
     chip: "bg-amber-900/[0.08] text-[#5b4125]",
     muted: "text-[#8a6b48]",
@@ -137,7 +164,7 @@ const THEME_UI = {
 /* One page sheet on the stage. Renders its canvas at the given scale and
    reports the page's natural size so the parent can compute fit-contain.
    Neighbor pages stay mounted (hidden) so turning is instant. */
-function StagePage({ pdf, pageNumber, scale, onSize, isCurrent, theme, animateCls }) {
+function StagePage({ pdf, pageNumber, scale, onSize, isCurrent, theme, animateCls, spine = "left" }) {
   const canvasRef = useRef(null);
   const [size, setSize] = useState(null); // {w,h} at scale=1
   const [dim, setDim] = useState(null); // rendered CSS size at `scale`
@@ -170,7 +197,10 @@ function StagePage({ pdf, pageNumber, scale, onSize, isCurrent, theme, animateCl
       const canvas = canvasRef.current;
       if (!canvas) return;
       const viewport = page.getViewport({ scale: renderScale });
-      const dpr = Math.min(window.devicePixelRatio || 1, isCurrent ? 2 : 1.25);
+      /* Current page renders at up to 3x device pixels (crisp letters on
+         retina phones) inside a sane pixel budget; neighbors stay cheap. */
+      let dpr = Math.min(window.devicePixelRatio || 1, isCurrent ? 3 : 1.5);
+      while (viewport.width * dpr * (viewport.height * dpr) > 16000000 && dpr > 1) dpr -= 0.25;
       canvas.width = Math.max(1, Math.floor(viewport.width * dpr));
       canvas.height = Math.max(1, Math.floor(viewport.height * dpr));
       canvas.style.width = `${viewport.width}px`;
@@ -193,26 +223,42 @@ function StagePage({ pdf, pageNumber, scale, onSize, isCurrent, theme, animateCl
   const w = dim ? dim.w : size ? size.w * (scale || 1) : 600;
   const h = dim ? dim.h : size ? size.h * (scale || 1) : 800;
 
+  /* Natural-book sheet: two loose pages peek from the outer edge, the
+     spine side carries the inner-fold shadow, and the paper edge shows
+     fine page lines · so the sheet reads as a real book page. */
+  const edge = spine === "left" ? 1 : -1;
   return (
     <div
       data-page={pageNumber}
-      className={`relative shrink-0 m-auto rounded-md lg:rounded-lg overflow-hidden bg-white ${ui.sheet} ${animateCls || ""}`}
+      className={`relative shrink-0 m-auto ${animateCls || ""}`}
       style={{ width: w, height: h }}
     >
-      <canvas ref={canvasRef} className="block" />
-      {!ready && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-white text-slate-300">
-          <BookOpen className="w-8 h-8 animate-pulse" />
-          <span className="text-xs font-medium">صفحة {pageNumber}</span>
+      <div aria-hidden className="absolute inset-0 rounded-md lg:rounded-lg bg-[#e7dfcc] shadow-[0_10px_25px_-12px_rgba(60,45,20,0.45)]" style={{ transform: `translate(${edge * 7}px, 4px)` }} />
+      <div aria-hidden className="absolute inset-0 rounded-md lg:rounded-lg bg-[#f3eddc]" style={{ transform: `translate(${edge * 3.5}px, 2px)` }} />
+      <div className={`absolute inset-0 rounded-md lg:rounded-lg overflow-hidden bg-white ${ui.sheet}`}>
+        <canvas ref={canvasRef} className="block" />
+        {!ready && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-white text-slate-300">
+            <BookOpen className="w-8 h-8 animate-pulse" />
+            <span className="text-xs font-medium">صفحة {pageNumber}</span>
+          </div>
+        )}
+        {theme === "sepia" && (
+          <div className="absolute inset-0 pointer-events-none bg-amber-300/10 mix-blend-multiply" aria-hidden="true" />
+        )}
+        <div
+          aria-hidden
+          className={`pointer-events-none absolute inset-y-0 w-[30px] from-black/[0.14] via-black/[0.04] to-transparent ${spine === "left" ? "left-0 bg-gradient-to-r" : "right-0 bg-gradient-to-l"}`}
+        />
+        <div
+          aria-hidden
+          className={`pointer-events-none absolute inset-y-0 w-[3px] opacity-50 bg-[repeating-linear-gradient(to_bottom,rgba(90,70,40,0.16)_0_1px,transparent_1px_3px)] ${spine === "left" ? "right-[3px]" : "left-[3px]"}`}
+        />
+        <div
+          className={`absolute bottom-3 left-3 text-[10px] font-bold px-2.5 py-1 rounded-full backdrop-blur-md tabular-nums transition-colors ${isCurrent ? "bg-amber-400 text-slate-950 shadow-lg" : "bg-black/50 text-white/90"}`}
+        >
+          {isCurrent ? `صفحة ${pageNumber}` : pageNumber}
         </div>
-      )}
-      {theme === "sepia" && (
-        <div className="absolute inset-0 pointer-events-none bg-amber-300/10 mix-blend-multiply" aria-hidden="true" />
-      )}
-      <div
-        className={`absolute bottom-3 left-3 text-[10px] font-bold px-2.5 py-1 rounded-full backdrop-blur-md tabular-nums transition-colors ${isCurrent ? "bg-amber-400 text-slate-950 shadow-lg" : "bg-black/50 text-white/90"}`}
-      >
-        {isCurrent ? `صفحة ${pageNumber}` : pageNumber}
       </div>
     </div>
   );
@@ -262,10 +308,16 @@ export default function BookReader({ book, pdfUrl, onClose, onProgress, initialP
   const zoomed = zoomStep > 1;
   // Fit the whole page inside the stage: never clipped, nothing to scroll
   // at the 1.0 multiplier. Derived live from the stage box + page size.
+  // Phones go true full-bleed (page fills the screen edge to edge under
+  // the floating glass bars); desktops keep a calm desk margin so the
+  // sheet sits like a natural book.
   const fitContain = useMemo(() => {
     const d = dims[currentPage];
     if (!d || !stageBox.w || !stageBox.h) return null;
-    return Math.max(0.05, Math.min((stageBox.w - 36) / d.w, (stageBox.h - 36) / d.h));
+    const tight = stageBox.w < 640;
+    const padX = tight ? 2 : 88;
+    const padY = tight ? 2 : 72;
+    return Math.max(0.05, Math.min((stageBox.w - padX) / d.w, (stageBox.h - padY) / d.h));
   }, [dims, currentPage, stageBox]);
   const effScale = fitContain ? fitContain * zoomStep : null;
   const scaleUi = effScale || 1;
@@ -588,7 +640,7 @@ export default function BookReader({ book, pdfUrl, onClose, onProgress, initialP
 
   return (
     <div
-      className={`fixed inset-0 z-[80] flex flex-col transition-colors duration-500 ${ui.text}`}
+      className={`fixed inset-0 h-[100dvh] z-[80] flex flex-col transition-colors duration-500 ${ui.text}`}
       dir="rtl"
       data-testid="pdf-reader"
       style={{ background: desk }}
@@ -618,8 +670,9 @@ export default function BookReader({ book, pdfUrl, onClose, onProgress, initialP
         )}
       </div>
 
-      {/* top bar */}
-      <div className={`relative z-10 transition-all duration-300 ${barsVisible ? "translate-y-0 opacity-100" : "-translate-y-full opacity-0 pointer-events-none"}`}>
+      {/* top bar · floating glass over the page so the sheet gets the
+          whole screen on phones */}
+      <div className={`absolute top-0 inset-x-0 z-20 transition-all duration-300 ${barsVisible ? "translate-y-0 opacity-100" : "-translate-y-full opacity-0 pointer-events-none"}`} style={{ paddingTop: "env(safe-area-inset-top)" }}>
         <div className="px-2.5 sm:px-5 pt-2.5 sm:pt-3.5">
           <div className={`border rounded-[22px] px-3 sm:px-4 py-2.5 ${ui.glass}`}>
             <div className="flex items-center gap-2 sm:gap-3">
@@ -748,6 +801,7 @@ export default function BookReader({ book, pdfUrl, onClose, onProgress, initialP
           onWheel={handleWheel}
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
+          onDoubleClick={() => { setZoomIdx((i) => (i === 2 ? 4 : 2)); pokeBars(); }}
           className={`relative flex-1 min-w-0 overflow-hidden overscroll-contain ${zoomed ? "" : "touch-none"}`}
         >
           {error ? (
@@ -845,6 +899,7 @@ export default function BookReader({ book, pdfUrl, onClose, onProgress, initialP
                     onSize={handlePageSize}
                     isCurrent={isCur}
                     theme={themeId}
+                    spine={isLtrBook ? "left" : "right"}
                     animateCls={isCur ? (navDir > 0 ? animFwd : navDir < 0 ? animBack : "reader-page-fade") : ""}
                   />
                 </div>
@@ -855,7 +910,7 @@ export default function BookReader({ book, pdfUrl, onClose, onProgress, initialP
 
         {/* reading rail · desktop only */}
         {pdf && !error && railOpen && (
-          <aside className="hidden xl:flex w-[292px] shrink-0 flex-col gap-4 overflow-y-auto py-5 pe-5 ps-1">
+          <aside className="hidden xl:flex w-[292px] shrink-0 flex-col gap-4 overflow-y-auto pb-5 pt-28 pe-5 ps-1">
             <div className={`border rounded-[24px] p-5 ${ui.rail}`}>
               <div className="flex items-center gap-4">
                 <div className="relative w-[68px] h-[68px] shrink-0">
@@ -957,9 +1012,9 @@ export default function BookReader({ book, pdfUrl, onClose, onProgress, initialP
         )}
       </div>
 
-      {/* bottom floating control dock */}
+      {/* bottom floating control dock · glass, page stays full-screen beneath */}
       {pdf && !error && (
-        <div className={`relative z-10 transition-all duration-300 ${barsVisible ? "translate-y-0 opacity-100" : "translate-y-full opacity-0 pointer-events-none"}`}>
+        <div className={`absolute bottom-0 inset-x-0 z-20 transition-all duration-300 ${barsVisible ? "translate-y-0 opacity-100" : "translate-y-full opacity-0 pointer-events-none"}`}>
           <div className="px-2.5 sm:px-5 pt-1 pb-[max(0.65rem,env(safe-area-inset-bottom))] sm:pb-5">
             <div className={`max-w-3xl mx-auto border rounded-[26px] px-3 sm:px-5 py-3 ${ui.glass}`}>
               {/* zoom presets + reader themes */}
