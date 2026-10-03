@@ -783,7 +783,7 @@ export default function Circles() {
         </div>
 
         {/* join + search */}
-        <div className="grid sm:grid-cols-[minmax(0,1fr)_minmax(0,380px)] gap-4 mb-6 sticky top-20 z-30 glass rounded-[1.6rem] p-2.5 ring-1 ring-slate-100 ft-shadow">
+        <div className="grid sm:grid-cols-[minmax(0,1fr)_minmax(0,380px)] gap-4 mb-6 relative glass rounded-[1.6rem] p-2.5 ring-1 ring-slate-100 ft-shadow">
           <div className="relative">
             <Search className="w-4 h-4 text-slate-300 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
@@ -864,7 +864,7 @@ export default function Circles() {
       {/* mobile create FAB */}
       <button
         onClick={() => setCreateOpen(true)}
-        className="pressable lg:hidden fixed bottom-5 start-5 z-40 inline-flex items-center gap-1.5 min-h-[52px] px-5 rounded-full ft-btn-primary text-white text-sm font-bold shadow-2xl"
+        className="pressable lg:hidden fixed bottom-24 start-5 z-40 inline-flex items-center gap-1.5 min-h-[52px] px-5 rounded-full ft-btn-primary text-white text-sm font-bold shadow-2xl"
       >
         <Plus className="w-5 h-5" /> دائرة جديدة
       </button>
