@@ -148,25 +148,25 @@ export default function Admin() {
     <Layout noFooter>
       <div className="mx-auto w-full max-w-[1440px] px-3 pb-24 pt-4 sm:px-5 md:pb-10 lg:px-8 lg:pt-7">
         {/* app bar · slim on mobile, command header with quick switcher on md+ */}
-        <header className="ft-hero-gradient relative z-30 mb-4 rounded-[22px] px-4 py-3.5 text-white ft-shadow sm:px-5 md:mb-6 md:rounded-[26px] md:px-6 md:py-5">
+        <header className="relative z-30 mb-4 rounded-[22px] border border-slate-200/80 bg-white/95 px-4 py-3.5 text-slate-900 shadow-xl shadow-slate-900/5 backdrop-blur-xl sm:px-5 md:mb-6 md:rounded-[26px] md:px-6 md:py-5">
           <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[inherit]">
-            <div className="absolute -top-16 -start-16 h-44 w-44 rounded-full bg-white/10 blur-3xl" />
-            <div className="absolute -bottom-20 -end-10 h-48 w-48 rounded-full bg-emerald-300/20 blur-3xl" />
+            <div className="absolute -top-16 -start-16 h-44 w-44 rounded-full bg-emerald-100/70 blur-3xl" />
+            <div className="absolute -bottom-20 -end-10 h-48 w-48 rounded-full bg-teal-100/60 blur-3xl" />
           </div>
           <div className="relative flex items-center gap-3 sm:gap-4">
-            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-white/15 ring-1 ring-white/25 backdrop-blur-sm md:h-12 md:w-12">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-gradient-to-b from-emerald-500 to-teal-600 text-white shadow-md shadow-emerald-600/30 ring-1 ring-emerald-600/20 md:h-12 md:w-12">
               <ShieldCheck className="h-5 w-5 md:h-6 md:w-6" />
             </span>
             <div className="min-w-0">
               <h1 className="font-head text-base font-extrabold leading-tight md:text-xl">لوحة الإدارة</h1>
-              <p className="mt-0.5 flex items-center gap-1.5 text-[11px] text-white/75 md:text-xs">
+              <p className="mt-0.5 flex items-center gap-1.5 text-[11px] text-slate-500 md:text-xs">
                 {ActiveIcon && <ActiveIcon className="h-3.5 w-3.5 shrink-0" />}
                 <span className="truncate">{activeGroup ? `${activeGroup.l} · ` : ""}{activeTab?.l || "…"}{user?.name ? ` · أهلاً ${user.name}` : ""}</span>
               </p>
             </div>
             {/* quick switcher · انتقل إلى قسم · md+ */}
             <div className="relative ms-auto hidden w-full max-w-xs shrink md:block lg:max-w-sm">
-              <Search className="pointer-events-none absolute start-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-white/60" />
+              <Search className="pointer-events-none absolute start-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <input ref={switchRef} value={sq} data-testid="admin-switcher"
                 onChange={(e) => { setSq(e.target.value); setSOpen(true); setSIdx(0); }}
                 onFocus={() => setSOpen(true)}
@@ -177,8 +177,8 @@ export default function Admin() {
                   else if (e.key === "Enter" && sqMatches.length) { jumpSection(sqMatches[Math.min(sIdx, sqMatches.length - 1)].k); }
                 }}
                 placeholder="انتقل إلى قسم…"
-                className="h-11 w-full rounded-2xl border border-white/20 bg-white/10 pe-14 ps-10 text-sm font-bold text-white outline-none backdrop-blur-md transition placeholder:text-white/50 focus:bg-white/15 focus:ring-2 focus:ring-white/40" />
-              <kbd className="pointer-events-none absolute end-3 top-1/2 -translate-y-1/2 rounded-md bg-white/15 px-1.5 py-0.5 text-[10px] font-extrabold text-white/70 ring-1 ring-white/20">⌘K</kbd>
+                className="h-11 w-full rounded-2xl border border-slate-200 bg-slate-50 pe-14 ps-10 text-sm font-bold text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-emerald-300 focus:bg-white focus:ring-2 focus:ring-emerald-500/25" />
+              <kbd className="pointer-events-none absolute end-3 top-1/2 -translate-y-1/2 rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-extrabold text-slate-500 ring-1 ring-slate-200">⌘K</kbd>
               <AnimatePresence>
                 {sOpen && sqMatches.length > 0 && (
                   <motion.div initial={{ opacity: 0, y: 6, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 6, scale: 0.98 }} transition={{ duration: 0.16 }}
@@ -212,7 +212,7 @@ export default function Admin() {
         <div className="grid items-start gap-4 md:grid-cols-[76px_minmax(0,1fr)] md:gap-6">
           {/* icon rail + flyout · md+ */}
           <div className="relative z-40 hidden md:block" onMouseLeave={() => setFly(null)}>
-            <aside className="sticky top-24 flex max-h-[calc(100dvh-8rem)] flex-col items-center gap-1 self-start overflow-y-auto rounded-[26px] bg-slate-900/[0.97] px-2 py-3 shadow-2xl ring-1 ring-white/10 backdrop-blur-xl [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <aside className="sticky top-6 flex max-h-[calc(100dvh-4rem)] flex-col items-center gap-1 self-start overflow-y-auto rounded-[26px] bg-white/95 px-2 py-3 shadow-xl shadow-slate-900/10 ring-1 ring-slate-200/80 backdrop-blur-xl [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {groupedTabs.map((g) => {
                 const GIcon = g.icon;
                 const isActiveGroup = activeGroup?.l === g.l;
@@ -221,25 +221,25 @@ export default function Admin() {
                   <button key={g.l} type="button" aria-label={g.l} title={g.l}
                     onMouseEnter={() => setFly(g.l)}
                     onClick={() => setFly(fly === g.l ? null : g.l)}
-                    className={`relative grid h-[52px] w-[52px] shrink-0 place-items-center rounded-2xl transition-all duration-200 ${fly === g.l ? "bg-white/15 text-white ring-1 ring-white/25" : isActiveGroup ? "bg-gradient-to-b from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-950/50" : "text-slate-400 hover:bg-white/10 hover:text-white"}`}>
+                    className={`relative grid h-[52px] w-[52px] shrink-0 place-items-center rounded-2xl transition-all duration-200 ${fly === g.l ? "bg-slate-100 text-slate-900 ring-1 ring-slate-300" : isActiveGroup ? "bg-gradient-to-b from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-600/30" : "text-slate-400 hover:bg-slate-100 hover:text-slate-900"}`}>
                     <GIcon className="h-[22px] w-[22px]" />
-                    {gp > 0 && <span className="absolute -end-0.5 -top-0.5 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-rose-500 px-1 text-[9px] font-extrabold text-white ring-2 ring-slate-900">{gp > 99 ? "+99" : gp}</span>}
+                    {gp > 0 && <span className="absolute -end-0.5 -top-0.5 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-rose-500 px-1 text-[9px] font-extrabold text-white ring-2 ring-white">{gp > 99 ? "+99" : gp}</span>}
                   </button>
                 );
               })}
               {ungroupedTabs.length > 0 && (
                 <>
-                  <div className="my-1.5 h-px w-8 bg-white/15" />
+                  <div className="my-1.5 h-px w-8 bg-slate-200" />
                   {ungroupedTabs.map((n) => (
                     <button key={n.k} type="button" title={n.l} data-testid={`admin-tab-${n.k}`} onClick={() => jumpSection(n.k)}
-                      className={`relative grid h-[52px] w-[52px] shrink-0 place-items-center rounded-2xl transition-all duration-200 ${tab === n.k ? "bg-gradient-to-b from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-950/50" : "text-slate-400 hover:bg-white/10 hover:text-white"}`}>
+                      className={`relative grid h-[52px] w-[52px] shrink-0 place-items-center rounded-2xl transition-all duration-200 ${tab === n.k ? "bg-gradient-to-b from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-600/30" : "text-slate-400 hover:bg-slate-100 hover:text-slate-900"}`}>
                       <n.icon className="h-[22px] w-[22px]" />
                     </button>
                   ))}
                 </>
               )}
-              <div className="my-1.5 h-px w-8 bg-white/15" />
-              <span className="grid h-9 w-9 place-items-center rounded-full bg-white/10 text-[10px] font-black text-white/70 ring-1 ring-white/15">فت</span>
+              <div className="my-1.5 h-px w-8 bg-slate-200" />
+              <span className="grid h-9 w-9 place-items-center rounded-full bg-slate-100 text-[10px] font-black text-slate-500 ring-1 ring-slate-200">فت</span>
             </aside>
 
             {/* flyout · sections of the hovered/selected group */}
@@ -314,26 +314,26 @@ export default function Admin() {
         </div>
       </div>
 
-      {/* mobile bottom navigation · floats above the global tab bar */}
-      <nav className="fixed inset-x-0 z-[60] md:hidden" style={{ bottom: "calc(88px + env(safe-area-inset-bottom))" }} data-testid="admin-mobile-bar">
-        <div className="mx-3 flex items-stretch justify-around gap-1 rounded-[24px] bg-slate-900/[0.97] px-2 py-2 shadow-2xl ring-1 ring-white/10 backdrop-blur-xl">
+      {/* mobile bottom navigation · the global tab bar is hidden on /admin, so this docks at the real bottom */}
+      <nav className="fixed inset-x-0 z-[60] md:hidden" style={{ bottom: "calc(10px + env(safe-area-inset-bottom))" }} data-testid="admin-mobile-bar">
+        <div className="mx-3 flex items-stretch justify-around gap-1 rounded-[24px] bg-white/95 px-2 py-2 shadow-2xl shadow-slate-900/10 ring-1 ring-slate-200/80 backdrop-blur-xl">
           {MOBILE_KEYS.filter((k) => tabs.some((t) => t.k === k)).map((k) => {
             const n = tabs.find((t) => t.k === k);
             const active = tab === k;
             return (
               <button key={k} type="button" data-testid={`admin-tab-${k}`} onClick={() => goTab(k)}
-                className={`relative flex min-h-[52px] flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-1 transition-all ${active ? "bg-gradient-to-b from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-950/40" : "text-slate-400 active:bg-white/10"}`}>
+                className={`relative flex min-h-[52px] flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-1 transition-all ${active ? "bg-gradient-to-b from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-600/30" : "text-slate-400 active:bg-slate-100"}`}>
                 <n.icon className="h-5 w-5" />
                 <span className="text-[10px] font-extrabold leading-none">{n.l}</span>
-                {pendCount(k) > 0 && <span className="absolute end-1.5 top-1.5 grid h-4 min-w-4 place-items-center rounded-full bg-rose-500 px-1 text-[9px] font-extrabold text-white ring-2 ring-slate-900">{pendCount(k) > 99 ? "+99" : pendCount(k)}</span>}
+                {pendCount(k) > 0 && <span className="absolute end-1.5 top-1.5 grid h-4 min-w-4 place-items-center rounded-full bg-rose-500 px-1 text-[9px] font-extrabold text-white ring-2 ring-white">{pendCount(k) > 99 ? "+99" : pendCount(k)}</span>}
               </button>
             );
           })}
           <button type="button" onClick={() => setSheet(true)} data-testid="admin-all-sections-btn" aria-label="كل الأقسام"
-            className="relative flex min-h-[52px] flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-1 text-slate-400 transition-all active:bg-white/10">
+            className="relative flex min-h-[52px] flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-1 text-slate-400 transition-all active:bg-slate-100">
             <LayoutGrid className="h-5 w-5" />
             <span className="text-[10px] font-extrabold leading-none">الأقسام</span>
-            {totalPending > 0 && <span className="absolute end-1.5 top-1.5 h-2.5 w-2.5 rounded-full bg-rose-500 ring-2 ring-slate-900" />}
+            {totalPending > 0 && <span className="absolute end-1.5 top-1.5 h-2.5 w-2.5 rounded-full bg-rose-500 ring-2 ring-white" />}
           </button>
         </div>
       </nav>

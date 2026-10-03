@@ -56,7 +56,7 @@ export function Layout({ children, noFooter }) {
   const { pathname } = useLocation();
   const reduce = useReducedMotion();
   return (
-    <div className="min-h-screen flex flex-col pb-[86px] lg:pb-0">
+    <div className={`min-h-screen flex flex-col ${pathname.startsWith("/admin") ? "" : "pb-[86px] lg:pb-0"}`}>
       <AnnouncementBar />
       <Navbar />
       <main className="flex-1">

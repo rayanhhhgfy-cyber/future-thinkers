@@ -163,6 +163,9 @@ export function Navbar() {
     return () => { try { ws && ws.close(); } catch {} };
   }, [user, nav]);
 
+  // admin has its own chrome · the user site navigation (header + drawer + mobile tab bar) disappears entirely on /admin
+  if (loc.pathname.startsWith("/admin")) return null;
+
   return (
   <>
     <header className="sticky top-0 z-50 px-3 sm:px-5 lg:px-8 pt-[max(0.6rem,env(safe-area-inset-top))]">
