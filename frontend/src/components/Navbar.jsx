@@ -308,7 +308,7 @@ export function Navbar() {
 /* section one thumb away, with a live private-message badge.         */
 /* ------------------------------------------------------------------ */
 function MobileTabBar({ user, pathname, dmUnread, onExplore }) {
-  if (pathname.startsWith("/messages") || /^\/ventures\/.+/.test(pathname)) return null;
+  if (/^\/ventures\/.+/.test(pathname)) return null;
   const tabs = [
     { to: user ? "/dashboard" : "/", label: "الرئيسية", icon: LayoutDashboard },
     { to: "/library", label: "المكتبة", icon: BookOpen },

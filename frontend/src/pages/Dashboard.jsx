@@ -28,13 +28,13 @@ const QUOTES = [
 ];
 
 const StatCard = ({ icon: Icon, label, value, color, sub }) => (
-  <div className="bg-white rounded-2xl p-5 border border-slate-100 ft-shadow hover-lift">
+  <div className="h-full flex flex-col bg-white rounded-2xl p-4 sm:p-5 border border-slate-100 ft-shadow hover-lift">
     <div className="flex items-center justify-between">
-      <div className="w-10 h-10 rounded-xl grid place-items-center" style={{ background: `${color}15`, color }}><Icon className="w-5 h-5" /></div>
+      <div className="w-10 h-10 rounded-xl grid place-items-center shrink-0" style={{ background: `${color}15`, color }}><Icon className="w-5 h-5" /></div>
     </div>
-    <div className="mt-3 text-2xl font-extrabold font-head text-slate-900">{value}</div>
-    <div className="text-xs text-slate-500">{label}</div>
-    {sub && <div className="text-[11px] text-slate-400 mt-0.5">{sub}</div>}
+    <div className="mt-2.5 text-[26px] leading-none font-extrabold font-head text-slate-900">{value}</div>
+    <div className="text-xs leading-tight text-slate-500 mt-1">{label}</div>
+    {sub && <div className="text-[11px] leading-tight text-slate-400 mt-0.5">{sub}</div>}
   </div>
 );
 
@@ -145,7 +145,7 @@ export default function Dashboard() {
         <div className="contents xl:block xl:col-span-8 xl:min-w-0">
         {/* Hero card */}
         <FadeUp className="order-1">
-        <div className="ft-navy-gradient grain relative overflow-hidden rounded-3xl p-8 lg:p-10 text-white mb-6">
+        <div className="ft-navy-gradient grain relative overflow-hidden rounded-3xl p-5 sm:p-8 lg:p-10 text-white mb-6">
           <div className="absolute -top-16 -left-16 w-64 h-64 bg-white/10 rounded-full blur-3xl animate-float" />
           <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div>
@@ -164,7 +164,7 @@ export default function Dashboard() {
                 <div className="h-2 rounded-full bg-white/15 overflow-hidden"><div className="h-full ft-grad-bar rounded-full transition-all duration-700" style={{ width: `${gam.level_progress}%` }} /></div>
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               {(() => {
                 const goal = data.daily_goal || 20;
                 const today = data.pages_today || 0;
@@ -214,11 +214,11 @@ export default function Dashboard() {
         </FadeUp>
 
         {/* stats */}
-        <Stagger className="order-2 grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          <Item><StatCard icon={Trophy} label="ترتيبك الوطني" value={`#${data.national_rank}`} color="#D97706" sub={data.school_rank ? `مدرستك: #${data.school_rank}` : ""} /></Item>
-          <Item><StatCard icon={BookOpen} label="كتب مقروءة" value={data.books_read} color="#2563EB" /></Item>
-          <Item><StatCard icon={Crown} label="تصنيف الشطرنج" value={data.chess_rating} color="#0A192F" /></Item>
-          <Item><StatCard icon={MessagesSquare} label="مشاركاتك" value={data.posts} color="#059669" /></Item>
+        <Stagger className="order-2 grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
+          <Item className="h-full"><StatCard icon={Trophy} label="ترتيبك الوطني" value={`#${data.national_rank}`} color="#D97706" sub={data.school_rank ? `مدرستك: #${data.school_rank}` : ""} /></Item>
+          <Item className="h-full"><StatCard icon={BookOpen} label="كتب مقروءة" value={data.books_read} color="#2563EB" /></Item>
+          <Item className="h-full"><StatCard icon={Crown} label="تصنيف الشطرنج" value={data.chess_rating} color="#0A192F" /></Item>
+          <Item className="h-full"><StatCard icon={MessagesSquare} label="مشاركاتك" value={data.posts} color="#059669" /></Item>
         </Stagger>
 
         {/* continue where you left off + starter checklist */}
@@ -346,10 +346,10 @@ export default function Dashboard() {
                 <div className="space-y-3">
                   {data.currently_reading.map((b) => (
                     <Link key={b.id} to={`/books/${b.id}`} className="flex items-center gap-4 p-2 rounded-xl hover:bg-slate-50 transition-colors">
-                      <BookCover book={b} className="w-12 h-16 rounded-lg" imgClassName="w-12 h-16 object-cover rounded-lg" />
-                      <div className="flex-1">
-                        <div className="font-semibold text-slate-800">{b.title}</div>
-                        <div className="text-xs text-slate-500 mb-1.5">{b.author}</div>
+                      <BookCover book={b} className="w-12 h-16 rounded-lg shrink-0" imgClassName="w-12 h-16 object-cover rounded-lg" />
+                      <div className="flex-1 min-w-0">
+                        <div className="font-semibold text-slate-800 truncate">{b.title}</div>
+                        <div className="text-xs text-slate-500 mb-1.5 truncate">{b.author}</div>
                         <Progress value={b.progress} className="h-1.5" />
                       </div>
                       <div className="text-sm font-bold text-blue-600">{Math.round(b.progress)}%</div>
