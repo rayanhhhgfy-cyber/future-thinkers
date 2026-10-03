@@ -37,9 +37,9 @@ const AR_NUMS = ["٠١", "٠٢", "٠٣", "٠٤", "٠٥", "٠٦", "٠٧", "٠٨",
 function SectionTag({ num, label, center = false, dark = false }) {
   return (
     <div className={`hidden lg:flex items-center gap-3 mb-10 ${center ? "justify-center" : ""}`} aria-hidden="true">
-      <span className={`font-head text-sm font-extrabold ${dark ? "ft-text-accent-bright" : "ft-text-accent"}`}>{num}</span>
+      <span className={`font-head text-sm font-extrabold ${dark ? "ft-text-accent-bright ft-on-hero" : "ft-text-accent"}`}>{num}</span>
       <span className={`h-px w-14 ${dark ? "bg-white/30" : "ft-grad-bar opacity-70"}`} />
-      <span className={`text-sm font-bold ${dark ? "text-slate-300" : "text-slate-500"}`}>{label}</span>
+      <span className={`text-sm font-bold ${dark ? "text-slate-300 ft-on-hero" : "text-slate-500"}`}>{label}</span>
     </div>
   );
 }
@@ -98,17 +98,17 @@ export default function Landing() {
         <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-24 lg:py-28 relative lg:min-h-[94vh] lg:flex lg:items-center">
           <div className="grid lg:grid-cols-12 gap-12 xl:gap-16 items-center w-full">
           <div className="max-w-3xl lg:max-w-none lg:col-span-7">
-            <div className="animate-fade-up inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/15 text-sm mb-6">
+            <div className="animate-fade-up inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/15 text-sm mb-6 ft-on-hero">
               <Sparkles className="w-4 h-4 ft-text-accent-bright" /> {cms?.hero_badge || "المنصة المعرفية الوطنية لطلاب الأردن"}
             </div>
             <div className="hidden lg:flex items-center gap-3 mb-6" aria-hidden="true">
               <span className="h-px w-16 ft-grad-bar" />
-              <span className="text-xs font-extrabold tracking-wide text-slate-300">حيث يجتمع قرّاء الأردن ومفكروه</span>
+              <span className="text-xs font-extrabold tracking-wide text-slate-300 ft-on-hero">حيث يجتمع قرّاء الأردن ومفكروه</span>
             </div>
-            <h1 className="animate-fade-up d-1 font-head text-4xl sm:text-5xl lg:text-6xl font-extrabold leading-[1.15]">
-              {cms?.hero_title || "نقرأ أكثر، نفكّر أعمق،"}<br /><span className="relative inline-block"><span className="ft-text-gradient animate-gradient-text">{cms?.hero_highlight || "ونصنع المستقبل."}</span><span className="hidden lg:block absolute -bottom-2 right-0 h-1.5 w-3/4 rounded-full ft-grad-bar opacity-80" aria-hidden="true" /></span>
+            <h1 className="animate-fade-up d-1 font-head text-4xl sm:text-5xl lg:text-6xl font-extrabold leading-[1.15] ft-on-hero">
+              {cms?.hero_title || "نقرأ أكثر، نفكّر أعمق،"}<br /><span className="relative inline-block"><span className="ft-hero-gradient-text animate-gradient-text">{cms?.hero_highlight || "ونصنع المستقبل."}</span><span className="hidden lg:block absolute -bottom-2 right-0 h-1.5 w-3/4 rounded-full ft-grad-bar opacity-80" aria-hidden="true" /></span>
             </h1>
-            <p className="animate-fade-up d-2 mt-6 text-lg lg:text-xl text-slate-300 leading-relaxed max-w-2xl">
+            <p className="animate-fade-up d-2 mt-6 text-lg lg:text-xl text-slate-300 leading-relaxed max-w-2xl ft-on-hero">
               {cms?.hero_subtitle || "بيئة معرفية وثقافية وعلمية تجمع طلاب المملكة الأردنية الهاشمية حول القراءة والحوار والشطرنج والبرمجة والابتكار والمنافسات في مجتمع طلابي واحد."}
             </p>
             <div className="animate-fade-up d-3 mt-8 lg:mt-10 flex flex-wrap gap-3">
@@ -418,8 +418,8 @@ export default function Landing() {
         <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-28 relative">
           <SectionTag num="٠٦" label="ماذا يقول مفكرونا؟" center dark />
           <FadeUp className="text-center">
-            <h2 className="font-head text-4xl font-extrabold">أصوات من المجتمع</h2>
-            <p className="mt-3 text-slate-300">طلاب من مدارس ومديريات مختلفة يشاركونك تجربتهم</p>
+            <h2 className="font-head text-4xl font-extrabold ft-on-hero">أصوات من المجتمع</h2>
+            <p className="mt-3 text-slate-300 ft-on-hero">طلاب من مدارس ومديريات مختلفة يشاركونك تجربتهم</p>
           </FadeUp>
           <Stagger className="grid grid-cols-3 gap-6 mt-14">
             {[
@@ -428,7 +428,7 @@ export default function Landing() {
               { q: "غرف التركيز ومهام اليوم ساعدتني أنظّم وقتي، وحافظت على سلسلة قراءة تجاوزت ستين يوماً متواصلاً.", n: "ليان م.", r: "طالبة · تحديات القراءة" },
             ].map((t) => (
               <Item key={t.n} className="rounded-3xl bg-white/10 border border-white/15 backdrop-blur-md p-8">
-                <Quote className="w-8 h-8 ft-text-accent-bright mb-4" />
+                <Quote className="w-8 h-8 ft-text-accent-bright ft-on-hero-icon mb-4" />
                 <p className="leading-loose text-slate-100">{t.q}</p>
                 <div className="mt-6 flex items-center gap-3 border-t border-white/10 pt-5">
                   <span className="w-11 h-11 rounded-full ft-icon-tile grid place-items-center font-bold">{t.n[0]}</span>
@@ -452,9 +452,9 @@ export default function Landing() {
           <div className="pointer-events-none absolute -bottom-24 -left-16 w-80 h-80 rounded-full blur-3xl" style={{ background: "color-mix(in srgb, var(--ft-accent) 18%, transparent)" }} />
           <div className="pointer-events-none absolute top-10 left-1/4 w-56 h-12 rotate-[24deg] rounded-full opacity-20 hidden lg:block" style={{ background: "linear-gradient(90deg, var(--ft-grad-a, #052e26), var(--ft-accent, #0d9488))" }} />
           <div className="relative max-w-3xl mx-auto">
-          <Float className="inline-block relative"><Trophy className="w-14 h-14 lg:w-[4.5rem] lg:h-[4.5rem] ft-text-accent-bright mx-auto mb-5" /></Float>
-          <h2 className="relative font-head text-3xl lg:text-5xl font-extrabold">جاهز لتكون من مفكري المستقبل؟</h2>
-          <p className="relative mt-4 text-slate-300 max-w-xl lg:max-w-2xl lg:text-lg mx-auto">انضم إلى آلاف الطلاب في رحلة معرفية تنافسية، واجمع نقاط الخبرة، وتصدّر قوائم الصدارة الوطنية.</p>
+          <Float className="inline-block relative"><Trophy className="w-14 h-14 lg:w-[4.5rem] lg:h-[4.5rem] ft-text-accent-bright ft-on-hero-icon mx-auto mb-5" /></Float>
+          <h2 className="relative font-head text-3xl lg:text-5xl font-extrabold ft-on-hero">جاهز لتكون من مفكري المستقبل؟</h2>
+          <p className="relative mt-4 text-slate-300 max-w-xl lg:max-w-2xl lg:text-lg mx-auto ft-on-hero">انضم إلى آلاف الطلاب في رحلة معرفية تنافسية، واجمع نقاط الخبرة، وتصدّر قوائم الصدارة الوطنية.</p>
           <Button data-testid="cta-join-btn" onClick={() => nav(user ? "/dashboard" : "/register")} size="lg" className="pressable relative mt-8 rounded-2xl ft-btn-solid h-12 px-8 text-base">
             <Rocket className="w-5 h-5 ml-2" /> {user ? "لوحتي" : "ابدأ الآن مجاناً"}
           </Button>

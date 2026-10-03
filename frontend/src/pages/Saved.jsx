@@ -60,7 +60,7 @@ export default function Saved() {
               <Bookmark className="h-3.5 w-3.5" /> عناصر محفوظة لوقت لاحق
             </span>
             <h1 className="mt-4 font-head text-4xl font-extrabold leading-[1.15] sm:text-5xl">
-              محفوظتي <span className="animate-gradient-text ft-text-gradient">الخاصة</span>
+              محفوظتي <span className="animate-gradient-text ft-hero-gradient-text">الخاصة</span>
             </h1>
             <p className="mt-3 max-w-xl leading-relaxed text-slate-300 sm:text-lg">
               كل الكتب والمشاريع والأعمال التي حفظتها من أنحاء النادي، في مكان واحد مرتب وجاهز للعودة إليه.

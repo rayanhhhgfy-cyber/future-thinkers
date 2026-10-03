@@ -157,7 +157,7 @@ export default function News() {
 
           <div className="mt-4 flex flex-wrap items-end justify-between gap-4 animate-fade-up">
             <div>
-              <h1 className="font-head text-4xl font-black leading-tight sm:text-6xl lg:text-7xl">الأخبار <span className="ft-text-gradient">الآن</span></h1>
+              <h1 className="font-head text-4xl font-black leading-tight sm:text-6xl lg:text-7xl">الأخبار <span className="ft-hero-gradient-text">الآن</span></h1>
               <p className="mt-2.5 max-w-2xl text-sm leading-relaxed text-white/70 sm:text-base">أخبار المنصة والفعاليات وإنجازات الطلاب والمدارس والأندية · تحديثات يكتبها النادي لأعضائه أولًا بأول.</p>
             </div>
             {data && all.length > 0 && (
