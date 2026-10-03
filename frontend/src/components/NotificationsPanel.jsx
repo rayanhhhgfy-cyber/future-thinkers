@@ -5,24 +5,57 @@ import api from "@/lib/api";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Bell, Check, Trophy, BookOpen, Users, Calendar, MessageSquare, Sparkles,
-  Heart, Star, ShieldCheck, Megaphone, X,
+  Heart, Star, ShieldCheck, Megaphone, X, Crown, Award, UserPlus, Newspaper,
+  Target, Rocket, Info, MessagesSquare,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EASE } from "@/components/anim";
 
 const TYPE_STYLE = {
   achievement: { icon: Trophy, bg: "bg-amber-100", fg: "text-amber-600" },
+  certificate: { icon: Award, bg: "bg-yellow-100", fg: "text-yellow-600" },
+  challenge: { icon: Target, bg: "bg-teal-100", fg: "text-teal-600" },
+  circle_challenge_done: { icon: Target, bg: "bg-teal-100", fg: "text-teal-600" },
   book: { icon: BookOpen, bg: "bg-blue-100", fg: "text-blue-600" },
   club: { icon: Users, bg: "bg-emerald-100", fg: "text-emerald-600" },
   event: { icon: Calendar, bg: "bg-violet-100", fg: "text-violet-600" },
   discussion: { icon: MessageSquare, bg: "bg-sky-100", fg: "text-sky-600" },
+  reply: { icon: MessagesSquare, bg: "bg-sky-100", fg: "text-sky-600" },
+  follow: { icon: UserPlus, bg: "bg-cyan-100", fg: "text-cyan-600" },
   studio: { icon: Sparkles, bg: "bg-purple-100", fg: "text-purple-600" },
   like: { icon: Heart, bg: "bg-rose-100", fg: "text-rose-600" },
   review: { icon: Star, bg: "bg-yellow-100", fg: "text-yellow-600" },
   moderation: { icon: ShieldCheck, bg: "bg-orange-100", fg: "text-orange-600" },
   broadcast: { icon: Megaphone, bg: "bg-indigo-100", fg: "text-indigo-600" },
+  system: { icon: Info, bg: "bg-slate-200", fg: "text-slate-600" },
+  chess: { icon: Crown, bg: "bg-stone-200", fg: "text-stone-600" },
+  news: { icon: Newspaper, bg: "bg-sky-100", fg: "text-sky-600" },
+  competition: { icon: Trophy, bg: "bg-amber-100", fg: "text-amber-600" },
+  activity: { icon: Sparkles, bg: "bg-emerald-100", fg: "text-emerald-600" },
 };
 const FALLBACK = { icon: Bell, bg: "bg-slate-100", fg: "text-slate-500" };
+
+function styleFor(type) {
+  if (!type) return FALLBACK;
+  if (TYPE_STYLE[type]) return TYPE_STYLE[type];
+  if (String(type).startsWith("venture_")) return { icon: Rocket, bg: "bg-orange-100", fg: "text-orange-600" };
+  return FALLBACK;
+}
+
+/* Category filter · mapped onto the real notification types */
+const ACHIEVEMENT_TYPES = new Set(["achievement", "certificate", "challenge", "circle_challenge_done"]);
+const SYSTEM_TYPES = new Set(["system", "moderation", "broadcast"]);
+function categoryOf(type) {
+  if (ACHIEVEMENT_TYPES.has(type)) return "achievements";
+  if (SYSTEM_TYPES.has(type)) return "system";
+  return "interaction";
+}
+const CATEGORY_CHIPS = [
+  { v: "all", l: "الكل" },
+  { v: "interaction", l: "تفاعل" },
+  { v: "achievements", l: "إنجازات" },
+  { v: "system", l: "نظام" },
+];
 
 export function timeAgo(iso) {
   if (!iso) return "";
@@ -103,6 +136,11 @@ export function NotificationsPanel({ onClose }) {
 }
 
 function PanelBody({ items, unread, markAll, openItem, onClose, sheet }) {
+  const [cat, setCat] = useState("all");
+  const counts = { all: 0, interaction: 0, achievements: 0, system: 0 };
+  (items || []).forEach((n) => { counts.all++; counts[categoryOf(n.type)]++; });
+  const visible = cat === "all" ? items : (items || []).filter((n) => categoryOf(n.type) === cat);
+
   return (
     <>
       <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 bg-gradient-to-l from-slate-50 to-white shrink-0">
@@ -118,7 +156,7 @@ function PanelBody({ items, unread, markAll, openItem, onClose, sheet }) {
         <div className="flex items-center gap-1">
           {unread > 0 && (
             <Button variant="ghost" size="sm" data-testid="mark-all-read-btn" onClick={markAll} className="text-xs text-blue-600 rounded-xl">
-              <Check className="w-3.5 h-3.5 ml-1" />تعليم الكل كمقروء
+              <Check className="w-3.5 h-3.5 ml-1" />تحديد الكل كمقروء
             </Button>
           )}
           {sheet && (
@@ -126,6 +164,21 @@ function PanelBody({ items, unread, markAll, openItem, onClose, sheet }) {
           )}
         </div>
       </div>
+      {items !== null && items.length > 0 && (
+        <div className="flex gap-1.5 px-4 pt-3 pb-1 shrink-0" data-testid="notif-category-chips">
+          {CATEGORY_CHIPS.map((c) => (
+            <button
+              key={c.v}
+              data-testid={`notif-cat-${c.v}`}
+              onClick={() => setCat(c.v)}
+              className={`pressable min-h-[34px] rounded-full px-3.5 text-xs font-bold transition-all ${cat === c.v ? "bg-slate-900 text-white shadow-md" : "bg-slate-100 text-slate-500 hover:bg-slate-200"}`}
+            >
+              {c.l}
+              <span className={`mr-1.5 rounded-full px-1.5 py-0.5 text-[10px] font-black ${cat === c.v ? "bg-white/20 text-white" : "bg-white text-slate-400"}`}>{counts[c.v]}</span>
+            </button>
+          ))}
+        </div>
+      )}
       <div className={`${sheet ? "flex-1 overflow-y-auto" : "max-h-[440px] overflow-y-auto"}`}>
         {items === null ? (
           <div className="p-8 space-y-3">
@@ -147,10 +200,18 @@ function PanelBody({ items, unread, markAll, openItem, onClose, sheet }) {
             <div className="font-bold text-slate-700">كل شيء هادئ هنا 🔕</div>
             <div className="text-xs text-slate-400 mt-1">ستصلك إشعارات الأنشطة والفعاليات هنا</div>
           </div>
+        ) : visible.length === 0 ? (
+          <div className="p-10 text-center">
+            <div className="w-14 h-14 mx-auto rounded-3xl bg-slate-100 grid place-items-center text-slate-400 mb-3">
+              <Bell className="w-7 h-7" />
+            </div>
+            <div className="font-bold text-slate-700">لا إشعارات في هذا التصنيف</div>
+            <div className="text-xs text-slate-400 mt-1">جرّب تصنيفاً آخر أو عد لاحقاً</div>
+          </div>
         ) : (
           <AnimatePresence initial={false}>
-            {items.map((n, i) => {
-              const st = TYPE_STYLE[n.type] || FALLBACK;
+            {visible.map((n, i) => {
+              const st = styleFor(n.type);
               const Icon = st.icon;
               return (
                 <motion.button

@@ -5,7 +5,7 @@ import {
   Bell, Search, Menu, X, LogOut, User, LayoutDashboard, Shield, Settings,
   BookOpen, Sparkles, Users, Calendar, Trophy, Newspaper, Rocket, Crown,
   Gamepad2, Flame, ChevronLeft, ChevronDown, Puzzle, BarChart3, Route as RouteIcon, MessagesSquare, CalendarDays, Target, Timer, Award,
-  Mail, HelpCircle, Zap,
+  Mail, HelpCircle, Zap, Bookmark,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { EASE } from "@/components/anim";
@@ -19,6 +19,7 @@ import { wsUrl } from "@/lib/api";
 import { toast } from "sonner";
 import { NotificationsPanel } from "@/components/NotificationsPanel";
 import { GlobalSearch } from "@/components/GlobalSearch";
+import { ShareButton } from "@/components/ShellExtras";
 
 const DISCOVER_LINKS = [
   { to: "/library", label: "المكتبة", icon: BookOpen, tint: "bg-blue-100 text-blue-600" },
@@ -228,6 +229,7 @@ export function Navbar() {
               <Search className="w-5 h-5" />
             </Button>
           </span>
+          <ShareButton className="hidden sm:grid" />
 
           {user ? (
             <>
@@ -261,6 +263,7 @@ export function Navbar() {
                   <DropdownMenuItem data-testid="menu-dashboard" onClick={() => nav("/dashboard")}><LayoutDashboard className="w-4 h-4 ml-2" />لوحتي</DropdownMenuItem>
                   <DropdownMenuItem data-testid="menu-profile" onClick={() => nav(`/profile/${user.id}`)}><User className="w-4 h-4 ml-2" />ملفي الشخصي</DropdownMenuItem>
                   <DropdownMenuItem data-testid="menu-settings" onClick={() => nav("/settings")}><Settings className="w-4 h-4 ml-2" />إعدادات الحساب</DropdownMenuItem>
+                  <DropdownMenuItem data-testid="menu-saved" onClick={() => nav("/saved")}><Bookmark className="w-4 h-4 ml-2" />محفوظتي</DropdownMenuItem>
                   {isStaff && <DropdownMenuItem data-testid="menu-admin" onClick={() => nav("/admin")}><Shield className="w-4 h-4 ml-2" />لوحة الإدارة</DropdownMenuItem>}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem data-testid="menu-logout" onClick={async () => { await logout(); nav("/"); }} className="text-rose-600"><LogOut className="w-4 h-4 ml-2" />تسجيل الخروج</DropdownMenuItem>
@@ -368,10 +371,13 @@ function MobileDrawer({ open, onClose, user, gam, isStaff, pathname, nav, logout
             {/* header */}
             <div className="flex items-center justify-between px-5 pt-5 pb-3 shrink-0">
               <Logo />
-              <button onClick={onClose} aria-label="إغلاق"
-                className="w-10 h-10 rounded-2xl bg-slate-100 grid place-items-center text-slate-600 active:scale-90 transition-transform">
-                <X className="w-5 h-5" />
-              </button>
+              <div className="flex items-center gap-2">
+                <ShareButton testId="share-page-drawer-btn" className="bg-slate-100 rounded-2xl" />
+                <button onClick={onClose} aria-label="إغلاق"
+                  className="w-10 h-10 rounded-2xl bg-slate-100 grid place-items-center text-slate-600 active:scale-90 transition-transform">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
             </div>
 
             <div className="flex-1 overflow-y-auto px-5 pb-6 space-y-6">

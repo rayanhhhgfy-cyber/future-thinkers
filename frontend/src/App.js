@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "@/context/AuthContext";
 import { Protected } from "@/components/Layout";
 import InstallPWA from "@/components/InstallPWA";
+import { RouteProgress, BackToTop } from "@/components/ShellExtras";
 import PushBanner from "@/components/PushBanner";
 import { ThemeApplier } from "@/lib/theme";
 import { EASE } from "@/components/anim";
@@ -57,6 +58,7 @@ const SeasonCup = lazy(() => import("@/pages/SeasonCup"));
 const ClassReport = lazy(() => import("@/pages/ClassReport"));
 const Members = lazy(() => import("@/pages/Members"));
 const BookReviews = lazy(() => import("@/pages/BookReviews"));
+const Saved = lazy(() => import("@/pages/Saved"));
 const Admin = lazy(() => import("@/pages/Admin"));
 
 function PageLoader() {
@@ -122,6 +124,7 @@ function AnimatedRoutes() {
       <Route path="/season-cup" element={<SeasonCup />} />
       <Route path="/class-report" element={<Protected><ClassReport /></Protected>} />
       <Route path="/members" element={<Protected><Members /></Protected>} />
+      <Route path="/saved" element={<Protected><Saved /></Protected>} />
       <Route path="/portfolio/:id" element={<Portfolio />} />
       <Route path="/paths" element={<Protected><Paths /></Protected>} />
       <Route path="/community" element={<Protected><Community /></Protected>} />
@@ -169,6 +172,8 @@ function App() {
         <ErrorBoundary>
           <AnimatedRoutes />
         </ErrorBoundary>
+        <RouteProgress />
+        <BackToTop />
         <InstallPWA />
         <PushBanner />
         <ThemeApplier />
