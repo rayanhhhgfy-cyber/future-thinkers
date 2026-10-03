@@ -4,7 +4,7 @@ import { Layout, PageLoader } from "@/components/Layout";
 import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
 import { toast } from "sonner";
-import { Users, Heart, ArrowRight, UserPlus, UserMinus, Check, X, Plus, Pencil, Trash2, Megaphone, Rocket, Search, Info, CalendarDays, Loader2, Code, Briefcase, FlaskConical, Leaf, BookOpen, Palette, Target, MessageCircle, Send, Bell, BellRing, Sparkles, Share2 } from "lucide-react";
+import { Users, Heart, ArrowRight, UserPlus, UserMinus, Check, X, Plus, Pencil, Trash2, Megaphone, Rocket, Search, Info, CalendarDays, Loader2, Code, Briefcase, FlaskConical, Leaf, BookOpen, Palette, Target, MessageCircle, Send, Bell, BellRing, Sparkles, Share2, Crown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -64,6 +64,7 @@ export default function VentureDetail() {
   const [updForm, setUpdForm] = useState({ title: "", text: "" });
   const [busyKey, setBusyKey] = useState("");
   const [voting, setVoting] = useState(false);
+  const [tab, setTab] = useState("story");
   // New features state (milestones / comments / follow / similar)
   const [milestones, setMilestones] = useState(null); // null = endpoint unavailable
   const [msInput, setMsInput] = useState("");
@@ -317,23 +318,12 @@ export default function VentureDetail() {
   const seatsLeft = (v.max_members || 0) - (v.team_count || 0);
   const CategoryIcon = CATEGORY_ICONS[v.category] || Rocket;
   const catGrad = CATEGORY_GRAD[v.category] || "from-slate-500 to-slate-600";
-  const teamStack = [
-    { name: v.owner_name, owner: true },
-    ...(v.members || []).map((m) => ({ name: m.name, owner: false })),
-  ];
   const updatesCount = (v.updates || []).length;
   const msDoneCount = (milestones || []).filter(msIsDone).length;
   const msPct = milestones && milestones.length ? Math.round((msDoneCount / milestones.length) * 100) : 0;
   const commentsShown = typeof v.comments_count === "number" ? v.comments_count : (comments ? comments.length : 0);
   const RING_R = 26;
   const RING_C = 2 * Math.PI * RING_R;
-
-  const heroTiles = [
-    { icon: Users, label: "أعضاء الفريق", value: `${v.team_count || 0}/${v.max_members || 0}` },
-    { icon: Heart, label: "صوت", value: v.votes_count || 0 },
-    { icon: Megaphone, label: "تحديث", value: updatesCount },
-    ...(milestones !== null ? [{ icon: Target, label: "إنجاز المراحل", value: `${msPct}%` }] : []),
-  ];
 
   const statRows = [
     { icon: Heart, label: "الأصوات", value: v.votes_count || 0 },
@@ -344,31 +334,40 @@ export default function VentureDetail() {
     ...(v.created_at ? [{ icon: CalendarDays, label: "تاريخ الإنشاء", value: new Date(v.created_at).toLocaleDateString("ar") }] : []),
   ];
 
-  // Primary contextual action · calm inline button row, never floating
-  const joinAction = !user ? (
-    <Button onClick={() => nav("/login")} className="rounded-full ft-btn-primary text-white font-bold min-h-[48px] px-6 pressable">
-      <UserPlus className="w-4 h-4 ml-1.5" /> سجّل الدخول للانضمام
+  // ---- content tabs (data stays mounted via state · panels switch visually) ----
+  const tabsAvail = [
+    { k: "story", l: "القصة", icon: BookOpen },
+    ...(milestones !== null && (milestones.length > 0 || canTeam) ? [{ k: "milestones", l: "المعالم", icon: Target, count: milestones.length }] : []),
+    ...(updatesCount > 0 ? [{ k: "updates", l: "التحديثات", icon: Megaphone, count: updatesCount }] : []),
+    ...(comments !== null ? [{ k: "comments", l: "التعليقات", icon: MessageCircle, count: comments.length }] : []),
+  ];
+  const activeTab = tabsAvail.some((t) => t.k === tab) ? tab : "story";
+
+  // Primary contextual action inside the hero ACTION DOCK (static inline · never floating)
+  const dockJoinAction = !user ? (
+    <Button onClick={() => nav("/login")} className="rounded-full bg-white text-slate-900 font-extrabold text-base min-h-[54px] px-7 pressable shadow-xl hover:bg-slate-50">
+      <UserPlus className="w-5 h-5 ml-1.5" /> سجّل الدخول للانضمام
     </Button>
   ) : v.is_owner ? (
-    <span className="inline-flex items-center gap-2 rounded-full bg-slate-100 text-slate-600 px-4 min-h-[48px] text-sm font-bold">👑 هذا مشروعك</span>
+    <span className="inline-flex items-center gap-2 rounded-full bg-white/10 border border-white/25 backdrop-blur-md px-5 min-h-[54px] text-sm font-extrabold">👑 هذا مشروعك · تابع طلبات الانضمام بالأسفل</span>
   ) : v.is_member ? (
-    <Button variant="outline" onClick={() => setConfirmAction("leave")} className="rounded-full font-bold min-h-[48px] px-6 pressable text-slate-600">
-      <UserMinus className="w-4 h-4 ml-1.5" /> مغادرة الفريق
+    <Button variant="outline" onClick={() => setConfirmAction("leave")} className="rounded-full bg-white/10 border-white/30 text-white hover:bg-white/20 hover:text-white backdrop-blur-md font-extrabold text-base min-h-[54px] px-7 pressable">
+      <UserMinus className="w-5 h-5 ml-1.5" /> مغادرة الفريق
     </Button>
   ) : v.request_pending ? (
-    <span className="inline-flex items-center gap-2 rounded-full bg-amber-50 border border-amber-200 text-amber-700 px-4 min-h-[48px] text-sm font-bold">⏳ طلبك قيد مراجعة صاحب المشروع</span>
+    <span className="inline-flex items-center gap-2 rounded-full bg-amber-400/90 text-amber-950 px-5 min-h-[54px] text-sm font-extrabold shadow-lg shadow-amber-950/20">⏳ طلبك قيد مراجعة صاحب المشروع</span>
   ) : v.team_count >= v.max_members ? (
-    <span className="inline-flex items-center gap-2 rounded-full bg-slate-100 text-slate-500 px-4 min-h-[48px] text-sm font-bold">اكتمل عدد الفريق</span>
+    <span className="inline-flex items-center gap-2 rounded-full bg-white/10 border border-white/25 backdrop-blur-md px-5 min-h-[54px] text-sm font-extrabold">اكتمل عدد الفريق</span>
   ) : (
-    <Button onClick={() => setJoinOpen(true)} className="rounded-full ft-btn-primary text-white font-bold min-h-[48px] px-7 pressable">
-      <UserPlus className="w-4 h-4 ml-1.5" /> انضم للفريق
+    <Button onClick={() => setJoinOpen(true)} className="rounded-full ft-btn-primary font-extrabold text-base min-h-[54px] px-8 pressable shadow-2xl border border-white/25">
+      <UserPlus className="w-5 h-5 ml-1.5" /> انضم للفريق
     </Button>
   );
 
   const teamAction = !user ? (
     <Button onClick={() => nav("/login")} className="w-full rounded-full ft-btn-primary text-white font-bold min-h-[48px] pressable"><UserPlus className="w-4 h-4 ml-1" /> سجّل الدخول للانضمام</Button>
   ) : v.is_owner ? (
-    <p className="text-sm text-slate-400">هذا مشروعك · راجع طلبات الانضمام في الأعلى 👆</p>
+    <p className="text-sm text-slate-400">هذا مشروعك · راجع طلبات الانضمام في تبويب «القصة» 👆</p>
   ) : v.is_member ? (
     <Button variant="outline" onClick={() => setConfirmAction("leave")} className="w-full rounded-full text-slate-500 font-bold pressable min-h-[48px]"><UserMinus className="w-4 h-4 ml-1" /> مغادرة الفريق</Button>
   ) : v.request_pending ? (
@@ -383,230 +382,374 @@ export default function VentureDetail() {
 
   return (
     <Layout>
-      <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8 pb-24">
-        {/* ============ QUIET HEADER ============ */}
-        <section data-testid="venture-hero" className="pt-6 sm:pt-10 animate-fade-up">
-          <div className="flex items-center gap-2">
-            <Link to="/ventures" className="inline-flex items-center gap-1.5 min-h-[40px] rounded-full px-3 text-sm font-bold text-slate-500 hover:text-slate-800 hover:bg-slate-100 pressable transition-colors">
-              <ArrowRight className="w-4 h-4" /> كل المشاريع
-            </Link>
-            <span className="flex-1" />
-            <button onClick={shareProject} aria-label="مشاركة المشروع"
-              className="pressable w-10 h-10 rounded-full border border-slate-200 grid place-items-center text-slate-500 hover:text-slate-800 hover:bg-slate-50 transition-colors">
-              <Share2 className="w-4 h-4" />
-            </button>
-            <BookmarkButton kind="venture" refId={v.id} title={v.title} />
-          </div>
+      <div className="mx-auto w-full max-w-7xl xl:max-w-[1440px] px-4 sm:px-6 lg:px-8 pb-28">
+        {/* ============ IMMERSIVE HERO ============ */}
+        <section data-testid="venture-hero" className="relative isolate overflow-hidden rounded-[2rem] sm:rounded-[2.75rem] text-white ft-shadow-lg mt-4 sm:mt-6 animate-fade-up">
+          <div className={`absolute inset-0 bg-gradient-to-bl ${catGrad}`} />
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/30 to-slate-950/5" />
+          {/* animated mesh blobs */}
+          <div className="pointer-events-none absolute -top-24 right-[10%] w-72 h-72 sm:w-96 sm:h-96 rounded-full bg-white/20 blur-3xl animate-pulse [animation-duration:6s]" />
+          <div className="pointer-events-none absolute -bottom-40 left-[15%] w-80 h-80 sm:w-[28rem] sm:h-[28rem] rounded-full bg-slate-950/40 blur-3xl animate-pulse [animation-duration:9s]" />
+          <div className="pointer-events-none absolute top-1/3 left-[45%] w-40 h-40 rounded-full bg-white/10 blur-2xl animate-pulse [animation-duration:7s]" />
+          {/* floating watermark icon + grain dots */}
+          <CategoryIcon className="pointer-events-none absolute -left-10 -bottom-14 w-64 h-64 sm:w-96 sm:h-96 lg:w-[30rem] lg:h-[30rem] text-white/10 -rotate-12 animate-float [animation-duration:11s]" />
+          <div className="pointer-events-none absolute inset-0 opacity-[0.13] [background-image:radial-gradient(rgba(255,255,255,0.65)_1px,transparent_1.6px)] [background-size:22px_22px]" />
+          <span className="pointer-events-none absolute top-24 left-[10%] hidden sm:block"><Sparkles className="w-7 h-7 text-white/25 animate-float [animation-duration:7s]" /></span>
 
-          <div className="mt-8 flex items-center gap-2 flex-wrap">
-            <Badge variant="outline" className={`${STATUS_COLORS[v.status] || ""} rounded-full font-bold`}>
-              <span className={`w-1.5 h-1.5 rounded-full ml-1.5 ${STATUS_DOT[v.status] || "bg-slate-300"}`} />
-              {v.status_label}
-            </Badge>
-            <Badge variant="secondary" className="rounded-full font-bold">
-              <CategoryIcon className="w-3.5 h-3.5 ml-1" /> {v.category}
-            </Badge>
-            {v.is_owner && <Badge className="rounded-full bg-violet-100 text-violet-700 border border-violet-200 font-bold">مشروعك 👑</Badge>}
-          </div>
-
-          <h1 className="font-head text-4xl leading-[1.15] sm:text-5xl lg:text-6xl font-extrabold text-slate-900 mt-4 max-w-3xl">{v.title}</h1>
-
-          <div className="mt-5 flex items-center gap-2.5 flex-wrap text-sm text-slate-500">
-            <span className="inline-flex items-center gap-2 min-w-0">
-              <span className={`w-8 h-8 rounded-full bg-gradient-to-br ${avatarGrad(v.owner_name)} text-white text-xs font-extrabold flex items-center justify-center shrink-0`}>
-                {(v.owner_name || "؟").trim().charAt(0)}
-              </span>
-              <span className="font-bold text-slate-700 truncate">{v.owner_name}</span>
-            </span>
-            {v.school_name && <span className="inline-flex items-center gap-1">· 🏫 {v.school_name}</span>}
-            {v.created_at && (
-              <span className="inline-flex items-center gap-1">
-                · <CalendarDays className="w-3.5 h-3.5" /> {new Date(v.created_at).toLocaleDateString("ar")}
-              </span>
-            )}
-            {followOk && followersCount > 0 && (
-              <span className="inline-flex items-center gap-1">· <Bell className="w-3.5 h-3.5" /> {followersCount} متابِع</span>
-            )}
-          </div>
-
-          {/* calm action row */}
-          <div className="mt-7 flex flex-wrap items-center gap-2.5">
-            {joinAction}
-            <button onClick={vote} disabled={voting}
-              className={`pressable inline-flex items-center gap-2 rounded-full px-6 min-h-[48px] text-sm font-bold border transition-all disabled:opacity-60 ${v.voted ? "bg-rose-500 border-rose-500 text-white hover:bg-rose-600" : "bg-white border-slate-200 text-slate-600 hover:border-rose-200 hover:text-rose-600"}`}>
-              <Heart className={`w-4 h-4 ${v.voted ? "fill-current" : ""}`} /> {v.votes_count} · صوّت
-            </button>
-            {followOk && (
-              <button onClick={toggleFollow} disabled={followBusy}
-                className={`pressable inline-flex items-center gap-2 rounded-full px-5 min-h-[48px] text-sm font-bold border transition-all disabled:opacity-60 ${following ? "bg-slate-900 border-slate-900 text-white" : "bg-white border-slate-200 text-slate-600 hover:border-slate-300"}`}>
-                {followBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : following ? <BellRing className="w-4 h-4" /> : <Bell className="w-4 h-4" />}
-                {following ? "تتابعه" : "تابع المشروع"}
+          <div className="relative px-5 pt-5 pb-24 sm:px-10 sm:pt-7 sm:pb-28 lg:px-12">
+            {/* glass top chips row */}
+            <div className="flex items-center gap-2">
+              <Link to="/ventures" className="pressable inline-flex items-center gap-1.5 min-h-[44px] rounded-full bg-white/10 hover:bg-white/20 border border-white/25 backdrop-blur-md px-4 text-sm font-bold text-white transition-colors">
+                <ArrowRight className="w-4 h-4" /> كل المشاريع
+              </Link>
+              <span className="flex-1" />
+              <button onClick={shareProject} aria-label="مشاركة المشروع"
+                className="pressable w-11 h-11 rounded-full bg-white/10 hover:bg-white/20 border border-white/25 backdrop-blur-md grid place-items-center text-white transition-colors">
+                <Share2 className="w-4 h-4" />
               </button>
-            )}
-          </div>
+              <span className="rounded-full bg-white/10 border border-white/25 backdrop-blur-md p-1">
+                <BookmarkButton kind="venture" refId={v.id} title={v.title} className="text-white" />
+              </span>
+            </div>
 
-          {/* quiet numbers + thin progress */}
-          <div className="mt-9 border-y border-slate-100 py-5">
-            <div className="flex flex-wrap items-center gap-x-8 gap-y-3">
-              <span className="inline-flex items-baseline gap-1.5">
-                <span className="font-head text-xl font-extrabold text-slate-900 tabular-nums">{v.team_count || 0}/{v.max_members || 0}</span>
-                <span className="text-xs font-bold text-slate-400">أعضاء الفريق</span>
+            {/* glass chips */}
+            <div className="mt-8 sm:mt-10 flex items-center gap-2 flex-wrap">
+              <span className={`inline-flex items-center rounded-full bg-white/15 border border-white/25 backdrop-blur-md px-3.5 py-1.5 text-xs font-extrabold text-white`}>
+                <span className={`w-2 h-2 rounded-full ml-1.5 ${STATUS_DOT[v.status] || "bg-slate-300"} animate-pulse`} />
+                {v.status_label}
               </span>
-              <span className="inline-flex items-baseline gap-1.5">
-                <span className="font-head text-xl font-extrabold text-slate-900 tabular-nums">{v.votes_count || 0}</span>
-                <span className="text-xs font-bold text-slate-400">صوت</span>
+              <span className="inline-flex items-center rounded-full bg-white/15 border border-white/25 backdrop-blur-md px-3.5 py-1.5 text-xs font-extrabold text-white">
+                <CategoryIcon className="w-3.5 h-3.5 ml-1.5" /> {v.category}
               </span>
-              {milestones !== null && milestones.length > 0 && (
-                <span className="inline-flex items-baseline gap-1.5">
-                  <span className="font-head text-xl font-extrabold text-slate-900 tabular-nums">{msPct}%</span>
-                  <span className="text-xs font-bold text-slate-400">إنجاز المراحل</span>
+              {v.is_owner && (
+                <span className="inline-flex items-center rounded-full bg-gradient-to-l from-amber-300 to-yellow-400 text-amber-950 px-3.5 py-1.5 text-xs font-extrabold shadow-lg shadow-amber-950/20">
+                  <Crown className="w-3.5 h-3.5 ml-1.5" /> مشروعك
                 </span>
               )}
-              <span className="inline-flex items-baseline gap-1.5">
-                <span className="font-head text-xl font-extrabold text-slate-900 tabular-nums">{seatsLeft > 0 ? seatsLeft : 0}</span>
-                <span className="text-xs font-bold text-slate-400">{seatsLeft > 0 ? "مقاعد متبقية" : "اكتمل الفريق"}</span>
-              </span>
             </div>
-            <div className="mt-4 h-1.5 rounded-full bg-slate-100 overflow-hidden max-w-xl">
-              <div className="h-full rounded-full ft-grad-bar transition-all duration-700" style={{ width: `${teamPct}%` }} />
+
+            {/* GIANT display title */}
+            <h1 className="font-head text-4xl leading-[1.12] sm:text-6xl lg:text-7xl font-extrabold mt-5 max-w-4xl drop-shadow-sm">{v.title}</h1>
+
+            {/* owner glass card + meta */}
+            <div className="mt-6 flex items-center gap-3 flex-wrap">
+              <span className="inline-flex items-center gap-3 rounded-full bg-white/10 border border-white/25 backdrop-blur-md py-1.5 pl-2 pr-4 shadow-lg">
+                <span className={`w-10 h-10 rounded-full bg-gradient-to-br ${avatarGrad(v.owner_name)} text-white text-sm font-extrabold flex items-center justify-center shrink-0 ring-2 ring-white/40`}>
+                  {(v.owner_name || "؟").trim().charAt(0)}
+                </span>
+                <span className="min-w-0">
+                  <span className="flex items-center gap-1 text-sm font-extrabold leading-tight truncate">{v.owner_name} <Crown className="w-3.5 h-3.5 text-amber-300 shrink-0" /></span>
+                  {v.school_name && <span className="block text-[11px] text-white/70 leading-tight truncate">🏫 {v.school_name}</span>}
+                </span>
+              </span>
+              {v.created_at && (
+                <span className="inline-flex items-center gap-1.5 text-xs font-bold text-white/75">
+                  <CalendarDays className="w-3.5 h-3.5" /> {new Date(v.created_at).toLocaleDateString("ar")}
+                </span>
+              )}
+              {followOk && followersCount > 0 && (
+                <span className="inline-flex items-center gap-1.5 text-xs font-bold text-white/75">
+                  <Bell className="w-3.5 h-3.5" /> {followersCount} متابِع
+                </span>
+              )}
+            </div>
+
+            {/* ACTION DOCK · static inline inside hero */}
+            <div className="mt-8 flex flex-wrap items-center gap-2.5 rounded-[1.75rem] sm:rounded-full bg-slate-950/35 border border-white/20 backdrop-blur-xl p-2.5 shadow-2xl w-fit max-w-full">
+              {dockJoinAction}
+              <button onClick={vote} disabled={voting}
+                className={`pressable inline-flex items-center gap-2 rounded-full px-6 min-h-[54px] text-base font-extrabold border transition-all disabled:opacity-60 ${v.voted ? "bg-gradient-to-l from-rose-500 to-pink-500 border-rose-300/50 text-white shadow-lg shadow-rose-950/30" : "bg-white/10 border-white/25 text-white hover:bg-white/20 backdrop-blur-md"}`}>
+                <Heart className={`w-5 h-5 ${v.voted ? "fill-current" : ""}`} />
+                <span className="tabular-nums">{v.votes_count || 0}</span> صوّت
+              </button>
+              {followOk && (
+                <button onClick={toggleFollow} disabled={followBusy}
+                  className={`pressable inline-flex items-center gap-2 rounded-full px-6 min-h-[54px] text-base font-extrabold border transition-all disabled:opacity-60 ${following ? "bg-white border-white text-slate-900 shadow-lg" : "bg-white/10 border-white/25 text-white hover:bg-white/20 backdrop-blur-md"}`}>
+                  {followBusy ? <Loader2 className="w-5 h-5 animate-spin" /> : following ? <BellRing className="w-5 h-5" /> : <Bell className="w-5 h-5" />}
+                  {following ? "تتابعه" : "تابع"}
+                </button>
+              )}
             </div>
           </div>
+          <div className={`absolute bottom-0 inset-x-0 h-1.5 bg-gradient-to-l ${STATUS_RIBBON[v.status] || "from-white/40 to-white/10"}`} />
         </section>
 
-        {/* ============ BODY · single calm column ============ */}
-        <div className="mx-auto w-full max-w-3xl">
-          {/* قصة المشروع */}
-          <section className="pt-10 animate-fade-up" style={{ animationDelay: "60ms" }}>
-            <h2 className="font-head font-extrabold text-lg text-slate-900">قصة المشروع</h2>
-            <p className="mt-4 text-slate-600 leading-[2] whitespace-pre-wrap text-base sm:text-lg">{v.description}</p>
-            {v.looking_for && (
-              <div className="mt-6 rounded-2xl bg-violet-50 border border-violet-100 px-4 py-3.5 text-sm text-violet-900 flex items-start gap-2.5">
-                <Search className="w-4 h-4 text-violet-500 shrink-0 mt-1" />
-                <p className="leading-relaxed"><span className="font-extrabold">يبحث الفريق عن:</span> {v.looking_for}</p>
+        {/* ============ STATS BENTO · overlapping the hero edge ============ */}
+        <div className="relative z-10 -mt-14 sm:-mt-16 px-1 sm:px-6 animate-fade-up" style={{ animationDelay: "80ms" }}>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            {/* team */}
+            <div className="rounded-[1.5rem] bg-white/90 backdrop-blur-xl border border-white ring-1 ring-slate-900/5 shadow-[0_24px_48px_-20px_rgba(15,23,42,0.35)] p-4 sm:p-5">
+              <div className="flex items-center gap-2 text-slate-400">
+                <span className={`w-8 h-8 rounded-xl bg-gradient-to-br ${catGrad} text-white grid place-items-center shrink-0`}><Users className="w-4 h-4" /></span>
+                <span className="text-xs font-extrabold">الفريق</span>
               </div>
-            )}
-            {canManage && (
-              <div className="mt-6 flex flex-wrap gap-2">
-                <Button variant="outline" onClick={openEdit} className="rounded-full pressable min-h-[44px] font-bold text-slate-600"><Pencil className="w-4 h-4 ml-1" /> تعديل</Button>
-                <Button variant="outline" onClick={() => setUpdOpen(true)} className="rounded-full pressable min-h-[44px] font-bold text-slate-600"><Megaphone className="w-4 h-4 ml-1" /> تحديث تقدّم</Button>
-                <Button variant="outline" onClick={() => setConfirmAction("delete")} className="rounded-full text-red-600 hover:text-red-700 hover:bg-rose-50 hover:border-rose-200 pressable min-h-[44px] font-bold"><Trash2 className="w-4 h-4 ml-1" /> حذف</Button>
+              <div className="mt-3 font-head text-2xl sm:text-3xl font-extrabold text-slate-900 tabular-nums leading-none">{v.team_count || 0}<span className="text-slate-300 text-lg">/{v.max_members || 0}</span></div>
+              <div className="mt-3 h-2 rounded-full bg-slate-100 overflow-hidden">
+                <div className="h-full rounded-full ft-grad-bar transition-all duration-700" style={{ width: `${teamPct}%` }} />
               </div>
-            )}
-          </section>
-
-          {/* طلبات الانضمام */}
-          {v.is_owner && (v.join_requests || []).length > 0 && (
-            <section className="pt-12 animate-fade-up" style={{ animationDelay: "90ms" }}>
-              <div className="border-t border-slate-100 pt-10">
-                <h2 className="font-head font-extrabold text-lg text-slate-900 flex items-center gap-2">
-                  طلبات الانضمام
-                  <span className="inline-flex items-center justify-center min-w-[24px] h-6 px-1.5 rounded-full bg-amber-100 text-amber-700 text-xs font-extrabold">{v.join_requests.length}</span>
-                </h2>
-                <div className="mt-5 divide-y divide-slate-100">
-                  {v.join_requests.map((r) => {
-                    const approving = busyKey === `decide:${r.id}:approve`;
-                    const rejecting = busyKey === `decide:${r.id}:reject`;
-                    const deciding = approving || rejecting;
-                    return (
-                      <div key={r.id} className="py-4 flex items-start gap-3 flex-wrap">
-                        <span className={`w-10 h-10 rounded-full bg-gradient-to-br ${avatarGrad(r.name)} text-white text-sm font-extrabold flex items-center justify-center shrink-0`}>{(r.name || "؟").trim().charAt(0)}</span>
-                        <div className="flex-1 min-w-[180px]">
-                          <div className="font-bold text-slate-800 text-sm">{r.name}</div>
-                          {r.message && <p className="mt-1 text-sm text-slate-500 leading-relaxed">"{r.message}"</p>}
-                        </div>
-                        <div className="flex gap-2 shrink-0">
-                          <Button size="sm" disabled={deciding} onClick={() => decide(r.id, true)} className="rounded-full ft-btn-primary text-white font-bold pressable min-h-[40px] px-4 disabled:opacity-60">
-                            {approving ? <Loader2 className="w-4 h-4 ml-1 animate-spin" /> : <Check className="w-4 h-4 ml-1" />} قبول
-                          </Button>
-                          <Button size="sm" variant="outline" disabled={deciding} onClick={() => decide(r.id, false)} className="rounded-full font-bold pressable min-h-[40px] px-4 text-slate-500 disabled:opacity-60">
-                            {rejecting ? <Loader2 className="w-4 h-4 ml-1 animate-spin" /> : <X className="w-4 h-4 ml-1" />} رفض
-                          </Button>
-                        </div>
-                      </div>
-                    );
-                  })}
+              <div className="mt-2 text-[11px] font-bold text-slate-400">{seatsLeft > 0 ? `متبقّي ${seatsLeft} ${seatsLeft === 1 ? "مقعد" : "مقاعد"}` : "اكتمل الفريق 🎉"}</div>
+            </div>
+            {/* votes */}
+            <div className="rounded-[1.5rem] bg-white/90 backdrop-blur-xl border border-white ring-1 ring-slate-900/5 shadow-[0_24px_48px_-20px_rgba(15,23,42,0.35)] p-4 sm:p-5">
+              <div className="flex items-center gap-2 text-slate-400">
+                <span className="w-8 h-8 rounded-xl bg-gradient-to-br from-rose-500 to-pink-500 text-white grid place-items-center shrink-0"><Heart className="w-4 h-4" /></span>
+                <span className="text-xs font-extrabold">الأصوات</span>
+              </div>
+              <div className="mt-3 font-head text-2xl sm:text-3xl font-extrabold text-slate-900 tabular-nums leading-none">{v.votes_count || 0}</div>
+              <div className="mt-3 text-[11px] font-bold text-slate-400 leading-relaxed">صوت داعم من مجتمع النادي 💪</div>
+            </div>
+            {/* milestones ring / updates fallback */}
+            {milestones !== null && milestones.length > 0 ? (
+              <div className="rounded-[1.5rem] bg-white/90 backdrop-blur-xl border border-white ring-1 ring-slate-900/5 shadow-[0_24px_48px_-20px_rgba(15,23,42,0.35)] p-4 sm:p-5 flex items-center gap-4">
+                <span className="relative w-[68px] h-[68px] shrink-0">
+                  <svg viewBox="0 0 64 64" className="w-full h-full -rotate-90">
+                    <circle cx="32" cy="32" r={RING_R} fill="none" strokeWidth="6" className="stroke-slate-100" />
+                    <circle cx="32" cy="32" r={RING_R} fill="none" strokeWidth="6" strokeLinecap="round"
+                      stroke="url(#vdMsGrad)" strokeDasharray={RING_C}
+                      strokeDashoffset={RING_C - (msPct / 100) * RING_C}
+                      className="transition-all duration-700" />
+                    <defs>
+                      <linearGradient id="vdMsGrad" x1="0" y1="0" x2="64" y2="64">
+                        <stop offset="0%" stopColor="#10b981" />
+                        <stop offset="100%" stopColor="#0d9488" />
+                      </linearGradient>
+                    </defs>
+                  </svg>
+                  <span className="absolute inset-0 grid place-items-center font-head text-sm font-extrabold text-slate-900 tabular-nums">{msPct}%</span>
+                </span>
+                <span className="min-w-0">
+                  <span className="flex items-center gap-1.5 text-xs font-extrabold text-slate-400"><Target className="w-3.5 h-3.5" /> إنجاز المراحل</span>
+                  <span className="block mt-1.5 text-sm font-bold text-slate-600 tabular-nums">{msDoneCount} من {milestones.length} مراحل منجزة</span>
+                </span>
+              </div>
+            ) : (
+              <div className="rounded-[1.5rem] bg-white/90 backdrop-blur-xl border border-white ring-1 ring-slate-900/5 shadow-[0_24px_48px_-20px_rgba(15,23,42,0.35)] p-4 sm:p-5">
+                <div className="flex items-center gap-2 text-slate-400">
+                  <span className="w-8 h-8 rounded-xl bg-gradient-to-br from-sky-500 to-blue-500 text-white grid place-items-center shrink-0"><Megaphone className="w-4 h-4" /></span>
+                  <span className="text-xs font-extrabold">التحديثات</span>
                 </div>
+                <div className="mt-3 font-head text-2xl sm:text-3xl font-extrabold text-slate-900 tabular-nums leading-none">{updatesCount}</div>
+                <div className="mt-3 text-[11px] font-bold text-slate-400 leading-relaxed">تحديث نشره الفريق حتى الآن</div>
               </div>
-            </section>
-          )}
+            )}
+            {/* followers / comments fallback */}
+            {followOk ? (
+              <div className="rounded-[1.5rem] bg-white/90 backdrop-blur-xl border border-white ring-1 ring-slate-900/5 shadow-[0_24px_48px_-20px_rgba(15,23,42,0.35)] p-4 sm:p-5">
+                <div className="flex items-center gap-2 text-slate-400">
+                  <span className="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-500 to-purple-500 text-white grid place-items-center shrink-0"><Bell className="w-4 h-4" /></span>
+                  <span className="text-xs font-extrabold">المتابعون</span>
+                </div>
+                <div className="mt-3 font-head text-2xl sm:text-3xl font-extrabold text-slate-900 tabular-nums leading-none">{followersCount}</div>
+                <div className="mt-3 text-[11px] font-bold text-slate-400 leading-relaxed">يتابعون تقدّم هذا المشروع 🔔</div>
+              </div>
+            ) : (
+              <div className="rounded-[1.5rem] bg-white/90 backdrop-blur-xl border border-white ring-1 ring-slate-900/5 shadow-[0_24px_48px_-20px_rgba(15,23,42,0.35)] p-4 sm:p-5">
+                <div className="flex items-center gap-2 text-slate-400">
+                  <span className="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 text-white grid place-items-center shrink-0"><MessageCircle className="w-4 h-4" /></span>
+                  <span className="text-xs font-extrabold">التعليقات</span>
+                </div>
+                <div className="mt-3 font-head text-2xl sm:text-3xl font-extrabold text-slate-900 tabular-nums leading-none">{commentsShown}</div>
+                <div className="mt-3 text-[11px] font-bold text-slate-400 leading-relaxed">تعليقاً على هذا المشروع</div>
+              </div>
+            )}
+          </div>
+        </div>
 
-          {/* المعالم · قائمة بسيطة */}
-          {milestones !== null && (milestones.length > 0 || canTeam) && (
-            <section data-testid="venture-milestones" className="pt-12 animate-fade-up" style={{ animationDelay: "120ms" }}>
-              <div className="border-t border-slate-100 pt-10">
-                <div className="flex items-baseline justify-between gap-3 flex-wrap">
-                  <h2 className="font-head font-extrabold text-lg text-slate-900">المعالم</h2>
-                  {milestones.length > 0 && (
-                    <span className="text-xs font-bold text-slate-400 tabular-nums">{msDoneCount} من {milestones.length} منجزة · {msPct}%</span>
+        {/* ============ SEGMENTED TABS ============ */}
+        <div className="mt-8 sm:mt-10 animate-fade-up" style={{ animationDelay: "140ms" }}>
+          <div className="flex gap-1 overflow-x-auto rounded-full bg-white/85 backdrop-blur-xl border border-slate-200/70 ring-1 ring-slate-900/5 shadow-lg p-1.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {tabsAvail.map((t) => {
+              const on = activeTab === t.k;
+              return (
+                <button key={t.k} onClick={() => setTab(t.k)}
+                  className={`pressable shrink-0 inline-flex items-center gap-2 rounded-full px-5 min-h-[48px] text-sm font-extrabold transition-all ${on ? "ft-grad-bar text-white shadow-lg" : "text-slate-500 hover:text-slate-800 hover:bg-slate-100"}`}>
+                  <t.icon className="w-4 h-4" /> {t.l}
+                  {typeof t.count === "number" && (
+                    <span className={`inline-flex items-center justify-center min-w-[22px] h-[22px] px-1 rounded-full text-[11px] font-extrabold tabular-nums ${on ? "bg-white/25 text-white" : "bg-slate-100 text-slate-500"}`}>{t.count}</span>
                   )}
-                </div>
-                {milestones.length > 0 && (
-                  <div className="mt-4 h-1.5 rounded-full bg-slate-100 overflow-hidden">
-                    <div className="h-full rounded-full ft-grad-bar transition-all duration-700" style={{ width: `${msPct}%` }} />
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* ============ TAB PANELS ============ */}
+        <div className="mt-6 sm:mt-8">
+          {activeTab === "story" && (
+            <div className="animate-fade-up">
+              <section className="relative overflow-hidden rounded-[2rem] bg-white border border-slate-100 ft-shadow-lg p-6 sm:p-10">
+                <span className="pointer-events-none absolute inset-x-0 top-0 h-1 ft-grad-bar" />
+                <h2 className="font-head font-extrabold text-xl sm:text-2xl text-slate-900 flex items-center gap-2.5">
+                  <span className={`w-10 h-10 rounded-2xl bg-gradient-to-br ${catGrad} text-white grid place-items-center shrink-0 shadow-md`}><BookOpen className="w-5 h-5" /></span>
+                  قصة المشروع
+                </h2>
+                <p className="mt-5 text-slate-600 leading-[2.1] whitespace-pre-wrap text-base sm:text-lg max-w-3xl">{v.description}</p>
+                {v.looking_for && (
+                  <div className="mt-7 relative overflow-hidden rounded-[1.5rem] bg-gradient-to-l from-violet-600 via-purple-600 to-fuchsia-500 text-white p-5 sm:p-6 shadow-xl shadow-violet-200">
+                    <Search className="pointer-events-none absolute -left-4 -bottom-6 w-28 h-28 text-white/15 -rotate-12" />
+                    <div className="relative flex items-start gap-3">
+                      <span className="w-10 h-10 rounded-2xl bg-white/20 border border-white/30 backdrop-blur grid place-items-center shrink-0"><Search className="w-5 h-5" /></span>
+                      <div className="min-w-0">
+                        <div className="font-head font-extrabold">يبحث الفريق عن شركاء</div>
+                        <p className="mt-1 text-sm text-white/85 leading-relaxed">{v.looking_for}</p>
+                      </div>
+                    </div>
                   </div>
                 )}
-                {milestones.length > 0 ? (
-                  <div className="mt-4 divide-y divide-slate-100">
-                    {milestones.map((m, i) => {
-                      const done = msIsDone(m);
-                      const box = (
-                        <span className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${done ? "ft-grad-bar border-transparent text-white" : "border-slate-300 bg-white"}`}>
-                          {done && <Check className="w-3.5 h-3.5" />}
-                        </span>
-                      );
+                {canManage && (
+                  <div className="mt-7 flex flex-wrap gap-2">
+                    <Button variant="outline" onClick={openEdit} className="rounded-full pressable min-h-[48px] px-5 font-bold text-slate-600"><Pencil className="w-4 h-4 ml-1.5" /> تعديل</Button>
+                    <Button variant="outline" onClick={() => setUpdOpen(true)} className="rounded-full pressable min-h-[48px] px-5 font-bold text-slate-600"><Megaphone className="w-4 h-4 ml-1.5" /> تحديث تقدّم</Button>
+                    <Button variant="outline" onClick={() => setConfirmAction("delete")} className="rounded-full text-red-600 hover:text-red-700 hover:bg-rose-50 hover:border-rose-200 pressable min-h-[48px] px-5 font-bold"><Trash2 className="w-4 h-4 ml-1.5" /> حذف</Button>
+                  </div>
+                )}
+              </section>
+
+              {/* طلبات الانضمام */}
+              {v.is_owner && (v.join_requests || []).length > 0 && (
+                <section className="mt-6 rounded-[2rem] bg-white border border-amber-100 ft-shadow-lg p-6 sm:p-8 relative overflow-hidden">
+                  <span className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-l from-amber-400 to-orange-400" />
+                  <h2 className="font-head font-extrabold text-lg sm:text-xl text-slate-900 flex items-center gap-2.5">
+                    <span className="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-400 text-white grid place-items-center shrink-0 shadow-md shadow-amber-200"><UserPlus className="w-5 h-5" /></span>
+                    طلبات الانضمام
+                    <span className="inline-flex items-center justify-center min-w-[26px] h-[26px] px-1.5 rounded-full bg-amber-100 text-amber-700 text-xs font-extrabold tabular-nums">{v.join_requests.length}</span>
+                  </h2>
+                  <div className="mt-5 grid gap-3">
+                    {v.join_requests.map((r) => {
+                      const approving = busyKey === `decide:${r.id}:approve`;
+                      const rejecting = busyKey === `decide:${r.id}:reject`;
+                      const deciding = approving || rejecting;
                       return (
-                        <div key={m.id || i} className="py-3.5 flex items-center gap-3">
-                          {canTeam ? (
-                            <button onClick={() => toggleMilestone(m)} aria-label={done ? "إلغاء إنجاز المرحلة" : "تعليم المرحلة كمنجزة"} className="pressable shrink-0 rounded-full">
-                              {box}
-                            </button>
-                          ) : (
-                            <span className="shrink-0">{box}</span>
-                          )}
-                          <span className={`flex-1 min-w-0 text-sm sm:text-base leading-relaxed ${done ? "line-through text-slate-400" : "font-bold text-slate-700"}`}>{msTitle(m)}</span>
-                          {done && <span className="shrink-0 text-[11px] font-bold text-emerald-600">منجزة</span>}
+                        <div key={r.id} className="rounded-[1.5rem] bg-amber-50/60 border border-amber-100 p-4 flex items-start gap-3 flex-wrap">
+                          <span className={`w-11 h-11 rounded-full bg-gradient-to-br ${avatarGrad(r.name)} text-white text-sm font-extrabold flex items-center justify-center shrink-0 ring-2 ring-white shadow`}>{(r.name || "؟").trim().charAt(0)}</span>
+                          <div className="flex-1 min-w-[180px]">
+                            <div className="font-extrabold text-slate-800 text-sm">{r.name}</div>
+                            {r.message && <p className="mt-1 text-sm text-slate-500 leading-relaxed">"{r.message}"</p>}
+                          </div>
+                          <div className="flex gap-2 shrink-0">
+                            <Button size="sm" disabled={deciding} onClick={() => decide(r.id, true)} className="rounded-full ft-btn-primary text-white font-bold pressable min-h-[44px] px-5 disabled:opacity-60 shadow">
+                              {approving ? <Loader2 className="w-4 h-4 ml-1 animate-spin" /> : <Check className="w-4 h-4 ml-1" />} قبول
+                            </Button>
+                            <Button size="sm" variant="outline" disabled={deciding} onClick={() => decide(r.id, false)} className="rounded-full font-bold pressable min-h-[44px] px-5 text-slate-500 bg-white disabled:opacity-60">
+                              {rejecting ? <Loader2 className="w-4 h-4 ml-1 animate-spin" /> : <X className="w-4 h-4 ml-1" />} رفض
+                            </Button>
+                          </div>
                         </div>
                       );
                     })}
                   </div>
-                ) : (
-                  <p className="mt-5 text-sm text-slate-400">لا مراحل بعد · أضف أول مرحلة لتتبّع تقدّم المشروع خطوة بخطوة 🎯</p>
-                )}
-                {canTeam && (
-                  <div className="mt-5 flex items-center gap-2">
-                    <Input value={msInput} onChange={(e) => setMsInput(e.target.value)}
-                      onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addMilestone(); } }}
-                      placeholder="أضف مرحلة جديدة · مثال: إطلاق النموذج الأولي" className="rounded-full min-h-[48px] text-base flex-1 min-w-0" maxLength={120} />
-                    <Button onClick={addMilestone} disabled={msBusy || msInput.trim().length < 2} className="rounded-full ft-btn-primary text-white font-bold min-h-[48px] px-5 pressable shrink-0 disabled:opacity-60">
-                      {msBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Plus className="w-4 h-4 ml-1" /> إضافة</>}
-                    </Button>
-                  </div>
-                )}
-                {!canTeam && milestones.length > 0 && (
-                  <p className="mt-3 text-[11px] font-bold text-slate-400">يحدّث فريق المشروع هذه المراحل أولاً بأول</p>
-                )}
+                </section>
+              )}
+            </div>
+          )}
+
+          {activeTab === "milestones" && milestones !== null && (
+            <section data-testid="venture-milestones" className="relative overflow-hidden rounded-[2rem] bg-white border border-slate-100 ft-shadow-lg p-6 sm:p-10 animate-fade-up">
+              <span className="pointer-events-none absolute inset-x-0 top-0 h-1 ft-grad-bar" />
+              <div className="flex items-center gap-4 flex-wrap">
+                <span className="relative w-[76px] h-[76px] shrink-0">
+                  <svg viewBox="0 0 64 64" className="w-full h-full -rotate-90">
+                    <circle cx="32" cy="32" r={RING_R} fill="none" strokeWidth="6" className="stroke-slate-100" />
+                    <circle cx="32" cy="32" r={RING_R} fill="none" strokeWidth="6" strokeLinecap="round"
+                      stroke="url(#vdMsGrad2)" strokeDasharray={RING_C}
+                      strokeDashoffset={RING_C - (msPct / 100) * RING_C}
+                      className="transition-all duration-700" />
+                    <defs>
+                      <linearGradient id="vdMsGrad2" x1="0" y1="0" x2="64" y2="64">
+                        <stop offset="0%" stopColor="#10b981" />
+                        <stop offset="100%" stopColor="#0d9488" />
+                      </linearGradient>
+                    </defs>
+                  </svg>
+                  <span className="absolute inset-0 grid place-items-center font-head text-base font-extrabold text-slate-900 tabular-nums">{msPct}%</span>
+                </span>
+                <div className="min-w-0">
+                  <h2 className="font-head font-extrabold text-xl sm:text-2xl text-slate-900">رحلة المشروع</h2>
+                  <p className="mt-1 text-sm font-bold text-slate-400 tabular-nums">{msDoneCount} من {milestones.length} مراحل منجزة · كل خطوة تقرّب الفريق من الإطلاق 🎯</p>
+                </div>
               </div>
+
+              {milestones.length > 0 ? (
+                <div className="relative mt-8">
+                  {/* journey track */}
+                  <span className="pointer-events-none absolute top-2 bottom-2 right-[19px] w-[3px] rounded-full bg-slate-100 overflow-hidden">
+                    <span className="block w-full ft-grad-bar transition-all duration-700" style={{ height: `${msPct}%` }} />
+                  </span>
+                  <div className="space-y-2">
+                    {milestones.map((m, i) => {
+                      const done = msIsDone(m);
+                      const isNext = !done && milestones.slice(0, i).every(msIsDone);
+                      const node = (
+                        <span className={`relative z-10 w-10 h-10 rounded-full flex items-center justify-center shrink-0 transition-all ${done ? "ft-grad-bar text-white shadow-lg shadow-emerald-200" : isNext ? "bg-white border-[3px] border-emerald-400 text-emerald-500 shadow-lg shadow-emerald-100 animate-pulse" : "bg-white border-2 border-slate-200 text-slate-300"}`}>
+                          {done ? <Check className="w-5 h-5" /> : <span className="font-head text-xs font-extrabold tabular-nums">{i + 1}</span>}
+                        </span>
+                      );
+                      return (
+                        <div key={m.id || i} className={`flex items-center gap-4 rounded-[1.25rem] px-2 py-2 transition-colors ${done ? "" : "hover:bg-slate-50"}`}>
+                          {canTeam ? (
+                            <button onClick={() => toggleMilestone(m)} aria-label={done ? "إلغاء إنجاز المرحلة" : "تعليم المرحلة كمنجزة"} className="pressable shrink-0 rounded-full">
+                              {node}
+                            </button>
+                          ) : (
+                            <span className="shrink-0">{node}</span>
+                          )}
+                          <span className={`flex-1 min-w-0 text-base sm:text-lg leading-relaxed ${done ? "line-through text-slate-400" : "font-bold text-slate-700"}`}>{msTitle(m)}</span>
+                          {done ? (
+                            <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-100 text-emerald-600 px-3 py-1 text-[11px] font-extrabold"><Check className="w-3 h-3" /> منجزة</span>
+                          ) : isNext ? (
+                            <span className="shrink-0 inline-flex items-center rounded-full bg-emerald-500 text-white px-3 py-1 text-[11px] font-extrabold shadow-md shadow-emerald-200">التالي</span>
+                          ) : null}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : (
+                <div className="mt-8 rounded-[1.5rem] bg-slate-50 border border-dashed border-slate-200 p-6 text-center">
+                  <span className="mx-auto w-14 h-14 rounded-[1.1rem] bg-white border border-slate-200 grid place-items-center text-slate-300 shadow-sm"><Target className="w-7 h-7" /></span>
+                  <p className="mt-3 text-sm font-bold text-slate-500">لا مراحل بعد · أضف أول مرحلة لتتبّع تقدّم المشروع خطوة بخطوة 🎯</p>
+                </div>
+              )}
+
+              {canTeam && (
+                <div className="mt-7 flex items-center gap-2 rounded-full bg-slate-50 border border-slate-200/80 p-1.5 focus-within:bg-white focus-within:ring-2 ft-ring-accent transition-all">
+                  <span className="w-10 h-10 rounded-full ft-grad-bar text-white grid place-items-center shrink-0 shadow"><Plus className="w-5 h-5" /></span>
+                  <Input value={msInput} onChange={(e) => setMsInput(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addMilestone(); } }}
+                    placeholder="أضف مرحلة جديدة · مثال: إطلاق النموذج الأولي" className="border-0 bg-transparent shadow-none focus-visible:ring-0 min-h-[48px] text-base flex-1 min-w-0" maxLength={120} />
+                  <Button onClick={addMilestone} disabled={msBusy || msInput.trim().length < 2} className="rounded-full ft-btn-primary text-white font-bold min-h-[48px] px-6 pressable shrink-0 disabled:opacity-60 shadow">
+                    {msBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : "إضافة"}
+                  </Button>
+                </div>
+              )}
+              {!canTeam && milestones.length > 0 && (
+                <p className="mt-5 text-[11px] font-bold text-slate-400">يحدّث فريق المشروع هذه المراحل أولاً بأول</p>
+              )}
             </section>
           )}
 
-          {/* التحديثات */}
-          {(v.updates || []).length > 0 && (
-            <section className="pt-12 animate-fade-up" style={{ animationDelay: "160ms" }}>
-              <div className="border-t border-slate-100 pt-10">
-                <h2 className="font-head font-extrabold text-lg text-slate-900 flex items-center gap-2">
-                  التحديثات
-                  <span className="inline-flex items-center justify-center min-w-[24px] h-6 px-1.5 rounded-full bg-slate-100 text-slate-500 text-xs font-extrabold">{v.updates.length}</span>
-                </h2>
-                <div className="mt-5 divide-y divide-slate-100">
+          {activeTab === "updates" && updatesCount > 0 && (
+            <section className="relative overflow-hidden rounded-[2rem] bg-white border border-slate-100 ft-shadow-lg p-6 sm:p-10 animate-fade-up">
+              <span className="pointer-events-none absolute inset-x-0 top-0 h-1 ft-grad-bar" />
+              <h2 className="font-head font-extrabold text-xl sm:text-2xl text-slate-900 flex items-center gap-2.5">
+                <span className="w-10 h-10 rounded-2xl bg-gradient-to-br from-sky-500 to-blue-500 text-white grid place-items-center shrink-0 shadow-md shadow-sky-200"><Megaphone className="w-5 h-5" /></span>
+                تحديثات الفريق
+                <span className="inline-flex items-center justify-center min-w-[26px] h-[26px] px-1.5 rounded-full bg-sky-50 border border-sky-100 text-sky-600 text-xs font-extrabold tabular-nums">{v.updates.length}</span>
+              </h2>
+              <div className="relative mt-7">
+                <span className="pointer-events-none absolute top-3 bottom-3 right-[19px] w-[3px] rounded-full bg-gradient-to-b from-sky-200 via-slate-100 to-transparent" />
+                <div className="space-y-7">
                   {v.updates.map((u, i) => (
-                    <article key={u.id || i} className="py-5">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className={`w-7 h-7 rounded-full bg-gradient-to-br ${avatarGrad(u.author_name)} text-white text-[10px] font-extrabold flex items-center justify-center shrink-0`}>{(u.author_name || "؟").trim().charAt(0)}</span>
-                        <span className="text-xs font-bold text-slate-500">{u.author_name}</span>
-                        {u.created_at && <span className="text-[11px] text-slate-400">· {new Date(u.created_at).toLocaleDateString("ar")}</span>}
+                    <article key={u.id || i} className="relative flex gap-4">
+                      <span className={`relative z-10 w-10 h-10 rounded-full bg-gradient-to-br ${avatarGrad(u.author_name)} text-white text-xs font-extrabold flex items-center justify-center shrink-0 ring-4 ring-white shadow-md`}>{(u.author_name || "؟").trim().charAt(0)}</span>
+                      <div className="flex-1 min-w-0 rounded-[1.5rem] bg-slate-50/80 border border-slate-100 p-4 sm:p-5">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-sm font-extrabold text-slate-700">{u.author_name}</span>
+                          {u.created_at && <span className="text-[11px] font-bold text-slate-400">· {new Date(u.created_at).toLocaleDateString("ar")}</span>}
+                        </div>
+                        <h3 className="mt-2 font-head font-extrabold text-slate-900">{u.title}</h3>
+                        <p className="mt-1.5 text-sm sm:text-base text-slate-600 leading-[1.95] whitespace-pre-wrap">{u.text}</p>
                       </div>
-                      <h3 className="mt-2.5 font-extrabold text-slate-800">{u.title}</h3>
-                      <p className="mt-1.5 text-sm sm:text-base text-slate-600 leading-[1.9] whitespace-pre-wrap">{u.text}</p>
                     </article>
                   ))}
                 </div>
@@ -614,175 +757,212 @@ export default function VentureDetail() {
             </section>
           )}
 
-          {/* التعليقات */}
-          {comments !== null && (
-            <section data-testid="venture-comments" className="pt-12 animate-fade-up" style={{ animationDelay: "200ms" }}>
-              <div className="border-t border-slate-100 pt-10">
-                <h2 className="font-head font-extrabold text-lg text-slate-900 flex items-center gap-2">
-                  التعليقات
-                  <span className="inline-flex items-center justify-center min-w-[24px] h-6 px-1.5 rounded-full bg-slate-100 text-slate-500 text-xs font-extrabold">{comments.length}</span>
-                </h2>
-                {comments.length > 0 ? (
-                  <div className="mt-6 space-y-6">
-                    {comments.map((c, i) => {
-                      const cName = c.author_name || c.user_name || c.name || "عضو";
-                      return (
-                        <div key={c.id || i} className="flex items-start gap-3">
-                          <span className={`w-9 h-9 rounded-full bg-gradient-to-br ${avatarGrad(cName)} text-white text-xs font-extrabold flex items-center justify-center shrink-0`}>{(cName || "؟").trim().charAt(0)}</span>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="text-sm font-extrabold text-slate-800">{cName}</span>
-                              {c.created_at && <span className="text-[11px] text-slate-400">{new Date(c.created_at).toLocaleDateString("ar")}</span>}
-                              <span className="flex-1" />
-                              {canDeleteComment(c) && (
-                                <button onClick={() => deleteComment(c)} aria-label="حذف التعليق"
-                                  className="pressable shrink-0 w-8 h-8 flex items-center justify-center rounded-full text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-colors">
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
-                              )}
-                            </div>
-                            <p className="mt-1 text-sm sm:text-base text-slate-600 leading-[1.9] whitespace-pre-wrap">{c.text || c.body || ""}</p>
+          {activeTab === "comments" && comments !== null && (
+            <section data-testid="venture-comments" className="relative overflow-hidden rounded-[2rem] bg-white border border-slate-100 ft-shadow-lg p-6 sm:p-10 animate-fade-up">
+              <span className="pointer-events-none absolute inset-x-0 top-0 h-1 ft-grad-bar" />
+              <h2 className="font-head font-extrabold text-xl sm:text-2xl text-slate-900 flex items-center gap-2.5">
+                <span className="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-500 text-white grid place-items-center shrink-0 shadow-md shadow-amber-200"><MessageCircle className="w-5 h-5" /></span>
+                نقاش المشروع
+                <span className="inline-flex items-center justify-center min-w-[26px] h-[26px] px-1.5 rounded-full bg-amber-50 border border-amber-100 text-amber-600 text-xs font-extrabold tabular-nums">{comments.length}</span>
+              </h2>
+
+              {comments.length > 0 ? (
+                <div className="mt-7 space-y-5">
+                  {comments.map((c, i) => {
+                    const cName = c.author_name || c.user_name || c.name || "عضو";
+                    return (
+                      <div key={c.id || i} className="flex items-start gap-3 animate-fade-up" style={{ animationDelay: `${Math.min(i, 8) * 50}ms` }}>
+                        <span className={`w-10 h-10 rounded-full bg-gradient-to-br ${avatarGrad(cName)} text-white text-xs font-extrabold flex items-center justify-center shrink-0 ring-2 ring-white shadow`}>{(cName || "؟").trim().charAt(0)}</span>
+                        <div className="flex-1 min-w-0 rounded-[1.25rem] rounded-tr-md bg-slate-50 border border-slate-100 px-4 py-3">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-sm font-extrabold text-slate-800">{cName}</span>
+                            {c.created_at && <span className="text-[11px] font-bold text-slate-400">{new Date(c.created_at).toLocaleDateString("ar")}</span>}
+                            <span className="flex-1" />
+                            {canDeleteComment(c) && (
+                              <button onClick={() => deleteComment(c)} aria-label="حذف التعليق"
+                                className="pressable shrink-0 w-8 h-8 flex items-center justify-center rounded-full text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-colors">
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
                           </div>
+                          <p className="mt-1 text-sm sm:text-base text-slate-600 leading-[1.9] whitespace-pre-wrap">{c.text || c.body || ""}</p>
                         </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <p className="mt-5 text-sm text-slate-400">لا تعليقات بعد · شارك رأيك وشجّع الفريق 💬</p>
-                )}
-                {user ? (
-                  <div className="mt-8 flex items-start gap-3">
-                    <span className={`w-9 h-9 rounded-full bg-gradient-to-br ${avatarGrad(user.name)} text-white text-xs font-extrabold flex items-center justify-center shrink-0`}>{(user.name || "أ").trim().charAt(0)}</span>
-                    <div className="flex-1 min-w-0">
-                      <Textarea value={cInput} onChange={(e) => setCInput(e.target.value)}
-                        placeholder="اكتب تعليقك هنا · كلمة تشجيع أو فكرة تساعد الفريق" className="rounded-2xl text-base min-h-[72px]" maxLength={1000} />
-                      <div className="mt-2 flex items-center justify-between gap-3">
-                        <span className="text-[11px] text-slate-400 tabular-nums">{cInput.length}/1000</span>
-                        <Button onClick={addComment} disabled={cBusy || !cInput.trim()} className="rounded-full ft-btn-primary text-white font-bold min-h-[44px] px-5 pressable disabled:opacity-60">
-                          {cBusy ? <><Loader2 className="w-4 h-4 ml-1.5 animate-spin" /> جارٍ النشر...</> : <><Send className="w-4 h-4 ml-1.5" /> نشر التعليق</>}
-                        </Button>
                       </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="mt-7 rounded-[1.5rem] bg-slate-50 border border-dashed border-slate-200 p-6 text-center">
+                  <span className="mx-auto w-14 h-14 rounded-[1.1rem] bg-white border border-slate-200 grid place-items-center text-slate-300 shadow-sm"><MessageCircle className="w-7 h-7" /></span>
+                  <p className="mt-3 text-sm font-bold text-slate-500">لا تعليقات بعد · كن أول من يشجّع الفريق 💬</p>
+                </div>
+              )}
+
+              {user ? (
+                <div className="mt-7 flex items-start gap-3">
+                  <span className={`w-10 h-10 rounded-full bg-gradient-to-br ${avatarGrad(user.name)} text-white text-xs font-extrabold flex items-center justify-center shrink-0 ring-2 ring-white shadow`}>{(user.name || "أ").trim().charAt(0)}</span>
+                  <div className="flex-1 min-w-0 rounded-[1.5rem] bg-white border border-slate-200 p-2 shadow-sm focus-within:ring-2 ft-ring-accent transition-all">
+                    <Textarea value={cInput} onChange={(e) => setCInput(e.target.value)}
+                      placeholder="اكتب تعليقك هنا · كلمة تشجيع أو فكرة تساعد الفريق" className="border-0 bg-transparent shadow-none focus-visible:ring-0 rounded-2xl text-base min-h-[72px]" maxLength={1000} />
+                    <div className="flex items-center justify-between gap-3 px-2 pb-1">
+                      <span className="text-[11px] font-bold text-slate-400 tabular-nums">{cInput.length}/1000</span>
+                      <Button onClick={addComment} disabled={cBusy || !cInput.trim()} className="rounded-full ft-btn-primary text-white font-bold min-h-[48px] px-6 pressable disabled:opacity-60 shadow">
+                        {cBusy ? <><Loader2 className="w-4 h-4 ml-1.5 animate-spin" /> جارٍ النشر...</> : <><Send className="w-4 h-4 ml-1.5" /> نشر التعليق</>}
+                      </Button>
                     </div>
                   </div>
-                ) : (
-                  <div className="mt-8">
-                    <Button onClick={() => nav("/login")} className="rounded-full ft-btn-primary text-white font-bold min-h-[48px] px-6 pressable">
-                      <MessageCircle className="w-4 h-4 ml-1.5" /> سجّل الدخول للتعليق
-                    </Button>
-                  </div>
-                )}
-              </div>
+                </div>
+              ) : (
+                <div className="mt-7">
+                  <Button onClick={() => nav("/login")} className="rounded-full ft-btn-primary text-white font-bold min-h-[52px] px-7 pressable shadow-lg">
+                    <MessageCircle className="w-4 h-4 ml-1.5" /> سجّل الدخول للتعليق
+                  </Button>
+                </div>
+              )}
             </section>
           )}
         </div>
 
-        {/* ============ TEAM · simple card below content ============ */}
-        <div className="mx-auto w-full max-w-3xl">
-          <section data-testid="venture-team" className="pt-12 animate-fade-up" style={{ animationDelay: "240ms" }}>
-            <div className="border-t border-slate-100 pt-10">
-              <div className="flex items-baseline justify-between gap-3 flex-wrap">
-                <h2 className="font-head font-extrabold text-lg text-slate-900">الفريق</h2>
-                <span className="text-xs font-bold text-slate-400 tabular-nums">{v.team_count}/{v.max_members} · {seatsLeft > 0 ? `متبقّي ${seatsLeft} ${seatsLeft === 1 ? "مقعد" : "مقاعد"}` : "اكتمل الفريق"}</span>
-              </div>
-              <div className="mt-5 divide-y divide-slate-100">
-                <div className="py-3 flex items-center gap-3">
-                  <span className={`w-10 h-10 rounded-full bg-gradient-to-br ${avatarGrad(v.owner_name)} text-white text-xs font-extrabold flex items-center justify-center shrink-0`}>{(v.owner_name || "؟").trim().charAt(0)}</span>
-                  <span className="flex-1 min-w-0 truncate text-sm font-extrabold text-slate-800">{v.owner_name}</span>
-                  <span className="shrink-0 text-[11px] font-bold text-slate-400">👑 صاحب المشروع</span>
-                </div>
-                {(v.members || []).map((m) => (
-                  <div key={m.id} className="py-3 flex items-center gap-3">
-                    <span className={`w-10 h-10 rounded-full bg-gradient-to-br ${avatarGrad(m.name)} text-white text-xs font-extrabold flex items-center justify-center shrink-0`}>{(m.name || "؟").trim().charAt(0)}</span>
-                    <span className="flex-1 min-w-0 truncate text-sm font-bold text-slate-700">{m.name}</span>
-                    <span className="shrink-0 text-[11px] font-bold text-slate-400">عضو</span>
-                  </div>
-                ))}
-              </div>
-              <div className="mt-6">{teamAction}</div>
-
-              {followOk && (
-                <div className="mt-8 border-t border-slate-100 pt-6 flex items-center gap-3 flex-wrap">
-                  <div className="flex-1 min-w-[200px]">
-                    <div className="text-sm font-extrabold text-slate-800">متابعة المشروع</div>
-                    <p className="mt-0.5 text-xs text-slate-400 leading-relaxed">يصلك إشعار عند نشر تحديث أو إنجاز مرحلة · {followersCount} متابِع</p>
-                  </div>
-                  {user ? (
-                    <Button data-testid="venture-follow-btn" onClick={toggleFollow} disabled={followBusy}
-                      className={`rounded-full font-bold min-h-[44px] px-5 pressable disabled:opacity-60 ${following ? "bg-slate-900 text-white hover:bg-slate-800" : "ft-btn-primary text-white"}`}>
-                      {followBusy
-                        ? <><Loader2 className="w-4 h-4 ml-1.5 animate-spin" /> جارٍ التحديث...</>
-                        : following
-                          ? <><BellRing className="w-4 h-4 ml-1.5" /> تتابع هذا المشروع · إلغاء</>
-                          : <><Bell className="w-4 h-4 ml-1.5" /> تابع المشروع</>}
-                    </Button>
-                  ) : (
-                    <Button onClick={() => nav("/login")} className="rounded-full ft-btn-primary text-white font-bold min-h-[44px] px-5 pressable">
-                      <Bell className="w-4 h-4 ml-1.5" /> سجّل الدخول للمتابعة
-                    </Button>
-                  )}
-                </div>
-              )}
-
-              <div className="mt-8 border-t border-slate-100 pt-6">
-                <div className="divide-y divide-slate-50">
-                  {statRows.map((r) => (
-                    <div key={r.label} className="flex items-center gap-3 py-2">
-                      <r.icon className="w-4 h-4 text-slate-300 shrink-0" />
-                      <span className="flex-1 text-sm text-slate-500">{r.label}</span>
-                      <span className="font-head font-extrabold text-slate-800 tabular-nums text-sm">{r.value}</span>
-                    </div>
-                  ))}
-                </div>
-                <button onClick={shareProject}
-                  className="pressable mt-4 w-full inline-flex items-center justify-center gap-2 rounded-full border border-slate-200 text-slate-500 font-bold text-sm min-h-[44px] hover:bg-slate-50 transition-colors">
-                  <Share2 className="w-4 h-4" /> مشاركة المشروع
-                </button>
-              </div>
+        {/* ============ TEAM BENTO ============ */}
+        <section data-testid="venture-team" className="mt-8 sm:mt-10 relative overflow-hidden rounded-[2rem] bg-white border border-slate-100 ft-shadow-lg p-6 sm:p-10 animate-fade-up" style={{ animationDelay: "180ms" }}>
+          <span className="pointer-events-none absolute inset-x-0 top-0 h-1 ft-grad-bar" />
+          <div className="flex items-center gap-4 flex-wrap">
+            <span className="relative w-[76px] h-[76px] shrink-0">
+              <svg viewBox="0 0 64 64" className="w-full h-full -rotate-90">
+                <circle cx="32" cy="32" r={RING_R} fill="none" strokeWidth="6" className="stroke-slate-100" />
+                <circle cx="32" cy="32" r={RING_R} fill="none" strokeWidth="6" strokeLinecap="round"
+                  stroke="url(#vdTeamGrad)" strokeDasharray={RING_C}
+                  strokeDashoffset={RING_C - (teamPct / 100) * RING_C}
+                  className="transition-all duration-700" />
+                <defs>
+                  <linearGradient id="vdTeamGrad" x1="0" y1="0" x2="64" y2="64">
+                    <stop offset="0%" stopColor="#0ea5e9" />
+                    <stop offset="100%" stopColor="#6366f1" />
+                  </linearGradient>
+                </defs>
+              </svg>
+              <span className="absolute inset-0 grid place-items-center font-head text-sm font-extrabold text-slate-900 tabular-nums">{v.team_count || 0}/{v.max_members || 0}</span>
+            </span>
+            <div className="min-w-0 flex-1">
+              <h2 className="font-head font-extrabold text-xl sm:text-2xl text-slate-900 flex items-center gap-2">فريق المشروع</h2>
+              <p className="mt-1 text-sm font-bold text-slate-400">{seatsLeft > 0 ? `متبقّي ${seatsLeft} ${seatsLeft === 1 ? "مقعد" : "مقاعد"} للانضمام إلى الفريق` : "اكتمل عدد الفريق 🎉"}</p>
             </div>
-          </section>
-        </div>
+          </div>
 
-        {/* ============ SIMILAR · minimal cards ============ */}
-        {similar.length > 0 && (
-          <section data-testid="venture-similar" className="pt-14 animate-fade-up" style={{ animationDelay: "280ms" }}>
-            <div className="border-t border-slate-100 pt-10">
-              <div className="flex items-baseline gap-3 flex-wrap">
-                <h2 className="font-head font-extrabold text-lg text-slate-900">مشاريع مشابهة</h2>
-                <span className="flex-1" />
-                <Link to="/ventures" className="text-sm font-bold ft-text-accent hover:underline pressable inline-flex items-center min-h-[40px]">كل المشاريع</Link>
+          <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {/* owner card */}
+            <div className="relative overflow-hidden rounded-[1.5rem] bg-gradient-to-bl from-amber-50 to-white border border-amber-100 p-4 flex items-center gap-3">
+              <span className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${avatarGrad(v.owner_name)} text-white text-base font-extrabold flex items-center justify-center shrink-0 shadow-md`}>{(v.owner_name || "؟").trim().charAt(0)}</span>
+              <span className="flex-1 min-w-0">
+                <span className="block truncate text-sm font-extrabold text-slate-800">{v.owner_name}</span>
+                <span className="mt-0.5 inline-flex items-center gap-1 rounded-full bg-amber-100 text-amber-700 px-2 py-0.5 text-[10px] font-extrabold"><Crown className="w-3 h-3" /> صاحب المشروع</span>
+              </span>
+            </div>
+            {(v.members || []).map((m) => (
+              <div key={m.id} className="rounded-[1.5rem] bg-slate-50/80 border border-slate-100 p-4 flex items-center gap-3 transition-all hover:bg-white hover:shadow-md">
+                <span className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${avatarGrad(m.name)} text-white text-base font-extrabold flex items-center justify-center shrink-0 shadow-md`}>{(m.name || "؟").trim().charAt(0)}</span>
+                <span className="flex-1 min-w-0">
+                  <span className="block truncate text-sm font-extrabold text-slate-800">{m.name}</span>
+                  <span className="mt-0.5 inline-flex items-center rounded-full bg-slate-100 text-slate-500 px-2 py-0.5 text-[10px] font-extrabold">عضو بالفريق</span>
+                </span>
               </div>
-              <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {similar.slice(0, 3).map((s) => {
-                  const SIcon = CATEGORY_ICONS[s.category] || Rocket;
-                  return (
-                    <Link key={s.id} to={`/ventures/${s.id}`}
-                      className="group rounded-3xl border border-slate-200/80 bg-white p-5 transition-all hover:border-slate-300 hover:shadow-sm">
-                      <div className="flex items-center gap-2">
-                        <span className={`w-9 h-9 rounded-xl bg-gradient-to-br ${CATEGORY_GRAD[s.category] || "from-slate-500 to-slate-600"} text-white flex items-center justify-center shrink-0`}>
-                          <SIcon className="w-4 h-4" />
-                        </span>
-                        {s.category && <span className="text-[11px] font-bold text-slate-400">{s.category}</span>}
-                        <span className="flex-1" />
+            ))}
+            {/* empty seat placeholders */}
+            {Array.from({ length: Math.min(Math.max(seatsLeft, 0), 3) }).map((_, i) => (
+              <button key={`seat-${i}`} onClick={() => { if (!v.is_owner && !v.is_member && !v.request_pending) setJoinOpen(true); }}
+                className="pressable rounded-[1.5rem] border-2 border-dashed border-slate-200 bg-white/60 p-4 flex items-center gap-3 text-slate-300 hover:border-emerald-300 hover:text-emerald-400 transition-colors min-h-[76px]">
+                <span className="w-12 h-12 rounded-2xl border-2 border-dashed border-current grid place-items-center shrink-0"><UserPlus className="w-5 h-5" /></span>
+                <span className="text-sm font-extrabold">مقعد شاغر · انضم الآن</span>
+              </button>
+            ))}
+          </div>
+
+          <div className="mt-6">{teamAction}</div>
+
+          {followOk && (
+            <div className="mt-6 rounded-[1.5rem] bg-gradient-to-l from-slate-900 to-slate-800 text-white p-5 flex items-center gap-4 flex-wrap shadow-xl">
+              <span className="w-12 h-12 rounded-2xl bg-white/10 border border-white/20 backdrop-blur grid place-items-center shrink-0"><BellRing className="w-6 h-6" /></span>
+              <div className="flex-1 min-w-[200px]">
+                <div className="font-head font-extrabold">تابع رحلة هذا المشروع</div>
+                <p className="mt-0.5 text-xs text-white/65 leading-relaxed">يصلك إشعار عند نشر تحديث أو إنجاز مرحلة · {followersCount} متابِع الآن</p>
+              </div>
+              {user ? (
+                <Button data-testid="venture-follow-btn" onClick={toggleFollow} disabled={followBusy}
+                  className={`rounded-full font-extrabold min-h-[52px] px-7 pressable disabled:opacity-60 shadow-lg ${following ? "bg-white text-slate-900 hover:bg-slate-100" : "ft-btn-primary text-white border border-white/25"}`}>
+                  {followBusy
+                    ? <><Loader2 className="w-4 h-4 ml-1.5 animate-spin" /> جارٍ التحديث...</>
+                    : following
+                      ? <><BellRing className="w-4 h-4 ml-1.5" /> تتابع هذا المشروع · إلغاء</>
+                      : <><Bell className="w-4 h-4 ml-1.5" /> تابع المشروع</>}
+                </Button>
+              ) : (
+                <Button onClick={() => nav("/login")} className="rounded-full ft-btn-primary text-white font-extrabold min-h-[52px] px-7 pressable shadow-lg border border-white/25">
+                  <Bell className="w-4 h-4 ml-1.5" /> سجّل الدخول للمتابعة
+                </Button>
+              )}
+            </div>
+          )}
+
+          {/* quick stats chips + share */}
+          <div className="mt-6 flex flex-wrap items-center gap-2">
+            {statRows.map((r) => (
+              <span key={r.label} className="inline-flex items-center gap-2 rounded-full bg-slate-50 border border-slate-100 px-4 min-h-[44px]">
+                <r.icon className="w-4 h-4 text-slate-400 shrink-0" />
+                <span className="text-xs font-bold text-slate-500">{r.label}</span>
+                <span className="font-head font-extrabold text-slate-800 tabular-nums text-sm">{r.value}</span>
+              </span>
+            ))}
+            <button onClick={shareProject}
+              className="pressable inline-flex items-center justify-center gap-2 rounded-full bg-slate-900 text-white font-bold text-sm px-5 min-h-[44px] hover:bg-slate-800 transition-colors shadow">
+              <Share2 className="w-4 h-4" /> مشاركة المشروع
+            </button>
+          </div>
+        </section>
+
+        {/* ============ SIMILAR · snap cards / grid ============ */}
+        {similar.length > 0 && (
+          <section data-testid="venture-similar" className="mt-10 sm:mt-12 animate-fade-up" style={{ animationDelay: "220ms" }}>
+            <div className="flex items-center gap-3 flex-wrap px-1">
+              <h2 className="font-head font-extrabold text-xl sm:text-2xl text-slate-900 flex items-center gap-2.5">
+                <span className="w-10 h-10 rounded-2xl ft-icon-tile text-white grid place-items-center shrink-0 shadow-md"><Sparkles className="w-5 h-5" /></span>
+                مشاريع مشابهة
+              </h2>
+              <span className="flex-1" />
+              <Link to="/ventures" className="pressable inline-flex items-center min-h-[44px] rounded-full bg-white border border-slate-200 px-5 text-sm font-extrabold ft-text-accent shadow-sm hover:shadow transition-shadow">كل المشاريع</Link>
+            </div>
+            <div className="mt-5 flex gap-4 overflow-x-auto snap-x snap-mandatory pb-2 -mx-4 px-4 sm:mx-0 sm:px-0 lg:grid lg:grid-cols-3 lg:overflow-visible [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {similar.slice(0, 3).map((s) => {
+                const SIcon = CATEGORY_ICONS[s.category] || Rocket;
+                return (
+                  <Link key={s.id} to={`/ventures/${s.id}`}
+                    className="group relative isolate overflow-hidden shrink-0 w-[85%] sm:w-[46%] lg:w-auto snap-start rounded-[1.75rem] bg-white border border-slate-100 ft-shadow transition-all hover:ring-2 ft-ring-accent hover:shadow-[0_24px_50px_-16px_rgba(15,23,42,0.25)]">
+                    <div className={`relative h-28 overflow-hidden bg-gradient-to-l ${CATEGORY_GRAD[s.category] || "from-slate-500 to-slate-600"}`}>
+                      <SIcon className="pointer-events-none absolute -left-3 -bottom-6 w-24 h-24 text-white/20 -rotate-12 transition-transform duration-500 group-hover:scale-110 group-hover:-rotate-6" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-white/10" />
+                      <div className="absolute top-3 inset-x-3 flex items-start justify-between gap-2">
+                        {s.category && <span className="inline-flex items-center rounded-full bg-white/20 border border-white/30 backdrop-blur px-2.5 py-1 text-[10px] font-extrabold text-white"><SIcon className="w-3 h-3 ml-1" /> {s.category}</span>}
                         {s.status_label && (
-                          <span className="inline-flex items-center text-[11px] font-bold text-slate-400">
+                          <span className="inline-flex items-center rounded-full bg-white/90 px-2.5 py-1 text-[10px] font-extrabold text-slate-600 shadow-sm">
                             <span className={`w-1.5 h-1.5 rounded-full ml-1.5 ${STATUS_DOT[s.status] || "bg-slate-300"}`} />
                             {s.status_label}
                           </span>
                         )}
                       </div>
-                      <h3 className="mt-3.5 font-head font-extrabold text-slate-800 leading-snug line-clamp-2 group-hover:ft-text-accent transition-colors">{s.title}</h3>
-                      <div className="mt-3.5 flex items-center gap-3 text-[11px] font-bold text-slate-400">
+                    </div>
+                    <div className="p-5">
+                      <h3 className="font-head font-extrabold text-slate-900 leading-snug line-clamp-2 group-hover:ft-text-accent transition-colors">{s.title}</h3>
+                      <div className="mt-4 flex items-center gap-2 flex-wrap">
                         {typeof s.team_count === "number" && (
-                          <span className="inline-flex items-center gap-1"><Users className="w-3.5 h-3.5" /> {s.team_count}{typeof s.max_members === "number" ? `/${s.max_members}` : ""}</span>
+                          <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-50 border border-slate-100 px-3 py-1.5 text-[11px] font-extrabold text-slate-500"><Users className="w-3.5 h-3.5" /> {s.team_count}{typeof s.max_members === "number" ? `/${s.max_members}` : ""}</span>
                         )}
                         {typeof s.votes_count === "number" && (
-                          <span className="inline-flex items-center gap-1"><Heart className="w-3.5 h-3.5" /> {s.votes_count}</span>
+                          <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-50 border border-rose-100 px-3 py-1.5 text-[11px] font-extrabold text-rose-500"><Heart className="w-3.5 h-3.5" /> {s.votes_count}</span>
                         )}
                       </div>
-                    </Link>
-                  );
-                })}
-              </div>
+                    </div>
+                  </Link>
+                );
+              })}
             </div>
           </section>
         )}
