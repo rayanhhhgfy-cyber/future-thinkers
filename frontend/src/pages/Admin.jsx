@@ -20,7 +20,10 @@ import { timeAgo } from "@/components/NotificationsPanel";
 import { motion } from "framer-motion";
 import { FadeUp, Stagger, Item } from "@/components/anim";
 import { CodingAdminPanel, ThemePanel, ReportsPanel, HealthPanel, LandingPanel, PathsAdminPanel, AnalyticsV2, ErrorsPanel, CertificatesPanelV2 } from "@/pages/AdminExtra";
-import { OverviewPanel, ExportPanel, User360Panel } from "@/pages/AdminPanels2";
+import { ExportPanel, User360Panel } from "@/pages/AdminPanels2";
+import AdminOverview from "@/components/admin/AdminOverview";
+import AdminReviewDesk from "@/components/admin/AdminReviewDesk";
+import AdminStudioReview from "@/components/admin/AdminStudioReview";
 import { startChunkedUpload, uploadChunks, completeChunkedUpload, fileToBase64, compressCoverImage, CHUNK_THRESHOLD, MAX_PDF_SIZE } from "@/lib/chunkedUpload";
 
 const NAV = [
@@ -84,9 +87,9 @@ export default function Admin() {
           </aside>
           <div className="min-w-0" key={tab}>
             <div className="animate-fade-in">
-            {tab === "overview" && <OverviewPanel onJump={goTab} />}
-            {tab === "moderation" && <Moderation />}
-            {tab === "studio" && <StudioPanel />}
+            {tab === "overview" && <AdminOverview onJump={goTab} tabs={tabs} />}
+            {tab === "moderation" && <AdminReviewDesk />}
+            {tab === "studio" && <AdminStudioReview />}
             {tab === "books" && <BooksPanel />}
             {tab === "badges" && <BadgesPanel />}
             {tab === "certificates" && <CertificatesPanelV2 />}
@@ -322,62 +325,6 @@ function Overview() {
           </FadeUp>
         </div>
       </div>
-    </div>
-  );
-}
-
-function Moderation() {
-  const [books, setBooks] = useState([]);
-  const [acts, setActs] = useState([]);
-  const [reports, setReports] = useState([]);
-  const load = async () => {
-    const [b, a, r] = await Promise.all([
-      api.get("/books/pending").catch(() => ({ data: [] })),
-      api.get("/activities/pending").catch(() => ({ data: [] })),
-      api.get("/reports").catch(() => ({ data: [] })),
-    ]);
-    setBooks(b.data); setActs(a.data); setReports(r.data);
-  };
-  useEffect(() => { load(); }, []);
-  const actBook = async (id, action, reason = "") => { await api.post(`/books/${id}/${action}`, action === "reject" ? { reason } : undefined); toast.success(action === "approve" ? "تمت الموافقة" : "تم الرفض"); load(); };
-  const actActivity = async (id, action) => { await api.post(`/activities/${id}/${action}`); toast.success("تم"); load(); };
-  const resolveReport = async (id, action) => { await api.post(`/reports/${id}/resolve`, { action, note: "" }); toast.success("تم"); load(); };
-
-  return (
-    <div className="space-y-6">
-      <Section title={`كتب بانتظار المراجعة (${books.length})`}>
-        {books.length === 0 ? <Empty t="لا كتب معلّقة" /> : books.map((b) => (
-          <div key={b.id} className="flex items-center justify-between p-3 bg-white rounded-xl border border-slate-100">
-            <div><div className="font-semibold text-slate-800">{b.title}</div><div className="text-xs text-slate-400">{b.author} · {b.uploader_name}</div></div>
-            <div className="flex gap-2">
-              <Button size="sm" data-testid={`approve-book-${b.id}`} onClick={() => actBook(b.id, "approve")} className="rounded-lg bg-emerald-600 hover:bg-emerald-700"><Check className="w-4 h-4" /></Button>
-              <Button size="sm" variant="outline" data-testid={`reject-book-${b.id}`} onClick={() => actBook(b.id, "reject", "لا يتوافق مع معايير النشر")} className="rounded-lg text-rose-600"><X className="w-4 h-4" /></Button>
-            </div>
-          </div>
-        ))}
-      </Section>
-      <Section title={`أنشطة بانتظار المراجعة (${acts.length})`}>
-        {acts.length === 0 ? <Empty t="لا أنشطة معلّقة" /> : acts.map((a) => (
-          <div key={a.id} className="flex items-center justify-between p-3 bg-white rounded-xl border border-slate-100">
-            <div><div className="font-semibold text-slate-800">{a.title}</div><div className="text-xs text-slate-400">{a.author_name} · {a.school_name}</div></div>
-            <div className="flex gap-2">
-              <Button size="sm" onClick={() => actActivity(a.id, "approve")} className="rounded-lg bg-emerald-600"><Check className="w-4 h-4" /></Button>
-              <Button size="sm" variant="outline" onClick={() => actActivity(a.id, "reject")} className="rounded-lg text-rose-600"><X className="w-4 h-4" /></Button>
-            </div>
-          </div>
-        ))}
-      </Section>
-      <Section title={`بلاغات مفتوحة (${reports.length})`}>
-        {reports.length === 0 ? <Empty t="لا بلاغات" /> : reports.map((r) => (
-          <div key={r.id} className="flex items-center justify-between p-3 bg-white rounded-xl border border-slate-100">
-            <div><div className="font-semibold text-slate-800">{r.entity_type} · {r.reason}</div><div className="text-xs text-slate-400">بلّغ عنه: {r.reporter_name}</div></div>
-            <div className="flex gap-2">
-              <Button size="sm" variant="outline" onClick={() => resolveReport(r.id, "dismiss")} className="rounded-lg">تجاهل</Button>
-              <Button size="sm" onClick={() => resolveReport(r.id, "delete")} className="rounded-lg bg-rose-600 hover:bg-rose-700">حذف المحتوى</Button>
-            </div>
-          </div>
-        ))}
-      </Section>
     </div>
   );
 }
@@ -968,46 +915,6 @@ const Section = ({ title, children }) => (
   </div>
 );
 const Empty = ({ t }) => <div className="text-center py-6 text-slate-400 text-sm">{t}</div>;
-
-function StudioPanel() {
-  const [queue, setQueue] = useState(null);
-  const [note, setNote] = useState({});
-  const [expanded, setExpanded] = useState(null);
-  const load = async () => { const { data } = await api.get("/studio/queue"); setQueue(data); };
-  useEffect(() => { load(); }, []);
-  const review = async (id, action) => {
-    try {
-      await api.post(`/studio/works/${id}/${action}`, { note: note[id] || "" });
-      toast.success(action === "approve" ? "تم النشر 🎉" : "تم الرفض مع الملاحظة");
-      setNote({ ...note, [id]: "" }); load();
-    } catch (e) { toast.error(apiErr(e)); }
-  };
-  if (!queue) return <PageLoader />;
-  return (
-    <div className="space-y-4">
-      {queue.length === 0 && <Empty t="لا أعمال بانتظار المراجعة 🎉" />}
-      {queue.map((w) => (
-        <div key={w.id} className="bg-white rounded-2xl p-5 border border-slate-100 ft-shadow">
-          <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-            <div>
-              <div className="font-bold text-slate-900">{w.title}</div>
-              <div className="text-xs text-slate-400 mt-0.5">{w.author_name} · {w.type_label}</div>
-            </div>
-            <button onClick={() => setExpanded(expanded === w.id ? null : w.id)} className="text-sm text-violet-600 font-medium">
-              {expanded === w.id ? "إخفاء النص" : "قراءة النص"}
-            </button>
-          </div>
-          {expanded === w.id && <div className="whitespace-pre-wrap text-sm text-slate-600 leading-loose bg-slate-50 rounded-xl p-4 mb-3 max-h-64 overflow-y-auto">{w.content}</div>}
-          <Input value={note[w.id] || ""} onChange={(e) => setNote({ ...note, [w.id]: e.target.value })} placeholder="ملاحظة للكاتب (تظهر عند الرفض، اختيارية عند القبول)..." className="rounded-xl mb-3" />
-          <div className="flex gap-2">
-            <Button size="sm" onClick={() => review(w.id, "approve")} className="rounded-xl bg-emerald-600 hover:bg-emerald-700"><Check className="w-4 h-4 ml-1" /> نشر</Button>
-            <Button size="sm" variant="outline" onClick={() => review(w.id, "reject")} className="rounded-xl text-rose-600 border-rose-200"><X className="w-4 h-4 ml-1" /> رفض</Button>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
 
 function BadgesPanel() {
   const { hasPerm } = useAuth();
