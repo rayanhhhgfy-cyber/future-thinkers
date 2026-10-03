@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Depends, Request
 from pydantic import BaseModel, Field
 from bson import ObjectId
 from db import db, ser, sers, oid, now_iso
-from auth import get_current_user, get_optional_user, require_permission
+from auth import get_current_user, get_optional_user, require_permission, effective_permissions
 from services import award_xp, bump_stat, create_notification, audit_log
 import secrets
 
@@ -137,9 +137,11 @@ async def register_event(eid: str, user: dict = Depends(get_current_user)):
     count = await db.event_registrations.count_documents({"event_id": eid})
     waitlist = count >= e.get("capacity", 100)
     qr = secrets.token_hex(8).upper()
+    checkin_code = await _new_checkin_code(eid)
     await db.event_registrations.insert_one({
         "event_id": eid, "event_title": e["title"], "user_id": user["id"], "user_name": user["name"],
         "status": "waitlist" if waitlist else "confirmed", "qr_code": qr,
+        "checkin_code": checkin_code, "attended": False,
         "checked_in": False, "created_at": now_iso()})
     if not waitlist:
         await bump_stat(user["id"], "events", 1)
@@ -162,16 +164,55 @@ async def event_participants(eid: str, user: dict = Depends(require_permission("
 
 
 class CheckinBody(BaseModel):
-    qr_code: str
+    code: str | None = None
+    qr_code: str | None = None
 
 
-@router.post("/events/{eid}/checkin")
-async def checkin_event(eid: str, body: CheckinBody, user: dict = Depends(require_permission("event.create"))):
-    reg = await db.event_registrations.find_one({"event_id": eid, "qr_code": body.qr_code})
+async def _new_checkin_code(event_id: str) -> str:
+    for _ in range(20):
+        code = secrets.token_hex(3).upper()
+        if not await db.event_registrations.find_one({"event_id": event_id, "checkin_code": code}):
+            return code
+    return secrets.token_hex(6).upper()[:6]
+
+
+async def require_event_manager(user: dict = Depends(get_current_user)):
+    if user.get("role") in ("admin", "super_admin"):
+        return user
+    if "event.manage" in effective_permissions(user):
+        return user
+    raise HTTPException(status_code=403, detail="ليس لديك صلاحية للقيام بهذا الإجراء")
+
+
+@router.get("/events/{event_id}/my-registration")
+async def my_registration(event_id: str, user: dict = Depends(get_current_user)):
+    reg = await db.event_registrations.find_one({"event_id": event_id, "user_id": user["id"]})
+    if not reg:
+        return {"registered": False, "checkin_code": None, "attended": False}
+    if not reg.get("checkin_code"):
+        code = await _new_checkin_code(event_id)
+        await db.event_registrations.update_one({"_id": reg["_id"]}, {"$set": {"checkin_code": code}})
+        reg["checkin_code"] = code
+    return {"registered": True, "checkin_code": reg["checkin_code"],
+            "attended": bool(reg.get("attended") or reg.get("checked_in"))}
+
+
+@router.post("/events/{event_id}/checkin")
+async def checkin_event(event_id: str, body: CheckinBody, user: dict = Depends(require_event_manager)):
+    code = (body.code or body.qr_code or "").strip().upper()
+    if not code:
+        raise HTTPException(status_code=400, detail="رمز الحضور مطلوب")
+    reg = await db.event_registrations.find_one(
+        {"event_id": event_id, "$or": [{"checkin_code": code}, {"qr_code": code}]})
     if not reg:
         raise HTTPException(status_code=404, detail="رمز غير صالح")
-    await db.event_registrations.update_one({"_id": reg["_id"]}, {"$set": {"checked_in": True, "checkin_at": now_iso()}})
-    return {"checked_in": True, "user_name": reg["user_name"]}
+    if reg.get("attended"):
+        return {"ok": True, "name": reg["user_name"], "already": True}
+    await db.event_registrations.update_one(
+        {"_id": reg["_id"]},
+        {"$set": {"attended": True, "checked_in": True, "checkin_at": now_iso()}})
+    await award_xp(reg["user_id"], 15, "حضور فعالية", event_id)
+    return {"ok": True, "name": reg["user_name"]}
 
 
 # ---------------- Competitions ----------------
