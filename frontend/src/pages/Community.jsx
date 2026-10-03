@@ -5,7 +5,7 @@ import { useAuth } from "@/context/AuthContext";
 import { Layout, PageLoader, EmptyState } from "@/components/Layout";
 import { timeAgo } from "@/components/NotificationsPanel";
 import { toast } from "sonner";
-import { Users, Heart, Send, Trash2, Sparkles, Swords, Handshake, MessageCircle, Flame, BookOpen, Trophy, CalendarDays, LayoutDashboard } from "lucide-react";
+import { Users, Heart, Send, Trash2, Sparkles, Swords, Handshake, MessageCircle, Flame, BookOpen, Trophy, CalendarDays, LayoutDashboard, Bell, BellRing, ChevronDown, Crown, Medal } from "lucide-react";
 
 const ACT_ICON = { chess_win: Swords, badge: Sparkles, venture_joined: Handshake };
 const ACT_DEFAULT = Sparkles;
@@ -18,18 +18,54 @@ const ACT_ICON_COLOR = { chess_win: "text-violet-600", badge: "text-amber-500", 
 const ACT_TILE_DEFAULT = "ft-bg-soft";
 const ACT_ICON_COLOR_DEFAULT = "ft-text-accent";
 
+const SORTS = [
+  { v: "newest", label: "الأحدث", heading: "أحدث المنشورات" },
+  { v: "active", label: "الأكثر نشاطاً", heading: "الأكثر نشاطاً" },
+  { v: "unanswered", label: "بلا ردود", heading: "منشورات تنتظر تفاعلك" },
+];
+
+const fmtNum = (n) => Number(n || 0).toLocaleString("en-US");
+
+const normContrib = (d) => {
+  const arr = Array.isArray(d) ? d : d?.items || d?.contributors || [];
+  return arr.map((c) => ({
+    id: c.id || c.user_id,
+    name: c.name || c.user_name || "عضو",
+    avatar: c.avatar_url || c.avatar || c.user_avatar || null,
+    score: c.score ?? c.points ?? c.xp ?? 0,
+  })).filter((c) => c.id);
+};
+
+const RANK_TILE = [
+  "bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-md shadow-amber-500/30",
+  "bg-gradient-to-br from-slate-300 to-slate-400 text-white shadow-md",
+  "bg-gradient-to-br from-orange-300 to-amber-500 text-white shadow-md",
+];
+
 export default function Community() {
   const { user } = useAuth();
   const [posts, setPosts] = useState(null);
   const [feed, setFeed] = useState([]);
   const [text, setText] = useState("");
   const [posting, setPosting] = useState(false);
+  const [sort, setSort] = useState("newest");
+  const [contributors, setContributors] = useState(null);
+  const [showContrib, setShowContrib] = useState(false);
 
-  const loadPosts = () => api.get("/feed/posts").then((r) => setPosts(r.data)).catch(() => setPosts([]));
+  const loadPosts = (s) => api.get("/feed/posts", { params: { sort: s || sort } }).then((r) => setPosts(r.data)).catch(() => setPosts([]));
   useEffect(() => {
-    loadPosts();
+    loadPosts("newest");
     api.get("/activity/feed", { params: { limit: 25 } }).then((r) => setFeed(r.data?.items || [])).catch(() => {});
+    api.get("/community/contributors").then((r) => setContributors(normContrib(r.data))).catch(() => setContributors([]));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const changeSort = (s) => {
+    if (s === sort) return;
+    setSort(s);
+    setPosts(null);
+    loadPosts(s);
+  };
 
   const post = async () => {
     if (text.trim().length < 2) return toast.error("اكتب شيئاً أولاً");
@@ -47,6 +83,20 @@ export default function Community() {
   const remove = async (p) => {
     if (!window.confirm("حذف المنشور؟")) return;
     try { await api.delete(`/feed/posts/${p.id}`); setPosts((arr) => arr.filter((x) => x.id !== p.id)); } catch (e) { toast.error(apiErr(e)); }
+  };
+  const followPost = async (p) => {
+    if (!user) return;
+    const next = !p.following;
+    setPosts((arr) => arr.map((x) => x.id === p.id ? { ...x, following: next } : x));
+    try {
+      const { data } = await api.post(`/community/posts/${p.id}/follow`);
+      const following = typeof data?.following === "boolean" ? data.following : next;
+      setPosts((arr) => arr.map((x) => x.id === p.id ? { ...x, following, followers_count: typeof data?.followers_count === "number" ? data.followers_count : x.followers_count } : x));
+      toast.success(following ? "تتابع هذا الموضوع الآن · سنعلمك بالردود الجديدة 🔔" : "ألغيت متابعة الموضوع");
+    } catch (e) {
+      setPosts((arr) => arr.map((x) => x.id === p.id ? { ...x, following: !next } : x));
+      toast.error(apiErr(e));
+    }
   };
 
   return (
@@ -81,9 +131,38 @@ export default function Community() {
           </div>
         </div>
 
+        {/* top contributors · mobile strip */}
+        {!!contributors?.length && (
+          <div className="lg:hidden mb-5 sm:mb-6 relative overflow-hidden bg-white rounded-[1.75rem] border border-slate-100 ft-shadow-lg">
+            <span className="absolute inset-x-0 top-0 h-1 bg-gradient-to-l from-amber-400 via-yellow-500 to-amber-500" />
+            <button onClick={() => setShowContrib((v) => !v)} aria-expanded={showContrib} className="pressable w-full flex items-center gap-2.5 px-4 py-3.5 min-h-[52px] text-start">
+              <span className="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 text-white grid place-items-center shadow-md shadow-amber-500/25 shrink-0"><Trophy className="w-4 h-4" /></span>
+              <span className="font-head font-extrabold text-sm text-slate-800 flex-1">أبرز المساهمين</span>
+              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-600 ring-1 ring-amber-100">{contributors.length}</span>
+              <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-300 ${showContrib ? "rotate-180" : ""}`} />
+            </button>
+            {showContrib && (
+              <div className="flex gap-2.5 overflow-x-auto px-4 pb-4 pt-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden animate-fade-up">
+                {contributors.slice(0, 10).map((c, i) => (
+                  <Link key={c.id} to={`/profile/${c.id}`} className="pressable shrink-0 flex flex-col items-center gap-1.5 rounded-2xl bg-slate-50/80 ring-1 ring-slate-100 px-3 py-3 w-[92px]">
+                    <span className="relative">
+                      {c.avatar
+                        ? <img src={c.avatar} alt="" className="w-11 h-11 rounded-full object-cover ring-2 ring-white shadow" />
+                        : <span className="w-11 h-11 rounded-full ft-navy-gradient text-white grid place-items-center font-head font-bold ring-2 ring-white shadow">{c.name?.[0]}</span>}
+                      <span className={`absolute -bottom-1 -left-1 w-5 h-5 rounded-full grid place-items-center text-[10px] font-black ring-2 ring-white ${RANK_TILE[i] || "bg-slate-100 text-slate-500"}`}>{i === 0 ? <Crown className="w-3 h-3" /> : i + 1}</span>
+                    </span>
+                    <span className="text-[11px] font-bold text-slate-700 truncate w-full text-center">{c.name}</span>
+                    <span className="text-[10px] font-extrabold text-amber-600">{fmtNum(c.score)} نقطة</span>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="grid lg:grid-cols-[1fr_330px] xl:grid-cols-[290px_minmax(0,1fr)_340px] gap-5 sm:gap-6 items-start">
           {/* desktop profile rail */}
-          <aside className="hidden xl:block sticky top-24">
+          <aside className="hidden xl:block">
             <div className="relative overflow-hidden bg-white rounded-[2rem] border border-slate-100 ft-shadow-lg p-6">
               <span className="absolute inset-x-0 top-0 h-1 ft-grad-bar" />
               {user ? (
@@ -151,15 +230,26 @@ export default function Community() {
               </div>
             </div>
 
-            {/* feed heading */}
-            <div className="flex items-center gap-2.5 mb-4">
+            {/* feed heading + sort */}
+            <div className="flex flex-wrap items-center gap-2.5 mb-4">
               <span className="w-9 h-9 rounded-xl ft-icon-tile grid place-items-center shadow-md"><MessageCircle className="w-4 h-4" /></span>
-              <h2 className="font-head font-extrabold text-slate-800">أحدث المنشورات</h2>
+              <h2 className="font-head font-extrabold text-slate-800">{SORTS.find((s) => s.v === sort)?.heading}</h2>
               {!!posts?.length && <span className="text-[11px] font-bold px-2 py-0.5 rounded-full ft-bg-soft ft-text-accent ring-1 ft-ring-accent">{posts.length} منشور</span>}
+              <span className="flex-1" />
+              <div data-testid="community-sort" className="flex items-center gap-1 rounded-full bg-white ring-1 ring-slate-200/80 p-1 shadow-sm w-full sm:w-auto">
+                {SORTS.map((s) => (
+                  <button key={s.v} onClick={() => changeSort(s.v)} aria-pressed={sort === s.v}
+                    className={`pressable flex-1 sm:flex-none rounded-full px-4 min-h-[38px] text-xs font-bold transition-all ${sort === s.v ? "ft-btn-primary text-white shadow-md" : "text-slate-500 hover:text-slate-800"}`}>
+                    {s.label}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {!posts ? <PageLoader /> : posts.length === 0 ? (
-              <EmptyState icon={Users} title="الساحة هادئة" desc="كن أول من يشارك منشوراً" />
+              <EmptyState icon={Users}
+                title={sort === "unanswered" ? "الكل حظي بردود" : "الساحة هادئة"}
+                desc={sort === "unanswered" ? "لا منشورات بانتظار رد الآن · جرّب تبويب الأحدث" : "كن أول من يشارك منشوراً"} />
             ) : (
               <div className="space-y-4">
                 {posts.map((p, i) => (
@@ -179,10 +269,18 @@ export default function Community() {
                       )}
                     </div>
                     <p className="mt-3.5 text-[15px] text-slate-700 leading-loose whitespace-pre-wrap">{p.text}</p>
-                    <div className="mt-4 flex items-center gap-2">
+                    <div className="mt-4 flex flex-wrap items-center gap-2">
                       <button onClick={() => like(p)} className={`pressable inline-flex items-center gap-1.5 min-h-[40px] px-4 rounded-full text-xs font-bold ring-1 transition-all ${p.liked ? "bg-gradient-to-l from-rose-500 to-pink-500 text-white ring-rose-300 shadow-md shadow-rose-500/25" : "bg-slate-50 text-slate-500 ring-slate-100 hover:bg-rose-50 hover:text-rose-500 hover:ring-rose-100"}`}>
                         <Heart className={`w-4 h-4 transition-transform duration-200 ${p.liked ? "fill-white text-white scale-110" : ""}`} /> {p.likes}
                       </button>
+                      {user && p.user_id !== user.id && (
+                        <button data-testid={`follow-post-${p.id}`} onClick={() => followPost(p)} aria-pressed={!!p.following}
+                          className={`pressable inline-flex items-center gap-1.5 min-h-[40px] px-4 rounded-full text-xs font-bold ring-1 transition-all ${p.following ? "bg-gradient-to-l from-amber-400 to-orange-500 text-white ring-amber-300 shadow-md shadow-amber-500/25" : "bg-slate-50 text-slate-500 ring-slate-100 hover:bg-amber-50 hover:text-amber-600 hover:ring-amber-200"}`}>
+                          {p.following ? <BellRing className="w-4 h-4" /> : <Bell className="w-4 h-4" />}
+                          {p.following ? "متابَع" : "متابعة الموضوع"}
+                          {typeof p.followers_count === "number" && p.followers_count > 0 && <span className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded-full ${p.following ? "bg-white/25" : "bg-amber-100 text-amber-600"}`}>{p.followers_count}</span>}
+                        </button>
+                      )}
                     </div>
                   </article>
                 ))}
@@ -190,8 +288,9 @@ export default function Community() {
             )}
           </div>
 
-          {/* activity rail */}
-          <aside className="relative overflow-hidden bg-white rounded-[1.75rem] sm:rounded-[2rem] border border-slate-100 ft-shadow-lg p-5 sm:p-6 lg:sticky lg:top-24">
+          {/* side rail: activity + top contributors */}
+          <div className="space-y-5 sm:space-y-6 min-w-0">
+          <aside className="relative overflow-hidden bg-white rounded-[1.75rem] sm:rounded-[2rem] border border-slate-100 ft-shadow-lg p-5 sm:p-6">
             <span className="absolute inset-x-0 top-0 h-1 bg-gradient-to-l from-amber-400 via-orange-400 to-amber-500" />
             <h3 className="font-head font-extrabold text-slate-800 mb-5 flex items-center gap-2.5">
               <span className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 text-white grid place-items-center shadow-md shadow-amber-500/25"><Sparkles className="w-4 h-4" /></span>
@@ -217,6 +316,36 @@ export default function Community() {
               </div>
             )}
           </aside>
+
+          {/* top contributors · desktop rail */}
+          {!!contributors?.length && (
+            <aside data-testid="community-contributors" className="hidden lg:block relative overflow-hidden bg-white rounded-[1.75rem] sm:rounded-[2rem] border border-slate-100 ft-shadow-lg p-5 sm:p-6">
+              <span className="absolute inset-x-0 top-0 h-1 bg-gradient-to-l from-amber-400 via-yellow-500 to-amber-500" />
+              <h3 className="font-head font-extrabold text-slate-800 mb-2 flex items-center gap-2.5">
+                <span className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 text-white grid place-items-center shadow-md shadow-amber-500/25"><Trophy className="w-4 h-4" /></span>
+                أبرز المساهمين
+              </h3>
+              <p className="text-[11px] text-slate-400 mb-4">أكثر الأعضاء نشاطاً وتفاعلاً في الساحة</p>
+              <div className="space-y-1.5">
+                {contributors.slice(0, 8).map((c, i) => (
+                  <Link key={c.id} to={`/profile/${c.id}`} className={`pressable flex items-center gap-3 rounded-2xl px-2.5 py-2 min-h-[52px] transition ${i === 0 ? "bg-amber-50/80 ring-1 ring-amber-100" : "hover:bg-slate-50"}`}>
+                    <span className={`w-8 h-8 rounded-full grid place-items-center text-xs font-black shrink-0 ring-1 ${RANK_TILE[i] || "bg-slate-50 text-slate-400 ring-slate-100"}`}>{i === 0 ? <Crown className="w-4 h-4" /> : i + 1}</span>
+                    {c.avatar
+                      ? <img src={c.avatar} alt="" className="w-10 h-10 rounded-full object-cover ring-2 ring-white shadow shrink-0" />
+                      : <span className="w-10 h-10 rounded-full ft-navy-gradient text-white grid place-items-center font-head font-bold ring-2 ring-white shadow shrink-0">{c.name?.[0]}</span>}
+                    <span className="flex-1 min-w-0">
+                      <span className="block font-head font-bold text-sm text-slate-800 truncate">{c.name}</span>
+                      <span className="block text-[10px] text-slate-400 font-bold">{i === 0 ? "نجم الساحة" : i === 1 ? "مساهم ذهبي" : i === 2 ? "مساهم نشيط" : "مساهم"}</span>
+                    </span>
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-50 text-amber-600 ring-1 ring-amber-100 text-[11px] font-extrabold shrink-0">
+                      <Medal className="w-3 h-3" /> {fmtNum(c.score)}
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            </aside>
+          )}
+          </div>
         </div>
       </div>
     </Layout>
