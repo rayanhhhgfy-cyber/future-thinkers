@@ -76,6 +76,7 @@ class JoinBody(BaseModel):
     code: str = Field(min_length=1, max_length=12)
 
 
+@router.post("")
 @router.post("/")
 async def create_circle(body: CreateBody, user: dict = Depends(get_current_user)):
     me = user["id"]
@@ -105,6 +106,7 @@ async def create_circle(body: CreateBody, user: dict = Depends(get_current_user)
     }
 
 
+@router.get("")
 @router.get("/")
 async def list_circles(user: dict = Depends(get_current_user)):
     me = user["id"]
