@@ -64,7 +64,7 @@
   "scripts": {
     "start": "craco start",
     "prebuild": "node scripts/gen-icons.js",
-    "build": "craco build",
+    "build": "craco build && node scripts/copy-pdfjs.js",
     "test": "craco test"
   },
   "browserslist": {

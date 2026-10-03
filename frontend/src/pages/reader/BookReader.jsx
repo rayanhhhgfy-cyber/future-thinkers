@@ -7,19 +7,19 @@ import {
 } from "lucide-react";
 import api, { apiErr } from "@/lib/api";
 import { signUrl } from "@/lib/signing";
-import { getOfflineBook } from "@/lib/offline";
+import { getOfflineBook, deleteOfflineBook } from "@/lib/offline";
 
-// pdf.js is loaded on demand from CDN (never bundled, never pushed through
-// the repo) · the reader chunk stays small and the main bundle is untouched.
-const PDFJS_VERSION = "6.3.289";
-const PDFJS_LIB_URL = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${PDFJS_VERSION}/build/pdf.mjs`;
-const PDFJS_WORKER_URL = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${PDFJS_VERSION}/build/pdf.worker.min.mjs`;
-/* Font-decoding assets (same pinned version, same CDN). Without these,
-   pdf.js cannot decode CID-encoded text or substitute the standard 14
-   fonts, so books whose fonts are not fully embedded (most non-Arabic
-   PDFs) render as symbols/tofu instead of letters. */
-const PDFJS_CMAP_URL = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${PDFJS_VERSION}/cmaps/`;
-const PDFJS_STANDARD_FONTS_URL = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${PDFJS_VERSION}/standard_fonts/`;
+// pdf.js is self-hosted under /pdfjs (same-origin, copied from the pinned
+// npm package) · no external CDN at runtime, so the reader works on any
+// network and the font-decoding assets below can never be blocked.
+const PDFJS_LIB_URL = `/pdfjs/pdf.mjs`;
+const PDFJS_WORKER_URL = `/pdfjs/pdf.worker.min.mjs`;
+/* Font-decoding assets (same-origin). Without these, pdf.js cannot decode
+   CID-encoded text or substitute the standard 14 fonts, so books whose
+   fonts are not fully embedded (most non-Arabic PDFs) render as
+   symbols/tofu instead of letters. */
+const PDFJS_CMAP_URL = `/pdfjs/cmaps/`;
+const PDFJS_STANDARD_FONTS_URL = `/pdfjs/standard_fonts/`;
 const PDFJS_DOC_OPTIONS = {
   cMapUrl: PDFJS_CMAP_URL,
   cMapPacked: true,
@@ -27,6 +27,27 @@ const PDFJS_DOC_OPTIONS = {
 };
 
 function loadPdfjs() {
+  // pdf.js 6.3.289 calls Map.prototype.getOrInsertComputed (ES2025) and
+  // crashes with "loading failed" on any browser that lacks it · polyfill
+  // before importing so the reader works everywhere.
+  try {
+    const install = (proto) => {
+      if (proto && typeof proto.getOrInsertComputed !== "function") {
+        proto.getOrInsertComputed = function (k, fn) {
+          if (!this.has(k)) this.set(k, fn(k));
+          return this.get(k);
+        };
+      }
+      if (proto && typeof proto.getOrInsert !== "function") {
+        proto.getOrInsert = function (k, v) {
+          if (!this.has(k)) this.set(k, v);
+          return this.get(k);
+        };
+      }
+    };
+    install(typeof Map !== "undefined" && Map.prototype);
+    install(typeof WeakMap !== "undefined" && WeakMap.prototype);
+  } catch {}
   return import(/* webpackIgnore: true */ PDFJS_LIB_URL).then((lib) => {
     lib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER_URL;
     return lib;
@@ -307,12 +328,27 @@ export default function BookReader({ book, pdfUrl, onClose, onProgress, initialP
       if (dead) return null;
       const pdfjsLib = await loadPdfjs();
       if (dead) return null;
-      loadingTask = pdfjsLib.getDocument(localData ? { data: localData, ...PDFJS_DOC_OPTIONS } : { url: signedPdfUrl, ...PDFJS_DOC_OPTIONS });
-      if (localData) setOfflineReading(true);
-      loadingTask.onProgress = ({ loaded, total }) => {
-        if (!dead && total > 0) setLoadPct(Math.round((loaded / total) * 100));
+      const open = (src) => {
+        loadingTask = pdfjsLib.getDocument(src);
+        loadingTask.onProgress = ({ loaded, total }) => {
+          if (!dead && total > 0) setLoadPct(Math.round((loaded / total) * 100));
+        };
+        return loadingTask.promise;
       };
-      return loadingTask.promise;
+      if (localData) {
+        setOfflineReading(true);
+        try {
+          return await open({ data: localData, ...PDFJS_DOC_OPTIONS });
+        } catch (e) {
+          // Saved copy is corrupt/partial · drop it and fall back to the
+          // network copy instead of failing the book forever.
+          try { if (offlineBookId) await deleteOfflineBook(offlineBookId); } catch {}
+          if (dead) return null;
+          setOfflineReading(false); setLoadPct(0);
+          return open({ url: signedPdfUrl, ...PDFJS_DOC_OPTIONS });
+        }
+      }
+      return open({ url: signedPdfUrl, ...PDFJS_DOC_OPTIONS });
     })().then((loadedDoc) => {
       if (!loadedDoc || dead) { if (loadedDoc) loadedDoc.destroy(); return; }
       doc = loadedDoc;
