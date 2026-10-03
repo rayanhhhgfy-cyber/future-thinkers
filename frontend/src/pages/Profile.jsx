@@ -274,7 +274,7 @@ export default function Profile() {
         {/* tabbed content column */}
         <div className="lg:col-start-2 lg:row-start-1 min-w-0">
         {/* tabs */}
-        <div className="sticky top-16 lg:top-20 z-20 mt-6 lg:mt-2 -mx-1 px-1 py-2 bg-[#F8FAFC]/85 backdrop-blur-md">
+        <div className="relative mt-6 lg:mt-2 -mx-1 px-1 py-2 bg-[#F8FAFC]/85 backdrop-blur-md">
           <div className="flex gap-1.5 bg-white rounded-2xl p-1.5 border border-slate-100 ft-shadow overflow-x-auto">
             {TABS.map((t) => (
               <button key={t.k} onClick={() => setTab(t.k)}

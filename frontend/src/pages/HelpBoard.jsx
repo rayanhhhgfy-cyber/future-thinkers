@@ -509,7 +509,7 @@ export default function HelpBoard() {
       {/* mobile ask FAB */}
       <button
         onClick={() => setAskOpen(true)}
-        className="pressable lg:hidden fixed bottom-5 start-5 z-40 inline-flex items-center gap-1.5 min-h-[52px] px-5 rounded-full ft-btn-primary text-white text-sm font-bold shadow-2xl"
+        className="pressable lg:hidden fixed bottom-24 start-5 z-40 inline-flex items-center gap-1.5 min-h-[52px] px-5 rounded-full ft-btn-primary text-white text-sm font-bold shadow-2xl"
       >
         <Plus className="w-5 h-5" /> اسأل سؤالاً
       </button>
