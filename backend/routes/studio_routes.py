@@ -1,4 +1,5 @@
 """استوديو النشر الطلابي · مقالات وشعر وخواطر بمراجعة تحريرية قبل النشر."""
+from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, HTTPException, Depends, Query, Request
 from pydantic import BaseModel, Field
 from db import db, ser, sers, oid, now_iso
@@ -28,6 +29,18 @@ def _work_out(w):
     return d
 
 
+async def _comments_map(work_ids):
+    """{work_id: عدد التعليقات} لدفعة أعمال دفعة واحدة."""
+    out = {wid: 0 for wid in work_ids}
+    if work_ids:
+        agg = await db.work_comments.aggregate([
+            {"$match": {"work_id": {"$in": work_ids}}},
+            {"$group": {"_id": "$work_id", "count": {"$sum": 1}}}]).to_list(1000)
+        for r in agg:
+            out[r["_id"]] = r["count"]
+    return out
+
+
 class WorkBody(BaseModel):
     title: str = Field(min_length=3, max_length=120)
     type: str = "article"
@@ -53,21 +66,50 @@ async def create_work(body: WorkBody, user: dict = Depends(get_current_user)):
 @router.get("/works/me")
 async def my_works(user: dict = Depends(get_current_user)):
     docs = await db.works.find({"author_id": user["id"]}).sort("updated_at", -1).to_list(100)
-    return [_work_out(w) for w in docs]
+    cmap = await _comments_map([str(w["_id"]) for w in docs])
+    out = []
+    for w in docs:
+        d = _work_out(w)
+        d["comments_count"] = cmap.get(str(w["_id"]), 0)
+        out.append(d)
+    return out
 
 
 @router.get("/published")
 async def published_works(type: str | None = None, q: str | None = None,
-                           page: int = 1, limit: int = 12):
+                           page: int = 1, limit: int = 12, sort: str | None = None):
     query = {"status": "published"}
     if type in WORK_TYPES:
         query["type"] = type
     if q:
         query["$or"] = [{"title": {"$regex": q, "$options": "i"}},
                         {"content": {"$regex": q, "$options": "i"}}]
+    if sort == "trending":
+        # رائج: (إعجاب + 3×تعليقات) مع كسر التعادل بالأحدث نشراً
+        docs = await db.works.find(query).to_list(1000)
+        cmap = await _comments_map([str(w["_id"]) for w in docs])
+        items = []
+        for w in docs:
+            d = _work_out(w)
+            cc = cmap.get(str(w["_id"]), 0)
+            d["comments_count"] = cc
+            d["_trend"] = (w.get("likes", 0) or 0) + 3 * cc
+            items.append(d)
+        items.sort(key=lambda d: (d["_trend"], d.get("published_at") or ""), reverse=True)
+        for d in items:
+            d.pop("_trend", None)
+        total = len(items)
+        return {"items": items[(page - 1) * limit:page * limit],
+                "total": total, "page": page, "limit": limit}
     total = await db.works.count_documents(query)
     docs = await db.works.find(query).sort("published_at", -1).skip((page - 1) * limit).limit(limit).to_list(limit)
-    return {"items": [_work_out(w) for w in docs], "total": total, "page": page, "limit": limit}
+    cmap = await _comments_map([str(w["_id"]) for w in docs])
+    items = []
+    for w in docs:
+        d = _work_out(w)
+        d["comments_count"] = cmap.get(str(w["_id"]), 0)
+        items.append(d)
+    return {"items": items, "total": total, "page": page, "limit": limit}
 
 
 @router.get("/works/{work_id}")
@@ -82,6 +124,7 @@ async def get_work(work_id: str, request: Request):
         raise HTTPException(status_code=403, detail="هذا العمل قيد المراجعة")
     await db.works.update_one({"_id": w["_id"]}, {"$inc": {"views": 1}})
     d = _work_out(w)
+    d["comments_count"] = await db.work_comments.count_documents({"work_id": work_id})
     if user:
         d["liked"] = bool(await db.work_likes.find_one({"user_id": user["id"], "work_id": work_id}))
         my_rev = await db.work_reviews.find_one({"user_id": user["id"], "work_id": work_id})
@@ -155,12 +198,98 @@ async def like_work(work_id: str, user: dict = Depends(get_current_user)):
     return {"liked": True}
 
 
+# ---------- comments ----------
+
+class WorkCommentBody(BaseModel):
+    text: str = Field(min_length=1, max_length=1000)
+
+
+@router.get("/works/{work_id}/comments")
+async def list_work_comments(work_id: str, request: Request):
+    w = await db.works.find_one({"_id": oid(work_id)})
+    if not w or w["status"] != "published":
+        raise HTTPException(status_code=404, detail="العمل غير موجود")
+    user = await get_optional_user(request)
+    docs = await db.work_comments.find({"work_id": work_id}).sort("created_at", 1).to_list(500)
+    out = []
+    for c in docs:
+        d = ser(c)
+        d["mine"] = bool(user and user["id"] == c["user_id"])
+        out.append(d)
+    return out
+
+
+@router.post("/works/{work_id}/comments")
+async def comment_work(work_id: str, body: WorkCommentBody, user: dict = Depends(get_current_user)):
+    w = await db.works.find_one({"_id": oid(work_id)})
+    if not w or w["status"] != "published":
+        raise HTTPException(status_code=404, detail="العمل غير موجود")
+    doc = {"work_id": work_id, "user_id": user["id"], "user_name": user["name"],
+           "text": body.text.strip(), "created_at": now_iso()}
+    res = await db.work_comments.insert_one(doc)
+    if w["author_id"] != user["id"]:
+        await create_notification(w["author_id"], "studio", "تعليق جديد على عملك 💬",
+                                  f"{user['name']}: {doc['text'][:80]}", f"/studio/{work_id}")
+    d = ser({**doc, "_id": res.inserted_id})
+    d["mine"] = True
+    return d
+
+
+@router.delete("/works/{work_id}/comments/{comment_id}")
+async def delete_work_comment(work_id: str, comment_id: str, user: dict = Depends(get_current_user)):
+    c = await db.work_comments.find_one({"_id": oid(comment_id), "work_id": work_id})
+    if not c:
+        raise HTTPException(status_code=404, detail="التعليق غير موجود")
+    w = await db.works.find_one({"_id": oid(work_id)})
+    is_staff = ("studio.review" in effective_permissions(user)
+                or user.get("role") in ("admin", "super_admin"))
+    if c["user_id"] != user["id"] and (not w or w["author_id"] != user["id"]) and not is_staff:
+        raise HTTPException(status_code=403, detail="لا تملك صلاحية حذف هذا التعليق")
+    await db.work_comments.delete_one({"_id": c["_id"]})
+    return {"status": "deleted"}
+
+
+# ---------- spotlight ----------
+
+@router.get("/spotlight")
+async def studio_spotlight():
+    """أبرز المبدعين: أكثر المؤلفين تلقياً للإعجاب خلال آخر 7 أيام."""
+    since = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
+    likes = await db.work_likes.find({"created_at": {"$gte": since}}).to_list(10000)
+    work_ids = list({l["work_id"] for l in likes})
+    works = {}
+    if work_ids:
+        async for w in db.works.find({"_id": {"$in": [oid(i) for i in work_ids]}}):
+            works[str(w["_id"])] = w
+    per_author = {}
+    for l in likes:
+        w = works.get(l["work_id"])
+        if not w:
+            continue
+        a = per_author.setdefault(w["author_id"], {"likes": 0, "name": w.get("author_name")})
+        a["likes"] += 1
+    items = []
+    for author_id, a in per_author.items():
+        works_count = await db.works.count_documents({"author_id": author_id, "status": "published"})
+        u = await db.users.find_one({"_id": oid(author_id)}, {"name": 1})
+        items.append({"user": {"id": author_id, "name": (u or {}).get("name") or a.get("name") or ""},
+                      "likes": a["likes"], "works_count": works_count})
+    items.sort(key=lambda x: -x["likes"])
+    return {"items": items[:5]}
+
+
 # ---------- moderation ----------
 
 @router.get("/queue")
 async def review_queue(user: dict = Depends(require_permission("studio.review"))):
     docs = await db.works.find({"status": "pending"}).sort("submitted_at", 1).to_list(100)
-    return [_work_out(w) for w in docs]
+    cmap = await _comments_map([str(w["_id"]) for w in docs])
+    out = []
+    for w in docs:
+        d = _work_out(w)
+        d["comments_count"] = cmap.get(str(w["_id"]), 0)
+        out.append(d)
+    return out
 
 
 class ReviewBody(BaseModel):

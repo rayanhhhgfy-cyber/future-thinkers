@@ -1,6 +1,8 @@
 from fastapi import APIRouter, HTTPException, Depends, Request
+from fastapi.responses import Response
 from pydantic import BaseModel, Field
 from bson import ObjectId
+from datetime import datetime, timezone
 from db import db, ser, sers, oid, now_iso
 from auth import get_current_user, get_optional_user, require_permission, effective_permissions
 from services import award_xp, bump_stat, create_notification, audit_log
@@ -77,12 +79,22 @@ async def get_event(eid: str, request: Request):
         raise HTTPException(status_code=404, detail="الفعالية غير موجودة")
     d = ser(e)
     d["registered_count"] = await db.event_registrations.count_documents({"event_id": eid})
+    d["waitlist_count"] = await db.event_registrations.count_documents(
+        {"event_id": eid, "status": "waitlist"})
+    d["rating_avg"] = e.get("rating_avg", 0)
+    d["rating_count"] = e.get("rating_count", 0)
+    d["my_status"] = None
+    d["my_rating"] = None
     user = await get_optional_user(request)
     if user:
         reg = await db.event_registrations.find_one({"event_id": eid, "user_id": user["id"]})
         d["is_registered"] = bool(reg)
         d["qr_code"] = reg.get("qr_code") if reg else None
         d["checked_in"] = reg.get("checked_in", False) if reg else False
+        d["my_status"] = reg.get("status") if reg else None
+        rating = await db.event_ratings.find_one({"event_id": eid, "user_id": user["id"]})
+        d["my_rating"] = ({"stars": rating["stars"], "text": rating.get("text", "")}
+                          if rating else None)
     return d
 
 
@@ -123,6 +135,7 @@ async def delete_event(eid: str, request: Request, user: dict = Depends(require_
         raise HTTPException(status_code=404, detail="الفعالية غير موجودة")
     await db.events.delete_one({"_id": e["_id"]})
     await db.event_registrations.delete_many({"event_id": eid})
+    await db.event_ratings.delete_many({"event_id": eid})
     await audit_log(user, "event_delete", "event", eid, request=request)
     return {"ok": True}
 
@@ -134,26 +147,48 @@ async def register_event(eid: str, user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=404, detail="الفعالية غير موجودة")
     if await db.event_registrations.find_one({"event_id": eid, "user_id": user["id"]}):
         return {"registered": True}
-    count = await db.event_registrations.count_documents({"event_id": eid})
-    waitlist = count >= e.get("capacity", 100)
+    confirmed = await db.event_registrations.count_documents(
+        {"event_id": eid, "status": {"$ne": "waitlist"}})
+    waitlisted = confirmed >= e.get("capacity", 100)
     qr = secrets.token_hex(8).upper()
     checkin_code = await _new_checkin_code(eid)
+    created = now_iso()
     await db.event_registrations.insert_one({
         "event_id": eid, "event_title": e["title"], "user_id": user["id"], "user_name": user["name"],
-        "status": "waitlist" if waitlist else "confirmed", "qr_code": qr,
+        "status": "waitlist" if waitlisted else "confirmed", "qr_code": qr,
         "checkin_code": checkin_code, "attended": False,
-        "checked_in": False, "created_at": now_iso()})
-    if not waitlist:
+        "checked_in": False, "created_at": created})
+    position = None
+    if waitlisted:
+        position = await db.event_registrations.count_documents(
+            {"event_id": eid, "status": "waitlist", "created_at": {"$lte": created}})
+    if not waitlisted:
         await bump_stat(user["id"], "events", 1)
         s = await db.settings.find_one({"key": "points_config"})
         await award_xp(user["id"], (s or {}).get("value", {}).get("join_event", 25), "التسجيل في فعالية", eid)
-    await create_notification(user["id"], "event", "تم تسجيلك في الفعالية" + (" (قائمة انتظار)" if waitlist else " ✅"), e["title"], f"/events/{eid}")
-    return {"registered": True, "waitlist": waitlist, "qr_code": qr}
+    await create_notification(user["id"], "event", "تم تسجيلك في الفعالية" + (" (قائمة انتظار)" if waitlisted else " ✅"), e["title"], f"/events/{eid}")
+    return {"registered": True, "waitlist": waitlisted, "waitlisted": waitlisted,
+            "position": position, "qr_code": qr}
 
 
 @router.post("/events/{eid}/unregister")
 async def unregister_event(eid: str, user: dict = Depends(get_current_user)):
+    reg = await db.event_registrations.find_one({"event_id": eid, "user_id": user["id"]})
     await db.event_registrations.delete_one({"event_id": eid, "user_id": user["id"]})
+    # تحرير مقعد؟ رقِّ أول منتظر في قائمة الانتظار وأعلمه
+    if reg and reg.get("status") != "waitlist":
+        nxt = await db.event_registrations.find_one(
+            {"event_id": eid, "status": "waitlist"}, sort=[("created_at", 1)])
+        if nxt:
+            await db.event_registrations.update_one(
+                {"_id": nxt["_id"]}, {"$set": {"status": "confirmed"}})
+            await bump_stat(nxt["user_id"], "events", 1)
+            s = await db.settings.find_one({"key": "points_config"})
+            await award_xp(nxt["user_id"], (s or {}).get("value", {}).get("join_event", 25),
+                           "التسجيل في فعالية", eid)
+            await create_notification(nxt["user_id"], "event", "صار لك مقعد 🎉",
+                                      f"أصبح لديك مقعد مؤكد في «{nxt.get('event_title', '')}»",
+                                      f"/events/{eid}")
     return {"registered": False}
 
 
@@ -188,13 +223,14 @@ async def require_event_manager(user: dict = Depends(get_current_user)):
 async def my_registration(event_id: str, user: dict = Depends(get_current_user)):
     reg = await db.event_registrations.find_one({"event_id": event_id, "user_id": user["id"]})
     if not reg:
-        return {"registered": False, "checkin_code": None, "attended": False}
+        return {"registered": False, "checkin_code": None, "attended": False, "status": None}
     if not reg.get("checkin_code"):
         code = await _new_checkin_code(event_id)
         await db.event_registrations.update_one({"_id": reg["_id"]}, {"$set": {"checkin_code": code}})
         reg["checkin_code"] = code
     return {"registered": True, "checkin_code": reg["checkin_code"],
-            "attended": bool(reg.get("attended") or reg.get("checked_in"))}
+            "attended": bool(reg.get("attended") or reg.get("checked_in")),
+            "status": reg.get("status")}
 
 
 @router.post("/events/{event_id}/checkin")
@@ -213,6 +249,44 @@ async def checkin_event(event_id: str, body: CheckinBody, user: dict = Depends(r
         {"$set": {"attended": True, "checked_in": True, "checkin_at": now_iso()}})
     await award_xp(reg["user_id"], 15, "حضور فعالية", event_id)
     return {"ok": True, "name": reg["user_name"]}
+
+
+# ---------------- Event ratings ----------------
+class EventRateBody(BaseModel):
+    stars: int = Field(ge=1, le=5)
+    text: str = ""
+
+
+async def _recalc_event_rating(event_id: str):
+    agg = await db.event_ratings.aggregate([{"$match": {"event_id": event_id}},
+        {"$group": {"_id": None, "avg": {"$avg": "$stars"}, "count": {"$sum": 1}}}]).to_list(1)
+    if agg:
+        avg, count = round(agg[0]["avg"], 1), agg[0]["count"]
+    else:
+        avg, count = 0, 0
+    await db.events.update_one({"_id": oid(event_id)},
+        {"$set": {"rating_avg": avg, "rating_count": count}})
+    return avg, count
+
+
+@router.post("/events/{eid}/rate")
+async def rate_event(eid: str, body: EventRateBody, user: dict = Depends(get_current_user)):
+    e = await db.events.find_one({"_id": oid(eid)})
+    if not e:
+        raise HTTPException(status_code=404, detail="الفعالية غير موجودة")
+    reg = await db.event_registrations.find_one({"event_id": eid, "user_id": user["id"]})
+    if not reg or not (reg.get("attended") or reg.get("checked_in")):
+        raise HTTPException(status_code=403, detail="يمكنك تقييم الفعالية بعد تسجيل حضورك فيها")
+    try:
+        await db.event_ratings.create_index([("event_id", 1), ("user_id", 1)], unique=True)
+    except Exception:
+        pass
+    await db.event_ratings.update_one({"event_id": eid, "user_id": user["id"]},
+        {"$set": {"stars": body.stars, "text": body.text.strip(), "user_name": user["name"],
+                  "updated_at": now_iso()},
+         "$setOnInsert": {"created_at": now_iso()}}, upsert=True)
+    avg, count = await _recalc_event_rating(eid)
+    return {"ok": True, "rating_avg": avg, "rating_count": count}
 
 
 # ---------------- Competitions ----------------
@@ -387,3 +461,60 @@ async def competition_leaderboard(cid: str):
         out.append({"rank": i + 1, "user_name": e["user_name"], "school_name": e.get("school_name"),
                     "score": e.get("score", 0), "correct": e.get("correct", 0), "total": e.get("total", 0)})
     return out
+
+
+# ---------------- Calendar export (.ics) ----------------
+def _ics_escape(s) -> str:
+    return str(s or "").replace("\\", "\\\\").replace(";", "\\;") \
+        .replace(",", "\\,").replace("\r\n", "\\n").replace("\n", "\\n")
+
+
+@router.get("/calendar/export.ics")
+async def calendar_export(user: dict = Depends(get_current_user)):
+    today = datetime.now(timezone.utc).date().isoformat()
+    docs = await db.events.find({"status": "published", "date": {"$gte": today}}) \
+        .sort("date", 1).to_list(500)
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    lines = [
+        "BEGIN:VCALENDAR",
+        "VERSION:2.0",
+        "PRODID:-//FutureThinkers//Events//AR",
+        "CALSCALE:GREGORIAN",
+        "METHOD:PUBLISH",
+        "BEGIN:VTIMEZONE",
+        "TZID:Asia/Amman",
+        "BEGIN:STANDARD",
+        "DTSTART:19700101T000000",
+        "TZOFFSETFROM:+0300",
+        "TZOFFSETTO:+0300",
+        "TZNAME:EET",
+        "END:STANDARD",
+        "END:VTIMEZONE",
+    ]
+    import re as _re
+    for e in docs:
+        d = _re.sub(r"[^0-9]", "", str(e.get("date") or ""))[:8]
+        if len(d) < 8:
+            continue
+        tm = _re.match(r"(\d{1,2})[:.](\d{2})", str(e.get("time") or ""))
+        hh, mm = (10, 0)
+        if tm:
+            hh, mm = min(23, int(tm.group(1))), min(59, int(tm.group(2)))
+        start = f"{d}T{hh:02d}{mm:02d}00"
+        end = f"{d}T{(hh + 2) % 24:02d}{mm:02d}00"
+        loc = "عن بُعد (أونلاين)" if e.get("mode") == "online" else (e.get("location") or "")
+        lines += [
+            "BEGIN:VEVENT",
+            f"UID:event-{e['_id']}@future-thinkers",
+            f"DTSTAMP:{stamp}",
+            f"DTSTART;TZID=Asia/Amman:{start}",
+            f"DTEND;TZID=Asia/Amman:{end}",
+            f"SUMMARY:{_ics_escape(e.get('title'))}",
+            f"DESCRIPTION:{_ics_escape(e.get('description'))}",
+            f"LOCATION:{_ics_escape(loc)}",
+            "END:VEVENT",
+        ]
+    lines.append("END:VCALENDAR")
+    return Response(content="\r\n".join(lines),
+                    media_type="text/calendar; charset=utf-8",
+                    headers={"Content-Disposition": "attachment; filename=future-thinkers-calendar.ics"})

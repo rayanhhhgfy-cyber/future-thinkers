@@ -1,12 +1,19 @@
 from fastapi import APIRouter, HTTPException, Depends, Query, Request
 from pydantic import BaseModel, Field
 from bson import ObjectId
+from datetime import datetime, timedelta, timezone
 import re
 import secrets
 import unicodedata
 from db import db, ser, sers, oid, now_iso
-from auth import get_current_user, get_optional_user, require_permission
+from auth import get_current_user, get_optional_user, require_permission, effective_permissions
 from services import award_xp, bump_stat, create_notification, audit_log
+
+try:
+    from zoneinfo import ZoneInfo
+    _AMMAN = ZoneInfo("Asia/Amman")
+except Exception:  # pragma: no cover - tzdata missing fallback
+    _AMMAN = timezone(timedelta(hours=3))
 
 router = APIRouter(prefix="/api")
 
@@ -30,6 +37,58 @@ class ClubPatchBody(BaseModel):
     description: str | None = None
     icon: str | None = None
     color: str | None = None
+
+
+async def _club_or_404(slug: str) -> dict:
+    c = await db.clubs.find_one({"slug": slug})
+    if not c:
+        raise HTTPException(status_code=404, detail="النادي غير موجود")
+    return c
+
+
+def _club_manager(user: dict | None, club: dict) -> bool:
+    """مؤسس النادي (created_by) أو إدارة المنصة · لا توجد رتب داخل عضوية الأندية."""
+    if not user:
+        return False
+    if user.get("role") in ("admin", "super_admin"):
+        return True
+    if club.get("created_by") and club["created_by"] == user["id"]:
+        return True
+    return "club.edit" in effective_permissions(user)
+
+
+def _month_key() -> str:
+    n = datetime.now(_AMMAN)
+    return f"{n.year:04d}-{n.month:02d}"
+
+
+async def _club_member_rows(slug: str):
+    """أعضاء النادي مع لقطة XP شهرية كسولة (Asia/Amman) كنمط دوائر الدراسة الأسبوعي."""
+    mems = await db.club_members.find({"club_slug": slug}).to_list(500)
+    if not mems:
+        return []
+    key = _month_key()
+    ids = [o for o in (oid(m["user_id"]) for m in mems) if o]
+    users = {}
+    if ids:
+        async for u in db.users.find({"_id": {"$in": ids}}):
+            users[str(u["_id"])] = u
+    rows = []
+    for m in mems:
+        u = users.get(m["user_id"])
+        if not u:
+            continue
+        xp = u.get("xp", 0)
+        if m.get("month_key") != key:
+            await db.club_members.update_one({"_id": m["_id"]},
+                {"$set": {"month_key": key, "month_base": xp}})
+            m["month_key"], m["month_base"] = key, xp
+        rows.append({
+            "id": str(u["_id"]), "name": u["name"], "school_name": u.get("school_name"),
+            "xp": xp, "level": u.get("level", 1), "avatar_url": u.get("avatar_url"),
+            "month_xp": max(0, xp - m.get("month_base", xp)),
+        })
+    return rows
 @router.get("/clubs")
 async def list_clubs(request: Request):
     docs = await db.clubs.find({}).to_list(50)
@@ -126,11 +185,67 @@ async def leave_club(slug: str, user: dict = Depends(get_current_user)):
 
 @router.get("/clubs/{slug}/members")
 async def club_members(slug: str, limit: int = 50):
-    mems = await db.club_members.find({"club_slug": slug}).limit(limit).to_list(limit)
-    ids = [oid(m["user_id"]) for m in mems if oid(m["user_id"])]
-    users = await db.users.find({"_id": {"$in": ids}}).to_list(limit)
-    return [{"id": str(u["_id"]), "name": u["name"], "school_name": u.get("school_name"),
-             "xp": u.get("xp", 0), "level": u.get("level", 1), "avatar_url": u.get("avatar_url")} for u in users]
+    rows = await _club_member_rows(slug)
+    return rows[:limit]
+
+
+@router.get("/clubs/{slug}/leaders")
+async def club_leaders(slug: str, period: str = "all"):
+    await _club_or_404(slug)
+    rows = await _club_member_rows(slug)
+    field = "month_xp" if period == "month" else "xp"
+    rows.sort(key=lambda r: -r[field])
+    return [{**r, "rank": i + 1} for i, r in enumerate(rows[:10])]
+
+
+# ---------- Club announcements ----------
+
+class ClubAnnouncementBody(BaseModel):
+    title: str = Field(default="", max_length=120)
+    text: str = Field(min_length=1, max_length=2000)
+
+
+@router.get("/clubs/{slug}/announcements")
+async def list_club_announcements(slug: str, request: Request):
+    await _club_or_404(slug)
+    user = await get_optional_user(request)
+    docs = await db.club_announcements.find({"club_slug": slug}).sort("created_at", -1).to_list(100)
+    out = []
+    for a in docs:
+        d = ser(a)
+        d["mine"] = bool(user and user["id"] == a["author_id"])
+        out.append(d)
+    return out
+
+
+@router.post("/clubs/{slug}/announcements")
+async def create_club_announcement(slug: str, body: ClubAnnouncementBody,
+                                   user: dict = Depends(get_current_user)):
+    c = await _club_or_404(slug)
+    if not _club_manager(user, c):
+        raise HTTPException(status_code=403, detail="إعلانات النادي ينشرها مؤسس النادي أو الإدارة فقط")
+    doc = {"club_slug": slug, "author_id": user["id"], "author_name": user["name"],
+           "title": body.title.strip(), "text": body.text.strip(), "created_at": now_iso()}
+    res = await db.club_announcements.insert_one(doc)
+    note_body = ((doc["title"] + " · ") if doc["title"] else "") + doc["text"]
+    mems = await db.club_members.find({"club_id": str(c["_id"])}).to_list(1000)
+    for m in mems:
+        if m["user_id"] != user["id"]:
+            await create_notification(m["user_id"], "club", "إعلان من ناديك 📣",
+                                      note_body[:140], f"/clubs/{slug}")
+    return ser({**doc, "_id": res.inserted_id})
+
+
+@router.delete("/clubs/{slug}/announcements/{ann_id}")
+async def delete_club_announcement(slug: str, ann_id: str, user: dict = Depends(get_current_user)):
+    c = await _club_or_404(slug)
+    a = await db.club_announcements.find_one({"_id": oid(ann_id), "club_slug": slug})
+    if not a:
+        raise HTTPException(status_code=404, detail="الإعلان غير موجود")
+    if a["author_id"] != user["id"] and not _club_manager(user, c):
+        raise HTTPException(status_code=403, detail="لا تملك صلاحية حذف هذا الإعلان")
+    await db.club_announcements.delete_one({"_id": a["_id"]})
+    return {"status": "deleted"}
 
 
 # ---------- Discussions (forum) ----------
@@ -217,9 +332,12 @@ async def reply_discussion(disc_id: str, body: ReplyBody, user: dict = Depends(g
     await bump_stat(user["id"], "posts", 1)
     s = await db.settings.find_one({"key": "points_config"})
     await award_xp(user["id"], (s or {}).get("value", {}).get("reply_discussion", 8), "رد في نقاش", disc_id)
-    for follower in d.get("followers", []):
+    followers = set(d.get("followers", []))
+    async for f in db.community_follows.find({"post_id": disc_id}, {"user_id": 1}):
+        followers.add(f["user_id"])
+    for follower in followers:
         if follower != user["id"]:
-            await create_notification(follower, "reply", "رد جديد على نقاش تتابعه", d["title"], f"/discussions/{disc_id}")
+            await create_notification(follower, "reply", "رد جديد في موضوع تتابعه", d["title"], f"/discussions/{disc_id}")
     return {"id": str(res.inserted_id)}
 
 
@@ -273,3 +391,73 @@ async def delete_discussion(disc_id: str, user: dict = Depends(get_current_user)
     await db.discussions.delete_one({"_id": d["_id"]})
     await db.discussion_replies.delete_many({"discussion_id": disc_id})
     return {"ok": True}
+
+
+# ---------- Community topics (مواضيع المجتمع · فوق نقاشات المنتدى) ----------
+@router.get("/community/contributors")
+async def community_contributors():
+    since = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
+    scores: dict = {}
+
+    def _add(author_id, likes):
+        if not author_id:
+            return
+        s = scores.setdefault(author_id, {"posts": 0, "likes_received": 0})
+        s["posts"] += 1
+        s["likes_received"] += int(likes or 0)
+
+    async for d in db.discussions.find(
+            {"created_at": {"$gte": since}}, {"author_id": 1, "likes_count": 1}):
+        _add(d.get("author_id"), d.get("likes_count"))
+    async for r in db.discussion_replies.find(
+            {"created_at": {"$gte": since}}, {"author_id": 1, "likes_count": 1}):
+        _add(r.get("author_id"), r.get("likes_count"))
+    top = sorted(scores.items(), key=lambda kv: -(kv[1]["posts"] + kv[1]["likes_received"]))[:8]
+    items = []
+    for uid_, s in top:
+        u = await db.users.find_one({"_id": oid(uid_)}, {"name": 1, "avatar_url": 1})
+        items.append({"user": {"id": uid_, "name": (u or {}).get("name", "طالب"),
+                               "avatar_url": (u or {}).get("avatar_url")},
+                      "posts": s["posts"], "likes_received": s["likes_received"],
+                      "score": s["posts"] + s["likes_received"]})
+    return {"items": items}
+
+
+@router.get("/community/posts")
+async def community_posts(request: Request, sort: str = "newest", page: int = 1, limit: int = 15):
+    query: dict = {}
+    if sort == "unanswered":
+        query["replies_count"] = 0
+        sf = ("created_at", -1)
+    elif sort == "active":
+        sf = ("last_activity", -1)
+    else:
+        sf = ("created_at", -1)
+    total = await db.discussions.count_documents(query)
+    docs = await db.discussions.find(query).sort(*sf).skip((page - 1) * limit).limit(limit).to_list(limit)
+    viewer = await get_optional_user(request)
+    items = []
+    for d in sers(docs):
+        d["reply_count"] = d.get("replies_count", 0)
+        d["followers_count"] = await db.community_follows.count_documents({"post_id": d["id"]})
+        d["following"] = bool(viewer and await db.community_follows.find_one(
+            {"post_id": d["id"], "user_id": viewer["id"]}))
+        items.append(d)
+    return {"items": items, "total": total, "page": page}
+
+
+@router.post("/community/posts/{post_id}/follow")
+async def community_follow(post_id: str, user: dict = Depends(get_current_user)):
+    d = await db.discussions.find_one({"_id": oid(post_id)})
+    if not d:
+        raise HTTPException(status_code=404, detail="الموضوع غير موجود")
+    existing = await db.community_follows.find_one({"post_id": post_id, "user_id": user["id"]})
+    if existing:
+        await db.community_follows.delete_one({"_id": existing["_id"]})
+        following = False
+    else:
+        await db.community_follows.insert_one(
+            {"post_id": post_id, "user_id": user["id"], "created_at": now_iso()})
+        following = True
+    count = await db.community_follows.count_documents({"post_id": post_id})
+    return {"following": following, "followers_count": count}
