@@ -5,7 +5,7 @@ import api, { fileUrl, apiErr } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import { Newspaper, CalendarDays, ArrowLeft, Sparkles, LayoutGrid, Eye, TrendingUp, MessageCircle, Send, Trash2, BookOpen, Loader2, Clock3, Flame, Zap, Trophy, Megaphone, Radio } from "lucide-react";
+import { Newspaper, CalendarDays, ArrowLeft, Sparkles, LayoutGrid, Eye, MessageCircle, Send, Trash2, BookOpen, Loader2, Clock3, Flame, Zap, Trophy, Megaphone, Radio } from "lucide-react";
 
 /* قراءة تقريبية بعدد الدقائق · عرض فقط */
 const readMinutes = (body) => Math.max(1, Math.round((body?.length || 0) / 900));
@@ -23,19 +23,23 @@ const COVER_GRADS = [
 ];
 const coverGrad = (seed) => COVER_GRADS[Math.abs(String(seed || "").split("").reduce((a, c) => a + c.charCodeAt(0), 0)) % COVER_GRADS.length];
 
+/* تاريخ الخبر وعدد الأيام منذ نشره · تنظيم الأرشيف فقط */
+const storyDate = (n) => {
+  const raw = n?.created_at || n?.date;
+  if (!raw) return null;
+  const d = new Date(raw);
+  return Number.isNaN(d.getTime()) ? null : d;
+};
+const startOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+const dayDiff = (d) => Math.round((startOfDay(new Date()) - startOfDay(d)) / 86400000);
+
 export default function News() {
   const [data, setData] = useState(null);
   const [cat, setCat] = useState("");
   const [expanded, setExpanded] = useState(null);
-  const [digest, setDigest] = useState(null);
-  const [trending, setTrending] = useState([]);
   const viewedRef = useRef(new Set());
   useEffect(() => {
     api.get("/news").then((r) => setData(r.data));
-    api.get("/news/digest").then((r) => setDigest(r.data)).catch(() => setDigest(null));
-    api.get("/news/trending")
-      .then((r) => { const d = r.data; setTrending(Array.isArray(d) ? d : d?.items || []); })
-      .catch(() => setTrending([]));
   }, []);
 
   const all = data?.items || [];
@@ -50,7 +54,7 @@ export default function News() {
     api.post(`/news/${id}/view`).catch(() => {});
   };
   const toggle = (id) => { if (expanded !== id) pingView(id); setExpanded((x) => (x === id ? null : id)); };
-  /* Open an article from the trending rail / digest / breaking bar (scroll + expand). */
+  /* Open an article from the breaking bar / explorer / archive (scroll + expand). */
   const openArticle = (id) => {
     if (!id) return;
     setCat("");
@@ -58,9 +62,39 @@ export default function News() {
     setExpanded(id);
     setTimeout(() => document.getElementById(`news-article-${id}`)?.scrollIntoView({ behavior: "smooth", block: "start" }), 90);
   };
-  const digestNews = digest ? (digest.top_news || (Array.isArray(digest.news) ? digest.news[0] : digest.news)) : null;
-  const digestEvent = digest ? (digest.top_event || digest.event) : null;
-  const digestBook = digest ? (digest.top_book || digest.book) : null;
+  /* Apply a category from the explorer (re-click clears) and glide to the stream. */
+  const exploreCategory = (c) => {
+    setCat((cur) => (cur === c ? "" : c));
+    setTimeout(() => document.getElementById("news-stream")?.scrollIntoView({ behavior: "smooth", block: "start" }), 90);
+  };
+  /* استكشاف التصنيفات · بطاقة لكل تصنيف حاضر في البيانات */
+  const catCards = cats.map((c) => {
+    const list = all.filter((n) => n.category === c);
+    return { name: c, count: list.length, newest: list[0] };
+  });
+  /* أرشيف الأسبوع · الأخبار مجمّعة حسب اليوم (آخر ٧ أيام) */
+  const weekGroups = (() => {
+    const byDay = new Map();
+    all.forEach((n) => {
+      const d = storyDate(n);
+      if (!d) return;
+      const diff = dayDiff(d);
+      if (diff < 0 || diff > 6) return;
+      if (!byDay.has(diff)) byDay.set(diff, []);
+      byDay.get(diff).push(n);
+    });
+    return [...byDay.keys()].sort((a, b) => a - b).map((diff) => {
+      const list = byDay.get(diff);
+      const d = storyDate(list[0]);
+      return {
+        diff,
+        label: diff === 0 ? "اليوم" : diff === 1 ? "أمس" : d.toLocaleDateString("ar", { weekday: "long" }),
+        dateLine: d.toLocaleDateString("ar", { day: "numeric", month: "long" }),
+        items: list,
+      };
+    });
+  })();
+  const weekCount = weekGroups.reduce((s, g) => s + g.items.length, 0);
   const todayLine = new Date().toLocaleDateString("ar", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 
   return (
@@ -138,10 +172,10 @@ export default function News() {
                     <span className="mt-1 block text-[10px] font-bold text-white/60">تصنيف</span>
                   </span>
                 )}
-                {trending.length > 0 && (
+                {weekCount > 0 && (
                   <span className="rounded-2xl bg-white/10 px-4 py-2.5 text-center ring-1 ring-white/15 backdrop-blur">
-                    <span className="block font-head text-lg font-black leading-none">{trending.length}</span>
-                    <span className="mt-1 block text-[10px] font-bold text-white/60">الأكثر قراءة</span>
+                    <span className="block font-head text-lg font-black leading-none">{weekCount}</span>
+                    <span className="mt-1 block text-[10px] font-bold text-white/60">خبر هذا الأسبوع</span>
                   </span>
                 )}
               </div>
@@ -176,64 +210,65 @@ export default function News() {
           {!data ? (
             <div className="space-y-4">
               <Skeleton className="h-64 rounded-[1.6rem] sm:h-80 sm:rounded-[2rem]" />
-              <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
-                <div className="space-y-4">
-                  {Array.from({ length: 4 }).map((_, i) => (
-                    <div key={i} className="flex gap-4 rounded-[1.6rem] bg-white p-4 ring-1 ring-slate-100 sm:p-5">
-                      <div className="min-w-0 flex-1 space-y-3 py-1">
-                        <Skeleton className="h-4 w-1/3 rounded-full" />
-                        <Skeleton className="h-6 w-4/5 rounded-lg" />
-                        <Skeleton className="h-4 w-2/3 rounded-lg" />
-                        <Skeleton className="h-4 w-1/2 rounded-full" />
-                      </div>
-                      <Skeleton className="h-28 w-28 shrink-0 rounded-2xl sm:h-32 sm:w-44" />
+              <div className="mx-auto max-w-4xl space-y-4">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="flex gap-4 rounded-[1.6rem] bg-white p-4 ring-1 ring-slate-100 sm:p-5">
+                    <div className="min-w-0 flex-1 space-y-3 py-1">
+                      <Skeleton className="h-4 w-1/3 rounded-full" />
+                      <Skeleton className="h-6 w-4/5 rounded-lg" />
+                      <Skeleton className="h-4 w-2/3 rounded-lg" />
+                      <Skeleton className="h-4 w-1/2 rounded-full" />
                     </div>
-                  ))}
-                </div>
-                <div className="hidden space-y-3 lg:block">
-                  {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-32 rounded-[1.6rem]" />)}
-                </div>
+                    <Skeleton className="h-28 w-28 shrink-0 rounded-2xl sm:h-32 sm:w-44" />
+                  </div>
+                ))}
               </div>
             </div>
           )
             : data.items.length === 0 ? <EmptyState icon={Newspaper} title="لا أخبار بعد" desc="تابعنا لآخر المستجدات" />
             : (
               <>
-                {/* ===== ملخص الأسبوع ===== */}
-                {(digestNews || digestEvent || digestBook) && (
-                  <section data-testid="news-digest" className="relative mb-6 overflow-hidden rounded-[1.6rem] bg-gradient-to-bl from-slate-950 via-blue-950 to-slate-900 p-5 ft-shadow-lg animate-fade-up sm:mb-8 sm:rounded-[2rem] sm:p-7">
-                    <div className="pointer-events-none absolute -top-16 left-10 h-44 w-44 rounded-full bg-cyan-400/15 blur-3xl" />
-                    <div className="pointer-events-none absolute -bottom-20 right-16 h-44 w-44 rounded-full bg-emerald-400/15 blur-3xl" />
-                    <div className="relative flex flex-wrap items-center gap-3">
-                      <span className="grid h-11 w-11 place-items-center rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-lg shadow-amber-500/30"><Sparkles className="h-5 w-5" /></span>
+                {/* ===== استكشف بالتصنيفات ===== */}
+                {catCards.length > 1 && (
+                  <section data-testid="news-explorer" className="mb-6 animate-fade-up sm:mb-8">
+                    <div className="mb-3.5 flex items-center gap-2.5 px-0.5">
+                      <span className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-blue-600 to-cyan-500 text-white shadow-lg shadow-blue-600/25"><LayoutGrid className="h-4 w-4" /></span>
                       <div>
-                        <h2 className="font-head text-xl font-extrabold text-white sm:text-2xl">ملخص الأسبوع</h2>
-                        <p className="text-xs font-semibold text-white/60">أبرز ما حدث في النادي هذا الأسبوع · في ثلاث لمحات</p>
+                        <h2 className="font-head text-base font-extrabold leading-tight text-slate-900">استكشف بالتصنيفات</h2>
+                        <p className="text-[11px] font-semibold text-slate-400">اختر تصنيفًا لتصفية مجرى الأخبار مباشرة</p>
                       </div>
-                      <span className="ms-auto hidden rounded-full bg-white/[0.07] px-3 py-1.5 text-[11px] font-extrabold text-white/60 ring-1 ring-white/10 sm:inline-flex">نشرة أسبوعية</span>
-                    </div>
-                    <div className="relative mt-5 grid gap-3 sm:grid-cols-3">
-                      {digestNews?.title && (
-                        <button onClick={() => openArticle(digestNews.id)} className="pressable group rounded-3xl bg-white/[0.07] p-4 text-start ring-1 ring-white/10 backdrop-blur transition duration-300 hover:bg-white/[0.12] hover:ring-white/20 sm:p-5">
-                          <span className="inline-flex items-center gap-1.5 rounded-full bg-sky-400/15 px-2.5 py-1 text-[11px] font-extrabold text-sky-300 ring-1 ring-sky-300/25"><Newspaper className="h-3.5 w-3.5" /> أبرز خبر</span>
-                          <h3 className="mt-3 font-head text-[15px] font-bold leading-snug text-white line-clamp-2 sm:text-base">{digestNews.title}</h3>
-                          {digestNews.views != null && <span className="mt-3 inline-flex items-center gap-1.5 text-[11px] font-bold text-white/50"><Eye className="h-3.5 w-3.5 text-cyan-300" />{digestNews.views} قراءة</span>}
+                      {cat && (
+                        <button onClick={() => setCat("")} className="pressable ms-auto inline-flex min-h-[36px] items-center gap-1.5 rounded-full bg-slate-900 px-3.5 text-[11px] font-extrabold text-white shadow-md transition hover:bg-slate-700">
+                          عرض الكل
+                          <span className="rounded-full bg-white/20 px-1.5 py-0.5 text-[10px]">{all.length}</span>
                         </button>
                       )}
-                      {digestEvent?.title && (
-                        <Link to={`/events/${digestEvent.id}`} className="pressable group rounded-3xl bg-white/[0.07] p-4 ring-1 ring-white/10 backdrop-blur transition duration-300 hover:bg-white/[0.12] hover:ring-white/20 sm:p-5">
-                          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-400/15 px-2.5 py-1 text-[11px] font-extrabold text-emerald-300 ring-1 ring-emerald-300/25"><CalendarDays className="h-3.5 w-3.5" /> فعالية قادمة</span>
-                          <h3 className="mt-3 font-head text-[15px] font-bold leading-snug text-white line-clamp-2 sm:text-base">{digestEvent.title}</h3>
-                          {digestEvent.date && <span className="mt-3 inline-flex items-center gap-1.5 text-[11px] font-bold text-white/50"><CalendarDays className="h-3.5 w-3.5 text-emerald-300" />{digestEvent.date} {digestEvent.time || ""}</span>}
-                        </Link>
-                      )}
-                      {digestBook?.title && (
-                        <Link to={`/books/${digestBook.id}`} className="pressable group rounded-3xl bg-white/[0.07] p-4 ring-1 ring-white/10 backdrop-blur transition duration-300 hover:bg-white/[0.12] hover:ring-white/20 sm:p-5">
-                          <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-400/15 px-2.5 py-1 text-[11px] font-extrabold text-amber-300 ring-1 ring-amber-300/25"><BookOpen className="h-3.5 w-3.5" /> كتاب مختار</span>
-                          <h3 className="mt-3 font-head text-[15px] font-bold leading-snug text-white line-clamp-2 sm:text-base">{digestBook.title}</h3>
-                          {digestBook.author && <span className="mt-3 inline-flex items-center gap-1.5 text-[11px] font-bold text-white/50"><BookOpen className="h-3.5 w-3.5 text-amber-300" />{digestBook.author}</span>}
-                        </Link>
-                      )}
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 sm:gap-3.5 lg:grid-cols-4">
+                      {catCards.map((c, ci) => {
+                        const Icon = CAT_ICONS[ci % CAT_ICONS.length];
+                        const active = cat === c.name;
+                        return (
+                          <button key={c.name} onClick={() => exploreCategory(c.name)} data-testid={`news-explorer-card-${ci}`}
+                            className={`pressable group relative overflow-hidden rounded-[1.4rem] text-start ft-shadow transition duration-300 hover:shadow-xl sm:rounded-[1.6rem] ${ci === 0 ? "col-span-2" : ""} ${active ? "ring-4 ring-blue-500/70" : "ring-1 ring-slate-100 hover:ring-blue-200"}`}>
+                            <span className={`absolute inset-0 bg-gradient-to-br ${coverGrad(c.name)}`} />
+                            {c.newest?.cover_url && <img src={fileUrl(c.newest.cover_url)} alt="" className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-[1.05]" />}
+                            <span className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/35 to-slate-950/5" />
+                            <span className={`relative flex flex-col p-4 sm:p-5 ${ci === 0 ? "min-h-[11rem] sm:min-h-[12.5rem]" : "min-h-[9.5rem] sm:min-h-[11rem]"}`}>
+                              <span className="mb-auto flex items-start justify-between gap-2">
+                                <span className="grid h-10 w-10 place-items-center rounded-2xl bg-white/15 text-white ring-1 ring-white/25 backdrop-blur"><Icon className="h-5 w-5" /></span>
+                                <span className="rounded-full bg-slate-950/45 px-2.5 py-1 text-[10px] font-extrabold text-white ring-1 ring-white/20 backdrop-blur">{c.count} خبر</span>
+                              </span>
+                              <span className="font-head text-base font-extrabold leading-snug text-white sm:text-lg">{c.name}</span>
+                              {c.newest && <span className="mt-1 text-xs font-semibold leading-relaxed text-white/70 line-clamp-2">{c.newest.title}</span>}
+                              <span className="mt-2.5 inline-flex items-center gap-1 text-[11px] font-extrabold text-cyan-300">
+                                {active ? "يُعرض الآن · اضغط لعرض الكل" : "تصفّح التصنيف"}
+                                <ArrowLeft className="h-3.5 w-3.5 transition-transform duration-300 group-hover:-translate-x-0.5" />
+                              </span>
+                            </span>
+                          </button>
+                        );
+                      })}
                     </div>
                   </section>
                 )}
@@ -302,44 +337,16 @@ export default function News() {
                       </article>
                     )}
 
-                    {/* ===== مجرى الأخبار + الأكثر قراءة ===== */}
-                    <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem] xl:gap-8">
-                      {/* ===== الأكثر قراءة · تمرير أفقي على الجوال وسكة على الشاشات الكبيرة ===== */}
-                      {trending.length > 0 && (
-                        <aside data-testid="news-trending" className="order-1 min-w-0 animate-fade-up lg:order-2">
-                          <div className="mb-3.5 flex items-center gap-2.5 px-0.5 lg:px-1">
-                            <span className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-rose-500 to-orange-500 text-white shadow-lg shadow-rose-500/25"><TrendingUp className="h-4 w-4" /></span>
-                            <div>
-                              <h2 className="font-head text-base font-extrabold leading-tight text-slate-900">الأكثر قراءة</h2>
-                              <p className="text-[11px] font-semibold text-slate-400">ما يقرأه الأعضاء الآن</p>
-                            </div>
-                            <span className="ms-auto hidden rounded-full bg-rose-50 px-2.5 py-1 text-[10px] font-extrabold text-rose-600 ring-1 ring-rose-100 lg:inline-flex">محدّث باستمرار</span>
-                          </div>
-                          <div className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:px-0 lg:flex-col lg:overflow-visible lg:pb-0">
-                            {trending.slice(0, 8).map((t, i) => (
-                              <button key={t.id} onClick={() => openArticle(t.id)} data-testid={`news-trending-${t.id}`}
-                                className="pressable group relative w-[15.5rem] shrink-0 snap-start overflow-hidden rounded-[1.4rem] bg-white text-start ring-1 ring-slate-100 ft-shadow transition duration-300 hover:shadow-xl hover:ring-rose-200 sm:w-[17rem] lg:w-full">
-                                <span className="relative block h-24 overflow-hidden sm:h-28 lg:h-24">
-                                  <span className={`absolute inset-0 bg-gradient-to-br ${coverGrad(t.id)}`} />
-                                  {t.cover_url && <img src={fileUrl(t.cover_url)} alt="" className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-[1.06]" />}
-                                  <span className="absolute inset-0 bg-gradient-to-t from-slate-950/50 to-transparent" />
-                                  <span className={`absolute right-3 top-3 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-black text-white shadow-lg ring-1 ring-white/30 backdrop-blur ${i === 0 ? "bg-gradient-to-l from-rose-600 to-orange-500" : "bg-slate-950/45"}`}>
-                                    <Flame className={`h-3.5 w-3.5 ${i === 0 ? "fill-amber-300 text-amber-300" : "text-orange-400"}`} /> {i + 1}
-                                  </span>
-                                  {t.category && <span className="absolute bottom-2.5 right-3 rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-extrabold text-white ring-1 ring-white/25 backdrop-blur">{t.category}</span>}
-                                </span>
-                                <span className="block p-3.5">
-                                  <span className="block font-head text-sm font-bold leading-snug text-slate-800 line-clamp-2 transition-colors group-hover:text-rose-700">{t.title}</span>
-                                  {t.views != null && <span className="mt-2 inline-flex items-center gap-1 text-[11px] font-bold text-slate-400"><Eye className="h-3 w-3 text-cyan-600" />{t.views} قراءة</span>}
-                                </span>
-                              </button>
-                            ))}
-                          </div>
-                        </aside>
-                      )}
-
-                      {/* ===== مجرى القصص ===== */}
-                      <div className="order-2 min-w-0 lg:order-1">
+                    {/* ===== مجرى الأخبار ===== */}
+                    <div id="news-stream" className="mx-auto w-full min-w-0 max-w-4xl scroll-mt-24">
+                      <div className="mb-4 flex items-center gap-2.5 px-0.5 animate-fade-up">
+                        <span className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-rose-500 to-orange-500 text-white shadow-lg shadow-rose-500/25"><Radio className="h-4 w-4" /></span>
+                        <div>
+                          <h2 className="font-head text-base font-extrabold leading-tight text-slate-900">مجرى الأخبار</h2>
+                          <p className="text-[11px] font-semibold text-slate-400">{cat ? `تصنيف: ${cat} · اضغط التصنيف مجددًا لعرض الكل` : "كل أخبار النادي · الأحدث أولًا"}</p>
+                        </div>
+                        {items.length > 0 && <span className="ms-auto rounded-full bg-rose-50 px-2.5 py-1 text-[10px] font-extrabold text-rose-600 ring-1 ring-rose-100">{items.length} خبر</span>}
+                      </div>
                         {rest.length > 0 ? (
                           <div className="space-y-4">
                             {rest.map((n, i) => (
@@ -423,8 +430,59 @@ export default function News() {
                         ) : (
                           !featured && <EmptyState icon={Newspaper} title="لا أخبار في هذا التصنيف" desc="جرّب تصنيفًا آخر" />
                         )}
-                      </div>
                     </div>
+
+                    {/* ===== أرشيف الأسبوع · آخر ٧ أيام يومًا بيوم ===== */}
+                    {weekGroups.length > 0 && (
+                      <section data-testid="news-archive" className="mx-auto mt-10 w-full max-w-4xl animate-fade-up sm:mt-14">
+                        <div className="mb-5 flex items-center gap-2.5 px-0.5">
+                          <span className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-slate-800 to-slate-950 text-white shadow-lg shadow-slate-900/25"><CalendarDays className="h-4 w-4" /></span>
+                          <div>
+                            <h2 className="font-head text-base font-extrabold leading-tight text-slate-900">أرشيف الأسبوع</h2>
+                            <p className="text-[11px] font-semibold text-slate-400">آخر ٧ أيام في النادي · يومًا بيوم</p>
+                          </div>
+                          <span className="ms-auto rounded-full bg-slate-900 px-2.5 py-1 text-[10px] font-extrabold text-white">{weekCount} خبر</span>
+                        </div>
+                        <div>
+                          {weekGroups.map((g, gi) => (
+                            <div key={g.diff} className="flex gap-3.5 sm:gap-4">
+                              <div className="flex flex-col items-center">
+                                <span className="mt-1.5 h-3.5 w-3.5 shrink-0 rounded-full bg-gradient-to-br from-blue-600 to-cyan-500 shadow ring-4 ring-blue-50" />
+                                {gi < weekGroups.length - 1 && <span className="mt-1.5 w-px flex-1 bg-gradient-to-b from-blue-200/80 via-slate-200/70 to-slate-100" />}
+                              </div>
+                              <div className="min-w-0 flex-1 pb-7">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <span className="rounded-full bg-slate-900 px-3 py-1 text-[11px] font-extrabold text-white shadow-sm">{g.label}</span>
+                                  <span className="text-[11px] font-bold text-slate-400">{g.dateLine}</span>
+                                  <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-extrabold text-blue-700 ring-1 ring-blue-100">{g.items.length} خبر</span>
+                                </div>
+                                <div className="mt-3 space-y-2">
+                                  {g.items.map((n) => (
+                                    <button key={n.id} onClick={() => openArticle(n.id)} data-testid={`news-archive-item-${n.id}`}
+                                      className="pressable group flex w-full items-center gap-3 rounded-2xl bg-white p-2.5 text-start ring-1 ring-slate-100 ft-shadow transition duration-300 hover:shadow-lg hover:ring-blue-200 sm:p-3">
+                                      <span className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl sm:h-16 sm:w-20">
+                                        <span className={`absolute inset-0 bg-gradient-to-br ${coverGrad(n.id)}`} />
+                                        {n.cover_url && <img src={fileUrl(n.cover_url)} alt="" className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-[1.06]" />}
+                                        <span className="absolute inset-0 bg-gradient-to-t from-slate-950/35 to-transparent" />
+                                      </span>
+                                      <span className="min-w-0 flex-1">
+                                        <span className="block font-head text-sm font-bold leading-snug text-slate-800 line-clamp-2 transition-colors group-hover:text-blue-800 sm:text-[15px]">{n.title}</span>
+                                        <span className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                                          {n.category && <span className="rounded-full ft-bg-soft px-2 py-0.5 text-[10px] font-extrabold ft-text-accent ring-1 ft-ring-accent">{n.category}</span>}
+                                          {n.views != null && <span className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-400"><Eye className="h-3 w-3 text-cyan-600" />{n.views} قراءة</span>}
+                                          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-400"><Clock3 className="h-3 w-3 text-emerald-500" />{readMinutes(n.body)} دقائق</span>
+                                        </span>
+                                      </span>
+                                      <ArrowLeft className="h-4 w-4 shrink-0 text-slate-300 transition-all duration-300 group-hover:-translate-x-0.5 group-hover:text-blue-600" />
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </section>
+                    )}
                   </>
                 )}
               </>
