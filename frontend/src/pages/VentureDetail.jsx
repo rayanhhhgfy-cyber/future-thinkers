@@ -187,32 +187,35 @@ export default function VentureDetail() {
               </Badge>
               <BookmarkButton kind="venture" refId={v.id} title={v.title} dark />
             </div>
-            <h1 className="font-head text-3xl sm:text-[2.6rem] lg:text-6xl font-extrabold leading-snug mt-4">{v.title}</h1>
+            <span className="block w-14 h-1.5 rounded-full bg-gradient-to-l from-white to-white/30 mt-6 shadow" />
+            <h1 className="font-head text-3xl sm:text-[2.6rem] lg:text-6xl font-extrabold leading-snug mt-4 drop-shadow-sm">{v.title}</h1>
             <div className="mt-4 inline-flex items-center gap-2.5 rounded-full bg-white/10 border border-white/20 backdrop-blur-md py-1.5 pr-1.5 pl-4 max-w-full">
               <span className="w-8 h-8 rounded-full ft-icon-tile text-white text-sm font-extrabold flex items-center justify-center shrink-0 ring-2 ring-white/40 shadow">
                 {(v.owner_name || "؟").trim().charAt(0)}
               </span>
               <span className="text-sm font-bold truncate">👤 {v.owner_name}{v.school_name ? ` · 🏫 ${v.school_name}` : ""}</span>
             </div>
-            <div className="mt-6 flex flex-wrap items-center gap-2.5">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 border border-white/20 px-3.5 py-2 text-xs font-bold backdrop-blur-md">
-                <Users className="w-4 h-4 text-sky-200" /> {v.team_count}/{v.max_members}
-              </span>
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 border border-white/20 px-3.5 py-2 text-xs font-bold backdrop-blur-md">
-                <span className={`w-2 h-2 rounded-full ${STATUS_DOT[v.status] || "bg-white/70"}`} /> {v.status_label}
-              </span>
-              <button onClick={vote} disabled={voting}
-                className={`pressable inline-flex items-center gap-2 rounded-full px-6 min-h-[48px] text-base font-extrabold transition-all disabled:opacity-60 disabled:pointer-events-none ${v.voted ? "bg-gradient-to-l from-rose-500 to-pink-500 text-white shadow-xl shadow-rose-950/30 border border-rose-300/50" : "bg-white text-rose-600 shadow-xl hover:bg-rose-50"}`}>
-                <Heart className={`w-5 h-5 ${v.voted ? "fill-current" : ""}`} /> {v.votes_count}
-              </button>
-            </div>
-            <div className="mt-6 max-w-md">
-              <div className="flex items-center justify-between gap-3 text-[11px] font-bold text-white/85">
-                <span className="inline-flex items-center gap-1.5"><Users className="w-3.5 h-3.5" /> اكتمال الفريق</span>
-                <span className="tabular-nums">{teamPct}% · {v.team_count}/{v.max_members}</span>
+            <div className="mt-6 rounded-[1.6rem] bg-slate-950/25 backdrop-blur-xl p-4 sm:p-5 max-w-xl shadow-xl ring-1 ring-white/25">
+              <div className="flex flex-wrap items-center gap-2.5">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 border border-white/20 px-3.5 py-2 text-xs font-bold backdrop-blur-md">
+                  <Users className="w-4 h-4 text-sky-200" /> {v.team_count}/{v.max_members}
+                </span>
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 border border-white/20 px-3.5 py-2 text-xs font-bold backdrop-blur-md">
+                  <span className={`w-2 h-2 rounded-full ${STATUS_DOT[v.status] || "bg-white/70"}`} /> {v.status_label}
+                </span>
+                <button onClick={vote} disabled={voting}
+                  className={`pressable inline-flex items-center gap-2 rounded-full px-6 min-h-[48px] text-base font-extrabold transition-all disabled:opacity-60 disabled:pointer-events-none ${v.voted ? "bg-gradient-to-l from-rose-500 to-pink-500 text-white shadow-xl shadow-rose-950/30 border border-rose-300/50" : "bg-white text-rose-600 shadow-xl hover:bg-rose-50"}`}>
+                  <Heart className={`w-5 h-5 ${v.voted ? "fill-current" : ""}`} /> {v.votes_count}
+                </button>
               </div>
-              <div className="mt-1.5 h-2 rounded-full bg-white/20 overflow-hidden backdrop-blur-sm">
-                <div className="h-full rounded-full bg-white shadow transition-all duration-700" style={{ width: `${teamPct}%` }} />
+              <div className="mt-5">
+                <div className="flex items-center justify-between gap-3 text-[11px] font-bold text-white/85">
+                  <span className="inline-flex items-center gap-1.5"><Users className="w-3.5 h-3.5" /> اكتمال الفريق</span>
+                  <span className="tabular-nums">{teamPct}% · {v.team_count}/{v.max_members}</span>
+                </div>
+                <div className="relative mt-1.5 h-2 rounded-full bg-white/20 overflow-hidden backdrop-blur-sm">
+                  <div className="h-full rounded-full bg-white shadow-[0_0_14px_rgba(255,255,255,0.65)] transition-all duration-700" style={{ width: `${teamPct}%` }} />
+                </div>
               </div>
             </div>
           </div>
@@ -221,7 +224,8 @@ export default function VentureDetail() {
       </div>
 
       <div className="max-w-5xl xl:max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-28 lg:pb-10 grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
-        <div className="bg-white rounded-[1.4rem] sm:rounded-3xl border border-slate-100 ft-shadow p-6 sm:p-8 animate-fade-up isolate min-w-0 xl:col-start-1">
+        <div className="relative overflow-hidden bg-white rounded-[1.4rem] sm:rounded-3xl border border-slate-100 ft-shadow p-6 sm:p-8 animate-fade-up isolate min-w-0 xl:col-start-1">
+          <span className="pointer-events-none absolute inset-x-0 top-0 h-1 ft-grad-bar opacity-90" />
           <div className="flex items-start justify-between gap-4 flex-wrap">
             <h2 className="font-head font-extrabold text-xl flex items-center gap-2.5">
               <span className="w-10 h-10 rounded-2xl ft-icon-tile text-white flex items-center justify-center shadow-lg shrink-0"><Info className="w-5 h-5" /></span>
@@ -249,10 +253,11 @@ export default function VentureDetail() {
         </div>
 
         <div className="min-w-0 isolate xl:col-start-2 xl:row-start-1 xl:row-span-3">
-        <div className="bg-white rounded-[1.4rem] sm:rounded-3xl border border-slate-100 ft-shadow p-6 sm:p-8 animate-fade-up isolate xl:sticky xl:top-24" style={{ animationDelay: "60ms" }}>
+        <div className="relative overflow-hidden bg-white rounded-[1.4rem] sm:rounded-3xl border border-slate-100 ft-shadow p-6 sm:p-8 animate-fade-up isolate xl:sticky xl:top-24" style={{ animationDelay: "60ms" }}>
+          <span className="pointer-events-none absolute inset-x-0 top-0 h-1 ft-grad-bar opacity-90" />
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <h2 className="font-head font-extrabold text-xl flex items-center gap-2.5">
-              <span className="w-10 h-10 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-500 text-white flex items-center justify-center shadow-lg shadow-blue-200 shrink-0"><Users className="w-5 h-5" /></span>
+              <span className="w-10 h-10 rounded-2xl ft-icon-tile text-white flex items-center justify-center shadow-lg shrink-0"><Users className="w-5 h-5" /></span>
               الفريق <span className="text-sm font-bold text-slate-400">({v.team_count}/{v.max_members})</span>
             </h2>
             <span className="inline-flex items-center rounded-full bg-blue-50 border border-blue-100 text-blue-700 text-sm font-extrabold px-3.5 py-1.5 tabular-nums">{teamPct}%</span>
@@ -266,6 +271,15 @@ export default function VentureDetail() {
               ? <>متبقّي {seatsLeft} {seatsLeft === 1 ? "مقعد" : "مقاعد"} في الفريق</>
               : <>اكتمل عدد الفريق · لا توجد مقاعد شاغرة</>}
           </p>
+          <div className="mt-3 flex items-center">
+            {Array.from({ length: Math.min(v.max_members || 0, 10) }).map((_, si) => (
+              <span key={si} style={{ marginInlineStart: si === 0 ? 0 : "-0.45rem", zIndex: 20 - si }}
+                className={`relative w-6 h-6 rounded-full ring-2 ring-white ${si < (v.team_count || 0) ? "ft-grad-bar shadow" : "bg-white border border-dashed border-slate-300"}`} />
+            ))}
+            {(v.max_members || 0) > 10 && (
+              <span className="text-[10px] font-extrabold text-slate-400 tabular-nums" style={{ marginInlineStart: "0.45rem" }}>+{(v.max_members || 0) - 10}</span>
+            )}
+          </div>
           <div className="mt-5 flex items-center gap-3 flex-wrap">
             <div className="flex items-center">
               {teamStack.slice(0, 6).map((m, i) => (
@@ -284,16 +298,18 @@ export default function VentureDetail() {
             </div>
             <span className="text-xs font-bold text-slate-400">{teamStack.length} {teamStack.length === 1 ? "عضو" : "أعضاء"} في الفريق حتى الآن</span>
           </div>
-          <div className="mt-5 flex flex-wrap gap-2">
-            <span className="inline-flex items-center gap-2 rounded-full bg-emerald-50 border border-emerald-100 pl-4 pr-1.5 py-1.5">
-              <span className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 text-white text-xs font-extrabold flex items-center justify-center ring-2 ring-white shadow">{(v.owner_name || "؟").trim().charAt(0)}</span>
-              <span className="text-xs font-bold text-emerald-800">👑 {v.owner_name} (صاحب المشروع)</span>
-            </span>
+          <div className="mt-5 space-y-2">
+            <div className="flex items-center gap-3 rounded-2xl bg-emerald-50/80 border border-emerald-100 px-3 py-2.5">
+              <span className="w-9 h-9 rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 text-white text-xs font-extrabold flex items-center justify-center ring-2 ring-white shadow shrink-0">{(v.owner_name || "؟").trim().charAt(0)}</span>
+              <span className="flex-1 min-w-0 truncate text-sm font-extrabold text-emerald-900">{v.owner_name}</span>
+              <span className="shrink-0 rounded-full bg-gradient-to-l from-emerald-500 to-teal-600 text-white text-[10px] font-extrabold px-2.5 py-1 shadow-md shadow-emerald-200">👑 صاحب المشروع</span>
+            </div>
             {(v.members || []).map((m) => (
-              <span key={m.id} className="inline-flex items-center gap-2 rounded-full bg-slate-50 border border-slate-200 pl-4 pr-1.5 py-1.5">
-                <span className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-violet-500 text-white text-xs font-extrabold flex items-center justify-center ring-2 ring-white shadow">{(m.name || "؟").trim().charAt(0)}</span>
-                <span className="text-xs font-bold text-slate-700">{m.name}</span>
-              </span>
+              <div key={m.id} className="flex items-center gap-3 rounded-2xl bg-slate-50/80 border border-slate-200/80 px-3 py-2.5 hover:bg-white hover:border-slate-200 transition-colors">
+                <span className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-violet-500 text-white text-xs font-extrabold flex items-center justify-center ring-2 ring-white shadow shrink-0">{(m.name || "؟").trim().charAt(0)}</span>
+                <span className="flex-1 min-w-0 truncate text-sm font-bold text-slate-700">{m.name}</span>
+                <span className="shrink-0 ft-chip rounded-full px-2.5 py-1 text-[10px] font-extrabold">عضو</span>
+              </div>
             ))}
           </div>
           <div className="mt-6 border-t border-slate-100 pt-5">
@@ -318,6 +334,7 @@ export default function VentureDetail() {
 
         {v.is_owner && (v.join_requests || []).length > 0 && (
           <div className="relative isolate overflow-hidden bg-gradient-to-b from-amber-50/80 to-white rounded-[1.4rem] sm:rounded-3xl border border-amber-200 ft-shadow p-6 sm:p-8 animate-fade-up min-w-0 xl:col-start-1" style={{ animationDelay: "120ms" }}>
+            <span className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-l from-amber-400 to-orange-500 opacity-90" />
             <h2 className="font-head font-extrabold text-xl flex items-center gap-2.5 flex-wrap">
               <span className="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 text-white flex items-center justify-center shadow-lg shadow-amber-200 shrink-0"><UserPlus className="w-5 h-5" /></span>
               طلبات الانضمام
@@ -358,21 +375,23 @@ export default function VentureDetail() {
         )}
 
         {(v.updates || []).length > 0 && (
-          <div className="bg-white rounded-[1.4rem] sm:rounded-3xl border border-slate-100 ft-shadow p-6 sm:p-8 animate-fade-up isolate min-w-0 xl:col-start-1" style={{ animationDelay: "180ms" }}>
+          <div className="relative overflow-hidden bg-white rounded-[1.4rem] sm:rounded-3xl border border-slate-100 ft-shadow p-6 sm:p-8 animate-fade-up isolate min-w-0 xl:col-start-1" style={{ animationDelay: "180ms" }}>
+            <span className="pointer-events-none absolute inset-x-0 top-0 h-1 ft-grad-bar opacity-90" />
             <h2 className="font-head font-extrabold text-xl flex items-center gap-2.5">
               <span className="w-10 h-10 rounded-2xl ft-icon-tile text-white flex items-center justify-center shadow-lg shrink-0"><Megaphone className="w-5 h-5" /></span>
               آخر التحديثات
               <span className="inline-flex items-center justify-center min-w-[28px] h-7 px-2 rounded-full ft-chip text-xs font-extrabold">{v.updates.length}</span>
             </h2>
             <div className="relative mt-7">
-              <div className="absolute top-2 bottom-2 right-[9px] w-0.5 rounded-full [background-image:linear-gradient(to_bottom,var(--ft-accent),transparent)]" />
+              <div className="absolute top-2 bottom-2 right-[11px] w-0.5 rounded-full [background-image:linear-gradient(to_bottom,var(--ft-accent),transparent)]" />
               <div className="space-y-5">
                 {v.updates.map((u, i) => (
                   <div key={u.id || i} className="relative pr-10">
-                    <span className={`absolute right-0 top-2 w-5 h-5 rounded-full ring-4 ft-ring-accent border-2 border-white shadow-md flex items-center justify-center ${STATUS_DOT[v.status] || "bg-emerald-500"}`}>
-                      <Megaphone className="w-2.5 h-2.5 text-white" />
+                    <span className={`absolute right-0 top-2 w-6 h-6 rounded-full ft-icon-tile ring-4 ring-white shadow-lg flex items-center justify-center`}>
+                      <Megaphone className="w-3 h-3 text-white" />
                     </span>
-                    <div className="rounded-2xl bg-white border border-slate-100 ft-shadow hover-lift p-4 sm:p-5">
+                    <div className="relative overflow-hidden rounded-2xl bg-white border border-slate-100 ft-shadow hover-lift p-4 sm:p-5">
+                      <span className="pointer-events-none absolute inset-y-0 right-0 w-1 ft-grad-bar opacity-70" />
                       <div className="flex items-start justify-between gap-3 flex-wrap">
                         <div className="font-extrabold text-slate-800">{u.title}</div>
                         {u.created_at && (
@@ -397,7 +416,8 @@ export default function VentureDetail() {
 
       {/* Mobile sticky action bar · mirrors the in-card logic, phones only */}
       <div className="fixed bottom-0 inset-x-0 z-[45] lg:hidden pointer-events-none" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
-        <div className="pointer-events-auto mx-3 mb-3 rounded-[1.75rem] border border-white/60 bg-white/85 backdrop-blur-xl shadow-[0_18px_40px_-12px_rgba(15,23,42,0.35)] p-2 flex items-center gap-2">
+        <div className="pointer-events-auto relative overflow-hidden mx-3 mb-3 rounded-[1.75rem] border border-white/60 bg-white/85 backdrop-blur-xl shadow-[0_18px_40px_-12px_rgba(15,23,42,0.35)] p-2 flex items-center gap-2">
+          <span className="pointer-events-none absolute inset-x-8 top-0 h-0.5 ft-grad-bar opacity-80 rounded-full" />
           <button onClick={vote} disabled={voting} aria-label="التصويت للمشروع"
             className={`pressable shrink-0 flex items-center gap-1.5 font-extrabold rounded-2xl px-4 min-h-[48px] text-base transition-all disabled:opacity-60 disabled:pointer-events-none ${v.voted ? "bg-gradient-to-l from-rose-500 to-pink-500 text-white shadow-lg shadow-rose-200" : "bg-rose-50 text-rose-500 border border-rose-100"}`}>
             <Heart className={`w-5 h-5 ${v.voted ? "fill-current" : ""}`} /> <span className="tabular-nums">{v.votes_count}</span>

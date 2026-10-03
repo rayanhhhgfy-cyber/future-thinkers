@@ -141,6 +141,7 @@ export default function Ventures() {
       <div className="max-w-7xl xl:max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6">
         <div className="ft-hero-gradient grain relative isolate overflow-hidden rounded-[2rem] text-white px-6 py-10 sm:px-10 sm:py-14 lg:py-16 ft-shadow-lg">
           <Rocket className="pointer-events-none absolute -left-6 -bottom-8 w-44 h-44 sm:w-64 sm:h-64 lg:w-80 lg:h-80 text-white/10 -rotate-12" />
+          <div className="pointer-events-none absolute inset-0 opacity-[0.12] [background-image:radial-gradient(rgba(255,255,255,0.6)_1px,transparent_1.6px)] [background-size:22px_22px]" />
           <Sparkles className="pointer-events-none absolute left-[38%] top-8 w-8 h-8 text-white/15 hidden sm:block" />
           <div className="pointer-events-none absolute -top-20 right-[15%] w-56 h-56 rounded-full bg-[color:color-mix(in_srgb,var(--ft-accent)_20%,transparent)] blur-3xl animate-pulse [animation-duration:4s]" />
           <div className="pointer-events-none absolute -bottom-24 left-[30%] w-56 h-56 rounded-full bg-[color:color-mix(in_srgb,var(--ft-accent)_15%,transparent)] blur-3xl animate-pulse [animation-duration:5.5s]" />
@@ -166,14 +167,14 @@ export default function Ventures() {
             </div>
             {ventures && (
               <div className="mt-8 flex flex-wrap gap-2.5 animate-fade-up">
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 border border-white/20 backdrop-blur-md px-3.5 py-2 text-xs font-bold">
-                  <Rocket className="w-4 h-4 ft-text-accent-bright" /> {ventures.length} مشروع
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 border border-white/20 backdrop-blur-md px-3.5 py-2 text-xs font-bold shadow-lg">
+                  <Rocket className="w-4 h-4 ft-text-accent-bright" /> <span className="text-sm font-extrabold tabular-nums">{ventures.length}</span> مشروع
                 </span>
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 border border-white/20 backdrop-blur-md px-3.5 py-2 text-xs font-bold">
-                  <BadgeCheck className="w-4 h-4 ft-text-accent-bright" /> {completedCount} مكتمل
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 border border-white/20 backdrop-blur-md px-3.5 py-2 text-xs font-bold shadow-lg">
+                  <BadgeCheck className="w-4 h-4 ft-text-accent-bright" /> <span className="text-sm font-extrabold tabular-nums">{completedCount}</span> مكتمل
                 </span>
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 border border-white/20 backdrop-blur-md px-3.5 py-2 text-xs font-bold">
-                  <Heart className="w-4 h-4 text-rose-200" /> {totalVotes} صوت
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 border border-white/20 backdrop-blur-md px-3.5 py-2 text-xs font-bold shadow-lg">
+                  <Heart className="w-4 h-4 text-rose-200" /> <span className="text-sm font-extrabold tabular-nums">{totalVotes}</span> صوت
                 </span>
               </div>
             )}
@@ -183,17 +184,18 @@ export default function Ventures() {
 
       <div className="max-w-7xl xl:max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-8 relative isolate">
         <div id="ventures-toolbar" className="sticky top-[calc(4rem+env(safe-area-inset-top))] z-40 isolate scroll-mt-28">
-          <div className="bg-white/85 backdrop-blur-xl rounded-[1.4rem] sm:rounded-3xl border border-white/60 ring-1 ring-slate-200/60 ft-shadow-lg p-4 sm:p-5 space-y-4">
+          <div className="relative overflow-hidden bg-white/85 backdrop-blur-xl rounded-[1.4rem] sm:rounded-3xl border border-white/60 ring-1 ring-slate-200/60 ft-shadow-lg p-4 sm:p-5 space-y-4">
+            <span className="pointer-events-none absolute inset-x-0 top-0 h-1 ft-grad-bar opacity-90" />
             <div className="relative">
               <Search className="w-5 h-5 absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
               <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="ابحث عن مشروع..."
-                className="rounded-2xl pr-12 min-h-[52px] text-base border-slate-200 bg-white/80 shadow-inner focus-visible:bg-white transition-colors" />
+                className="rounded-2xl pr-12 min-h-[52px] text-base border-slate-200 bg-white/80 shadow-inner ft-ring-accent focus-visible:bg-white transition-colors" />
             </div>
             <div className="relative">
             <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:flex-wrap sm:overflow-visible sm:mx-0 sm:px-0 sm:pb-0">
               {VENTURE_CATEGORIES.map((c) => (
                 <button key={c} onClick={() => setCategory(c)}
-                  className={`pressable shrink-0 rounded-full px-4 min-h-[44px] inline-flex items-center text-xs sm:text-sm font-bold border transition-all ${category === c ? "bg-gradient-to-l from-slate-900 to-slate-700 text-white border-slate-900 shadow-lg shadow-slate-300" : "bg-white/70 text-slate-500 border-slate-200 hover:[border-color:color-mix(in_srgb,var(--ft-accent)_32%,white)] hover:[color:color-mix(in_srgb,var(--ft-accent)_66%,black)]"}`}>
+                  className={`pressable shrink-0 rounded-full px-4 min-h-[44px] inline-flex items-center text-xs sm:text-sm font-bold border transition-all ${category === c ? "ft-btn-primary ft-border-accent text-white shadow-lg" : "bg-white/70 text-slate-500 border-slate-200 hover:[border-color:color-mix(in_srgb,var(--ft-accent)_32%,white)] hover:[color:color-mix(in_srgb,var(--ft-accent)_66%,black)]"}`}>
                   {c}
                 </button>
               ))}
@@ -212,7 +214,7 @@ export default function Ventures() {
               <div className="inline-flex items-center gap-1 rounded-full bg-slate-100/90 p-1 ring-1 ring-slate-200/70 w-full sm:w-auto">
                 {SORT_OPTIONS.map((s) => (
                   <button key={s.v} onClick={() => setSort(s.v)}
-                    className={`pressable flex-1 sm:flex-none rounded-full px-4 min-h-[40px] text-xs sm:text-sm font-bold transition-all ${sort === s.v ? "bg-white text-slate-900 shadow-md ring-1 ring-slate-200" : "text-slate-500 hover:text-slate-800"}`}>
+                    className={`pressable flex-1 sm:flex-none rounded-full px-4 min-h-[40px] text-xs sm:text-sm font-bold transition-all ${sort === s.v ? "bg-white ft-text-accent shadow-md ring-1 ft-ring-accent" : "text-slate-500 hover:text-slate-800"}`}>
                     {s.l}
                   </button>
                 ))}
@@ -245,6 +247,14 @@ export default function Ventures() {
                     <div className="w-9 h-9 rounded-full bg-slate-200" />
                     <div className="h-3.5 w-24 rounded bg-slate-100" />
                   </div>
+                  <div className="mt-4 space-y-2">
+                    <div className="h-1.5 w-full rounded-full bg-slate-100" />
+                    <div className="flex items-center gap-1">
+                      <div className="w-6 h-6 rounded-full bg-slate-200" />
+                      <div className="w-6 h-6 rounded-full bg-slate-100 -ms-2" />
+                      <div className="w-6 h-6 rounded-full bg-slate-100 -ms-2" />
+                    </div>
+                  </div>
                   <div className="mt-auto">
                     <div className="border-t border-slate-100 mt-4 pt-4 flex items-center justify-between">
                       <div className="h-9 w-16 rounded-full bg-slate-100" />
@@ -270,20 +280,27 @@ export default function Ventures() {
           </div>
         ) : (
           <>
-            <div className="mt-7 mb-4 flex items-center gap-2 text-sm font-bold text-slate-400">
-              <Sparkles className="w-4 h-4 ft-text-accent" />
-              عرض {ventures.length} مشروع
+            <div className="mt-8 mb-5 flex items-center gap-3 animate-fade-up">
+              <span className="h-8 w-1.5 rounded-full ft-grad-bar shrink-0 shadow" />
+              <span className="inline-flex items-center gap-2 font-head text-lg sm:text-xl font-extrabold text-slate-800">
+                <Sparkles className="w-5 h-5 ft-text-accent" />
+                عرض {ventures.length} مشروع
+              </span>
+              <span className="flex-1 h-px bg-gradient-to-l from-slate-200 to-transparent" />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-5 isolate">
               {ventures.map((v, i) => {
                 const meta = CATEGORY_META[v.category] || CATEGORY_DEFAULT;
                 const CatIcon = meta.icon;
+                const teamPctCard = Math.min(100, Math.round(((v.team_count || 0) / Math.max(1, v.max_members || 1)) * 100));
                 return (
                   <div key={v.id} style={{ animationDelay: `${Math.min(i, 11) * 60}ms` }}
-                    className="group relative isolate z-0 bg-white rounded-[1.6rem] border border-slate-100 ft-shadow hover-lift flex flex-col overflow-hidden animate-fade-up transition-shadow duration-300 hover:shadow-[0_24px_50px_-16px_color-mix(in_srgb,var(--ft-accent)_35%,transparent)]">
+                    className="group relative isolate z-0 bg-white rounded-[1.6rem] border border-slate-100 ft-shadow hover-lift flex flex-col overflow-hidden animate-fade-up transition-shadow duration-300 hover:ring-2 ft-ring-accent hover:shadow-[0_24px_50px_-16px_color-mix(in_srgb,var(--ft-accent)_35%,transparent)]">
                     <div className={`relative isolate h-28 sm:h-32 lg:h-36 shrink-0 overflow-hidden bg-gradient-to-l ${meta.grad}`}>
                       <CatIcon className="pointer-events-none absolute -left-4 -bottom-7 w-32 h-32 text-white/20 -rotate-12 transition-transform duration-500 group-hover:scale-110 group-hover:-rotate-6" />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-white/10" />
+                      <div className="pointer-events-none absolute inset-0 opacity-20 [background-image:radial-gradient(rgba(255,255,255,0.55)_1px,transparent_1.5px)] [background-size:18px_18px]" />
+                      <div className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-black/5" />
                       <div className="absolute top-3 inset-x-3 flex items-start justify-between gap-2">
                         <Badge variant="outline" className={`${STATUS_COLORS[v.status] || ""} rounded-full font-bold backdrop-blur shadow-sm`}>
                           <span className={`w-1.5 h-1.5 rounded-full ml-1.5 ${STATUS_DOT[v.status] || "bg-slate-300"}`} />
@@ -320,6 +337,22 @@ export default function Ventures() {
                         </span>
                         <span className="text-xs text-slate-500 font-medium truncate">👤 {v.owner_name}{v.school_name ? ` · ${v.school_name}` : ""}</span>
                       </div>
+                      <div className="mt-4 flex items-center justify-between gap-2">
+                        <div className="flex items-center shrink-0">
+                          {Array.from({ length: Math.min(v.max_members || 0, 6) }).map((_, si) => (
+                            <span key={si} style={{ marginInlineStart: si === 0 ? 0 : "-0.45rem", zIndex: 12 - si }}
+                              className={`relative w-6 h-6 rounded-full ring-2 ring-white ${si < (v.team_count || 0) ? `bg-gradient-to-br ${meta.grad} shadow` : "bg-white border border-dashed border-slate-300"}`} />
+                          ))}
+                          {(v.max_members || 0) > 6 && (
+                            <span className="text-[10px] font-extrabold text-slate-400 tabular-nums" style={{ marginInlineStart: "0.45rem" }}>+{(v.max_members || 0) - 6}</span>
+                          )}
+                        </div>
+                        <span className="text-[11px] font-bold text-slate-400 tabular-nums">{v.team_count}/{v.max_members} · {teamPctCard}%</span>
+                      </div>
+                      <div className="relative mt-2 h-1.5 rounded-full bg-slate-100 overflow-hidden">
+                        <div className="h-full rounded-full ft-grad-bar transition-all duration-700" style={{ width: `${teamPctCard}%` }} />
+                        <span className="pointer-events-none absolute inset-0 bg-gradient-to-l from-transparent via-white/50 to-transparent animate-pulse" />
+                      </div>
                       <div className="mt-auto pt-4">
                         <div className="flex items-center justify-between border-t border-slate-100 pt-4 gap-2">
                           <span className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-600 bg-slate-50 border border-slate-200/80 rounded-full px-3 min-h-[36px]">
@@ -345,6 +378,7 @@ export default function Ventures() {
 
       <Dialog open={showNew} onOpenChange={setShowNew}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl" dir="rtl">
+          <span className="pointer-events-none absolute inset-x-0 top-0 h-1.5 ft-grad-bar rounded-t-3xl" />
           <DialogHeader>
             <div className="flex items-center gap-3">
               <span className="w-11 h-11 rounded-2xl ft-icon-tile text-white flex items-center justify-center shadow-lg shrink-0">
