@@ -597,8 +597,8 @@ export default function Ventures() {
 
       {/* ============================ CREATE DIALOG ============================ */}
       <Dialog open={showNew} onOpenChange={setShowNew}>
-        <DialogContent className="max-w-2xl max-h-[92dvh] overflow-y-auto rounded-[2rem] border-white/60 bg-white/95 backdrop-blur-xl p-0 overflow-hidden" dir="rtl">
-          <div className="relative ft-navy-gradient text-white px-6 pt-6 pb-12 overflow-hidden isolate">
+        <DialogContent className="max-w-2xl max-h-[92dvh] flex flex-col gap-0 overflow-hidden rounded-[2rem] border-white/60 bg-white/95 backdrop-blur-xl p-0" dir="rtl">
+          <div className="relative shrink-0 ft-navy-gradient text-white px-6 pt-6 pb-12 overflow-hidden isolate">
             <Rocket className="pointer-events-none absolute -left-6 -bottom-8 w-32 h-32 text-white/15 -rotate-12" />
             <div className="pointer-events-none absolute inset-0 opacity-[0.13] [background-image:radial-gradient(rgba(255,255,255,0.6)_1px,transparent_1.6px)] [background-size:20px_20px]" />
             <DialogHeader className="relative">
@@ -623,7 +623,7 @@ export default function Ventures() {
               ))}
             </div>
           </div>
-          <div className="px-6 pb-6 -mt-7 relative">
+          <div className="relative z-10 -mt-7 flex-1 min-h-0 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch] px-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
             <div className="bg-white rounded-[1.5rem] ring-1 ring-slate-200/70 ft-shadow-lg p-5 space-y-4">
               <div><Label>عنوان المشروع</Label>
                 <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })}
