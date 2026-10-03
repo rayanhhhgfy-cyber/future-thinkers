@@ -14,6 +14,17 @@ import { getOfflineBook } from "@/lib/offline";
 const PDFJS_VERSION = "6.3.289";
 const PDFJS_LIB_URL = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${PDFJS_VERSION}/build/pdf.mjs`;
 const PDFJS_WORKER_URL = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${PDFJS_VERSION}/build/pdf.worker.min.mjs`;
+/* Font-decoding assets (same pinned version, same CDN). Without these,
+   pdf.js cannot decode CID-encoded text or substitute the standard 14
+   fonts, so books whose fonts are not fully embedded (most non-Arabic
+   PDFs) render as symbols/tofu instead of letters. */
+const PDFJS_CMAP_URL = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${PDFJS_VERSION}/cmaps/`;
+const PDFJS_STANDARD_FONTS_URL = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${PDFJS_VERSION}/standard_fonts/`;
+const PDFJS_DOC_OPTIONS = {
+  cMapUrl: PDFJS_CMAP_URL,
+  cMapPacked: true,
+  standardFontDataUrl: PDFJS_STANDARD_FONTS_URL,
+};
 
 function loadPdfjs() {
   return import(/* webpackIgnore: true */ PDFJS_LIB_URL).then((lib) => {
@@ -29,7 +40,7 @@ const PRELOAD = 1; // neighbor pages kept rendered so page turns are instant
    The PDF pages themselves stay white; the theme colors the space around
    them so long reading sessions feel easy on the eyes. */
 const READER_THEMES = [
-  { id: "light", label: "فاتح", desk: "#EFE9DE", icon: Sun },
+  { id: "light", label: "فاتح", desk: "#F8F5EF", icon: Sun },
   { id: "sepia", label: "سيبيا", desk: "#EDDCB8", icon: Coffee },
   { id: "night", label: "ليلي", desk: "#0B1120", icon: Moon },
 ];
@@ -124,17 +135,21 @@ function StagePage({ pdf, pageNumber, scale, onSize, isCurrent, theme, animateCl
   }, [pdf, pageNumber, onSize]);
 
   // Render to canvas at the stage scale (fit-contain × zoom multiplier).
+  // Neighbor pages pre-render at a cheaper preview scale/DPR so a turn is
+  // instant; on promotion to current they re-render crisp. In-flight
+  // renders are cancelled when the page changes so rapid turns stay cheap.
   useEffect(() => {
     if (!scale) return;
     let dead = false;
     let task = null;
     setReady(false);
+    const renderScale = isCurrent ? scale : scale * 0.62;
     pdf.getPage(pageNumber).then((page) => {
       if (dead) return;
       const canvas = canvasRef.current;
       if (!canvas) return;
-      const viewport = page.getViewport({ scale });
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const viewport = page.getViewport({ scale: renderScale });
+      const dpr = Math.min(window.devicePixelRatio || 1, isCurrent ? 2 : 1.25);
       canvas.width = Math.max(1, Math.floor(viewport.width * dpr));
       canvas.height = Math.max(1, Math.floor(viewport.height * dpr));
       canvas.style.width = `${viewport.width}px`;
@@ -151,9 +166,9 @@ function StagePage({ pdf, pageNumber, scale, onSize, isCurrent, theme, animateCl
       task.promise.then(() => { if (!dead) setReady(true); }).catch(() => {});
     }).catch(() => {});
     return () => { dead = true; if (task) { try { task.cancel(); } catch {} } };
-  }, [pdf, pageNumber, scale]);
+  }, [pdf, pageNumber, scale, isCurrent]);
 
-  const ui = THEME_UI[theme] || THEME_UI.night;
+  const ui = THEME_UI[theme] || THEME_UI.light;
   const w = dim ? dim.w : size ? size.w * (scale || 1) : 600;
   const h = dim ? dim.h : size ? size.h * (scale || 1) : 800;
 
@@ -199,7 +214,9 @@ export default function BookReader({ book, pdfUrl, onClose, onProgress, initialP
   const [markingDone, setMarkingDone] = useState(false);
   const [pageBookmarks, setPageBookmarks] = useState([]);
   const [showBookmarks, setShowBookmarks] = useState(false);
-  const [themeId, setThemeId] = useState(() => { try { return localStorage.getItem("ft-reader-theme") || "night"; } catch { return "night"; } });
+  // Default theme is light (paper-white stage) · a stored choice from an
+  // earlier visit is always respected.
+  const [themeId, setThemeId] = useState(() => { try { return localStorage.getItem("ft-reader-theme") || "light"; } catch { return "light"; } });
   const [notes, setNotes] = useState([]);
   const [notesLoaded, setNotesLoaded] = useState(false);
   const [notesErr, setNotesErr] = useState("");
@@ -231,9 +248,14 @@ export default function BookReader({ book, pdfUrl, onClose, onProgress, initialP
   }, [dims, currentPage, stageBox]);
   const effScale = fitContain ? fitContain * zoomStep : null;
   const scaleUi = effScale || 1;
-  const theme = READER_THEMES.find((t) => t.id === themeId) || READER_THEMES[2];
+  // Non-Arabic books read left-to-right: arrow keys, dock arrows and the
+  // page-turn slide follow the book's own direction. UI labels stay Arabic.
+  const isLtrBook = !!book?.language && !/عرب|arab/i.test(String(book.language));
+  const animFwd = isLtrBook ? "reader-page-prev" : "reader-page-next";
+  const animBack = isLtrBook ? "reader-page-next" : "reader-page-prev";
+  const theme = READER_THEMES.find((t) => t.id === themeId) || READER_THEMES[0];
   const desk = theme.desk;
-  const ui = THEME_UI[theme.id] || THEME_UI.night;
+  const ui = THEME_UI[theme.id] || THEME_UI.light;
   const pct = numPages ? Math.round((currentPage / numPages) * 100) : 0;
 
   useEffect(() => {
@@ -285,7 +307,7 @@ export default function BookReader({ book, pdfUrl, onClose, onProgress, initialP
       if (dead) return null;
       const pdfjsLib = await loadPdfjs();
       if (dead) return null;
-      loadingTask = pdfjsLib.getDocument(localData ? { data: localData } : { url: signedPdfUrl });
+      loadingTask = pdfjsLib.getDocument(localData ? { data: localData, ...PDFJS_DOC_OPTIONS } : { url: signedPdfUrl, ...PDFJS_DOC_OPTIONS });
       if (localData) setOfflineReading(true);
       loadingTask.onProgress = ({ loaded, total }) => {
         if (!dead && total > 0) setLoadPct(Math.round((loaded / total) * 100));
@@ -354,11 +376,13 @@ export default function BookReader({ book, pdfUrl, onClose, onProgress, initialP
       const t = e.target;
       if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable)) return;
       if (showNotes) return;
-      if (e.key === "ArrowDown" || e.key === "PageDown" || e.key === "ArrowLeft" || (e.key === " " && !e.shiftKey)) {
+      const fwdKey = isLtrBook ? "ArrowRight" : "ArrowLeft";
+      const backKey = isLtrBook ? "ArrowLeft" : "ArrowRight";
+      if (e.key === "ArrowDown" || e.key === "PageDown" || e.key === fwdKey || (e.key === " " && !e.shiftKey)) {
         if (t && t.tagName === "BUTTON" && e.key === " ") return;
         e.preventDefault();
         goToPage(currentPage + 1);
-      } else if (e.key === "ArrowUp" || e.key === "PageUp" || e.key === "ArrowRight" || (e.key === " " && e.shiftKey)) {
+      } else if (e.key === "ArrowUp" || e.key === "PageUp" || e.key === backKey || (e.key === " " && e.shiftKey)) {
         if (t && t.tagName === "BUTTON" && e.key === " ") return;
         e.preventDefault();
         goToPage(currentPage - 1);
@@ -375,7 +399,7 @@ export default function BookReader({ book, pdfUrl, onClose, onProgress, initialP
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [pdf, error, pokeBars, showNotes, goToPage, currentPage]);
+  }, [pdf, error, pokeBars, showNotes, goToPage, currentPage, isLtrBook]);
 
   // Persist reading progress (debounced) · percent + current page.
   useEffect(() => {
@@ -536,6 +560,11 @@ export default function BookReader({ book, pdfUrl, onClose, onProgress, initialP
       onPointerDown={pokeBars}
     >
       <style>{`
+        /* UI chrome uses a full-coverage stack (Arabic + Latin) · any PDF
+           text-layer span must inherit positioning/fonts, never be forced
+           into an Arabic-only family (that turns Latin glyphs into tofu). */
+        [data-testid="pdf-reader"] { font-family: var(--ft-font-body, 'IBM Plex Sans Arabic'), 'Segoe UI', Tahoma, system-ui, sans-serif; }
+        [data-testid="pdf-reader"] .textLayer span { font-family: inherit !important; }
         @keyframes reader-in-next { from { opacity: 0; transform: translateX(-30px) scale(0.995); } to { opacity: 1; transform: none; } }
         @keyframes reader-in-prev { from { opacity: 0; transform: translateX(30px) scale(0.995); } to { opacity: 1; transform: none; } }
         @keyframes reader-in-fade { from { opacity: 0; } to { opacity: 1; } }
@@ -780,7 +809,7 @@ export default function BookReader({ book, pdfUrl, onClose, onProgress, initialP
                     onSize={handlePageSize}
                     isCurrent={isCur}
                     theme={themeId}
-                    animateCls={isCur ? (navDir > 0 ? "reader-page-next" : navDir < 0 ? "reader-page-prev" : "reader-page-fade") : ""}
+                    animateCls={isCur ? (navDir > 0 ? animFwd : navDir < 0 ? animBack : "reader-page-fade") : ""}
                   />
                 </div>
               );
@@ -942,7 +971,7 @@ export default function BookReader({ book, pdfUrl, onClose, onProgress, initialP
                   aria-label="الصفحة السابقة"
                   title="الصفحة السابقة"
                 >
-                  <ChevronRight className="w-5 h-5" />
+                  {isLtrBook ? <ChevronLeft className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />}
                 </button>
                 <input
                   type="range"
@@ -961,7 +990,7 @@ export default function BookReader({ book, pdfUrl, onClose, onProgress, initialP
                   aria-label="الصفحة التالية"
                   title="الصفحة التالية"
                 >
-                  <ChevronLeft className="w-5 h-5" />
+                  {isLtrBook ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
                 </button>
                 <span className={`hidden md:inline-flex shrink-0 items-center text-[11px] font-bold rounded-full px-3 py-1.5 tabular-nums ${ui.chip}`}>
                   صفحة {currentPage} من {numPages} · {pct}٪
