@@ -55,7 +55,7 @@ export function ContinueRail({ data }) {
         </div>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {book && (
-            <Link to={`/books/${book.id}`} className="pressable group flex items-center gap-3.5 rounded-2xl ring-1 ring-slate-100 bg-gradient-to-l from-blue-50/80 to-white p-3.5 hover:ring-blue-200 transition-all">
+            <Link to={`/books/${book.id}`} className="pressable group flex items-center gap-3.5 rounded-2xl ring-1 ring-slate-100 bg-gradient-to-l from-blue-50/80 to-white p-3.5 hover:ring-blue-200 transition-all min-w-0">
               <BookCover book={book} className="w-12 h-[68px] rounded-lg shrink-0 ft-shadow" imgClassName="w-12 h-[68px] object-cover rounded-lg" />
               <span className="flex-1 min-w-0">
                 <span className="flex items-center gap-1.5 text-[10px] font-extrabold text-blue-600"><BookOpen className="w-3 h-3" /> كتاب تقرؤه</span>
@@ -72,7 +72,7 @@ export function ContinueRail({ data }) {
             </Link>
           )}
           {path && (
-            <Link to="/paths" className="pressable group flex items-center gap-3.5 rounded-2xl ring-1 ring-slate-100 bg-gradient-to-l from-teal-50/80 to-white p-3.5 hover:ring-teal-200 transition-all">
+            <Link to="/paths" className="pressable group flex items-center gap-3.5 rounded-2xl ring-1 ring-slate-100 bg-gradient-to-l from-teal-50/80 to-white p-3.5 hover:ring-teal-200 transition-all min-w-0">
               <span className="w-12 h-[68px] rounded-lg shrink-0 bg-gradient-to-br from-teal-500 to-emerald-600 text-white grid place-items-center ft-shadow"><Route className="w-6 h-6" /></span>
               <span className="flex-1 min-w-0">
                 <span className="flex items-center gap-1.5 text-[10px] font-extrabold text-teal-600"><Route className="w-3 h-3" /> مسار تعلّم</span>
@@ -89,7 +89,7 @@ export function ContinueRail({ data }) {
             </Link>
           )}
           {venture && (
-            <Link to={`/ventures/${venture.id}`} className="pressable group flex items-center gap-3.5 rounded-2xl ring-1 ring-slate-100 bg-gradient-to-l from-rose-50/80 to-white p-3.5 hover:ring-rose-200 transition-all">
+            <Link to={`/ventures/${venture.id}`} className="pressable group flex items-center gap-3.5 rounded-2xl ring-1 ring-slate-100 bg-gradient-to-l from-rose-50/80 to-white p-3.5 hover:ring-rose-200 transition-all min-w-0">
               <span className="w-12 h-[68px] rounded-lg shrink-0 bg-gradient-to-br from-rose-500 to-orange-500 text-white grid place-items-center ft-shadow"><Rocket className="w-6 h-6" /></span>
               <span className="flex-1 min-w-0">
                 <span className="flex items-center gap-1.5 text-[10px] font-extrabold text-rose-600"><Rocket className="w-3 h-3" /> {venture.is_owner ? "مشروعك" : "مشروع تشارك فيه"}</span>
@@ -172,6 +172,10 @@ export function StarterChecklist({ data }) {
   const doneCount = items.filter((i) => checks[i.key]).length;
   const pct = (doneCount / items.length) * 100;
   const complete = doneCount === items.length;
+
+  /* Dashboard stays main-things-only: once every step is done the
+     checklist retires itself instead of lingering as clutter. */
+  if (complete) return null;
 
   const dismiss = () => {
     setDismissed(true);
