@@ -54,11 +54,11 @@ export default function ClassReport() {
   if (state === "denied") {
     return (
       <Layout>
-        <div className="max-w-md mx-auto px-4 py-16">
-          <div className="rounded-[24px] bg-white border border-slate-100 ft-shadow-lg px-6 py-10 text-center animate-fade-up">
-            <span className="inline-grid place-items-center w-14 h-14 rounded-3xl bg-amber-50 text-amber-500 mb-3"><ShieldAlert className="w-7 h-7" /></span>
+        <div className="mx-auto max-w-md px-4 pb-28 pt-16 lg:pb-16">
+          <div className="rounded-3xl border border-slate-100 bg-white px-6 py-10 text-center ft-shadow animate-fade-up">
+            <span className="mb-3 inline-grid h-14 w-14 place-items-center rounded-2xl bg-amber-50 text-amber-500"><ShieldAlert className="h-7 w-7" /></span>
             <h2 className="font-head text-lg font-black text-slate-900">تقرير المدرسة للمعلمين والإدارة</h2>
-            <p className="text-sm text-slate-500 mt-2 leading-relaxed">
+            <p className="mt-2 text-sm leading-relaxed text-slate-500">
               هذا التقرير يعرض نشاط طلاب المدرسة كاملاً، لذلك هو متاح لحسابات المعلمين والإدارة فقط. إذا كنت معلماً وتعتقد أن هذا خطأ، تواصل مع إدارة المنصة.
             </p>
           </div>
@@ -70,12 +70,12 @@ export default function ClassReport() {
   if (state === "error" || !data) {
     return (
       <Layout>
-        <div className="max-w-md mx-auto px-4 py-16">
-          <div className="rounded-[24px] bg-white border border-slate-100 ft-shadow-lg px-6 py-10 text-center animate-fade-up">
-            <span className="inline-grid place-items-center w-14 h-14 rounded-3xl bg-rose-50 text-rose-500 mb-3"><ClipboardList className="w-7 h-7" /></span>
+        <div className="mx-auto max-w-md px-4 pb-28 pt-16 lg:pb-16">
+          <div className="rounded-3xl border border-slate-100 bg-white px-6 py-10 text-center ft-shadow animate-fade-up">
+            <span className="mb-3 inline-grid h-14 w-14 place-items-center rounded-2xl bg-rose-50 text-rose-500"><ClipboardList className="h-7 w-7" /></span>
             <h2 className="font-head text-lg font-black text-slate-900">تعذر تحميل التقرير</h2>
-            <p className="text-sm text-slate-500 mt-2 leading-relaxed">حدثت مشكلة أثناء إعداد التقرير · حاول مرة أخرى بعد قليل.</p>
-            <Button onClick={() => { setState("loading"); load(schoolParam); }} className="mt-5 rounded-2xl ft-btn-primary px-5 py-2.5 text-sm font-extrabold min-h-[44px] text-white">
+            <p className="mt-2 text-sm leading-relaxed text-slate-500">حدثت مشكلة أثناء إعداد التقرير · حاول مرة أخرى بعد قليل.</p>
+            <Button onClick={() => { setState("loading"); load(schoolParam); }} className="mt-5 min-h-[44px] rounded-2xl ft-btn-primary px-5 py-2.5 text-sm font-extrabold text-white">
               إعادة المحاولة
             </Button>
           </div>
@@ -94,45 +94,45 @@ export default function ClassReport() {
     focus: Number(s.focus_minutes ?? s.focus?.minutes ?? 0),
     lastActive: s.last_active || s.last_seen || s.updated_at || "",
   }));
+  const sortedStudents = [...students].sort((a, b) => b.xp - a.xp);
 
   const totalTiles = [
-    { icon: Users, label: "طلاب المدرسة", value: Number(totals.students ?? totals.students_count ?? students.length), tint: "bg-blue-50 text-blue-600" },
-    { icon: Zap, label: "مجموع نقاط الخبرة", value: Number(totals.xp ?? totals.total_xp ?? students.reduce((a, s) => a + s.xp, 0)), tint: "bg-amber-50 text-amber-600" },
-    { icon: BookOpen, label: "كتب مُنهاة", value: Number(totals.books ?? totals.books_finished ?? students.reduce((a, s) => a + s.books, 0)), tint: "bg-emerald-50 text-emerald-600" },
-    { icon: Swords, label: "مباريات شطرنج", value: Number(totals.chess_games ?? totals.chess ?? students.reduce((a, s) => a + s.chess, 0)), tint: "bg-indigo-50 text-indigo-600" },
-    { icon: Timer, label: "دقائق تركيز", value: Number(totals.focus_minutes ?? totals.focus ?? students.reduce((a, s) => a + s.focus, 0)), tint: "bg-sky-50 text-sky-600" },
+    { icon: Users, label: "طلاب المدرسة", value: Number(totals.students ?? totals.students_count ?? students.length) },
+    { icon: Zap, label: "مجموع نقاط الخبرة", value: Number(totals.xp ?? totals.total_xp ?? students.reduce((a, s) => a + s.xp, 0)) },
+    { icon: BookOpen, label: "كتب مُنهاة", value: Number(totals.books ?? totals.books_finished ?? students.reduce((a, s) => a + s.books, 0)) },
+    { icon: Swords, label: "مباريات شطرنج", value: Number(totals.chess_games ?? totals.chess ?? students.reduce((a, s) => a + s.chess, 0)) },
+    { icon: Timer, label: "دقائق تركيز", value: Number(totals.focus_minutes ?? totals.focus ?? students.reduce((a, s) => a + s.focus, 0)) },
   ];
 
   return (
     <Layout>
-      <div className="mx-auto max-w-[1240px] px-4 py-8 sm:px-6 sm:py-11 lg:px-10 print:max-w-none print:py-4">
+      <div className="mx-auto w-full max-w-5xl px-4 pb-28 pt-8 sm:px-6 sm:pt-11 lg:pb-16 print:max-w-none print:py-4">
         {/* header */}
-        <div className="ft-hero-gradient relative overflow-hidden rounded-[2rem] p-6 text-white ft-shadow-lg animate-fade-up sm:p-8 print:border print:border-slate-200 print:p-5 print:text-slate-900 print:shadow-none print:![background-image:none]">
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_16%_10%,rgba(251,191,36,0.22),transparent_34%),radial-gradient(circle_at_88%_100%,rgba(255,255,255,0.12),transparent_34%)] print:hidden" aria-hidden="true" />
-          <div className="relative flex flex-wrap items-center gap-5">
-            <span className="inline-grid h-16 w-16 shrink-0 place-items-center rounded-[1.35rem] ft-icon-tile text-white shadow-xl ring-4 ring-white/15">
-              <ClipboardList className="h-8 w-8" />
+        <header className="rounded-3xl border border-slate-100 bg-white p-6 ft-shadow animate-fade-up sm:p-8 print:border-slate-200 print:p-5 print:shadow-none">
+          <div className="flex flex-wrap items-center gap-5">
+            <span className="inline-grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-slate-50 text-slate-600 ring-1 ring-slate-100">
+              <ClipboardList className="h-7 w-7" />
             </span>
             <div className="min-w-0 flex-1">
-              <div className="mb-2 inline-flex rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[11px] font-black text-amber-100 backdrop-blur print:border-slate-200 print:text-slate-500">تقرير أداء رسمي</div>
-              <h1 className="font-head text-3xl font-black leading-tight sm:text-4xl">تقرير المدرسة</h1>
-              <p className="mt-1.5 flex items-center gap-1.5 font-semibold text-slate-100/85 print:text-slate-500">
-                <GraduationCap className="h-4 w-4 text-amber-300 print:text-slate-500" /> {schoolName}
+              <span className="mb-1.5 inline-flex rounded-full bg-slate-50 px-2.5 py-0.5 text-[11px] font-extrabold text-slate-400 ring-1 ring-slate-100">تقرير أداء رسمي</span>
+              <h1 className="font-head text-2xl font-black leading-tight text-slate-900 sm:text-3xl">تقرير المدرسة</h1>
+              <p className="mt-1 flex items-center gap-1.5 text-sm font-semibold text-slate-500">
+                <GraduationCap className="h-4 w-4 text-slate-400" /> {schoolName}
               </p>
             </div>
             <Button
               data-testid="class-report-print-btn"
               onClick={() => window.print()}
-              className="min-h-[46px] rounded-2xl bg-white px-5 font-extrabold text-slate-900 shadow-xl transition hover:-translate-y-0.5 hover:bg-amber-50 print:hidden"
+              className="min-h-[46px] rounded-2xl ft-btn-primary px-5 font-extrabold text-white print:hidden"
             >
               <Printer className="ml-1 h-4 w-4" /> طباعة التقرير
             </Button>
           </div>
-        </div>
+        </header>
 
         {/* admin school switcher */}
         {isStaff && (
-          <div className="glass mt-6 flex flex-col gap-3 rounded-[1.6rem] border border-white/70 bg-white/85 p-5 ft-shadow animate-fade-up d-1 sm:flex-row sm:items-center sm:p-6 print:hidden">
+          <div className="mt-5 flex flex-col gap-3 rounded-3xl border border-slate-100 bg-white p-5 ft-shadow animate-fade-up d-1 sm:flex-row sm:items-center sm:p-6 print:hidden">
             <div className="flex-1">
               <div className="text-sm font-extrabold text-slate-800">عرض مدرسة أخرى (للإدارة)</div>
               <p className="mt-0.5 text-xs font-semibold leading-relaxed text-slate-400">اكتب اسم المدرسة كما هو مسجل ثم اضغط عرض التقرير.</p>
@@ -144,7 +144,7 @@ export default function ClassReport() {
                 onChange={(e) => setSchoolInput(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && applySchool()}
                 placeholder="اسم المدرسة…"
-                className="h-12 flex-1 rounded-2xl border-slate-200 bg-white/90 sm:w-72"
+                className="h-12 flex-1 rounded-2xl border-slate-200 bg-white sm:w-72"
               />
               <Button onClick={applySchool} disabled={reloading} variant="outline" className="min-h-[48px] shrink-0 rounded-2xl bg-white font-extrabold shadow-sm">
                 {reloading ? <Loader2 className="ml-1 h-4 w-4 animate-spin" /> : <Search className="ml-1 h-4 w-4" />}
@@ -155,67 +155,98 @@ export default function ClassReport() {
         )}
 
         {/* totals */}
-        <div className="mt-7 grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 xl:grid-cols-5 print:mt-5">
-          {totalTiles.map(({ icon: Icon, label, value, tint }, i) => (
-            <div key={label} className="relative overflow-hidden rounded-[1.5rem] border border-slate-100 bg-white p-5 ft-shadow animate-fade-up print:shadow-none sm:p-6" style={{ animationDelay: `${i * 50}ms` }}>
-              <div className="absolute inset-x-5 top-0 h-1 rounded-b-full ft-grad-bar" aria-hidden="true" />
-              <span className={`inline-grid h-12 w-12 place-items-center rounded-2xl shadow-inner ${tint}`}><Icon className="h-6 w-6" /></span>
-              <div className="mt-4 font-head text-3xl font-black leading-none text-slate-900 tabular-nums">{value}</div>
-              <div className="mt-2 text-xs font-extrabold text-slate-400">{label}</div>
+        <section aria-label="ملخص النشاط" className="mt-6 grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 xl:grid-cols-5 print:mt-5">
+          {totalTiles.map(({ icon: Icon, label, value }, i) => (
+            <div key={label} className="rounded-3xl border border-slate-100 bg-white p-5 ft-shadow animate-fade-up print:shadow-none" style={{ animationDelay: `${i * 50}ms` }}>
+              <span className="inline-grid h-10 w-10 place-items-center rounded-xl bg-slate-50 text-slate-500 ring-1 ring-slate-100"><Icon className="h-5 w-5" /></span>
+              <div className="mt-3 font-head text-2xl font-black leading-none text-slate-900 tabular-nums sm:text-3xl">{value}</div>
+              <div className="mt-1.5 text-[11px] font-extrabold text-slate-400">{label}</div>
             </div>
           ))}
-        </div>
+        </section>
 
-        {/* students table */}
-        <div className="mt-7 overflow-hidden rounded-[2rem] border border-slate-200/80 bg-white ft-shadow-lg animate-fade-up d-1 print:rounded-none print:border-slate-300 print:shadow-none">
-          <div className="flex items-center justify-between gap-3 border-b border-slate-100 bg-gradient-to-l from-slate-50 via-white to-white px-5 py-5 sm:px-7">
+        {/* top students */}
+        <section aria-label="نشاط الطلاب" className="mt-8 animate-fade-up d-1">
+          <div className="mb-4 flex items-center justify-between gap-3 px-1">
             <h2 className="font-head text-lg font-extrabold text-slate-900">نشاط الطلاب ({students.length})</h2>
-            <span className="hidden rounded-full ft-chip px-3 py-1.5 text-[11px] font-black sm:block">مرتّبون حسب نقاط الخبرة</span>
+            <span className="hidden text-[11px] font-bold text-slate-400 sm:block">مرتّبون حسب نقاط الخبرة</span>
           </div>
-          {students.length === 0 ? (
-            <p className="px-6 py-12 text-center text-sm text-slate-400">لا طلاب مسجلون من هذه المدرسة بعد.</p>
-          ) : (
-            <div className="overflow-x-auto print:overflow-visible">
-              <table className="w-full min-w-[720px] text-sm print:min-w-0">
-                <thead>
-                  <tr className="bg-slate-950 text-xs font-extrabold text-slate-200 print:bg-slate-100 print:text-slate-600">
-                    <th className="w-14 px-5 py-4 text-right font-extrabold">#</th>
-                    <th className="px-5 py-4 text-right font-extrabold">الطالب</th>
-                    <th className="px-5 py-4 text-center font-extrabold">نقاط XP</th>
-                    <th className="px-5 py-4 text-center font-extrabold">كتب مُنهاة</th>
-                    <th className="px-5 py-4 text-center font-extrabold">مباريات شطرنج</th>
-                    <th className="px-5 py-4 text-center font-extrabold">دقائق تركيز</th>
-                    <th className="px-5 py-4 text-center font-extrabold">آخر نشاط</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {[...students].sort((a, b) => b.xp - a.xp).map((s, i) => (
-                    <tr key={i} className={`border-t border-slate-100 transition hover:bg-slate-50/80 ${i < 3 ? "bg-amber-50/50" : i % 2 ? "bg-slate-50/40" : "bg-white"}`}>
-                      <td className="px-5 py-3.5">
-                        <span className={`inline-grid h-8 w-8 place-items-center rounded-full font-head text-xs font-black tabular-nums ${i === 0 ? "bg-gradient-to-l from-amber-300 to-yellow-500 text-slate-950 shadow" : i < 3 ? "bg-slate-950 text-amber-300" : "bg-slate-100 text-slate-500"}`}>{i + 1}</span>
-                      </td>
-                      <td className="px-5 py-3.5">
-                        <span className="inline-flex items-center gap-3">
-                          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full border ft-border-accent ft-bg-soft text-xs font-black ft-text-accent shadow-sm">{s.name?.[0] || "؟"}</span>
-                          <span className="font-head font-extrabold text-slate-800">{s.name}</span>
-                        </span>
-                      </td>
-                      <td className="px-5 py-3.5 text-center font-black text-slate-900 tabular-nums">{s.xp}</td>
-                      <td className="px-5 py-3.5 text-center font-bold text-slate-600 tabular-nums">{s.books}</td>
-                      <td className="px-5 py-3.5 text-center font-bold text-slate-600 tabular-nums">{s.chess}</td>
-                      <td className="px-5 py-3.5 text-center font-bold text-slate-600 tabular-nums">{s.focus}</td>
-                      <td className="px-5 py-3.5 text-center text-xs font-bold text-slate-400 tabular-nums" dir="ltr">
-                        {s.lastActive ? String(s.lastActive).slice(0, 10) : "·"}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
 
-        <p className="text-center text-[11px] font-semibold text-slate-300 mt-8 print:mt-4">
+          {students.length === 0 ? (
+            <div className="rounded-3xl border border-slate-100 bg-white px-6 py-12 text-center ft-shadow">
+              <span className="mb-3 inline-grid h-14 w-14 place-items-center rounded-2xl bg-slate-50 text-slate-400 ring-1 ring-slate-100"><GraduationCap className="h-7 w-7" /></span>
+              <p className="font-head text-base font-extrabold text-slate-800">لا طلاب مسجلون من هذه المدرسة بعد</p>
+              <p className="mx-auto mt-1.5 max-w-sm text-sm leading-relaxed text-slate-400">سيظهر نشاط الطلاب هنا فور انضمامهم وبدء نشاطهم على المنصة.</p>
+            </div>
+          ) : (
+            <>
+              {/* mobile · airy list */}
+              <div className="overflow-hidden rounded-3xl border border-slate-100 bg-white ft-shadow sm:hidden print:hidden">
+                <ul className="divide-y divide-slate-50">
+                  {sortedStudents.map((s, i) => (
+                    <li key={i} className="flex items-center gap-3 px-4 py-4">
+                      <span className={`w-6 shrink-0 text-center font-head text-sm font-black tabular-nums ${i === 0 ? "text-amber-500" : i < 3 ? "text-slate-700" : "text-slate-300"}`}>{i + 1}</span>
+                      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-slate-50 text-xs font-black text-slate-600 ring-1 ring-slate-100">{s.name?.[0] || "؟"}</span>
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate font-head text-sm font-extrabold text-slate-800">{s.name}</div>
+                        <div className="mt-0.5 text-[11px] font-semibold text-slate-400 tabular-nums">
+                          {s.books} كتاب · {s.chess} شطرنج · {s.focus} دقيقة تركيز
+                        </div>
+                      </div>
+                      <div className="shrink-0 text-left">
+                        <div className="font-head text-base font-black text-slate-900 tabular-nums">{s.xp}</div>
+                        <div className="text-[10px] font-bold text-slate-400">XP</div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {/* desktop + print · clean table */}
+              <div className="hidden overflow-hidden rounded-3xl border border-slate-100 bg-white ft-shadow sm:block print:block print:rounded-none print:border-slate-300 print:shadow-none">
+                <div className="overflow-x-auto print:overflow-visible">
+                  <table className="w-full min-w-[720px] text-sm print:min-w-0">
+                    <thead>
+                      <tr className="border-b border-slate-100 bg-slate-50/60 text-xs font-extrabold text-slate-400 print:bg-slate-100 print:text-slate-600">
+                        <th className="w-14 px-5 py-3.5 text-right font-extrabold">#</th>
+                        <th className="px-5 py-3.5 text-right font-extrabold">الطالب</th>
+                        <th className="px-5 py-3.5 text-center font-extrabold">نقاط XP</th>
+                        <th className="px-5 py-3.5 text-center font-extrabold">كتب مُنهاة</th>
+                        <th className="px-5 py-3.5 text-center font-extrabold">مباريات شطرنج</th>
+                        <th className="px-5 py-3.5 text-center font-extrabold">دقائق تركيز</th>
+                        <th className="px-5 py-3.5 text-center font-extrabold">آخر نشاط</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sortedStudents.map((s, i) => (
+                        <tr key={i} className="border-t border-slate-50 transition hover:bg-slate-50/60">
+                          <td className="px-5 py-3.5">
+                            <span className={`font-head text-sm font-black tabular-nums ${i === 0 ? "text-amber-500" : i < 3 ? "text-slate-700" : "text-slate-300"}`}>{i + 1}</span>
+                          </td>
+                          <td className="px-5 py-3.5">
+                            <span className="inline-flex items-center gap-3">
+                              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-slate-50 text-xs font-black text-slate-600 ring-1 ring-slate-100">{s.name?.[0] || "؟"}</span>
+                              <span className="font-head font-extrabold text-slate-800">{s.name}</span>
+                            </span>
+                          </td>
+                          <td className="px-5 py-3.5 text-center font-black text-slate-900 tabular-nums">{s.xp}</td>
+                          <td className="px-5 py-3.5 text-center font-bold text-slate-600 tabular-nums">{s.books}</td>
+                          <td className="px-5 py-3.5 text-center font-bold text-slate-600 tabular-nums">{s.chess}</td>
+                          <td className="px-5 py-3.5 text-center font-bold text-slate-600 tabular-nums">{s.focus}</td>
+                          <td className="px-5 py-3.5 text-center text-xs font-bold text-slate-400 tabular-nums" dir="ltr">
+                            {s.lastActive ? String(s.lastActive).slice(0, 10) : "·"}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </>
+          )}
+        </section>
+
+        <p className="mt-8 text-center text-[11px] font-semibold text-slate-300 print:mt-4">
           تقرير صادر من منصة مفكري المستقبل{schoolName ? ` · ${schoolName}` : ""}
         </p>
       </div>
