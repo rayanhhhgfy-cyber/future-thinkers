@@ -5,10 +5,23 @@ import api, { fileUrl, apiErr } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import { Newspaper, CalendarDays, ArrowLeft, Sparkles, LayoutGrid, Eye, TrendingUp, MessageCircle, Send, Trash2, BookOpen, Loader2, Clock3, Flame } from "lucide-react";
+import { Newspaper, CalendarDays, ArrowLeft, Sparkles, LayoutGrid, Eye, TrendingUp, MessageCircle, Send, Trash2, BookOpen, Loader2, Clock3, Flame, Zap, Trophy, Megaphone, Radio } from "lucide-react";
 
 /* قراءة تقريبية بعدد الدقائق · عرض فقط */
 const readMinutes = (body) => Math.max(1, Math.round((body?.length || 0) / 900));
+
+/* أيقونات تدور على رقائق التصنيفات · عرض فقط */
+const CAT_ICONS = [Zap, BookOpen, CalendarDays, Trophy, Megaphone, Sparkles, Flame];
+/* تدرجات أغلفة بديلة عند غياب صورة · عرض فقط */
+const COVER_GRADS = [
+  "from-blue-700 via-cyan-600 to-emerald-600",
+  "from-violet-700 via-purple-600 to-fuchsia-500",
+  "from-rose-600 via-orange-500 to-amber-500",
+  "from-emerald-700 via-teal-600 to-cyan-500",
+  "from-slate-800 via-slate-600 to-slate-500",
+  "from-indigo-700 via-blue-600 to-sky-500",
+];
+const coverGrad = (seed) => COVER_GRADS[Math.abs(String(seed || "").split("").reduce((a, c) => a + c.charCodeAt(0), 0)) % COVER_GRADS.length];
 
 export default function News() {
   const [data, setData] = useState(null);
@@ -37,7 +50,7 @@ export default function News() {
     api.post(`/news/${id}/view`).catch(() => {});
   };
   const toggle = (id) => { if (expanded !== id) pingView(id); setExpanded((x) => (x === id ? null : id)); };
-  /* Open an article from the trending rail / digest (scroll + expand). */
+  /* Open an article from the trending rail / digest / breaking bar (scroll + expand). */
   const openArticle = (id) => {
     if (!id) return;
     setCat("");
@@ -52,80 +65,143 @@ export default function News() {
 
   return (
     <Layout>
-      {/* ===== Masthead · newspaper header ===== */}
-      <div className="relative overflow-hidden border-b border-slate-200/80 bg-[#fdfcf8]">
-        <div className="pointer-events-none absolute -top-24 left-1/4 h-64 w-64 rounded-full bg-blue-500/[0.07] blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-28 right-1/4 h-64 w-64 rounded-full bg-emerald-500/[0.07] blur-3xl" />
-        <div className="relative mx-auto max-w-7xl px-4 pb-7 pt-5 sm:px-6 sm:pt-7 lg:px-8 xl:max-w-[1440px]">
-          {/* dateline */}
-          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b-2 border-slate-900 pb-3 text-[11px] font-bold text-slate-500 sm:text-xs">
-            <span className="inline-flex items-center gap-2">
-              <span className="grid h-7 w-7 place-items-center rounded-lg bg-slate-900 text-white"><Newspaper className="h-3.5 w-3.5" /></span>
-              نادي مفكّري المستقبل · نشرة المنصة الإخبارية
-            </span>
-            <span className="hidden items-center gap-1.5 sm:inline-flex"><CalendarDays className="h-3.5 w-3.5 text-blue-600" />{todayLine}</span>
-            <span className="inline-flex items-center gap-2 rounded-full bg-rose-50 px-3 py-1 font-extrabold text-rose-600 ring-1 ring-rose-100">
+      {/* حركة شريط المستجدات المتحرك · توقف عند اللمس/التمرير فوقه */}
+      <style>{`
+        @keyframes ft-live-marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+        .ft-live-track { animation-name: ft-live-marquee; animation-timing-function: linear; animation-iteration-count: infinite; }
+        .ft-live-marquee:hover .ft-live-track, .ft-live-marquee:active .ft-live-track { animation-play-state: paused; }
+        @media (prefers-reduced-motion: reduce) { .ft-live-track { animation: none; } }
+      `}</style>
+
+      {/* ===== شريط آخر المستجدات ===== */}
+      {data && all.length > 0 && (
+        <div className="bg-slate-950 text-white animate-fade-up">
+          <div className="mx-auto flex max-w-7xl items-stretch px-0 sm:px-6 lg:px-8 xl:max-w-[1440px]">
+            <span className="relative z-10 inline-flex shrink-0 items-center gap-2 bg-rose-600 px-3.5 py-2.5 text-[11px] font-black tracking-wide shadow-[8px_0_16px_rgba(2,6,23,0.45)] sm:px-4 sm:text-xs">
               <span className="relative flex h-2 w-2">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-rose-400 opacity-75" />
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-rose-500" />
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-white" />
               </span>
-              آخر الأخبار
+              آخر المستجدات
+            </span>
+            <div dir="ltr" className="ft-live-marquee relative flex-1 overflow-hidden [mask-image:linear-gradient(to_right,transparent,black_4%,black_96%,transparent)]">
+              <div className="ft-live-track flex w-max items-center gap-10 py-2.5 pl-10" style={{ animationDuration: `${Math.min(90, Math.max(28, all.length * 7))}s` }}>
+                {[...all, ...all].map((n, i) => (
+                  <button key={`${n.id}-${i}`} onClick={() => openArticle(n.id)} className="pressable inline-flex shrink-0 items-center gap-2 text-start text-xs font-bold text-white/85 transition hover:text-white sm:text-[13px]">
+                    <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-rose-500" />
+                    <span dir="rtl" className="whitespace-nowrap">{n.title}</span>
+                    {n.category && <span dir="rtl" className="hidden whitespace-nowrap rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-extrabold text-white/60 ring-1 ring-white/10 sm:inline-block">{n.category}</span>}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===== ترويسة البث ===== */}
+      <div className="ft-hero-gradient grain relative overflow-hidden text-white">
+        <div className="pointer-events-none absolute -top-28 left-[12%] h-72 w-72 rounded-full bg-cyan-400/20 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-32 right-[8%] h-72 w-72 rounded-full bg-emerald-300/20 blur-3xl" />
+        <Newspaper className="pointer-events-none absolute -left-10 bottom-4 h-48 w-48 rotate-12 text-white/[0.06] lg:h-64 lg:w-64" />
+        <div className="relative mx-auto max-w-7xl px-4 pb-6 pt-6 sm:px-6 sm:pt-9 lg:px-8 xl:max-w-[1440px]">
+          <div className="flex flex-wrap items-center gap-2 animate-fade-up">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-500 px-3 py-1.5 text-[11px] font-black tracking-wide shadow-lg shadow-rose-950/30">
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-white" />
+              </span>
+              بث مباشر
+            </span>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 text-[11px] font-bold text-white/75 ring-1 ring-white/15 backdrop-blur">
+              <Radio className="h-3.5 w-3.5 text-cyan-300" /> نادي مفكّري المستقبل
+            </span>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 text-[11px] font-bold text-white/75 ring-1 ring-white/15 backdrop-blur">
+              <CalendarDays className="h-3.5 w-3.5 text-emerald-300" /> {todayLine}
             </span>
           </div>
 
-          {/* masthead title */}
-          <div className="flex items-end justify-between gap-4 pt-5 sm:pt-7">
-            <div className="animate-fade-up">
-              <h1 className="font-head text-5xl font-black leading-none tracking-tight text-slate-950 sm:text-7xl lg:text-[5.5rem]">الأخبار</h1>
-              <p className="mt-3 max-w-2xl text-sm leading-relaxed text-slate-500 sm:text-base sm:leading-loose">أخبار المنصة والفعاليات وإنجازات الطلاب والمدارس والأندية · تغطية يكتبها النادي لأعضائه.</p>
+          <div className="mt-4 flex flex-wrap items-end justify-between gap-4 animate-fade-up">
+            <div>
+              <h1 className="font-head text-4xl font-black leading-tight sm:text-6xl lg:text-7xl">الأخبار <span className="ft-text-gradient">الآن</span></h1>
+              <p className="mt-2.5 max-w-2xl text-sm leading-relaxed text-white/70 sm:text-base">أخبار المنصة والفعاليات وإنجازات الطلاب والمدارس والأندية · تحديثات يكتبها النادي لأعضائه أولًا بأول.</p>
             </div>
-            <Newspaper className="pointer-events-none hidden h-28 w-28 shrink-0 -rotate-6 text-slate-900/[0.06] md:block lg:h-36 lg:w-36" />
+            {data && all.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                <span className="rounded-2xl bg-white/10 px-4 py-2.5 text-center ring-1 ring-white/15 backdrop-blur">
+                  <span className="block font-head text-lg font-black leading-none">{all.length}</span>
+                  <span className="mt-1 block text-[10px] font-bold text-white/60">خبر منشور</span>
+                </span>
+                {cats.length > 0 && (
+                  <span className="rounded-2xl bg-white/10 px-4 py-2.5 text-center ring-1 ring-white/15 backdrop-blur">
+                    <span className="block font-head text-lg font-black leading-none">{cats.length}</span>
+                    <span className="mt-1 block text-[10px] font-bold text-white/60">تصنيف</span>
+                  </span>
+                )}
+                {trending.length > 0 && (
+                  <span className="rounded-2xl bg-white/10 px-4 py-2.5 text-center ring-1 ring-white/15 backdrop-blur">
+                    <span className="block font-head text-lg font-black leading-none">{trending.length}</span>
+                    <span className="mt-1 block text-[10px] font-bold text-white/60">الأكثر قراءة</span>
+                  </span>
+                )}
+              </div>
+            )}
           </div>
 
-          {/* meta strip */}
-          {data && all.length > 0 && (
-            <div className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-2 border-t border-slate-200 pt-4 text-xs font-bold text-slate-500 animate-fade-up sm:text-[13px]">
-              <span className="inline-flex items-center gap-1.5"><Newspaper className="h-4 w-4 text-blue-600" /> {all.length} خبر منشور</span>
-              {cats.length > 0 && <span className="inline-flex items-center gap-1.5"><LayoutGrid className="h-4 w-4 text-emerald-600" /> {cats.length} تصنيف</span>}
-              {trending.length > 0 && <span className="inline-flex items-center gap-1.5"><Flame className="h-4 w-4 text-rose-500" /> {trending.length} في الأكثر قراءة</span>}
-            </div>
-          )}
-
-          {/* ===== Category chips · static (display-only filter over loaded items) ===== */}
+          {/* ===== رقائق التصنيفات · ثابتة داخل الترويسة ===== */}
           {cats.length > 1 && (
-            <div className="mt-5 flex gap-2 overflow-x-auto whitespace-nowrap pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden animate-fade-up">
+            <div className="mt-6 flex gap-2 overflow-x-auto whitespace-nowrap pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden animate-fade-up">
               <button onClick={() => setCat("")}
-                className={`pressable inline-flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-full px-4 text-sm font-bold transition ${!cat ? "bg-slate-900 text-white shadow-lg shadow-slate-900/20" : "bg-white text-slate-500 ring-1 ring-slate-200 hover:text-slate-900 hover:ring-slate-300"}`}>
+                className={`pressable inline-flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-full px-4 text-sm font-bold transition ${!cat ? "bg-white text-slate-950 shadow-lg" : "bg-white/10 text-white/75 ring-1 ring-white/20 backdrop-blur hover:bg-white/20 hover:text-white"}`}>
                 <LayoutGrid className="h-4 w-4" /> الكل
-                <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-extrabold ${!cat ? "bg-white/20 text-white" : "bg-slate-100 text-slate-400"}`}>{all.length}</span>
+                <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-extrabold ${!cat ? "bg-slate-950/10 text-slate-700" : "bg-white/15 text-white/70"}`}>{all.length}</span>
               </button>
-              {cats.map((c) => (
-                <button key={c} onClick={() => setCat(c)}
-                  className={`pressable inline-flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-full px-4 text-sm font-bold transition ${cat === c ? "bg-slate-900 text-white shadow-lg shadow-slate-900/20" : "bg-white text-slate-500 ring-1 ring-slate-200 hover:text-slate-900 hover:ring-slate-300"}`}>
-                  {c}
-                  <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-extrabold ${cat === c ? "bg-white/20 text-white" : "bg-slate-100 text-slate-400"}`}>{all.filter((n) => n.category === c).length}</span>
-                </button>
-              ))}
+              {cats.map((c, ci) => {
+                const Icon = CAT_ICONS[ci % CAT_ICONS.length];
+                return (
+                  <button key={c} onClick={() => setCat(c)}
+                    className={`pressable inline-flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-full px-4 text-sm font-bold transition ${cat === c ? "bg-white text-slate-950 shadow-lg" : "bg-white/10 text-white/75 ring-1 ring-white/20 backdrop-blur hover:bg-white/20 hover:text-white"}`}>
+                    <Icon className="h-4 w-4" /> {c}
+                    <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-extrabold ${cat === c ? "bg-slate-950/10 text-slate-700" : "bg-white/15 text-white/70"}`}>{all.filter((n) => n.category === c).length}</span>
+                  </button>
+                );
+              })}
             </div>
           )}
         </div>
       </div>
 
-      <div className="mx-auto max-w-7xl px-4 pb-28 pt-6 sm:px-6 sm:pt-8 lg:px-8 lg:pb-14 xl:max-w-[1440px]">
-        {!data ? (
-          <div className="space-y-6">
-            <Skeleton className="h-14 w-2/3 rounded-2xl" />
-            <Skeleton className="h-[26rem] rounded-[1.4rem] sm:rounded-3xl lg:h-[30rem]" />
-            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-72 rounded-[1.4rem] sm:rounded-3xl" />)}</div>
-          </div>
-        )
-          : data.items.length === 0 ? <EmptyState icon={Newspaper} title="لا أخبار بعد" desc="تابعنا لآخر المستجدات" />
-          : (
-            <>
-              {/* ===== ملخص الأسبوع digest ===== */}
-              {(digestNews || digestEvent || digestBook) && (
-                <section data-testid="news-digest" className="relative mb-6 overflow-hidden rounded-[1.4rem] bg-slate-950 p-[2px] ft-shadow-lg animate-fade-up sm:mb-8 sm:rounded-3xl">
-                  <div className="relative overflow-hidden rounded-[calc(1.4rem-2px)] bg-gradient-to-bl from-slate-900 via-blue-950 to-slate-900 p-5 sm:rounded-[calc(1.5rem-2px)] sm:p-7">
+      <div className="bg-gradient-to-b from-slate-100/80 via-slate-50 to-white">
+        <div className="mx-auto max-w-7xl px-4 pb-28 pt-6 sm:px-6 sm:pt-8 lg:px-8 lg:pb-14 xl:max-w-[1440px]">
+          {!data ? (
+            <div className="space-y-4">
+              <Skeleton className="h-64 rounded-[1.6rem] sm:h-80 sm:rounded-[2rem]" />
+              <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
+                <div className="space-y-4">
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <div key={i} className="flex gap-4 rounded-[1.6rem] bg-white p-4 ring-1 ring-slate-100 sm:p-5">
+                      <div className="min-w-0 flex-1 space-y-3 py-1">
+                        <Skeleton className="h-4 w-1/3 rounded-full" />
+                        <Skeleton className="h-6 w-4/5 rounded-lg" />
+                        <Skeleton className="h-4 w-2/3 rounded-lg" />
+                        <Skeleton className="h-4 w-1/2 rounded-full" />
+                      </div>
+                      <Skeleton className="h-28 w-28 shrink-0 rounded-2xl sm:h-32 sm:w-44" />
+                    </div>
+                  ))}
+                </div>
+                <div className="hidden space-y-3 lg:block">
+                  {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-32 rounded-[1.6rem]" />)}
+                </div>
+              </div>
+            </div>
+          )
+            : data.items.length === 0 ? <EmptyState icon={Newspaper} title="لا أخبار بعد" desc="تابعنا لآخر المستجدات" />
+            : (
+              <>
+                {/* ===== ملخص الأسبوع ===== */}
+                {(digestNews || digestEvent || digestBook) && (
+                  <section data-testid="news-digest" className="relative mb-6 overflow-hidden rounded-[1.6rem] bg-gradient-to-bl from-slate-950 via-blue-950 to-slate-900 p-5 ft-shadow-lg animate-fade-up sm:mb-8 sm:rounded-[2rem] sm:p-7">
                     <div className="pointer-events-none absolute -top-16 left-10 h-44 w-44 rounded-full bg-cyan-400/15 blur-3xl" />
                     <div className="pointer-events-none absolute -bottom-20 right-16 h-44 w-44 rounded-full bg-emerald-400/15 blur-3xl" />
                     <div className="relative flex flex-wrap items-center gap-3">
@@ -159,166 +235,201 @@ export default function News() {
                         </Link>
                       )}
                     </div>
-                  </div>
-                </section>
-              )}
+                  </section>
+                )}
 
-              {items.length === 0 ? (
-                <EmptyState icon={Newspaper} title="لا أخبار في هذا التصنيف" desc="جرّب تصنيفًا آخر" />
-              ) : (
-                <>
-                  {/* ===== Featured · editorial cover story ===== */}
-                  {featured && (
-                    <article id={`news-article-${featured.id}`} className="group relative mb-6 flex min-h-[27rem] scroll-mt-24 items-end overflow-hidden rounded-[1.4rem] bg-slate-950 ft-shadow-lg animate-fade-up sm:mb-8 sm:min-h-[32rem] lg:min-h-[36rem] 2xl:min-h-[40rem] sm:rounded-[2rem]">
-                      <div className="absolute inset-0 bg-gradient-to-br from-blue-800 via-cyan-700 to-emerald-700" />
-                      {featured.cover_url && <img src={fileUrl(featured.cover_url)} alt="" className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-[1.04]" />}
-                      <div className="absolute inset-0 bg-gradient-to-t from-slate-950/95 via-slate-950/45 to-slate-950/10" />
-                      <Newspaper className="pointer-events-none absolute -left-8 top-16 h-44 w-44 rotate-12 text-white/[0.07]" />
-                      <div className="absolute inset-x-0 top-0 flex flex-wrap items-center gap-2 p-4 sm:p-6 lg:p-8">
-                        <span className="rounded-full bg-white/15 px-3 py-1.5 text-xs font-bold text-white ring-1 ring-white/25 backdrop-blur">{featured.category}</span>
-                        <span className="inline-flex items-center gap-1 rounded-full bg-amber-400/90 px-3 py-1.5 text-xs font-extrabold text-slate-950 shadow-lg"><Sparkles className="h-3.5 w-3.5" /> قصة الغلاف</span>
-                        <span className="ms-auto hidden items-center gap-1.5 rounded-full bg-slate-950/40 px-3 py-1.5 text-[11px] font-extrabold tracking-wide text-white/80 ring-1 ring-white/15 backdrop-blur sm:inline-flex">العدد الأحدث</span>
-                      </div>
-                      <div className="relative w-full p-5 sm:p-8 lg:p-10 xl:p-12">
-                        <h3 className="font-head max-w-4xl text-3xl font-extrabold leading-snug text-white line-clamp-3 sm:text-4xl lg:text-[2.9rem] lg:leading-[1.25] xl:text-5xl">{featured.title}</h3>
-                        <p className={`mt-3 max-w-3xl text-sm leading-loose text-white/80 sm:text-base ${expanded === featured.id ? "" : "line-clamp-2"}`}>{featured.body}</p>
-                        <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-white/15 pt-5 sm:gap-3">
-                          <span className="inline-flex items-center gap-2 rounded-full bg-white/10 py-1 pl-4 pr-1 text-xs font-bold text-white ring-1 ring-white/20 backdrop-blur sm:text-sm">
-                            <span className="grid h-8 w-8 place-items-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-sm font-extrabold text-white">{featured.author_name?.[0]}</span>
-                            {featured.author_name}
+                {items.length === 0 ? (
+                  <EmptyState icon={Newspaper} title="لا أخبار في هذا التصنيف" desc="جرّب تصنيفًا آخر" />
+                ) : (
+                  <>
+                    {/* ===== القصة الأبرز · سينمائية بعرض كامل ===== */}
+                    {featured && (
+                      <article id={`news-article-${featured.id}`} className="group relative mb-6 flex min-h-[27rem] scroll-mt-24 items-end overflow-hidden rounded-[1.6rem] bg-slate-950 ft-shadow-lg animate-fade-up sm:mb-8 sm:min-h-[32rem] lg:min-h-[36rem] 2xl:min-h-[40rem] sm:rounded-[2rem]">
+                        <div className={`absolute inset-0 bg-gradient-to-br ${coverGrad(featured.id)}`} />
+                        {featured.cover_url && <img src={fileUrl(featured.cover_url)} alt="" className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-[1.04]" />}
+                        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/95 via-slate-950/45 to-slate-950/10" />
+                        <Newspaper className="pointer-events-none absolute -left-8 top-16 h-44 w-44 rotate-12 text-white/[0.07]" />
+                        <div className="absolute inset-x-0 top-0 flex flex-wrap items-center gap-2 p-4 sm:p-6 lg:p-8">
+                          <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-600 px-3 py-1.5 text-xs font-extrabold text-white shadow-lg shadow-rose-950/40">
+                            <span className="relative flex h-2 w-2">
+                              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75" />
+                              <span className="relative inline-flex h-2 w-2 rounded-full bg-white" />
+                            </span>
+                            الأبرز الآن
                           </span>
-                          {(featured.date || featured.created_at) && (
-                            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3.5 py-2 text-xs font-bold text-white ring-1 ring-white/20 backdrop-blur sm:text-sm"><CalendarDays className="h-4 w-4 text-sky-300" />{featured.date || String(featured.created_at).slice(0, 10)}</span>
-                          )}
-                          {featured.views != null && (
-                            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3.5 py-2 text-xs font-bold text-white ring-1 ring-white/20 backdrop-blur sm:text-sm"><Eye className="h-4 w-4 text-cyan-300" />{featured.views} قراءة</span>
-                          )}
-                          <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3.5 py-2 text-xs font-bold text-white ring-1 ring-white/20 backdrop-blur sm:text-sm"><Clock3 className="h-4 w-4 text-emerald-300" />{readMinutes(featured.body)} دقائق قراءة</span>
-                          {featured.body?.length > 140 && (
-                            <button onClick={() => toggle(featured.id)} className="pressable inline-flex min-h-[44px] items-center gap-1.5 rounded-full bg-white px-5 text-xs font-extrabold text-slate-900 shadow-lg transition hover:bg-blue-50 sm:text-sm">
-                              {expanded === featured.id ? "إظهار أقل" : "اقرأ القصة كاملة"}
-                              <ArrowLeft className={`h-4 w-4 transition-transform duration-300 ${expanded === featured.id ? "-rotate-90" : "group-hover:-translate-x-0.5"}`} />
-                            </button>
-                          )}
+                          <span className="rounded-full bg-white/15 px-3 py-1.5 text-xs font-bold text-white ring-1 ring-white/25 backdrop-blur">{featured.category}</span>
+                          <span className="ms-auto hidden items-center gap-1.5 rounded-full bg-slate-950/40 px-3 py-1.5 text-[11px] font-extrabold tracking-wide text-white/80 ring-1 ring-white/15 backdrop-blur sm:inline-flex"><Flame className="h-3.5 w-3.5 text-orange-400" /> قصة الغلاف</span>
                         </div>
-                        {expanded === featured.id && (
-                          <div className="mt-6 rounded-[1.4rem] bg-white p-5 text-slate-800 shadow-2xl animate-fade-up sm:rounded-3xl sm:p-7">
-                            <NewsComments newsId={featured.id} />
+                        <div className="relative w-full p-5 sm:p-8 lg:p-10 xl:p-12">
+                          <h3 className="font-head max-w-4xl text-3xl font-extrabold leading-snug text-white line-clamp-3 sm:text-4xl lg:text-[2.9rem] lg:leading-[1.25] xl:text-5xl">{featured.title}</h3>
+                          {expanded !== featured.id && <p className="mt-3 max-w-3xl text-sm leading-loose text-white/80 line-clamp-2 sm:text-base">{featured.body}</p>}
+                          <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-white/15 pt-5 sm:gap-3">
+                            <span className="inline-flex items-center gap-2 rounded-full bg-white/10 py-1 pl-4 pr-1 text-xs font-bold text-white ring-1 ring-white/20 backdrop-blur sm:text-sm">
+                              <span className="grid h-8 w-8 place-items-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-sm font-extrabold text-white">{featured.author_name?.[0]}</span>
+                              {featured.author_name}
+                            </span>
+                            {(featured.date || featured.created_at) && (
+                              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3.5 py-2 text-xs font-bold text-white ring-1 ring-white/20 backdrop-blur sm:text-sm"><CalendarDays className="h-4 w-4 text-sky-300" />{featured.date || String(featured.created_at).slice(0, 10)}</span>
+                            )}
+                            {featured.views != null && (
+                              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3.5 py-2 text-xs font-bold text-white ring-1 ring-white/20 backdrop-blur sm:text-sm"><Eye className="h-4 w-4 text-cyan-300" />{featured.views} قراءة</span>
+                            )}
+                            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3.5 py-2 text-xs font-bold text-white ring-1 ring-white/20 backdrop-blur sm:text-sm"><Clock3 className="h-4 w-4 text-emerald-300" />{readMinutes(featured.body)} دقائق قراءة</span>
+                            {featured.body?.length > 140 && (
+                              <button onClick={() => toggle(featured.id)} className="pressable inline-flex min-h-[44px] items-center gap-1.5 rounded-full bg-white px-5 text-xs font-extrabold text-slate-900 shadow-lg transition hover:bg-blue-50 sm:text-sm">
+                                {expanded === featured.id ? "إظهار أقل" : "اقرأ القصة كاملة"}
+                                <ArrowLeft className={`h-4 w-4 transition-transform duration-300 ${expanded === featured.id ? "-rotate-90" : "group-hover:-translate-x-0.5"}`} />
+                              </button>
+                            )}
                           </div>
-                        )}
-                      </div>
-                    </article>
-                  )}
-
-                  {/* ===== Stories + trending rail (editorial two-column on desktop) ===== */}
-                  <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem] xl:gap-8">
-                    <div className="min-w-0">
-                      {rest.length > 0 ? (
-                        <div className="grid gap-5 sm:grid-cols-2 xl:gap-6">
-                          {rest.map((n, i) => (
-                            <article key={n.id} id={`news-article-${n.id}`} className={`group flex h-full scroll-mt-24 flex-col overflow-hidden rounded-[1.4rem] border border-slate-100 bg-white ft-shadow transition duration-300 animate-fade-up hover:shadow-2xl hover:ring-1 hover:ring-blue-100 sm:rounded-3xl d-${((i + 1) % 6) + 1}`}>
-                              <div className="relative h-44 shrink-0 overflow-hidden bg-gradient-to-br from-blue-700 via-cyan-600 to-emerald-600 sm:h-48">
-                                {n.cover_url && <img src={fileUrl(n.cover_url)} alt="" className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.06]" />}
-                                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/55 via-transparent to-transparent" />
-                                <Newspaper className="absolute -bottom-7 left-3 h-28 w-28 rotate-12 text-white/15" />
-                                <span className="absolute right-3 top-3 rounded-full bg-slate-950/35 px-2.5 py-1 text-xs font-bold text-white ring-1 ring-white/25 shadow backdrop-blur">{n.category}</span>
-                                {n.views != null && (
-                                  <span className="absolute bottom-3 left-3 inline-flex items-center gap-1 rounded-full bg-slate-950/40 px-2.5 py-1 text-[11px] font-extrabold text-white ring-1 ring-white/20 backdrop-blur"><Eye className="h-3 w-3 text-cyan-300" />{n.views}</span>
-                                )}
+                          {expanded === featured.id && (
+                            <div className="mt-6 rounded-[1.4rem] bg-white p-5 text-slate-800 shadow-2xl animate-fade-up sm:rounded-3xl sm:p-7">
+                              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-slate-100 pb-4">
+                                <span className="flex items-center gap-2 text-sm font-bold text-slate-700">
+                                  <span className="grid h-9 w-9 place-items-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-xs font-extrabold text-white">{featured.author_name?.[0]}</span>
+                                  {featured.author_name}
+                                </span>
+                                {(featured.date || featured.created_at) && <span className="flex items-center gap-1.5 text-xs font-semibold text-slate-400"><CalendarDays className="h-3.5 w-3.5 text-blue-600" />{featured.date || String(featured.created_at).slice(0, 10)}</span>}
+                                <span className="flex items-center gap-1.5 text-xs font-semibold text-slate-400"><Clock3 className="h-3.5 w-3.5 text-emerald-600" />{readMinutes(featured.body)} دقائق قراءة</span>
                               </div>
-                              <div className="flex flex-1 flex-col p-5 sm:p-6">
-                                <h3 className="font-head text-lg font-bold leading-snug text-slate-900 line-clamp-2 transition-colors group-hover:text-blue-800">{n.title}</h3>
-                                {expanded !== n.id && <p className="mt-2 text-sm leading-relaxed text-slate-500 line-clamp-3">{n.body}</p>}
-                                {expanded === n.id ? (
-                                  <div className="mt-4 animate-fade-up">
-                                    <div className="rounded-3xl bg-[#fdfcf8] p-4 ring-1 ring-slate-100 sm:p-5">
-                                      <p className="whitespace-pre-wrap text-[15px] leading-[1.95] text-slate-700 first-letter:float-right first-letter:ml-2 first-letter:font-head first-letter:text-[3.4rem] first-letter:font-black first-letter:leading-[0.85] first-letter:text-blue-700">{n.body}</p>
-                                      <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-slate-200/80 pt-4 text-xs font-semibold text-slate-400">
-                                        <span className="flex items-center gap-2">
-                                          <span className="grid h-8 w-8 place-items-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-xs font-extrabold text-white">{n.author_name?.[0]}</span>
-                                          كتبها {n.author_name}
-                                        </span>
-                                        {(n.date || n.created_at) && <span className="flex items-center gap-1.5"><CalendarDays className="h-3.5 w-3.5 text-blue-600" />{n.date || String(n.created_at).slice(0, 10)}</span>}
-                                        <span className="flex items-center gap-1.5"><Clock3 className="h-3.5 w-3.5 text-emerald-600" />{readMinutes(n.body)} دقائق قراءة</span>
-                                      </div>
-                                    </div>
-                                    <div className="mt-4 border-t border-slate-100 pt-4">
-                                      <NewsComments newsId={n.id} />
-                                    </div>
-                                  </div>
-                                ) : (
-                                  <>
-                                    {n.body?.length > 140 && (
-                                      <button onClick={() => toggle(n.id)} className="pressable mt-3 inline-flex min-h-[40px] w-fit items-center gap-1.5 text-sm font-extrabold text-blue-700 transition hover:text-blue-900">
-                                        اقرأ المزيد
-                                        <ArrowLeft className="h-4 w-4 transition-transform duration-300 group-hover:-translate-x-1" />
-                                      </button>
-                                    )}
-                                    <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-2 pt-5 text-xs font-medium text-slate-400">
-                                      <span className="flex items-center gap-2">
-                                        <span className="grid h-8 w-8 place-items-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-xs font-extrabold text-white">{n.author_name?.[0]}</span>
-                                        {n.author_name}
-                                      </span>
-                                      {(n.date || n.created_at) && (
-                                        <span className="flex items-center gap-1.5"><CalendarDays className="h-3.5 w-3.5 text-blue-600" />{n.date || String(n.created_at).slice(0, 10)}</span>
-                                      )}
-                                      <span className="flex items-center gap-1.5"><Clock3 className="h-3.5 w-3.5 text-emerald-600" />{readMinutes(n.body)} د</span>
-                                      {n.comments_count != null && Number(n.comments_count) > 0 && (
-                                        <span className="flex items-center gap-1.5 font-bold"><MessageCircle className="h-3.5 w-3.5 text-blue-600" />{n.comments_count}</span>
-                                      )}
-                                    </div>
-                                  </>
-                                )}
-                                {expanded === n.id && n.body?.length > 140 && (
-                                  <button onClick={() => toggle(n.id)} className="pressable mt-3 inline-flex min-h-[40px] w-fit items-center gap-1.5 text-sm font-extrabold text-slate-400 transition hover:text-slate-600">
-                                    إظهار أقل
-                                    <ArrowLeft className="h-4 w-4 -rotate-90 transition-transform duration-300" />
-                                  </button>
-                                )}
+                              <p className="mt-4 whitespace-pre-wrap text-[15px] leading-[2] text-slate-700 sm:text-base">{featured.body}</p>
+                              <div className="mt-6 border-t border-slate-100 pt-5">
+                                <NewsComments newsId={featured.id} />
                               </div>
-                            </article>
-                          ))}
+                            </div>
+                          )}
                         </div>
-                      ) : (
-                        !featured && <EmptyState icon={Newspaper} title="لا أخبار في هذا التصنيف" desc="جرّب تصنيفًا آخر" />
-                      )}
-                    </div>
+                      </article>
+                    )}
 
-                    {/* ===== الأكثر قراءة · numbered editorial list ===== */}
-                    {trending.length > 0 && (
-                      <aside data-testid="news-trending" className="animate-fade-up">
-                        <div className="overflow-hidden rounded-[1.4rem] border border-slate-100 bg-white ft-shadow sm:rounded-3xl">
-                          <div className="flex items-center gap-2.5 border-b border-slate-100 bg-gradient-to-l from-rose-50/80 to-white px-5 py-4">
+                    {/* ===== مجرى الأخبار + الأكثر قراءة ===== */}
+                    <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem] xl:gap-8">
+                      {/* ===== الأكثر قراءة · تمرير أفقي على الجوال وسكة على الشاشات الكبيرة ===== */}
+                      {trending.length > 0 && (
+                        <aside data-testid="news-trending" className="order-1 min-w-0 animate-fade-up lg:order-2">
+                          <div className="mb-3.5 flex items-center gap-2.5 px-0.5 lg:px-1">
                             <span className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-rose-500 to-orange-500 text-white shadow-lg shadow-rose-500/25"><TrendingUp className="h-4 w-4" /></span>
                             <div>
                               <h2 className="font-head text-base font-extrabold leading-tight text-slate-900">الأكثر قراءة</h2>
                               <p className="text-[11px] font-semibold text-slate-400">ما يقرأه الأعضاء الآن</p>
                             </div>
+                            <span className="ms-auto hidden rounded-full bg-rose-50 px-2.5 py-1 text-[10px] font-extrabold text-rose-600 ring-1 ring-rose-100 lg:inline-flex">محدّث باستمرار</span>
                           </div>
-                          <ol>
+                          <div className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:px-0 lg:flex-col lg:overflow-visible lg:pb-0">
                             {trending.slice(0, 8).map((t, i) => (
-                              <li key={t.id} className="border-b border-slate-50 last:border-0">
-                                <button onClick={() => openArticle(t.id)} data-testid={`news-trending-${t.id}`} className="pressable group flex w-full items-start gap-3.5 px-5 py-3.5 text-start transition hover:bg-rose-50/40">
-                                  <span className={`font-head text-[1.7rem] font-black leading-none transition ${i === 0 ? "text-rose-500" : "text-slate-200 group-hover:text-rose-300"}`}>{String(i + 1).padStart(2, "0")}</span>
-                                  <span className="min-w-0 flex-1 pt-0.5">
-                                    <span className="block font-head text-sm font-bold leading-snug text-slate-800 line-clamp-2 transition-colors group-hover:text-rose-700">{t.title}</span>
-                                    <span className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px] font-bold text-slate-400">
-                                      {t.category && <span className="rounded-full bg-rose-50 px-2 py-0.5 text-rose-600 ring-1 ring-rose-100">{t.category}</span>}
-                                      {t.views != null && <span className="inline-flex items-center gap-1"><Eye className="h-3 w-3 text-cyan-600" />{t.views} قراءة</span>}
-                                    </span>
+                              <button key={t.id} onClick={() => openArticle(t.id)} data-testid={`news-trending-${t.id}`}
+                                className="pressable group relative w-[15.5rem] shrink-0 snap-start overflow-hidden rounded-[1.4rem] bg-white text-start ring-1 ring-slate-100 ft-shadow transition duration-300 hover:shadow-xl hover:ring-rose-200 sm:w-[17rem] lg:w-full">
+                                <span className="relative block h-24 overflow-hidden sm:h-28 lg:h-24">
+                                  <span className={`absolute inset-0 bg-gradient-to-br ${coverGrad(t.id)}`} />
+                                  {t.cover_url && <img src={fileUrl(t.cover_url)} alt="" className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-[1.06]" />}
+                                  <span className="absolute inset-0 bg-gradient-to-t from-slate-950/50 to-transparent" />
+                                  <span className={`absolute right-3 top-3 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-black text-white shadow-lg ring-1 ring-white/30 backdrop-blur ${i === 0 ? "bg-gradient-to-l from-rose-600 to-orange-500" : "bg-slate-950/45"}`}>
+                                    <Flame className={`h-3.5 w-3.5 ${i === 0 ? "fill-amber-300 text-amber-300" : "text-orange-400"}`} /> {i + 1}
                                   </span>
-                                </button>
-                              </li>
+                                  {t.category && <span className="absolute bottom-2.5 right-3 rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-extrabold text-white ring-1 ring-white/25 backdrop-blur">{t.category}</span>}
+                                </span>
+                                <span className="block p-3.5">
+                                  <span className="block font-head text-sm font-bold leading-snug text-slate-800 line-clamp-2 transition-colors group-hover:text-rose-700">{t.title}</span>
+                                  {t.views != null && <span className="mt-2 inline-flex items-center gap-1 text-[11px] font-bold text-slate-400"><Eye className="h-3 w-3 text-cyan-600" />{t.views} قراءة</span>}
+                                </span>
+                              </button>
                             ))}
-                          </ol>
-                        </div>
-                      </aside>
-                    )}
-                  </div>
-                </>
-              )}
-            </>
-          )}
+                          </div>
+                        </aside>
+                      )}
+
+                      {/* ===== مجرى القصص ===== */}
+                      <div className="order-2 min-w-0 lg:order-1">
+                        {rest.length > 0 ? (
+                          <div className="space-y-4">
+                            {rest.map((n, i) => (
+                              <article key={n.id} id={`news-article-${n.id}`} className={`group scroll-mt-24 overflow-hidden rounded-[1.6rem] bg-white ring-1 ring-slate-100 ft-shadow transition duration-300 animate-fade-up hover:shadow-xl hover:ring-blue-200/70 d-${((i + 1) % 6) + 1}`}>
+                                <div className="flex gap-4 p-4 sm:gap-5 sm:p-5">
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex flex-wrap items-center gap-1.5">
+                                      {n.category && <span className="rounded-full ft-bg-soft px-2.5 py-1 text-[11px] font-extrabold ft-text-accent ring-1 ft-ring-accent">{n.category}</span>}
+                                      {(n.date || n.created_at) && (
+                                        <span className="inline-flex items-center gap-1 rounded-full bg-slate-50 px-2.5 py-1 text-[11px] font-bold text-slate-400 ring-1 ring-slate-100"><CalendarDays className="h-3 w-3 text-blue-500" />{n.date || String(n.created_at).slice(0, 10)}</span>
+                                      )}
+                                      <span className="inline-flex items-center gap-1 rounded-full bg-slate-50 px-2.5 py-1 text-[11px] font-bold text-slate-400 ring-1 ring-slate-100"><Clock3 className="h-3 w-3 text-emerald-500" />{readMinutes(n.body)} دقائق</span>
+                                    </div>
+                                    <button onClick={() => toggle(n.id)} className="pressable mt-2.5 block w-full text-start">
+                                      <h3 className="font-head text-lg font-bold leading-snug text-slate-900 line-clamp-2 transition-colors group-hover:text-blue-800 sm:text-xl">{n.title}</h3>
+                                    </button>
+                                    {expanded !== n.id && <p className="mt-1.5 text-sm leading-relaxed text-slate-500 line-clamp-2 sm:line-clamp-3">{n.body}</p>}
+                                    <div className="mt-3.5 flex flex-wrap items-center gap-x-3 gap-y-2">
+                                      <span className="flex items-center gap-2 text-xs font-bold text-slate-500">
+                                        <span className="grid h-8 w-8 place-items-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-xs font-extrabold text-white">{n.author_name?.[0]}</span>
+                                        {n.author_name}
+                                      </span>
+                                      {n.views != null && (
+                                        <span className="inline-flex items-center gap-1 text-xs font-bold text-slate-400"><Eye className="h-3.5 w-3.5 text-cyan-600" />{n.views}</span>
+                                      )}
+                                      {n.comments_count != null && Number(n.comments_count) > 0 && (
+                                        <span className="inline-flex items-center gap-1 text-xs font-bold text-slate-400"><MessageCircle className="h-3.5 w-3.5 text-blue-600" />{n.comments_count}</span>
+                                      )}
+                                      {expanded !== n.id && n.body?.length > 140 && (
+                                        <button onClick={() => toggle(n.id)} className="pressable ms-auto inline-flex min-h-[40px] items-center gap-1.5 rounded-full ft-bg-soft px-4 text-xs font-extrabold ft-text-accent ring-1 ft-ring-accent transition hover:brightness-95">
+                                          اقرأ المزيد
+                                          <ArrowLeft className="h-3.5 w-3.5 transition-transform duration-300 group-hover:-translate-x-0.5" />
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <button onClick={() => toggle(n.id)} aria-label={n.title} className="pressable relative w-28 shrink-0 self-stretch overflow-hidden rounded-2xl ring-1 ring-slate-100 sm:w-44 lg:w-52">
+                                    <span className={`absolute inset-0 bg-gradient-to-br ${coverGrad(n.id)}`} />
+                                    {n.cover_url && <img src={fileUrl(n.cover_url)} alt="" className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-[1.06]" />}
+                                    <span className="absolute inset-0 bg-gradient-to-t from-slate-950/45 via-transparent to-transparent" />
+                                    <Newspaper className="absolute -bottom-5 left-2 h-20 w-20 rotate-12 text-white/15" />
+                                    {n.views != null && (
+                                      <span className="absolute bottom-2.5 left-2.5 inline-flex items-center gap-1 rounded-full bg-slate-950/45 px-2 py-0.5 text-[10px] font-extrabold text-white ring-1 ring-white/20 backdrop-blur"><Eye className="h-3 w-3 text-cyan-300" />{n.views}</span>
+                                    )}
+                                  </button>
+                                </div>
+
+                                {expanded === n.id && (
+                                  <div className="border-t border-slate-100 bg-slate-50/60 px-4 py-5 animate-fade-up sm:px-6 sm:py-6">
+                                    <div className="rounded-[1.4rem] bg-white p-5 ring-1 ring-slate-100 sm:rounded-3xl sm:p-7">
+                                      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                                        <span className="flex items-center gap-2 text-sm font-bold text-slate-700">
+                                          <span className="grid h-10 w-10 place-items-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-sm font-extrabold text-white">{n.author_name?.[0]}</span>
+                                          <span>
+                                            <span className="block leading-tight">{n.author_name}</span>
+                                            <span className="block text-[11px] font-semibold text-slate-400">كاتب الخبر</span>
+                                          </span>
+                                        </span>
+                                        <span className="ms-auto flex flex-wrap items-center gap-1.5">
+                                          {(n.date || n.created_at) && <span className="inline-flex items-center gap-1 rounded-full bg-slate-50 px-2.5 py-1 text-[11px] font-bold text-slate-400 ring-1 ring-slate-100"><CalendarDays className="h-3 w-3 text-blue-500" />{n.date || String(n.created_at).slice(0, 10)}</span>}
+                                          <span className="inline-flex items-center gap-1 rounded-full bg-slate-50 px-2.5 py-1 text-[11px] font-bold text-slate-400 ring-1 ring-slate-100"><Clock3 className="h-3 w-3 text-emerald-500" />{readMinutes(n.body)} دقائق قراءة</span>
+                                          {n.views != null && <span className="inline-flex items-center gap-1 rounded-full bg-slate-50 px-2.5 py-1 text-[11px] font-bold text-slate-400 ring-1 ring-slate-100"><Eye className="h-3 w-3 text-cyan-600" />{n.views} قراءة</span>}
+                                        </span>
+                                      </div>
+                                      <p className="mt-5 whitespace-pre-wrap text-[15px] leading-[2.05] text-slate-700 sm:text-base">{n.body}</p>
+                                      <div className="mt-6 border-t border-slate-100 pt-5">
+                                        <NewsComments newsId={n.id} />
+                                      </div>
+                                      {n.body?.length > 140 && (
+                                        <button onClick={() => toggle(n.id)} className="pressable mt-5 inline-flex min-h-[40px] items-center gap-1.5 text-sm font-extrabold text-slate-400 transition hover:text-slate-600">
+                                          إظهار أقل
+                                          <ArrowLeft className="h-4 w-4 -rotate-90 transition-transform duration-300" />
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
+                              </article>
+                            ))}
+                          </div>
+                        ) : (
+                          !featured && <EmptyState icon={Newspaper} title="لا أخبار في هذا التصنيف" desc="جرّب تصنيفًا آخر" />
+                        )}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </>
+            )}
+        </div>
       </div>
     </Layout>
   );
