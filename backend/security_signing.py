@@ -189,10 +189,13 @@ def canonical_query(query_params) -> str:
 
 def build_canonical_v2(method, path, query, ts_ms, nonce, device_id,
                        body, content_type) -> str:
+    # Canonical content type drops parameters ("; boundary=...", "; charset=...")
+    # so browser-generated multipart headers always match the signed value.
+    ct = (content_type or "").split(";")[0].strip().lower()
     return ("V2\n" + method.upper() + "\n" + path + "\n" + query + "\n"
             + str(ts_ms) + "\n" + nonce + "\n" + (device_id or "") + "\n"
             + sha256_hex(body) + "\n"
-            + sha256_hex((content_type or "").encode("utf-8")))
+            + sha256_hex(ct.encode("utf-8")))
 
 
 def rotating_key(l0: str, device_id: str, bucket: int) -> str:
