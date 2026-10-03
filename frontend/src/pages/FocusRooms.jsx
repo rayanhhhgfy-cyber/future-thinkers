@@ -4,7 +4,7 @@ import api, { apiErr } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { Layout, PageLoader, EmptyState } from "@/components/Layout";
 import { toast } from "sonner";
-import { Timer, Plus, LogOut, Users, Play, Pause, Flame, Headphones, Target, CalendarDays, Trophy, History, Activity, Check, Coffee } from "lucide-react";
+import { Timer, Plus, LogOut, Users, Play, Pause, Flame, Headphones, Target, CalendarDays, Trophy, History, Activity, Check, Coffee, CloudRain, Waves, Wind, Volume2, VolumeX, Minus } from "lucide-react";
 
 function fmt(s) {
   const m = Math.floor(s / 60), ss = s % 60;
@@ -51,6 +51,268 @@ function FocusLeaders() {
         ))}
       </div>
     </section>
+  );
+}
+
+/* من يركّز الآن · live presence strip, refreshes every 30s, lobby only. */
+const MOOD_CHIP_LIGHT = {
+  violet: "bg-violet-50 text-violet-600 ring-violet-100",
+  emerald: "bg-emerald-50 text-emerald-600 ring-emerald-100",
+  ocean: "bg-sky-50 text-sky-600 ring-sky-100",
+  sunset: "bg-amber-50 text-amber-600 ring-amber-100",
+  rose: "bg-rose-50 text-rose-600 ring-rose-100",
+  slate: "bg-slate-100 text-slate-500 ring-slate-200",
+};
+
+function NowFocusing() {
+  const [items, setItems] = useState(null);
+  useEffect(() => {
+    let alive = true;
+    const loadNow = () => api.get("/focus/now")
+      .then((r) => { if (alive) setItems(Array.isArray(r.data?.items) ? r.data.items : []); })
+      .catch(() => { if (alive) setItems([]); });
+    loadNow();
+    const iv = setInterval(loadNow, 30000);
+    return () => { alive = false; clearInterval(iv); };
+  }, []);
+  if (items === null) return null;
+  return (
+    <section data-testid="focus-now" className="animate-fade-up bg-white rounded-[1.6rem] lg:rounded-[2rem] border border-slate-100 ft-shadow p-5 sm:p-6 lg:p-7 xl:p-8 mb-6 lg:mb-8">
+      <h3 className="font-head font-extrabold text-slate-800 lg:text-lg flex items-center gap-2.5 mb-4 lg:mb-5">
+        <span className="relative w-10 h-10 lg:w-12 lg:h-12 rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-500 text-white grid place-items-center shadow-lg shadow-emerald-200"><Users className="w-5 h-5 lg:w-6 lg:h-6" /><span className="absolute -top-0.5 -left-0.5 w-3 h-3 rounded-full bg-emerald-400 ring-2 ring-white animate-pulse" /></span>
+        من يركّز الآن
+        {items.length > 0 && <span className="ft-chip rounded-full px-2.5 py-1 text-[10px] font-extrabold">{items.length} في جلسة</span>}
+      </h3>
+      {items.length === 0 ? (
+        <div className="flex items-center gap-3 rounded-2xl bg-slate-50/70 ring-1 ring-slate-100 px-4 py-4">
+          <span className="w-10 h-10 rounded-full bg-gradient-to-br from-violet-500 to-indigo-500 text-white grid place-items-center shrink-0"><Flame className="w-5 h-5" /></span>
+          <div className="min-w-0">
+            <p className="text-sm font-extrabold text-slate-700">كن أول من يبدأ جلسة الآن</p>
+            <p className="text-xs text-slate-400 font-bold mt-0.5">افتح غرفة تركيز من الأسفل وابدأ · حضورك سيظهر هنا للآخرين</p>
+          </div>
+        </div>
+      ) : (
+        <div className="flex gap-2 lg:gap-2.5 overflow-x-auto pb-1 -mx-1 px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {items.map((p) => {
+            const mm = moodOf(p);
+            return (
+              <span key={p.id} className="inline-flex items-center gap-2.5 pl-3 pr-1.5 py-1.5 rounded-full bg-slate-50/80 ring-1 ring-slate-100 shrink-0">
+                <span className={`w-8 h-8 rounded-full bg-gradient-to-br ${mm.dot} text-white grid place-items-center text-xs font-black ring-2 ring-white shadow shrink-0`}>{(p.name || "؟").trim().charAt(0)}</span>
+                <span className="text-xs lg:text-[13px] font-bold text-slate-700 whitespace-nowrap">{p.name || "طالب"}</span>
+                <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ring-1 whitespace-nowrap ${MOOD_CHIP_LIGHT[p.mood] || MOOD_CHIP_LIGHT.violet}`}>{mm.label}</span>
+                <span className="inline-flex items-center gap-1 text-[11px] font-extrabold text-violet-600 whitespace-nowrap"><Timer className="w-3.5 h-3.5" />{Math.round(p.minutes || 0)}د</span>
+              </span>
+            );
+          })}
+        </div>
+      )}
+    </section>
+  );
+}
+
+/* هدفي الأسبوعي · weekly goal ring + 7-day chart, lobby only, hides if endpoints missing. */
+const DAY_NAMES = ["أحد", "اثنين", "ثلاثاء", "أربعاء", "خميس", "جمعة", "سبت"];
+function dayLabel(dateStr) {
+  const d = new Date(`${dateStr}T00:00:00`);
+  return Number.isNaN(d.getTime()) ? "" : DAY_NAMES[d.getDay()];
+}
+
+function WeeklyGoal() {
+  const [week, setWeek] = useState(null);
+  const [goal, setGoal] = useState(null);
+  const [saving, setSaving] = useState(false);
+  useEffect(() => {
+    api.get("/focus/my-week").then((r) => setWeek(r.data || null)).catch(() => setWeek(null));
+    api.get("/focus/goal").then((r) => setGoal(typeof r.data?.weekly_minutes === "number" ? r.data.weekly_minutes : null)).catch(() => {});
+  }, []);
+  if (!week) return null;
+  const minutes = week.minutes || 0;
+  const goalVal = goal ?? (typeof week.goal === "number" ? week.goal : 0);
+  const pct = goalVal > 0 ? Math.min(100, Math.round((minutes / goalVal) * 100)) : 0;
+  const days = Array.isArray(week.days) ? week.days : [];
+  const maxDay = Math.max(1, ...days.map((d) => d.minutes || 0));
+  const nowD = new Date();
+  const todayStr = `${nowD.getFullYear()}-${String(nowD.getMonth() + 1).padStart(2, "0")}-${String(nowD.getDate()).padStart(2, "0")}`;
+  const change = async (delta) => {
+    const base = goalVal > 0 ? goalVal : 300;
+    const next = Math.min(1200, Math.max(60, base + delta));
+    if (next === goalVal || saving) return;
+    setGoal(next);
+    setSaving(true);
+    try {
+      await api.put("/focus/goal", { weekly_minutes: next });
+      toast.success("تم حفظ هدفك الأسبوعي 🎯");
+    } catch (e) { /* التغيير انعكس محلياً · تُحفظ المحاولة القادمة */ }
+    setSaving(false);
+  };
+  const R2 = 30, C2 = 2 * Math.PI * R2;
+  return (
+    <section data-testid="focus-weekly-goal" className="animate-fade-up bg-white rounded-[1.6rem] lg:rounded-[2rem] border border-slate-100 ft-shadow p-5 sm:p-6 lg:p-7 xl:p-8 mb-6 lg:mb-8">
+      <h3 className="font-head font-extrabold text-slate-800 lg:text-lg flex items-center gap-2.5 mb-5 lg:mb-6">
+        <span className="w-10 h-10 lg:w-12 lg:h-12 rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-500 text-white grid place-items-center shadow-lg shadow-violet-200"><Target className="w-5 h-5 lg:w-6 lg:h-6" /></span>
+        هدفي الأسبوعي
+        <span className="ft-chip rounded-full px-2.5 py-1 text-[10px] font-extrabold">أسبوعي</span>
+      </h3>
+      <div className="grid lg:grid-cols-[auto_1fr] gap-6 lg:gap-10 items-center">
+        <div className="flex items-center gap-4 lg:gap-5">
+          <div className="relative w-20 h-20 lg:w-24 lg:h-24 shrink-0">
+            <svg viewBox="0 0 72 72" className="w-full h-full -rotate-90">
+              <circle cx="36" cy="36" r={R2} fill="none" strokeWidth="7" className="stroke-slate-100" />
+              <circle cx="36" cy="36" r={R2} fill="none" strokeWidth="7" strokeLinecap="round" stroke="#8b5cf6" className="transition-all duration-700" strokeDasharray={C2} strokeDashoffset={C2 * (1 - pct / 100)} />
+            </svg>
+            <div className="absolute inset-0 grid place-items-center">
+              <span className="font-head text-lg lg:text-xl font-black text-slate-800" dir="ltr">{pct}%</span>
+            </div>
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm lg:text-base font-extrabold text-slate-800">أنجزت <b className="font-head">{minutes}د</b> {goalVal > 0 ? <>من <b className="font-head">{goalVal}د</b></> : "هذا الأسبوع"}</p>
+            <p className="text-xs font-bold text-slate-400 mt-1">{pct >= 100 ? "أحسنت · بلغت هدف الأسبوع 🎉" : goalVal > 0 ? `يتبقّى ${Math.max(0, goalVal - minutes)}د لبلوغ هدفك` : "حدّد هدفك الأسبوعي وابدأ التقدّم"}</p>
+            <div className="flex items-center gap-2 mt-3">
+              <button onClick={() => change(-60)} disabled={saving || goalVal <= 60} data-testid="weekly-goal-minus" aria-label="إنقاص الهدف" className="pressable w-10 h-10 rounded-xl bg-slate-50 ring-1 ring-slate-200 text-slate-500 grid place-items-center disabled:opacity-40 min-h-[44px]"><Minus className="w-4 h-4" /></button>
+              <span className="text-xs lg:text-[13px] font-extrabold text-slate-600 whitespace-nowrap">{goalVal > 0 ? `${goalVal} دقيقة أسبوعياً` : "بلا هدف بعد"}</span>
+              <button onClick={() => change(60)} disabled={saving || goalVal >= 1200} data-testid="weekly-goal-plus" aria-label="زيادة الهدف" className="pressable w-10 h-10 rounded-xl bg-gradient-to-l from-violet-600 to-indigo-600 text-white shadow-md shadow-violet-200 grid place-items-center disabled:opacity-40 min-h-[44px]"><Plus className="w-4 h-4" /></button>
+            </div>
+          </div>
+        </div>
+        {days.length > 0 && (
+          <div>
+            <div className="flex items-end gap-1.5 sm:gap-2 lg:gap-2.5">
+              {days.map((d, i) => {
+                const min = d.minutes || 0;
+                const h = Math.max(min > 0 ? 10 : 4, Math.round((min / maxDay) * 100));
+                const isToday = d.date === todayStr;
+                return (
+                  <div key={d.date || i} className="flex-1 flex flex-col items-center gap-1.5 min-w-0" title={`${min} دقيقة`}>
+                    <span className={`text-[10px] lg:text-[11px] font-extrabold h-4 ${min > 0 ? "text-violet-600" : "text-transparent"}`}>{min}</span>
+                    <div className="w-full h-20 lg:h-24 flex items-end rounded-t-xl">
+                      <div className={`w-full rounded-t-lg transition-all duration-700 ${isToday ? "bg-gradient-to-t from-violet-600 to-indigo-400 shadow-md shadow-violet-200" : "bg-gradient-to-t from-violet-300/60 to-indigo-300/50"}`} style={{ height: `${h}%` }} />
+                    </div>
+                    <span className={`text-[10px] lg:text-[11px] font-bold ${isToday ? "text-violet-700" : "text-slate-400"}`}>{dayLabel(d.date)}</span>
+                  </div>
+                );
+              })}
+            </div>
+            <p className="text-[11px] font-bold text-slate-300 mt-2">دقائق التركيز في كل يوم من هذا الأسبوع</p>
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+/* أصوات أجواء · generated live with WebAudio, no audio files, stops on unmount. */
+function noiseBuffer(ctx, brown) {
+  const len = ctx.sampleRate * 3;
+  const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+  const ch = buf.getChannelData(0);
+  let last = 0;
+  for (let i = 0; i < len; i++) {
+    const w = Math.random() * 2 - 1;
+    if (brown) { last = (last + 0.02 * w) / 1.02; ch[i] = last * 3.5; }
+    else ch[i] = w;
+  }
+  return buf;
+}
+
+const SOUNDS = [
+  { key: "rain", label: "مطر", icon: CloudRain },
+  { key: "white", label: "ضجيج أبيض", icon: Waves },
+  { key: "brown", label: "ضجيج بنّي", icon: Wind },
+  { key: "cafe", label: "أجواء مقهى", icon: Coffee },
+];
+
+function AmbientSounds() {
+  const [sel, setSel] = useState(() => { try { return localStorage.getItem("ft-ambient-sound") || ""; } catch (e) { return ""; } });
+  const [volume, setVolume] = useState(() => { const v = parseFloat(localStorage.getItem("ft-ambient-volume")); return Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : 0.5; });
+  const [playing, setPlaying] = useState(false);
+  const ctxRef = useRef(null);
+  const nodesRef = useRef(null);
+  const gainRef = useRef(null);
+  const volumeRef = useRef(volume);
+
+  const stop = () => {
+    const n = nodesRef.current;
+    if (n) n.forEach((s) => { try { s.stop(); } catch (e) {} });
+    nodesRef.current = null;
+    gainRef.current = null;
+    if (ctxRef.current) { const c = ctxRef.current; ctxRef.current = null; c.close().catch(() => {}); }
+  };
+
+  const start = (kind) => {
+    stop();
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) { toast.error("متصفحك لا يدعم أصوات الأجواء"); return false; }
+    const ctx = new AC();
+    ctxRef.current = ctx;
+    const master = ctx.createGain();
+    master.gain.value = volumeRef.current;
+    master.connect(ctx.destination);
+    gainRef.current = master;
+    const src = ctx.createBufferSource();
+    src.buffer = noiseBuffer(ctx, kind === "brown");
+    src.loop = true;
+    const stoppables = [src];
+    if (kind === "rain") {
+      const hp = ctx.createBiquadFilter(); hp.type = "highpass"; hp.frequency.value = 320;
+      const lp = ctx.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 1500; lp.Q.value = 0.4;
+      src.connect(hp); hp.connect(lp); lp.connect(master);
+    } else if (kind === "cafe") {
+      const bp = ctx.createBiquadFilter(); bp.type = "bandpass"; bp.frequency.value = 480; bp.Q.value = 0.5;
+      const lp = ctx.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 1200;
+      const swell = ctx.createGain(); swell.gain.value = 0.8;
+      const lfo = ctx.createOscillator(); lfo.type = "sine"; lfo.frequency.value = 0.12;
+      const depth = ctx.createGain(); depth.gain.value = 0.22;
+      lfo.connect(depth); depth.connect(swell.gain);
+      lfo.start();
+      stoppables.push(lfo);
+      src.connect(bp); bp.connect(lp); lp.connect(swell); swell.connect(master);
+    } else {
+      src.connect(master);
+    }
+    src.start();
+    nodesRef.current = stoppables;
+    return true;
+  };
+
+  const toggle = (key) => {
+    if (playing && sel === key) { stop(); setPlaying(false); return; }
+    setSel(key);
+    setPlaying(start(key));
+  };
+
+  useEffect(() => { try { localStorage.setItem("ft-ambient-sound", sel || ""); } catch (e) {} }, [sel]);
+  useEffect(() => {
+    volumeRef.current = volume;
+    try { localStorage.setItem("ft-ambient-volume", String(volume)); } catch (e) {}
+    if (gainRef.current && ctxRef.current) gainRef.current.gain.setTargetAtTime(volume, ctxRef.current.currentTime, 0.05);
+  }, [volume]);
+  useEffect(() => () => stop(), []);
+
+  const selLabel = SOUNDS.find((s) => s.key === sel)?.label;
+  return (
+    <div className="relative mt-6 lg:mt-7 flex flex-col items-center gap-3" data-testid="ambient-sounds">
+      <span className="inline-flex items-center gap-1.5 text-[11px] lg:text-xs font-bold text-white/50"><Headphones className="w-3.5 h-3.5" /> أصوات أجواء ترافق تركيزك</span>
+      <div className="flex flex-wrap justify-center gap-2">
+        {SOUNDS.map(({ key, label, icon: Icon }) => {
+          const active = playing && sel === key;
+          const remembered = !playing && sel === key;
+          return (
+            <button key={key} onClick={() => toggle(key)} data-testid={`ambient-sound-${key}`} aria-pressed={active}
+              className={`pressable inline-flex items-center gap-1.5 min-h-[44px] px-4 py-2.5 rounded-full text-xs lg:text-[13px] font-bold ring-1 transition-colors ${active ? "bg-white/20 ring-white/40 text-white" : remembered ? "bg-white/10 ring-violet-300/50 text-violet-100" : "bg-white/[0.07] ring-white/10 text-white/70 hover:bg-white/[0.12]"}`}>
+              <Icon className="w-4 h-4" /> {label}
+              {active && <span className="w-1.5 h-1.5 rounded-full bg-emerald-300 animate-pulse" />}
+            </button>
+          );
+        })}
+      </div>
+      {sel && (
+        <label className="inline-flex items-center gap-2.5 text-white/60">
+          {volume > 0 ? <Volume2 className="w-4 h-4 shrink-0" /> : <VolumeX className="w-4 h-4 shrink-0" />}
+          <input type="range" min="0" max="1" step="0.05" value={volume} onChange={(e) => setVolume(parseFloat(e.target.value))} dir="ltr" data-testid="ambient-volume" aria-label="مستوى الصوت" className="w-32 lg:w-40 accent-violet-400 cursor-pointer" />
+          <span className="text-[11px] font-bold text-white/40">{playing ? `يُشغَّل الآن · ${selLabel}` : `محفوظ · ${selLabel} · اضغط للتشغيل`}</span>
+        </label>
+      )}
+    </div>
   );
 }
 
@@ -212,6 +474,7 @@ export default function FocusRooms() {
                 </div>
               )}
             </div>
+            <AmbientSounds />
             <div className="relative flex justify-center gap-2 lg:gap-2.5 mt-9 lg:mt-10 flex-wrap">
               {(room.members || []).map((mm) => (
                 <span key={mm.user_id} className={`inline-flex items-center gap-2 pl-3 pr-1.5 py-1.5 lg:pl-4 lg:pr-2 lg:py-2 lg:text-[13px] rounded-full text-xs font-bold backdrop-blur-sm ring-1 ${mm.user_id === user?.id ? `${m.soft}` : "bg-white/10 ring-white/10"}`}>
@@ -245,6 +508,8 @@ export default function FocusRooms() {
           </div>
         </div>
 
+        <NowFocusing />
+
         {stats && (
           <div className="animate-fade-up relative overflow-hidden rounded-[1.6rem] lg:rounded-[2rem] bg-slate-950 grain text-white px-5 py-4 lg:px-7 lg:py-6 mb-6 lg:mb-8 ft-shadow">
             <div className="pointer-events-none absolute -top-20 right-1/4 w-64 h-64 rounded-full bg-violet-600/15 blur-3xl" />
@@ -257,6 +522,8 @@ export default function FocusRooms() {
             </div>
           </div>
         )}
+
+        <WeeklyGoal />
 
         {rooms && rooms.length > 0 && (
           <div className="hidden lg:grid grid-cols-3 gap-5 xl:gap-6 mb-6 lg:mb-8">

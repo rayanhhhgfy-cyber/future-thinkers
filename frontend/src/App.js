@@ -96,20 +96,20 @@ function AnimatedRoutes() {
       <Route path="/" element={<Landing />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
-      <Route path="/library" element={<Library />} />
-      <Route path="/books/:id" element={<BookDetail />} />
+      <Route path="/library" element={<Protected><Library /></Protected>} />
+      <Route path="/books/:id" element={<Protected><BookDetail /></Protected>} />
       <Route path="/upload-book" element={<Protected><UploadBook /></Protected>} />
-      <Route path="/clubs" element={<Clubs />} />
-      <Route path="/clubs/:slug" element={<ClubDetail />} />
-      <Route path="/discussions/:id" element={<DiscussionDetail />} />
+      <Route path="/clubs" element={<Protected><Clubs /></Protected>} />
+      <Route path="/clubs/:slug" element={<Protected><ClubDetail /></Protected>} />
+      <Route path="/discussions/:id" element={<Protected><DiscussionDetail /></Protected>} />
       <Route path="/chess/practice" element={<Protected><ChessPractice /></Protected>} />
       <Route path="/chess/robot" element={<Protected><ChessRobot /></Protected>} />
       <Route path="/chess/:id" element={<Protected><ChessGame /></Protected>} />
-      <Route path="/events" element={<Events />} />
-      <Route path="/events/:id" element={<EventDetail />} />
-      <Route path="/competitions" element={<Competitions />} />
-      <Route path="/competitions/:id" element={<CompetitionDetail />} />
-      <Route path="/leaderboard" element={<Leaderboard />} />
+      <Route path="/events" element={<Protected><Events /></Protected>} />
+      <Route path="/events/:id" element={<Protected><EventDetail /></Protected>} />
+      <Route path="/competitions" element={<Protected><Competitions /></Protected>} />
+      <Route path="/competitions/:id" element={<Protected><CompetitionDetail /></Protected>} />
+      <Route path="/leaderboard" element={<Protected><Leaderboard /></Protected>} />
       <Route path="/points" element={<Protected><Points /></Protected>} />
       <Route path="/stats" element={<Protected><Stats /></Protected>} />
       <Route path="/chess/puzzle" element={<Protected><ChessPuzzle /></Protected>} />
@@ -121,19 +121,19 @@ function AnimatedRoutes() {
       <Route path="/quiz-live" element={<Protected><QuizLive /></Protected>} />
       <Route path="/season-cup" element={<SeasonCup />} />
       <Route path="/class-report" element={<Protected><ClassReport /></Protected>} />
-      <Route path="/members" element={<Members />} />
+      <Route path="/members" element={<Protected><Members /></Protected>} />
       <Route path="/portfolio/:id" element={<Portfolio />} />
       <Route path="/paths" element={<Protected><Paths /></Protected>} />
       <Route path="/community" element={<Protected><Community /></Protected>} />
-      <Route path="/calendar" element={<Calendar />} />
+      <Route path="/calendar" element={<Protected><Calendar /></Protected>} />
       <Route path="/reading-challenges" element={<Protected><ReadingChallenges /></Protected>} />
       <Route path="/focus" element={<Protected><FocusRooms /></Protected>} />
-      <Route path="/news" element={<News />} />
-      <Route path="/studio" element={<Studio />} />
-      <Route path="/studio/:id" element={<StudioWork />} />
-      <Route path="/ventures" element={<Ventures />} />
-      <Route path="/ventures/:id" element={<VentureDetail />} />
-      <Route path="/profile/:id" element={<Profile />} />
+      <Route path="/news" element={<Protected><News /></Protected>} />
+      <Route path="/studio" element={<Protected><Studio /></Protected>} />
+      <Route path="/studio/:id" element={<Protected><StudioWork /></Protected>} />
+      <Route path="/ventures" element={<Protected><Ventures /></Protected>} />
+      <Route path="/ventures/:id" element={<Protected><VentureDetail /></Protected>} />
+      <Route path="/profile/:id" element={<Protected><Profile /></Protected>} />
       <Route path="/settings" element={<Protected><Settings /></Protected>} />
       <Route path="/dashboard" element={<Protected><Dashboard /></Protected>} />
       <Route path="/admin/*" element={<Protected staff><Admin /></Protected>} />
