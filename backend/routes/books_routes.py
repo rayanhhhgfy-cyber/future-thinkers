@@ -609,7 +609,8 @@ async def recommendations(user: dict = Depends(get_current_user)):
     for bid in read_ids:
         b = await db.books.find_one({"_id": oid(bid)})
         if b:
-            cats[b["category"]] = cats.get(b["category"], 0) + 1
+            cat = b.get("category") or "misc"
+            cats[cat] = cats.get(cat, 0) + 1
     query = {"status": "approved"}
     if read_ids:
         query["_id"] = {"$nin": [oid(x) for x in read_ids if oid(x)]}

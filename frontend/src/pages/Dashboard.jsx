@@ -107,12 +107,16 @@ export default function Dashboard() {
 
   const load = async () => {
     const [d, g, r, b, w, t] = await Promise.all([
-      api.get("/dashboard"), api.get("/gamification/me"), api.get("/books/me/recommendations"),
+      api.get("/dashboard").catch(() => ({ data: null })),
+      api.get("/gamification/me").catch(() => ({ data: { xp: 0, level: 1, level_title: "", xp_to_next: 0, level_progress: 0, streak: 0 } })),
+      api.get("/books/me/recommendations").catch(() => ({ data: [] })),
       api.get("/badges/me").catch(() => ({ data: [] })),
       api.get("/studio/works/me").catch(() => ({ data: [] })),
       api.get("/studio/published", { params: { limit: 3 } }).catch(() => ({ data: { items: [] } })),
     ]);
-    setData(d.data); setGam(g.data); setRecs(r.data);
+    if (d.data) setData(d.data);
+    if (g.data) setGam(g.data);
+    setRecs(Array.isArray(r.data) ? r.data : []);
     setMyBadges(b.data); setMyWorks(w.data);
     setTrending((t.data.items || []).sort((x, y) => (y.likes || 0) - (x.likes || 0)).slice(0, 3));
     api.get("/quests/today").then((r) => setQuests(r.data.quests || [])).catch(() => {});
