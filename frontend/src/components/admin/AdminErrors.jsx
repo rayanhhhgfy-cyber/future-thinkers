@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import api, { apiErr } from "@/lib/api";
 import { toast } from "sonner";
 import { PageLoader } from "@/components/Layout";
@@ -7,9 +8,9 @@ import { timeAgo } from "@/components/NotificationsPanel";
 import { Bug, Copy, Mail, CheckCircle2, Trash2, RefreshCw, ChevronDown, Inbox, Wrench, Sigma } from "lucide-react";
 
 /* سجل الأخطاء
-   إعادة تصميم بصرية فقط: نفس الجلب GET /admin/errors (status/source/page/limit)
-   ونفس الإجراءات resolve و delete و contact بنفس النصوص والرسائل،
-   ونفس نسخ الخطأ الكامل إلى الحافظة. */
+   الإجراءات: resolve و delete كما هي، و«مراسلة المستخدم» تفتح الآن محادثة
+   خاصة مباشرة مع صاحب البلاغ (/messages?to=<user_id>) · تظهر دائمًا، وعند
+   غياب حساب مسجل للبلاغ تشرح السبب بتنبيه بدل أن تختفي بصمت. */
 
 const SRC = {
   server: ["خادم", "bg-rose-100 text-rose-700", "#E11D48"],
@@ -19,6 +20,7 @@ const SRC = {
 };
 
 export default function AdminErrors() {
+  const nav = useNavigate();
   const [items, setItems] = useState(null);
   const [counts, setCounts] = useState({ open: 0, resolved: 0, total: 0 });
   const [status, setStatus] = useState("open");
@@ -26,8 +28,6 @@ export default function AdminErrors() {
   const [page, setPage] = useState(1);
   const [pages, setPages] = useState(1);
   const [openId, setOpenId] = useState(null);
-  const [contact, setContact] = useState(null); // error doc being contacted
-  const [contactMsg, setContactMsg] = useState("");
   const [busy, setBusy] = useState("");
 
   const load = async (p = page, st = status, src = source) => {
@@ -56,14 +56,14 @@ export default function AdminErrors() {
     try { await navigator.clipboard.writeText(text); toast.success("تم نسخ الخطأ كاملًا 📋"); }
     catch { toast.error("تعذر النسخ"); }
   };
-  const sendContact = async () => {
-    setBusy("contact");
-    try {
-      await api.post(`/admin/errors/${contact.id}/contact`, { message: contactMsg });
-      toast.success("أُرسلت الرسالة للمستخدم عبر الإشعارات 🔔");
-      setContact(null); setContactMsg(""); load();
-    } catch (er) { toast.error(apiErr(er)); }
-    setBusy("");
+  /* مراسلة صاحب البلاغ: محادثة خاصة مباشرة (تُفتح/تُنشأ عند أول رسالة).
+     البلاغات بلا حساب مسجل لا يمكن مراسلتها · نُظهر السبب بدل الصمت. */
+  const dmUser = (e) => {
+    if (!e.user_id) {
+      toast.error("هذا البلاغ من زائر غير مسجّل · لا يمكن مراسلته");
+      return;
+    }
+    nav(`/messages?to=${e.user_id}`);
   };
 
   const statCards = [
@@ -100,12 +100,12 @@ export default function AdminErrors() {
 
       {/* المرشحات */}
       <div className="flex flex-wrap gap-2 mb-5 items-center">
-        <div className="flex gap-1.5 bg-white rounded-2xl p-1.5 border border-slate-100 ft-shadow w-fit">
+        <div className="flex flex-wrap gap-1.5 bg-white rounded-2xl p-1.5 border border-slate-100 ft-shadow w-fit max-w-full">
           {[["open", "المفتوحة"], ["resolved", "تم حلها"], ["all", "الكل"]].map(([k, l]) => (
             <button key={k} onClick={() => setStatus(k)} data-testid={`admin-errors-status-${k}`} className={`px-4 py-2 rounded-xl text-sm font-bold transition-colors ${status === k ? "bg-slate-900 text-white" : "text-slate-500 hover:bg-slate-50"}`}>{l}{k === "open" && counts.open ? ` (${counts.open})` : ""}</button>
           ))}
         </div>
-        <div className="flex gap-1.5 bg-white rounded-2xl p-1.5 border border-slate-100 ft-shadow w-fit">
+        <div className="flex flex-wrap gap-1.5 bg-white rounded-2xl p-1.5 border border-slate-100 ft-shadow w-fit max-w-full">
           {[["", "كل المصادر"], ["server", "الخادم"], ["client", "الواجهة"], ["auto", "تلقائي"], ["manual", "بلاغات"]].map(([k, l]) => (
             <button key={k || "all"} onClick={() => setSource(k)} data-testid={`admin-errors-source-${k || "all"}`} className={`px-3 py-2 rounded-xl text-xs font-bold transition-colors ${source === k ? "bg-rose-600 text-white" : "text-slate-500 hover:bg-slate-50"}`}>{l}</button>
           ))}
@@ -151,15 +151,15 @@ export default function AdminErrors() {
                       </div>
                     )}
                     <div className="mt-3.5 flex flex-wrap gap-2">
-                      <button onClick={() => setOpenId(opened ? null : e.id)} data-testid={`admin-error-toggle-${e.id}`} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold transition-colors">
+                      <button onClick={() => setOpenId(opened ? null : e.id)} data-testid={`admin-error-toggle-${e.id}`} className="inline-flex min-h-[42px] sm:min-h-0 items-center gap-1 px-3 py-2 sm:py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold transition-colors">
                         <ChevronDown className={`w-3.5 h-3.5 transition-transform ${opened ? "rotate-180" : ""}`} /> {opened ? "إخفاء التفاصيل" : "عرض الخطأ كاملًا"}
                       </button>
-                      <button onClick={() => copyFull(e)} data-testid={`admin-error-copy-${e.id}`} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold transition-colors"><Copy className="w-3.5 h-3.5" /> نسخ الخطأ</button>
-                      {e.user_id && <button onClick={() => { setContact(e); setContactMsg("مرحبًا، لاحظنا حدوث خطأ أثناء استخدامك المنصة وعملنا على إصلاحه. جرّب الآن وأخبرنا إن تكرر 🙏"); }} data-testid={`admin-error-contact-${e.id}`} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold transition-colors"><Mail className="w-3.5 h-3.5" /> مراسلة المستخدم</button>}
+                      <button onClick={() => copyFull(e)} data-testid={`admin-error-copy-${e.id}`} className="inline-flex min-h-[42px] sm:min-h-0 items-center gap-1 px-3 py-2 sm:py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold transition-colors"><Copy className="w-3.5 h-3.5" /> نسخ الخطأ</button>
+                      <button onClick={() => dmUser(e)} data-testid={`admin-error-contact-${e.id}`} className={`inline-flex min-h-[42px] sm:min-h-0 items-center gap-1 px-3 py-2 sm:py-1.5 rounded-lg text-xs font-bold transition-colors ${e.user_id ? "bg-sky-600 hover:bg-sky-700 text-white" : "bg-slate-100 text-slate-400"}`}><Mail className="w-3.5 h-3.5" /> مراسلة المستخدم</button>
                       {e.status === "open"
-                        ? <button disabled={busy === e.id} onClick={() => setSt(e, "resolved")} data-testid={`admin-error-resolve-${e.id}`} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold disabled:opacity-50 transition-colors"><CheckCircle2 className="w-3.5 h-3.5" /> تحديد كمحلول</button>
-                        : <button disabled={busy === e.id} onClick={() => setSt(e, "open")} data-testid={`admin-error-reopen-${e.id}`} className="px-3 py-1.5 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-700 text-xs font-bold disabled:opacity-50 transition-colors">إعادة فتح</button>}
-                      <button disabled={busy === e.id} onClick={() => del(e)} data-testid={`admin-error-delete-${e.id}`} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-bold disabled:opacity-50 transition-colors"><Trash2 className="w-3.5 h-3.5" /> حذف</button>
+                        ? <button disabled={busy === e.id} onClick={() => setSt(e, "resolved")} data-testid={`admin-error-resolve-${e.id}`} className="inline-flex min-h-[42px] sm:min-h-0 items-center gap-1 px-3 py-2 sm:py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold disabled:opacity-50 transition-colors"><CheckCircle2 className="w-3.5 h-3.5" /> تحديد كمحلول</button>
+                        : <button disabled={busy === e.id} onClick={() => setSt(e, "open")} data-testid={`admin-error-reopen-${e.id}`} className="min-h-[42px] sm:min-h-0 px-3 py-2 sm:py-1.5 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-700 text-xs font-bold disabled:opacity-50 transition-colors">إعادة فتح</button>}
+                      <button disabled={busy === e.id} onClick={() => del(e)} data-testid={`admin-error-delete-${e.id}`} className="inline-flex min-h-[42px] sm:min-h-0 items-center gap-1 px-3 py-2 sm:py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-bold disabled:opacity-50 transition-colors"><Trash2 className="w-3.5 h-3.5" /> حذف</button>
                     </div>
                   </div>
                 </div>
@@ -177,20 +177,6 @@ export default function AdminErrors() {
         </div>
       )}
 
-      {contact && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-3" onClick={() => setContact(null)}>
-          <div className="bg-white rounded-3xl p-5 w-full max-w-md ft-shadow-lg" onClick={(ev) => ev.stopPropagation()}>
-            <h3 className="font-head font-extrabold">مراسلة {contact.user_name || "المستخدم"}</h3>
-            <p className="text-xs text-slate-400 mt-1">ستصله الرسالة كإشعار داخل المنصة بخصوص الخطأ: «{contact.message}»</p>
-            <textarea value={contactMsg} onChange={(ev) => setContactMsg(ev.target.value)} rows={4}
-              className="w-full mt-3 rounded-xl border border-slate-200 p-3 text-sm outline-none focus:border-sky-400" placeholder="اكتب رسالتك..." />
-            <div className="flex gap-2 mt-4">
-              <button disabled={busy === "contact" || contactMsg.trim().length < 3} onClick={sendContact} className="flex-1 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-sm font-bold disabled:opacity-50">إرسال الإشعار</button>
-              <button onClick={() => setContact(null)} className="px-5 py-2.5 rounded-xl bg-slate-100 text-slate-600 text-sm font-bold">إلغاء</button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

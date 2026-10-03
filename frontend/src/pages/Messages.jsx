@@ -726,7 +726,7 @@ export default function Messages() {
             </div>
 
             {/* floating glass panels */}
-            <div className="relative grid h-[calc(100dvh-262px)] min-h-[440px] gap-4 lg:h-[calc(100dvh-244px)] lg:min-h-[540px] lg:grid-cols-[372px_minmax(0,1fr)] lg:gap-5">
+            <div className="relative grid h-[calc(100dvh-350px)] min-h-[380px] gap-4 sm:min-h-[440px] lg:h-[calc(100dvh-244px)] lg:min-h-[540px] lg:grid-cols-[372px_minmax(0,1fr)] lg:gap-5">
               {/* ── list panel ── */}
               <aside className="flex min-h-0 animate-fade-up flex-col overflow-hidden rounded-[28px] bg-white/70 shadow-[0_24px_60px_-24px_rgba(15,23,42,0.38)] ring-1 ring-white/60 backdrop-blur-xl">
                 <div className="px-4 pb-3 pt-4">
