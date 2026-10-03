@@ -1,17 +1,16 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Layout, PageLoader } from "@/components/Layout";
+import { Layout } from "@/components/Layout";
 import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
 import { toast } from "sonner";
-import { Users, Heart, ArrowLeft, ArrowRight, Plus, Search, Lightbulb, Rocket, Sparkles, Cpu, Briefcase, FlaskConical, Leaf, BookOpen, Palette, Shapes, BadgeCheck, Compass, Flame, Trophy, Check, Crown, Zap, Hourglass } from "lucide-react";
+import { Users, Heart, ArrowLeft, Plus, Search, Lightbulb, Rocket, Sparkles, Cpu, Briefcase, FlaskConical, Leaf, BookOpen, Palette, Shapes, BadgeCheck, Flame, Check, Crown, Hourglass, LayoutGrid, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
 import BookmarkButton from "@/components/BookmarkButton";
 import { ErrorState } from "@/components/ErrorState";
 
@@ -53,6 +52,8 @@ const CATEGORY_META = {
   "فني وإعلامي": { icon: Palette, grad: "from-fuchsia-500 to-pink-500", shadow: "shadow-fuchsia-300", tint: "bg-fuchsia-50 text-fuchsia-600" },
 };
 const CATEGORY_DEFAULT = { icon: Shapes, grad: "from-slate-500 to-slate-600", shadow: "shadow-slate-300", tint: "bg-slate-100 text-slate-600" };
+const CATEGORY_ALL = { icon: LayoutGrid, grad: "from-slate-700 to-slate-900", shadow: "shadow-slate-300", tint: "bg-slate-100 text-slate-700" };
+const metaFor = (c) => (c === "الكل" ? CATEGORY_ALL : CATEGORY_META[c] || CATEGORY_DEFAULT);
 
 const AVATAR_GRADS = [
   "from-blue-500 to-violet-500",
@@ -62,6 +63,16 @@ const AVATAR_GRADS = [
   "from-fuchsia-500 to-purple-500",
 ];
 const avatarGrad = (name) => AVATAR_GRADS[((name || "؟").trim().charCodeAt(0) || 0) % AVATAR_GRADS.length];
+
+/* Bento span rhythm · wide / tall tiles break the grid monotony on desktop */
+const tileSpan = (i, feat) => {
+  if (feat) return "sm:col-span-2 lg:col-span-2 lg:row-span-2 h-[340px] sm:h-[330px] lg:h-auto";
+  const p = i % 8;
+  if (p === 0 || p === 3) return "sm:col-span-2 lg:col-span-2 h-[250px] sm:h-[245px] lg:h-auto";
+  if (p === 5) return "lg:row-span-2 h-[320px] sm:h-[300px] lg:h-auto";
+  return "h-[270px] sm:h-[250px] lg:h-auto";
+};
+const isRichSpan = (i, feat) => feat || i % 8 === 0 || i % 8 === 3 || i % 8 === 5;
 
 export default function Ventures() {
   const { user } = useAuth();
@@ -78,7 +89,6 @@ export default function Ventures() {
   const [form, setForm] = useState({ title: "", description: "", category: "تقنية وبرمجة", looking_for: "", max_members: 5 });
   const [saving, setSaving] = useState(false);
   const reqSeq = useRef(0);
-  const spotRef = useRef(null);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedQ(q), 300);
@@ -139,501 +149,348 @@ export default function Ventures() {
   const openTeams = ventures ? ventures.filter((x) => (x.team_count || 0) < (x.max_members || 0)).length : 0;
 
   const isDefaultView = sort === "votes" && category === "الكل" && status === "all" && !q && !debouncedQ;
-  const spotlight = isDefaultView && ventures && ventures.length ? ventures.slice(0, 3) : [];
-  const gridVentures = spotlight.length ? ventures.slice(spotlight.length) : ventures;
-  const topVoted = ventures ? [...ventures].sort((a, b) => (b.votes_count || 0) - (a.votes_count || 0)).slice(0, 5) : [];
+  const featured = isDefaultView && ventures && ventures.length ? ventures[0] : null;
+  const wallVentures = featured ? ventures.slice(1) : ventures;
   const catCount = (c) => (ventures || []).filter((v) => c === "الكل" || v.category === c).length;
   const filtersActive = category !== "الكل" || status !== "all" || q.trim() !== "";
   const resetFilters = () => { setQ(""); setCategory("الكل"); setStatus("all"); };
-  const scrollSpot = (dir) => { const el = spotRef.current; if (el) el.scrollBy({ left: dir * (el.clientWidth * 0.92), behavior: "smooth" }); };
-
-  const renderTeamBar = (v) => {
-    const pct = Math.min(100, Math.round(((v.team_count || 0) / Math.max(1, v.max_members || 1)) * 100));
-    const full = (v.team_count || 0) >= (v.max_members || 1);
-    return (
-      <div>
-        <div className="flex items-center justify-between text-[11px] font-bold">
-          <span className="inline-flex items-center gap-1 text-slate-500"><Users className="w-3.5 h-3.5 text-blue-500" /> الفريق {v.team_count}/{v.max_members}</span>
-          <span className={`tabular-nums ${full ? "text-emerald-600" : "text-slate-400"}`}>{full ? "اكتمل الفريق ✓" : `${pct}%`}</span>
-        </div>
-        <div className="mt-1.5 h-2 rounded-full bg-slate-100 overflow-hidden">
-          <div className={`h-full rounded-full transition-all duration-700 ${full ? "bg-gradient-to-l from-emerald-400 to-teal-500" : "ft-grad-bar"}`} style={{ width: `${pct}%` }} />
-        </div>
-      </div>
-    );
-  };
 
   const renderAvatarStack = (v, meta, size = "w-7 h-7 text-[11px]") => (
-    <div className="flex items-center">
-      <span className={`${size} rounded-full bg-gradient-to-br ${avatarGrad(v.owner_name)} text-white font-extrabold flex items-center justify-center ring-2 ring-white shadow shrink-0`}>
+    <div className="flex items-center shrink-0">
+      <span className={`${size} rounded-full bg-gradient-to-br ${avatarGrad(v.owner_name)} text-white font-extrabold flex items-center justify-center ring-2 ring-white/50 shadow shrink-0`}>
         {(v.owner_name || "؟").trim().charAt(0)}
       </span>
       {Array.from({ length: Math.max(0, Math.min((v.team_count || 0) - 1, 3)) }).map((_, i) => (
         <span key={i} style={{ marginInlineStart: "-0.5rem" }}
-          className={`${size} rounded-full bg-gradient-to-br ${meta.grad} text-white flex items-center justify-center ring-2 ring-white shadow shrink-0`}>
+          className={`${size} rounded-full bg-gradient-to-br ${meta.grad} text-white flex items-center justify-center ring-2 ring-white/50 shadow shrink-0`}>
           <Users className="w-3.5 h-3.5" />
         </span>
       ))}
       {(v.team_count || 0) > 4 && (
-        <span style={{ marginInlineStart: "-0.5rem" }} className={`${size} rounded-full bg-slate-900 text-white text-[10px] font-extrabold flex items-center justify-center ring-2 ring-white shadow shrink-0 tabular-nums`}>
+        <span style={{ marginInlineStart: "-0.5rem" }} className={`${size} rounded-full bg-slate-900 text-white text-[10px] font-extrabold flex items-center justify-center ring-2 ring-white/50 shadow shrink-0 tabular-nums`}>
           +{(v.team_count || 0) - 4}
         </span>
       )}
     </div>
   );
 
-  const renderVoteButton = (v, big = false) => (
+  const renderTeamBarGlass = (v) => {
+    const pct = Math.min(100, Math.round(((v.team_count || 0) / Math.max(1, v.max_members || 1)) * 100));
+    const full = (v.team_count || 0) >= (v.max_members || 1);
+    return (
+      <div>
+        <div className="flex items-center justify-between text-[10px] font-bold text-white/75">
+          <span className="inline-flex items-center gap-1"><Users className="w-3 h-3" /> الفريق {v.team_count}/{v.max_members}</span>
+          <span className={`tabular-nums ${full ? "text-emerald-300" : ""}`}>{full ? "اكتمل الفريق ✓" : `${pct}%`}</span>
+        </div>
+        <div className="mt-1 h-1.5 rounded-full bg-white/20 overflow-hidden">
+          <div className={`h-full rounded-full transition-all duration-700 ${full ? "bg-gradient-to-l from-emerald-300 to-teal-300" : "bg-white"}`} style={{ width: `${pct}%` }} />
+        </div>
+      </div>
+    );
+  };
+
+  const renderVotePill = (v, big = false) => (
     <button onClick={() => vote(v)} disabled={votingId === v.id}
-      className={`pressable flex items-center justify-center gap-1.5 font-extrabold rounded-full transition-all disabled:opacity-60 ${big ? "text-base px-6 min-h-[52px]" : "text-sm px-4 min-h-[44px]"} ${v.voted ? "bg-gradient-to-l from-rose-500 to-pink-500 text-white shadow-lg shadow-rose-200 border border-rose-400" : "text-slate-400 border border-slate-200 bg-white hover:text-rose-500 hover:border-rose-200 hover:bg-rose-50"}`}>
+      className={`pressable shrink-0 inline-flex items-center justify-center gap-1.5 rounded-full font-extrabold backdrop-blur-md transition-all disabled:opacity-60 ${big ? "px-5 min-h-[48px] text-sm" : "px-3.5 min-h-[38px] text-xs"} ${v.voted ? "bg-gradient-to-l from-rose-500 to-pink-500 text-white border border-rose-300/60 shadow-lg shadow-rose-950/30" : "bg-white/15 hover:bg-white/25 text-white border border-white/30"}`}>
       <Heart className={`${big ? "w-5 h-5" : "w-4 h-4"} ${v.voted ? "fill-current" : ""}`} />{v.votes_count}
     </button>
   );
 
-  const renderStatusRibbon = (v) => (
-    <span className={`absolute top-0 bottom-0 start-0 w-1.5 bg-gradient-to-b ${STATUS_RIBBON[v.status] || "from-slate-300 to-slate-200"}`} />
+  /* ============ one bento tile ============ */
+  const renderTile = (v, i, feat = false) => {
+    const meta = metaFor(v.category);
+    const CatIcon = meta.icon;
+    const rich = isRichSpan(i, feat);
+    return (
+      <article key={v.id} style={{ animationDelay: `${Math.min(i, 11) * 55}ms` }}
+        className={`group relative isolate overflow-hidden rounded-[1.6rem] ft-shadow animate-fade-up transition-shadow duration-300 hover:ring-2 ft-ring-accent hover:shadow-[0_28px_56px_-18px_color-mix(in_srgb,var(--ft-accent)_40%,transparent)] ${tileSpan(i, feat)}`}>
+        {/* full-bleed category art */}
+        <div className={`absolute inset-0 bg-gradient-to-br ${meta.grad}`} />
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/55 via-slate-950/5 to-white/10" />
+        <div className="pointer-events-none absolute inset-0 opacity-20 [background-image:radial-gradient(rgba(255,255,255,0.55)_1px,transparent_1.5px)] [background-size:18px_18px]" />
+        <div className="pointer-events-none absolute inset-0 overflow-hidden">
+          <CatIcon className={`absolute -left-5 -bottom-7 text-white/25 -rotate-12 transition-transform duration-500 group-hover:scale-110 group-hover:-rotate-6 ${feat ? "w-52 h-52 lg:w-72 lg:h-72" : "w-36 h-36 sm:w-44 sm:h-44"}`} />
+          <CatIcon className="absolute right-[16%] top-[13%] w-8 h-8 text-white/15 rotate-12 transition-transform duration-500 group-hover:rotate-45 hidden sm:block" />
+        </div>
+
+        {/* top row · status + category + bookmark */}
+        <div className="absolute top-3 inset-x-3 z-10 flex items-start justify-between gap-2">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-950/35 backdrop-blur-md border border-white/25 text-white text-[11px] font-extrabold px-2.5 py-1">
+              <span className={`w-1.5 h-1.5 rounded-full ${STATUS_DOT[v.status] || "bg-slate-300"}`} />
+              {v.status_label}
+            </span>
+            <span className="hidden sm:inline-flex items-center gap-1 rounded-full bg-white/15 backdrop-blur-md border border-white/20 text-white text-[11px] font-bold px-2.5 py-1">
+              <CatIcon className="w-3 h-3" /> {v.category}
+            </span>
+            {feat && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-l from-amber-400 to-orange-400 text-white text-[11px] font-extrabold px-2.5 py-1 shadow-lg shadow-orange-950/20 border border-white/30">
+                <Crown className="w-3.5 h-3.5" /> مشروع مميز
+              </span>
+            )}
+          </div>
+          <BookmarkButton kind="venture" refId={v.id} title={v.title} className="shadow shrink-0" />
+        </div>
+
+        {/* glass info panel */}
+        <div className={`absolute inset-x-3 bottom-3 z-10 rounded-[1.25rem] bg-slate-950/40 backdrop-blur-xl border border-white/15 text-white shadow-2xl ${feat ? "p-4 sm:p-5" : "p-3.5 sm:p-4"}`}>
+          <div className="flex items-start justify-between gap-2.5">
+            <Link to={`/ventures/${v.id}`}
+              className={`font-head font-extrabold leading-snug text-white hover:text-white/85 transition-colors ${feat ? "text-xl sm:text-2xl lg:text-[1.7rem] line-clamp-2" : "text-base sm:text-lg line-clamp-1"}`}>
+              {v.title}
+            </Link>
+            {renderVotePill(v, feat)}
+          </div>
+
+          {(v.is_owner || v.votes_count >= 10) && (
+            <div className="flex items-center gap-1.5 flex-wrap mt-2">
+              {v.is_owner && <span className="rounded-full bg-violet-400/25 border border-violet-200/30 text-violet-100 text-[10px] font-extrabold px-2 py-0.5">مشروعك</span>}
+              {v.votes_count >= 10 && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-orange-400/25 border border-orange-200/30 text-orange-100 text-[10px] font-extrabold px-2 py-0.5">
+                  <Flame className="w-3 h-3" /> رائج
+                </span>
+              )}
+            </div>
+          )}
+
+          {rich && (
+            <p className={`mt-2 text-white/80 leading-relaxed ${feat ? "text-sm sm:text-[15px] line-clamp-3" : "text-xs sm:text-sm line-clamp-2"}`}>{v.description}</p>
+          )}
+          {rich && v.looking_for && (
+            <p className="mt-2.5 inline-flex items-start gap-1.5 text-[11px] font-bold text-violet-100 bg-violet-400/20 border border-violet-200/25 rounded-lg px-2 py-1 line-clamp-1 max-w-full">
+              <Search className="w-3 h-3 shrink-0 mt-px" /> يبحث عن: {v.looking_for}
+            </p>
+          )}
+
+          <div className="mt-3 flex items-center gap-2.5">
+            {renderAvatarStack(v, meta, feat ? "w-8 h-8 text-xs" : "w-7 h-7 text-[11px]")}
+            <span className="text-[11px] sm:text-xs text-white/80 font-medium truncate">
+              {v.owner_name}{v.school_name ? ` · ${v.school_name}` : ""}
+            </span>
+          </div>
+
+          <div className="mt-2.5">{renderTeamBarGlass(v)}</div>
+
+          {feat && (
+            <div className="mt-4 flex items-center gap-2">
+              <Link to={`/ventures/${v.id}`} className="pressable inline-flex items-center justify-center gap-1.5 rounded-full bg-white text-slate-900 text-sm font-extrabold px-5 min-h-[48px] shadow-lg flex-1 sm:flex-none group/flnk">
+                التفاصيل <ArrowLeft className="w-4 h-4 transition-transform group-hover/flnk:-translate-x-1" />
+              </Link>
+              <span className="hidden sm:inline-flex items-center gap-1 text-[11px] font-bold text-white/60">
+                <Sparkles className="w-3.5 h-3.5" /> الأعلى تصويتاً الآن
+              </span>
+            </div>
+          )}
+        </div>
+      </article>
+    );
+  };
+
+  /* ============ create CTA tile inside the wall ============ */
+  const renderCreateTile = (spanClass) => (
+    <button key="create-tile" onClick={openCreate}
+      className={`pressable group relative isolate overflow-hidden rounded-[1.6rem] border-2 border-dashed border-slate-300 bg-white/70 hover:bg-white hover:border-slate-400 ft-shadow animate-fade-up flex flex-col items-center justify-center text-center gap-2.5 p-6 transition-colors ${spanClass}`}>
+      <Rocket className="pointer-events-none absolute -right-6 -bottom-8 w-32 h-32 text-slate-100 -rotate-12 transition-transform duration-500 group-hover:scale-110 group-hover:-rotate-6" />
+      <span className="relative w-14 h-14 rounded-full ft-btn-primary text-white flex items-center justify-center shadow-xl transition-transform duration-300 group-hover:scale-110">
+        <Plus className="w-7 h-7" />
+      </span>
+      <span className="relative font-head font-extrabold text-lg text-slate-800">＋ ابدأ مشروعك</span>
+      <span className="relative text-xs sm:text-sm text-slate-400 font-medium leading-relaxed max-w-[240px]">حوّل فكرتك إلى مشروع حقيقي وابنِ فريقك من مدارس أخرى</span>
+      <span className="relative inline-flex items-center gap-1 text-xs font-extrabold ft-text-accent mt-1">
+        انشر الآن <ArrowLeft className="w-3.5 h-3.5 transition-transform group-hover:-translate-x-1" />
+      </span>
+    </button>
   );
 
   return (
     <Layout>
-      {/* ============================ HERO · اكتشاف ============================ */}
+      {/* ============================ MASTHEAD · compact ============================ */}
       <div className="max-w-7xl xl:max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6">
-        <section className="relative isolate overflow-hidden rounded-[2rem] sm:rounded-[2.5rem] text-white ft-shadow-lg">
-          {/* animated gradient mesh */}
-          <div className="absolute inset-0 ft-hero-gradient" />
-          <div className="pointer-events-none absolute inset-0 ft-gradient-pan bg-[linear-gradient(120deg,color-mix(in_srgb,var(--ft-accent)_30%,transparent),transparent_40%,color-mix(in_srgb,#f59e0b_25%,transparent)_70%,transparent)] bg-[length:220%_220%] opacity-70" />
-          <div className="pointer-events-none absolute inset-0 opacity-[0.13] [background-image:radial-gradient(rgba(255,255,255,0.6)_1px,transparent_1.6px)] [background-size:22px_22px]" />
-          <div className="pointer-events-none absolute -top-28 right-[10%] w-72 h-72 sm:w-96 sm:h-96 rounded-full bg-[color:color-mix(in_srgb,var(--ft-accent)_30%,transparent)] blur-3xl animate-float [animation-duration:9s]" />
-          <div className="pointer-events-none absolute -bottom-36 left-[18%] w-72 h-72 sm:w-[26rem] sm:h-[26rem] rounded-full bg-amber-400/20 blur-3xl animate-float [animation-duration:13s]" />
-          {/* floating project glyphs */}
-          <Rocket className="pointer-events-none absolute left-[6%] top-8 w-10 h-10 text-white/20 animate-float [animation-duration:7s] hidden sm:block" />
-          <Lightbulb className="pointer-events-none absolute left-[22%] bottom-10 w-8 h-8 text-amber-200/30 animate-float [animation-duration:8s] hidden lg:block" />
-          <Cpu className="pointer-events-none absolute right-[38%] top-6 w-7 h-7 text-white/15 animate-float [animation-duration:10s] hidden lg:block" />
-          <FlaskConical className="pointer-events-none absolute right-[6%] bottom-14 w-9 h-9 text-white/15 animate-float [animation-duration:11s] hidden sm:block" />
-          <Palette className="pointer-events-none absolute left-[42%] top-14 w-6 h-6 text-white/10 animate-float [animation-duration:9s] hidden xl:block" />
+        <section className="relative isolate overflow-hidden rounded-[1.75rem] sm:rounded-[2rem] ft-navy-gradient text-white ft-shadow-lg">
+          <div className="pointer-events-none absolute inset-0 ft-gradient-pan bg-[linear-gradient(115deg,transparent_25%,rgba(255,255,255,0.09)_50%,transparent_75%)] bg-[length:220%_220%] opacity-70" />
+          <div className="pointer-events-none absolute inset-0 opacity-[0.12] [background-image:radial-gradient(rgba(255,255,255,0.6)_1px,transparent_1.6px)] [background-size:22px_22px]" />
+          <div className="pointer-events-none absolute -top-20 right-[8%] w-56 h-56 rounded-full bg-[color:color-mix(in_srgb,var(--ft-accent)_30%,transparent)] blur-3xl" />
+          <Rocket className="pointer-events-none absolute -left-6 -bottom-8 w-36 h-36 text-white/[0.08] -rotate-12" />
 
-          <div className="relative px-5 py-9 sm:px-10 sm:py-12 lg:px-14 lg:py-14">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 border border-white/25 px-3.5 py-1.5 text-xs font-bold backdrop-blur-md">
-              <Sparkles className="w-3.5 h-3.5 ft-text-accent-bright" /> اكتشف · صوّت · انضم
-            </span>
-            <h1 className="font-head text-[2.1rem] leading-[1.12] sm:text-5xl lg:text-[3.6rem] font-extrabold mt-4 sm:mt-5 max-w-3xl">
-              مشاريع الطلاب <span className="ft-text-gradient">الملهمة</span> 🚀
-            </h1>
-            <p className="text-slate-200/90 mt-3 max-w-2xl leading-relaxed text-[15px] sm:text-lg">
-              متجر أفكار حي: تصفّح مشاريع زملائك، صوّت للأفضل، وانضم إلى فريق يبني شيئاً حقيقياً.
-            </p>
-            <div className="mt-6 sm:mt-8 flex flex-wrap items-center gap-3">
-              <Button onClick={openCreate}
-                className="rounded-full ft-btn-primary text-white font-extrabold pressable shadow-2xl min-h-[54px] px-7 text-base border border-white/25">
-                <Plus className="w-5 h-5 ml-1.5" /> ابدأ مشروعك
-              </Button>
-              <a href="#ventures-toolbar"
-                className="pressable inline-flex items-center gap-1.5 rounded-full bg-white/10 hover:bg-white/20 border border-white/25 backdrop-blur-md text-white font-bold min-h-[54px] px-6 text-sm transition-colors">
-                <Compass className="w-5 h-5" /> استكشف الآن
-              </a>
-            </div>
-          </div>
-
-          {/* live stat ticker */}
-          {ventures && (
-            <div className="relative border-t border-white/15 bg-black/20 backdrop-blur-md">
-              <div className="flex items-center gap-2 overflow-x-auto px-5 sm:px-10 lg:px-14 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden animate-fade-up">
-                {[
-                  { icon: Rocket, n: ventures.length, l: "مشروع منشور" },
-                  { icon: Users, n: totalMembers, l: "عضو في الفرق" },
-                  { icon: Heart, n: totalVotes, l: "صوت حتى الآن" },
-                  { icon: BadgeCheck, n: completedCount, l: "مشروع مكتمل" },
-                  { icon: Hourglass, n: openTeams, l: "فريق يبحث عن أعضاء" },
-                ].map((s, i) => (
-                  <span key={s.l} className="flex items-center gap-2 shrink-0">
-                    {i > 0 && <span className="w-1 h-1 rounded-full bg-white/30 mx-1" />}
-                    <s.icon className="w-4 h-4 ft-text-accent-bright" />
-                    <span className="font-head font-extrabold tabular-nums">{s.n}</span>
-                    <span className="text-xs font-bold text-white/70">{s.l}</span>
-                  </span>
-                ))}
-                <span className="inline-flex items-center gap-1.5 shrink-0 ms-auto text-[11px] font-bold text-emerald-300">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" /> يتحدث مباشرة
+          <div className="relative px-5 py-6 sm:px-8 sm:py-7">
+            <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
+              <div className="min-w-0">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 border border-white/20 px-3 py-1 text-[11px] font-bold backdrop-blur-md">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  جدار اكتشاف المشاريع · مباشر
                 </span>
+                <h1 className="font-head text-[1.9rem] leading-tight sm:text-4xl lg:text-[2.6rem] font-extrabold mt-2.5">
+                  مشاريع <span className="ft-text-gradient">الطلاب</span> 🚀
+                </h1>
               </div>
-            </div>
-          )}
-        </section>
-      </div>
-
-      {/* ============================ BODY ============================ */}
-      <div className="max-w-7xl xl:max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 relative isolate">
-        {/* Discovery bar · static, never follows */}
-        <div id="ventures-toolbar" className="relative isolate scroll-mt-24">
-          <div className="relative overflow-hidden bg-white/85 backdrop-blur-xl rounded-[1.75rem] border border-white/60 ring-1 ring-slate-200/60 ft-shadow-lg">
-            <span className="pointer-events-none absolute inset-x-0 top-0 h-1 ft-grad-bar opacity-90" />
-            <div className="p-4 sm:p-5 space-y-4">
-              <div className="flex flex-col lg:flex-row lg:items-center gap-3">
-                <div className="relative flex-1">
-                  <Search className="w-5 h-5 absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                  <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="ابحث عن مشروع يلهمك..."
-                    className="rounded-full pr-[52px] ps-5 min-h-[56px] text-base border-slate-200 bg-white/90 shadow-inner ft-ring-accent focus-visible:bg-white transition-colors placeholder:text-slate-400" />
-                  {q && (
-                    <button onClick={() => setQ("")} className="pressable absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-slate-100 text-slate-500 grid place-items-center text-sm font-black" aria-label="مسح البحث">✕</button>
-                  )}
+              {ventures && (
+                <div className="flex items-center gap-2 flex-wrap animate-fade-up">
+                  {[
+                    { icon: Rocket, n: ventures.length, l: "مشروع" },
+                    { icon: Users, n: totalMembers, l: "عضو فريق" },
+                    { icon: Heart, n: totalVotes, l: "صوت" },
+                    { icon: BadgeCheck, n: completedCount, l: "مكتمل" },
+                    { icon: Hourglass, n: openTeams, l: "فريق يبحث" },
+                  ].map((s) => (
+                    <span key={s.l} className="inline-flex items-center gap-1.5 rounded-full bg-white/10 border border-white/15 backdrop-blur-md px-3 py-1.5 text-xs font-bold text-white/85">
+                      <s.icon className="w-3.5 h-3.5 ft-text-accent-bright" />
+                      <span className="font-head font-extrabold tabular-nums text-white">{s.n}</span> {s.l}
+                    </span>
+                  ))}
                 </div>
-                <div className="inline-flex items-center gap-1 rounded-full bg-slate-100/90 p-1 ring-1 ring-slate-200/70 w-full lg:w-auto shrink-0">
+              )}
+            </div>
+
+            {/* big search pill + sort + create */}
+            <div className="mt-5 flex flex-col md:flex-row md:items-center gap-3">
+              <div className="relative flex-1">
+                <Search className="w-5 h-5 absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="ابحث عن مشروع يلهمك..."
+                  className="rounded-full pr-[52px] ps-12 min-h-[54px] text-base bg-white text-slate-900 border-white shadow-xl placeholder:text-slate-400 focus-visible:ring-4 focus-visible:ring-white/30" />
+                {q && (
+                  <button onClick={() => setQ("")} aria-label="مسح البحث"
+                    className="pressable absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-slate-100 text-slate-500 grid place-items-center">
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <div className="inline-flex items-center gap-1 rounded-full bg-white/10 border border-white/15 backdrop-blur-md p-1 flex-1 md:flex-none">
                   {SORT_OPTIONS.map((s) => (
                     <button key={s.v} onClick={() => setSort(s.v)}
-                      className={`pressable flex-1 lg:flex-none rounded-full px-4 min-h-[46px] text-xs sm:text-sm font-bold transition-all ${sort === s.v ? "bg-white ft-text-accent shadow-md ring-1 ft-ring-accent" : "text-slate-500 hover:text-slate-800"}`}>
+                      className={`pressable flex-1 md:flex-none rounded-full px-4 min-h-[44px] text-xs sm:text-sm font-bold transition-all ${sort === s.v ? "bg-white text-slate-900 shadow-md" : "text-white/70 hover:text-white"}`}>
                       {s.l}
                     </button>
                   ))}
                 </div>
-              </div>
-              {/* category discovery chips with icons + counts */}
-              <div className="relative">
-                <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:flex-wrap lg:overflow-visible lg:mx-0 lg:px-0 lg:pb-0">
-                  {VENTURE_CATEGORIES.map((c) => {
-                    const m = CATEGORY_META[c];
-                    const Icon = m ? m.icon : Shapes;
-                    const active = category === c;
-                    return (
-                      <button key={c} onClick={() => setCategory(c)}
-                        className={`pressable shrink-0 rounded-full ps-1.5 pe-4 min-h-[48px] inline-flex items-center gap-2 text-xs sm:text-sm font-bold border transition-all ${active ? "ft-btn-primary ft-border-accent text-white shadow-lg" : "bg-white/80 text-slate-600 border-slate-200 hover:border-slate-300"}`}>
-                        <span className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${active ? "bg-white/20 text-white" : `${m ? `bg-gradient-to-br ${m.grad}` : "ft-icon-tile"} text-white shadow`}`}>
-                          <Icon className="w-4 h-4" />
-                        </span>
-                        {c}
-                        {ventures && <span className={`text-[10px] font-extrabold tabular-nums rounded-full px-1.5 py-0.5 ${active ? "bg-white/25 text-white" : "bg-slate-100 text-slate-500"}`}>{catCount(c)}</span>}
-                      </button>
-                    );
-                  })}
-                </div>
-                <div className="pointer-events-none absolute inset-y-0 left-0 w-10 bg-gradient-to-r from-white/80 to-transparent lg:hidden" />
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                {VENTURE_STATUSES.map((s) => (
-                  <button key={s.v} onClick={() => setStatus(s.v)}
-                    className={`pressable inline-flex items-center gap-1.5 rounded-full px-4 min-h-[44px] text-xs sm:text-sm font-bold border transition-all ${status === s.v ? "ft-btn-primary ft-border-accent text-white shadow-lg" : "bg-white/70 text-slate-500 border-slate-200 hover:border-slate-300"}`}>
-                    {s.v !== "all" && <span className={`w-2 h-2 rounded-full ${status === s.v ? "bg-white" : STATUS_DOT[s.v] || "bg-slate-300"}`} />}
-                    {s.l}
-                  </button>
-                ))}
-                {filtersActive && (
-                  <button onClick={resetFilters}
-                    className="pressable inline-flex items-center gap-1 rounded-full px-3.5 min-h-[44px] text-xs font-bold text-slate-400 hover:text-rose-500 hover:bg-rose-50 border border-transparent hover:border-rose-100 transition-all">
-                    مسح التصفية ✕
-                  </button>
-                )}
+                <Button onClick={openCreate}
+                  className="hidden md:inline-flex rounded-full bg-white text-slate-900 hover:bg-white/90 font-extrabold pressable shadow-xl min-h-[52px] px-6 text-sm border border-white/40">
+                  <Plus className="w-5 h-5 ml-1.5" /> مشروع جديد
+                </Button>
               </div>
             </div>
           </div>
+        </section>
+      </div>
+
+      {/* ============================ BODY ============================ */}
+      <div className="max-w-7xl xl:max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 pb-8 relative isolate">
+        {/* ===== filter rail · bento category mini-tiles · static ===== */}
+        <div id="ventures-toolbar" className="relative isolate scroll-mt-24 mt-6">
+          <div className="flex items-center gap-3 mb-3.5">
+            <span className="w-9 h-9 rounded-xl ft-icon-tile flex items-center justify-center shadow-md shrink-0">
+              <LayoutGrid className="w-[18px] h-[18px]" />
+            </span>
+            <span className="font-head text-base sm:text-lg font-extrabold text-slate-800">تصفّح حسب التصنيف</span>
+            <span className="flex-1 h-px bg-gradient-to-l from-slate-200 to-transparent" />
+            {filtersActive && (
+              <button onClick={resetFilters}
+                className="pressable inline-flex items-center gap-1 rounded-full px-3.5 min-h-[36px] text-xs font-bold text-slate-400 hover:text-rose-500 hover:bg-rose-50 border border-transparent hover:border-rose-100 transition-all shrink-0">
+                مسح التصفية <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+
+          <div className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-9 gap-2 sm:gap-2.5">
+            {VENTURE_CATEGORIES.map((c) => {
+              const m = metaFor(c);
+              const Icon = m.icon;
+              const active = category === c;
+              return (
+                <button key={c} onClick={() => setCategory(c)}
+                  className={`pressable relative overflow-hidden rounded-2xl border p-2.5 sm:p-3 flex flex-col items-center gap-1.5 text-center transition-all min-h-[76px] sm:min-h-[84px] ${active ? "bg-slate-900 border-slate-900 text-white shadow-xl" : "bg-white border-slate-200/80 text-slate-600 hover:border-slate-300 ft-shadow"}`}>
+                  <span className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br ${m.grad} text-white flex items-center justify-center shadow-md shrink-0`}>
+                    <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
+                  </span>
+                  <span className={`text-[10px] sm:text-[11px] font-extrabold leading-tight ${active ? "text-white" : "text-slate-600"}`}>{c}</span>
+                  {ventures && (
+                    <span className={`text-[9px] font-extrabold tabular-nums rounded-full px-1.5 py-px ${active ? "bg-white/20 text-white" : "bg-slate-100 text-slate-400"}`}>{catCount(c)}</span>
+                  )}
+                  {active && <Check className="absolute top-1.5 end-1.5 w-3.5 h-3.5 ft-text-accent-bright" />}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* status pills */}
+          <div className="flex flex-wrap items-center gap-2 mt-4">
+            {VENTURE_STATUSES.map((s) => (
+              <button key={s.v} onClick={() => setStatus(s.v)}
+                className={`pressable inline-flex items-center gap-1.5 rounded-full px-4 min-h-[42px] text-xs sm:text-sm font-bold border transition-all ${status === s.v ? "ft-btn-primary ft-border-accent text-white shadow-lg" : "bg-white text-slate-500 border-slate-200 hover:border-slate-300"}`}>
+                {s.v !== "all" && <span className={`w-2 h-2 rounded-full ${status === s.v ? "bg-white" : STATUS_DOT[s.v] || "bg-slate-300"}`} />}
+                {s.l}
+              </button>
+            ))}
+            {ventures && (
+              <span className="ms-auto text-xs font-bold text-slate-400 tabular-nums">
+                {filtersActive ? `${ventures.length} نتيجة` : `${ventures.length} مشروع على الجدار`}
+              </span>
+            )}
+          </div>
         </div>
 
+        {/* ===== states + bento wall ===== */}
         {loadError ? (
           <div className="mt-6 animate-fade-up">
             <ErrorState message="تعذّر تحميل المشاريع" onRetry={load} context="ventures-list" className="max-w-xl mx-auto shadow-sm" />
           </div>
         ) : !ventures ? (
-          <div className="mt-6 space-y-5" aria-hidden="true">
-            <div className="h-64 sm:h-72 rounded-[2rem] bg-slate-200/70 animate-pulse" />
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-5 isolate">
-              {Array.from({ length: 8 }).map((_, i) => (
-                <div key={i} className="bg-white rounded-[1.75rem] border border-slate-100 ft-shadow overflow-hidden animate-pulse flex flex-col isolate">
-                  <div className="h-36 bg-slate-200/80 shrink-0" />
-                  <div className="px-5 pb-5 flex flex-col flex-1">
-                    <div className="-mt-8 w-14 h-14 rounded-2xl bg-slate-200 ring-4 ring-white" />
-                    <div className="h-5 w-3/4 rounded-lg bg-slate-200 mt-3" />
-                    <div className="space-y-2 mt-2.5">
-                      <div className="h-3.5 w-full rounded bg-slate-100" />
-                      <div className="h-3.5 w-2/3 rounded bg-slate-100" />
-                    </div>
-                    <div className="h-2 w-full rounded-full bg-slate-100 mt-4" />
-                    <div className="mt-auto pt-4 flex items-center justify-between border-t border-slate-100">
-                      <div className="h-9 w-16 rounded-full bg-slate-100" />
-                      <div className="h-11 w-16 rounded-full bg-slate-100" />
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+          <div className="mt-7 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 lg:auto-rows-[232px] gap-4 sm:gap-5" aria-hidden="true">
+            <div className="sm:col-span-2 lg:col-span-2 lg:row-span-2 h-[300px] lg:h-auto rounded-[1.6rem] bg-slate-200/80 animate-pulse" />
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className={`rounded-[1.6rem] bg-slate-200/70 animate-pulse h-[240px] lg:h-auto ${i === 1 ? "sm:col-span-2 lg:col-span-2" : ""}`} />
+            ))}
           </div>
         ) : ventures.length === 0 ? (
-          <div className="relative overflow-hidden text-center py-20 px-6 mt-6 rounded-[2rem] bg-white border border-slate-100 ft-shadow animate-fade-up isolate">
-            <Rocket className="pointer-events-none absolute -right-8 -bottom-10 w-44 h-44 text-slate-100 -rotate-12" />
-            <div className="relative w-20 h-20 mx-auto mb-4 rounded-[1.4rem] bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-100 flex items-center justify-center shadow-inner">
-              <Lightbulb className="w-10 h-10 text-amber-400" />
+          <div className="mt-7 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 lg:auto-rows-[232px] gap-4 sm:gap-5 animate-fade-up">
+            {renderCreateTile("sm:col-span-2 lg:col-span-2 lg:row-span-2 h-[250px] lg:h-auto")}
+            <div className="relative overflow-hidden sm:col-span-2 lg:col-span-2 lg:row-span-2 h-[250px] lg:h-auto rounded-[1.6rem] bg-white border border-slate-100 ft-shadow flex flex-col items-center justify-center text-center p-8 isolate">
+              <Rocket className="pointer-events-none absolute -right-8 -bottom-10 w-44 h-44 text-slate-100 -rotate-12" />
+              <div className="relative w-20 h-20 rounded-[1.4rem] bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-100 flex items-center justify-center shadow-inner">
+                <Lightbulb className="w-10 h-10 text-amber-400" />
+              </div>
+              <p className="relative font-head font-bold text-lg text-slate-600 mt-4">
+                {filtersActive ? "لا نتائج مطابقة لبحثك" : "لا توجد مشاريع بعد"}
+              </p>
+              <p className="relative mt-1 text-sm text-slate-400">
+                {filtersActive ? "جرّب كلمة أخرى أو امسح التصفية لعرض كل المشاريع." : "كن أول من يعرض فكرته ويكوّن فريقاً!"}
+              </p>
+              {filtersActive && (
+                <button onClick={resetFilters}
+                  className="pressable relative mt-5 inline-flex items-center gap-1.5 rounded-full bg-slate-900 text-white text-sm font-extrabold px-6 min-h-[46px] shadow-lg">
+                  مسح التصفية <X className="w-4 h-4" />
+                </button>
+              )}
             </div>
-            <p className="relative font-head font-bold text-lg text-slate-600">لا توجد مشاريع بعد</p>
-            <p className="relative mt-1 text-sm text-slate-400">كن أول من يعرض فكرته ويكوّن فريقاً!</p>
-            <Button onClick={openCreate}
-              className="relative mt-6 rounded-full ft-btn-primary text-white font-extrabold pressable shadow-lg min-h-[52px] px-7">
-              <Plus className="w-5 h-5 ml-1.5" /> اعرض مشروعك
-            </Button>
           </div>
         ) : (
-          <div className="mt-8 xl:flex xl:items-start xl:gap-8">
-            <div className="flex-1 min-w-0">
-              <div className="mb-5 flex items-center gap-3 animate-fade-up">
-                <span className="h-8 w-1.5 rounded-full ft-grad-bar shrink-0 shadow" />
-                <span className="inline-flex items-center gap-2 font-head text-lg sm:text-xl font-extrabold text-slate-800">
-                  <Sparkles className="w-5 h-5 ft-text-accent" />
-                  {spotlight.length ? "الأكثر إلهاماً الآن" : `عرض ${ventures.length} مشروع`}
-                </span>
-                <span className="flex-1 h-px bg-gradient-to-l from-slate-200 to-transparent" />
-              </div>
-
-              {/* ===== spotlight · snap-scroll lead row ===== */}
-              {spotlight.length > 0 && (
-                <div className="relative mb-8 animate-fade-up">
-                  <div ref={spotRef} className="flex gap-5 overflow-x-auto snap-x snap-mandatory pb-2 -mx-4 px-4 sm:mx-0 sm:px-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                    {spotlight.map((v, idx) => {
-                      const meta = CATEGORY_META[v.category] || CATEGORY_DEFAULT;
-                      const CatIcon = meta.icon;
-                      return (
-                        <article key={v.id}
-                          className="group relative isolate z-0 snap-center shrink-0 w-[88%] sm:w-[78%] lg:w-[86%] xl:w-full bg-white rounded-[2rem] border border-slate-100 ft-shadow-lg overflow-hidden transition-shadow duration-300 hover:ring-2 ft-ring-accent hover:shadow-[0_32px_64px_-20px_color-mix(in_srgb,var(--ft-accent)_38%,transparent)] lg:grid lg:grid-cols-[1.05fr_1fr]">
-                          {renderStatusRibbon(v)}
-                          <div className={`relative isolate min-h-[215px] lg:min-h-full overflow-hidden bg-gradient-to-l ${meta.grad}`}>
-                            <CatIcon className="pointer-events-none absolute -left-8 -bottom-12 w-52 h-52 sm:w-72 sm:h-72 text-white/20 -rotate-12 transition-transform duration-500 group-hover:scale-110 group-hover:-rotate-6" />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-white/10" />
-                            <div className="pointer-events-none absolute inset-0 ft-gradient-pan bg-[linear-gradient(115deg,transparent_30%,rgba(255,255,255,0.25)_50%,transparent_70%)] bg-[length:250%_250%] opacity-60" />
-                            <div className="pointer-events-none absolute inset-0 opacity-20 [background-image:radial-gradient(rgba(255,255,255,0.55)_1px,transparent_1.5px)] [background-size:18px_18px]" />
-                            <div className="absolute top-4 inset-x-4 flex items-start justify-between gap-2">
-                              <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-l from-amber-400 to-orange-400 text-white text-xs font-extrabold px-3.5 py-2 shadow-lg shadow-orange-200 border border-white/30">
-                                {idx === 0 ? <Crown className="w-4 h-4" /> : <Sparkles className="w-4 h-4" />} {idx === 0 ? "مشروع مميز" : `مميز ${idx + 1}`}
-                              </span>
-                              <BookmarkButton kind="venture" refId={v.id} title={v.title} className="shadow shrink-0" />
-                            </div>
-                            <div className="absolute bottom-5 start-5 flex items-end gap-3">
-                              <span className="w-16 h-16 rounded-[1.15rem] bg-white/15 backdrop-blur-md border border-white/30 text-white flex items-center justify-center shadow-xl">
-                                <CatIcon className="w-8 h-8" />
-                              </span>
-                              <span className="text-white/90 text-xs font-bold bg-black/25 backdrop-blur px-2.5 py-1 rounded-full border border-white/20">{v.category}</span>
-                            </div>
-                          </div>
-                          <div className="relative p-5 sm:p-7 flex flex-col">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <Badge variant="outline" className={`${STATUS_COLORS[v.status] || ""} rounded-full font-bold`}>
-                                <span className={`w-1.5 h-1.5 rounded-full ml-1.5 ${STATUS_DOT[v.status] || "bg-slate-300"}`} />
-                                {v.status_label}
-                              </Badge>
-                              {v.is_owner && <Badge className="rounded-full bg-violet-100 text-violet-700 border border-violet-200 font-bold">مشروعك</Badge>}
-                              {v.votes_count >= 10 && (
-                                <Badge className="rounded-full bg-gradient-to-l from-orange-500 to-rose-500 text-white border-0 font-bold shadow-md shadow-orange-200">
-                                  <Flame className="w-3 h-3 ml-1" /> رائج
-                                </Badge>
-                              )}
-                            </div>
-                            <Link to={`/ventures/${v.id}`} className="font-head font-extrabold text-2xl sm:text-[1.8rem] leading-snug text-slate-900 mt-3.5 hover:[color:color-mix(in_srgb,var(--ft-accent)_66%,black)] line-clamp-2 transition-colors">{v.title}</Link>
-                            <p className="mt-2.5 text-sm sm:text-[15px] text-slate-500 line-clamp-3 leading-relaxed">{v.description}</p>
-                            {v.looking_for && (
-                              <p className="mt-3.5 inline-flex items-start gap-1.5 text-xs font-bold text-violet-700 bg-violet-50 border border-violet-100 rounded-xl px-2.5 py-1.5 line-clamp-1 self-start">
-                                <Search className="w-3.5 h-3.5 shrink-0 mt-px" /> يبحث عن: {v.looking_for}
-                              </p>
-                            )}
-                            <div className="mt-5 flex items-center gap-3">
-                              {renderAvatarStack(v, meta, "w-9 h-9 text-sm")}
-                              <span className="text-xs text-slate-500 font-medium truncate">{v.owner_name}{v.school_name ? ` · ${v.school_name}` : ""}</span>
-                            </div>
-                            <div className="mt-4">{renderTeamBar(v)}</div>
-                            <div className="mt-auto pt-5">
-                              <div className="flex items-center justify-between border-t border-slate-100 pt-4 gap-2 flex-wrap">
-                                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-400">
-                                  <Zap className="w-3.5 h-3.5 text-amber-500" /> انضم أو صوّت الآن
-                                </span>
-                                <div className="flex items-center gap-2">
-                                  {renderVoteButton(v, true)}
-                                  <Link to={`/ventures/${v.id}`} className="pressable inline-flex items-center gap-1.5 rounded-full ft-btn-primary text-white text-sm font-extrabold px-5 min-h-[52px] shadow-lg group/flnk">
-                                    التفاصيل <ArrowLeft className="w-4 h-4 transition-transform group-hover/flnk:-translate-x-1" />
-                                  </Link>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </article>
-                      );
-                    })}
-                  </div>
-                  {spotlight.length > 1 && (
-                    <div className="hidden sm:flex items-center justify-end gap-2 mt-1">
-                      <button onClick={() => scrollSpot(1)} aria-label="السابق" className="pressable w-11 h-11 rounded-full bg-white border border-slate-200 shadow grid place-items-center text-slate-500 hover:text-slate-800"><ArrowRight className="w-5 h-5" /></button>
-                      <button onClick={() => scrollSpot(-1)} aria-label="التالي" className="pressable w-11 h-11 rounded-full bg-white border border-slate-200 shadow grid place-items-center text-slate-500 hover:text-slate-800"><ArrowLeft className="w-5 h-5" /></button>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* ===== asymmetric editorial grid ===== */}
-              {gridVentures && gridVentures.length > 0 && (
-                <>
-                  {spotlight.length > 0 && (
-                    <div className="mb-5 flex items-center gap-3 animate-fade-up">
-                      <span className="h-7 w-1.5 rounded-full bg-slate-200 shrink-0" />
-                      <span className="font-head text-base sm:text-lg font-extrabold text-slate-700">كل المشاريع</span>
-                      <span className="flex-1 h-px bg-gradient-to-l from-slate-200 to-transparent" />
-                      <span className="text-xs font-bold text-slate-400 tabular-nums">{gridVentures.length} مشروع</span>
-                    </div>
-                  )}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-5 isolate">
-                    {gridVentures.map((v, i) => {
-                      const meta = CATEGORY_META[v.category] || CATEGORY_DEFAULT;
-                      const CatIcon = meta.icon;
-                      const wide = i === 0 && gridVentures.length > 2;
-                      return (
-                        <article key={v.id} style={{ animationDelay: `${Math.min(i, 11) * 60}ms` }}
-                          className={`group relative isolate z-0 bg-white rounded-[1.75rem] border border-slate-100 ft-shadow flex flex-col overflow-hidden animate-fade-up transition-shadow duration-300 hover:ring-2 ft-ring-accent hover:shadow-[0_24px_50px_-16px_color-mix(in_srgb,var(--ft-accent)_35%,transparent)] ${wide ? "sm:col-span-2 lg:col-span-1 2xl:col-span-2" : ""}`}>
-                          {renderStatusRibbon(v)}
-                          <div className={`relative isolate ${wide ? "h-40 sm:h-44" : "h-32 sm:h-36 lg:h-40"} shrink-0 overflow-hidden bg-gradient-to-l ${meta.grad}`}>
-                            <CatIcon className="pointer-events-none absolute -left-4 -bottom-8 w-36 h-36 text-white/20 -rotate-12 transition-transform duration-500 group-hover:scale-110 group-hover:-rotate-6" />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-white/10" />
-                            <div className="pointer-events-none absolute inset-0 opacity-20 [background-image:radial-gradient(rgba(255,255,255,0.55)_1px,transparent_1.5px)] [background-size:18px_18px]" />
-                            <div className="absolute top-3 inset-x-3 flex items-start justify-between gap-2">
-                              <Badge variant="outline" className={`${STATUS_COLORS[v.status] || ""} rounded-full font-bold backdrop-blur shadow-sm`}>
-                                <span className={`w-1.5 h-1.5 rounded-full ml-1.5 ${STATUS_DOT[v.status] || "bg-slate-300"}`} />
-                                {v.status_label}
-                              </Badge>
-                              <BookmarkButton kind="venture" refId={v.id} title={v.title} className="shadow shrink-0" />
-                            </div>
-                            <span className="absolute bottom-3 start-4 text-white/95 text-[11px] font-extrabold bg-black/25 backdrop-blur px-2.5 py-1 rounded-full border border-white/20 inline-flex items-center gap-1">
-                              <CatIcon className="w-3.5 h-3.5" /> {v.category}
-                            </span>
-                          </div>
-                          <div className="pointer-events-none absolute inset-0 bg-gradient-to-tl from-[color:color-mix(in_srgb,var(--ft-accent)_7%,transparent)] via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                          <div className="relative px-5 pb-5 flex flex-col flex-1">
-                            <span className={`-mt-8 relative z-10 w-14 h-14 rounded-2xl bg-gradient-to-br ${meta.grad} text-white flex items-center justify-center shadow-xl ${meta.shadow} ring-4 ring-white transition-transform duration-300 group-hover:scale-105 group-hover:-rotate-3`}>
-                              <CatIcon className="w-7 h-7" />
-                            </span>
-                            <div className="flex items-center gap-2 flex-wrap mt-3">
-                              {v.is_owner && <Badge className="rounded-full bg-violet-100 text-violet-700 border border-violet-200 font-bold">مشروعك</Badge>}
-                              {v.votes_count >= 10 && (
-                                <Badge className="rounded-full bg-gradient-to-l from-orange-500 to-rose-500 text-white border-0 font-bold shadow-md shadow-orange-200">
-                                  <Flame className="w-3 h-3 ml-1" /> رائج
-                                </Badge>
-                              )}
-                              {v.school_name && <span className="text-[11px] font-bold text-slate-400 truncate">🏫 {v.school_name}</span>}
-                            </div>
-                            <Link to={`/ventures/${v.id}`} className="font-head font-extrabold text-lg text-slate-900 mt-2 hover:[color:color-mix(in_srgb,var(--ft-accent)_66%,black)] line-clamp-1 transition-colors">{v.title}</Link>
-                            <p className="mt-1.5 text-sm text-slate-500 line-clamp-2 leading-relaxed">{v.description}</p>
-                            {v.looking_for && (
-                              <p className="mt-3 inline-flex items-start gap-1.5 text-xs font-bold text-violet-700 bg-violet-50 border border-violet-100 rounded-xl px-2.5 py-1.5 line-clamp-1 self-start">
-                                <Search className="w-3.5 h-3.5 shrink-0 mt-px" /> يبحث عن: {v.looking_for}
-                              </p>
-                            )}
-                            <div className="mt-4 flex items-center gap-2.5">
-                              {renderAvatarStack(v, meta)}
-                              <span className="text-xs text-slate-500 font-medium truncate">{v.owner_name}</span>
-                            </div>
-                            <div className="mt-3.5">{renderTeamBar(v)}</div>
-                            <div className="mt-auto pt-4">
-                              <div className="flex items-center justify-between border-t border-slate-100 pt-4 gap-2">
-                                {renderVoteButton(v)}
-                                <Link to={`/ventures/${v.id}`} className="pressable inline-flex items-center gap-1 ft-text-accent text-sm font-extrabold min-h-[44px] px-2 rounded-full hover:bg-[color:color-mix(in_srgb,var(--ft-accent)_9%,white)] transition-colors group/lnk">
-                                  التفاصيل <ArrowLeft className="w-4 h-4 transition-transform group-hover/lnk:-translate-x-1" />
-                                </Link>
-                              </div>
-                            </div>
-                          </div>
-                        </article>
-                      );
-                    })}
-                  </div>
-                </>
-              )}
+          <>
+            <div className="mt-8 mb-4 flex items-center gap-3 animate-fade-up">
+              <span className="h-8 w-1.5 rounded-full ft-grad-bar shrink-0 shadow" />
+              <span className="inline-flex items-center gap-2 font-head text-lg sm:text-xl font-extrabold text-slate-800">
+                <Sparkles className="w-5 h-5 ft-text-accent" />
+                {filtersActive ? "نتائج التصفية" : "جدار المشاريع"}
+              </span>
+              <span className="text-xs font-extrabold tabular-nums rounded-full bg-slate-900 text-white px-2.5 py-1">{ventures.length}</span>
+              <span className="flex-1 h-px bg-gradient-to-l from-slate-200 to-transparent" />
             </div>
 
-            {/* -------- discovery rail (desktop) · static -------- */}
-            <aside className="hidden xl:block w-[320px] shrink-0">
-              <div className="space-y-5">
-                <button onClick={openCreate}
-                  className="pressable group relative w-full overflow-hidden text-start rounded-[1.75rem] ft-hero-gradient text-white p-6 ft-shadow-lg isolate">
-                  <Rocket className="pointer-events-none absolute -left-5 -bottom-7 w-28 h-28 text-white/15 -rotate-12 transition-transform duration-500 group-hover:scale-110" />
-                  <span className="relative w-11 h-11 rounded-2xl bg-white/15 border border-white/25 backdrop-blur flex items-center justify-center shadow">
-                    <Lightbulb className="w-5 h-5 ft-text-accent-bright" />
-                  </span>
-                  <span className="relative block font-head font-extrabold text-lg mt-4">عندك فكرة؟</span>
-                  <span className="relative block text-sm text-white/75 leading-relaxed mt-1">حوّلها إلى مشروع، وابنِ فريقك من مدارس أخرى اليوم.</span>
-                  <span className="relative inline-flex items-center gap-1.5 mt-4 rounded-full bg-white text-slate-900 text-sm font-extrabold px-5 min-h-[44px] shadow-lg">
-                    ابدأ مشروعك <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-1" />
-                  </span>
-                </button>
-
-                <div className="relative overflow-hidden bg-white rounded-[1.75rem] border border-slate-100 ft-shadow-lg p-5 isolate">
-                  <span className="pointer-events-none absolute inset-x-0 top-0 h-1 ft-grad-bar" />
-                  <h3 className="flex items-center gap-2 font-head font-extrabold text-slate-800">
-                    <span className="w-9 h-9 rounded-xl ft-icon-tile flex items-center justify-center shadow-md shrink-0">
-                      <Trophy className="w-[18px] h-[18px]" />
-                    </span>
-                    الأكثر تصويتاً
-                  </h3>
-                  <ol className="mt-4 space-y-1">
-                    {topVoted.map((v, i) => (
-                      <li key={v.id}>
-                        <Link to={`/ventures/${v.id}`} className="group/row flex items-center gap-3 p-2.5 rounded-2xl hover:bg-slate-50 transition-colors min-h-[52px]">
-                          <span className={`w-7 h-7 rounded-full grid place-items-center font-head font-extrabold text-xs shrink-0 ring-1 ${i === 0 ? "bg-amber-100 text-amber-600 ring-amber-200" : i === 1 ? "bg-slate-100 text-slate-500 ring-slate-200" : i === 2 ? "bg-orange-100 text-orange-600 ring-orange-200" : "bg-slate-50 text-slate-400 ring-slate-100"}`}>
-                            {i + 1}
-                          </span>
-                          <span className={`w-9 h-9 rounded-full bg-gradient-to-br ${avatarGrad(v.owner_name)} text-white text-sm font-extrabold flex items-center justify-center shrink-0 ring-2 ring-white shadow`}>
-                            {(v.owner_name || "؟").trim().charAt(0)}
-                          </span>
-                          <span className="flex-1 min-w-0">
-                            <span className="block font-head font-bold text-sm text-slate-800 truncate group-hover/row:[color:color-mix(in_srgb,var(--ft-accent)_66%,black)] transition-colors">{v.title}</span>
-                            <span className="block text-[11px] text-slate-400 truncate">{v.category}</span>
-                          </span>
-                          <span className="inline-flex items-center gap-1 text-xs font-extrabold text-rose-500 tabular-nums shrink-0">
-                            <Heart className={`w-3.5 h-3.5 ${v.voted ? "fill-current" : ""}`} />{v.votes_count}
-                          </span>
-                        </Link>
-                      </li>
-                    ))}
-                  </ol>
-                </div>
-
-                <div className="relative overflow-hidden bg-white rounded-[1.75rem] border border-slate-100 ft-shadow-lg p-5 isolate">
-                  <span className="pointer-events-none absolute inset-x-0 top-0 h-1 ft-grad-bar" />
-                  <h3 className="flex items-center gap-2 font-head font-extrabold text-slate-800">
-                    <span className="w-9 h-9 rounded-xl ft-icon-tile flex items-center justify-center shadow-md shrink-0">
-                      <Compass className="w-[18px] h-[18px]" />
-                    </span>
-                    اكتشف حسب التصنيف
-                  </h3>
-                  <div className="mt-4 space-y-1">
-                    {VENTURE_CATEGORIES.map((c) => {
-                      const m = CATEGORY_META[c];
-                      const Icon = m ? m.icon : Compass;
-                      const active = category === c;
-                      return (
-                        <button key={c} onClick={() => setCategory(c)}
-                          className={`pressable w-full flex items-center gap-3 p-2.5 rounded-2xl text-start transition-all min-h-[52px] ${active ? "ft-bg-soft ring-1 ft-ring-accent" : "hover:bg-slate-50"}`}>
-                          <span className={`w-9 h-9 rounded-xl flex items-center justify-center text-white shrink-0 shadow ${m ? `bg-gradient-to-br ${m.grad}` : "ft-icon-tile"}`}>
-                            <Icon className="w-[18px] h-[18px]" />
-                          </span>
-                          <span className={`flex-1 text-sm font-bold ${active ? "ft-text-accent" : "text-slate-600"}`}>{c}</span>
-                          <span className="text-[11px] font-extrabold text-slate-400 tabular-nums">{catCount(c)}</span>
-                          {active && <Check className="w-4 h-4 ft-text-accent shrink-0" />}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div className="relative overflow-hidden ft-bg-soft rounded-[1.75rem] ring-1 ft-ring-accent p-5 isolate">
-                  <Lightbulb className="pointer-events-none absolute -left-4 -bottom-6 w-24 h-24 text-[color:color-mix(in_srgb,var(--ft-accent)_14%,transparent)] -rotate-12" />
-                  <h3 className="relative flex items-center gap-2 font-head font-extrabold text-slate-800">
-                    <span className="w-9 h-9 rounded-xl ft-icon-tile flex items-center justify-center shadow-md shrink-0">
-                      <Zap className="w-[18px] h-[18px]" />
-                    </span>
-                    نصيحة للفرق
-                  </h3>
-                  <p className="relative text-sm text-slate-600 leading-relaxed mt-3">
-                    المشاريع التي تكتمل فرقها تنجز أسرع. صف في «من تبحث عنه؟» المهارات التي يحتاجها مشروعك لتصل إلى الشركاء المناسبين.
-                  </p>
-                </div>
-              </div>
-            </aside>
-          </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 lg:auto-rows-[232px] [grid-auto-flow:dense] gap-4 sm:gap-5 isolate">
+              {featured && renderTile(featured, 0, true)}
+              {renderCreateTile(featured
+                ? "sm:col-span-2 lg:col-span-2 h-[210px] sm:h-[200px] lg:h-auto"
+                : "sm:col-span-2 lg:col-span-2 h-[210px] sm:h-[200px] lg:h-auto")}
+              {(wallVentures || []).map((v, i) => renderTile(v, i + 1, false))}
+            </div>
+          </>
         )}
       </div>
 
       {/* ============================ CREATE DIALOG ============================ */}
       <Dialog open={showNew} onOpenChange={setShowNew}>
         <DialogContent className="max-w-2xl max-h-[92dvh] overflow-y-auto rounded-[2rem] border-white/60 bg-white/95 backdrop-blur-xl p-0 overflow-hidden" dir="rtl">
-          <div className="relative ft-hero-gradient text-white px-6 pt-6 pb-12 overflow-hidden isolate">
+          <div className="relative ft-navy-gradient text-white px-6 pt-6 pb-12 overflow-hidden isolate">
             <Rocket className="pointer-events-none absolute -left-6 -bottom-8 w-32 h-32 text-white/15 -rotate-12" />
             <div className="pointer-events-none absolute inset-0 opacity-[0.13] [background-image:radial-gradient(rgba(255,255,255,0.6)_1px,transparent_1.6px)] [background-size:20px_20px]" />
             <DialogHeader className="relative">
