@@ -3,10 +3,11 @@ import {
   X, Download, ZoomIn, ZoomOut, Check, Loader2,
   AlertTriangle, ExternalLink, ChevronUp, BookOpen,
   Bookmark, BookmarkCheck, Trash2,
-  Sun, Coffee, Moon, StickyNote, Plus, NotebookText,
+  Sun, Coffee, Moon, StickyNote, Plus, NotebookText, WifiOff,
 } from "lucide-react";
 import api, { apiErr } from "@/lib/api";
 import { signUrl } from "@/lib/signing";
+import { getOfflineBook } from "@/lib/offline";
 
 // pdf.js is loaded on demand from CDN (never bundled, never pushed through
 // the repo) · the reader chunk stays small and the main bundle is untouched.
@@ -125,6 +126,7 @@ export default function BookReader({ book, pdfUrl, onClose, onProgress, initialP
   const [showNotes, setShowNotes] = useState(false);
   const [noteText, setNoteText] = useState("");
   const [addingNote, setAddingNote] = useState(false);
+  const [offlineReading, setOfflineReading] = useState(false);
 
   const scrollRef = useRef(null);
   const pageTops = useRef({});
@@ -172,19 +174,30 @@ export default function BookReader({ book, pdfUrl, onClose, onProgress, initialP
   }, [measure]);
 
   // Load the document (pdf.js itself is fetched from CDN on first open).
+  // A locally downloaded copy (IndexedDB) wins over the network so a saved
+  // book opens fully offline; otherwise pdf.js streams the signed URL.
+  const offlineBookId = book?.id;
   useEffect(() => {
     let dead = false;
     let loadingTask = null;
     let doc = null;
-    setError(null); setLoadPct(0); setPdf(null);
-    loadPdfjs().then((pdfjsLib) => {
-      if (dead) return;
-      loadingTask = pdfjsLib.getDocument({ url: signedPdfUrl });
+    setError(null); setLoadPct(0); setPdf(null); setOfflineReading(false);
+    (async () => {
+      let localData = null;
+      try {
+        const rec = offlineBookId ? await getOfflineBook(offlineBookId) : null;
+        if (rec?.blob) localData = new Uint8Array(await rec.blob.arrayBuffer());
+      } catch {}
+      if (dead) return null;
+      const pdfjsLib = await loadPdfjs();
+      if (dead) return null;
+      loadingTask = pdfjsLib.getDocument(localData ? { data: localData } : { url: signedPdfUrl });
+      if (localData) setOfflineReading(true);
       loadingTask.onProgress = ({ loaded, total }) => {
         if (!dead && total > 0) setLoadPct(Math.round((loaded / total) * 100));
       };
       return loadingTask.promise;
-    }).then((loadedDoc) => {
+    })().then((loadedDoc) => {
       if (!loadedDoc || dead) { if (loadedDoc) loadedDoc.destroy(); return; }
       doc = loadedDoc;
       pdfRef.current = doc;
@@ -199,7 +212,7 @@ export default function BookReader({ book, pdfUrl, onClose, onProgress, initialP
       try { loadingTask?.destroy(); } catch {}
       if (pdfRef.current) { try { pdfRef.current.destroy(); } catch {} pdfRef.current = null; }
     };
-  }, [pdfUrl]);
+  }, [pdfUrl, signedPdfUrl, offlineBookId]);
 
   // Lock body scroll while the reader is open (the pages scroll inside).
   useEffect(() => {
@@ -407,6 +420,11 @@ export default function BookReader({ book, pdfUrl, onClose, onProgress, initialP
             <div className="shrink-0 text-xs font-bold bg-white/10 backdrop-blur-md rounded-full px-3 py-1.5 tabular-nums">
               {numPages > 0 ? `${currentPage} / ${numPages}` : "…"}
             </div>
+            {offlineReading && (
+              <span data-testid="reader-offline-chip" className="shrink-0 inline-flex items-center gap-1 text-[11px] font-extrabold bg-emerald-500/20 text-emerald-200 border border-emerald-300/30 rounded-full px-2.5 py-1.5">
+                <WifiOff className="w-3.5 h-3.5" /> محمّل
+              </span>
+            )}
             <div className="relative shrink-0">
               <button
                 onClick={togglePageBookmark}

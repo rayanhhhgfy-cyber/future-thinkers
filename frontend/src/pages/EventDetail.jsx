@@ -4,19 +4,59 @@ import { Layout, PageLoader } from "@/components/Layout";
 import api, { fileUrl, apiErr } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { Calendar, MapPin, Users, Globe, ArrowRight, Building2, QrCode, CheckCircle2, CalendarDays, Wifi, Clock, CalendarPlus } from "lucide-react";
+import { Calendar, MapPin, Users, Globe, ArrowRight, Building2, QrCode, CheckCircle2, CalendarDays, Wifi, Clock, CalendarPlus, Loader2, ScanLine, BadgeCheck } from "lucide-react";
 
 const MONTHS = ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"];
 
 export default function EventDetail() {
   const { id } = useParams();
-  const { user } = useAuth();
+  const { user, hasPerm } = useAuth();
   const nav = useNavigate();
   const [e, setE] = useState(null);
+  const [myReg, setMyReg] = useState(null);
+  const [checkinCode, setCheckinCode] = useState("");
+  const [checkinBusy, setCheckinBusy] = useState(false);
+  const [lastCheckedIn, setLastCheckedIn] = useState("");
 
   const load = async () => { try { const { data } = await api.get(`/events/${id}`); setE(data); } catch { nav("/events"); } };
   useEffect(() => { load(); }, [id]);
+
+  /* My personal check-in code (from my-registration) · falls back to the
+     event payload's qr_code when the endpoint has nothing extra. */
+  useEffect(() => {
+    if (!user || !e?.is_registered) { setMyReg(null); return; }
+    let alive = true;
+    api.get(`/events/${id}/my-registration`)
+      .then((r) => {
+        if (!alive) return;
+        const reg = r.data?.registration || r.data || {};
+        setMyReg({
+          code: reg.code || reg.checkin_code || reg.qr_code || "",
+          attended: !!(reg.attended ?? reg.checked_in ?? reg.attended_at),
+        });
+      })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [id, user, e?.is_registered]);
+
+  const canManage = !!user && (hasPerm("event.manage") || ["admin", "super_admin"].includes(user.role));
+
+  const doCheckin = async () => {
+    const code = checkinCode.trim();
+    if (!code || checkinBusy) return;
+    setCheckinBusy(true);
+    try {
+      const { data } = await api.post(`/events/${id}/checkin`, { code });
+      const name = data?.name || data?.user_name || data?.attendee?.name || data?.attendee_name || "";
+      setLastCheckedIn(name || "أحد المسجلين");
+      toast.success(name ? `تم تسجيل حضور ${name} ✓` : "تم تسجيل الحضور ✓");
+      setCheckinCode("");
+      load();
+    } catch (err) { toast.error(apiErr(err)); }
+    setCheckinBusy(false);
+  };
 
   const register = async () => {
     if (!user) return nav("/login");
@@ -188,19 +228,73 @@ export default function EventDetail() {
           <Info icon={Building2} label="الفئة المستهدفة" value={e.audience} />
         </div>
 
-        {e.is_registered && e.qr_code && (
-          <div className="mt-6 overflow-hidden rounded-[1.4rem] border border-emerald-200/80 bg-gradient-to-l from-emerald-50 via-teal-50/60 to-blue-50 ft-shadow animate-fade-up d-3 sm:rounded-3xl sm:p-1.5 lg:col-start-1">
-            <div className="flex flex-col gap-5 p-5 sm:flex-row sm:items-center sm:p-6">
-              <div className="grid h-28 w-28 shrink-0 place-items-center rounded-[1.4rem] bg-white ft-shadow ring-1 ring-emerald-100">
-                <QrCode className="h-16 w-16 text-slate-800" />
-              </div>
-              <div className="min-w-0">
-                <div className="font-head flex items-center gap-1.5 text-lg font-extrabold text-slate-900"><CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600" /> رمز الحضور الخاص بك</div>
-                <div className="mt-3 inline-block max-w-full break-all rounded-xl bg-white px-3.5 py-2 font-mono text-lg tracking-[0.2em] text-blue-700 ring-1 ring-blue-100">{e.qr_code}</div>
-                <div className="mt-2.5 text-xs font-semibold text-slate-500">{e.checked_in ? "تم تسجيل حضورك ✓" : "أظهر هذا الرمز عند الدخول"}</div>
-                <Button data-testid="download-event-cert-btn" onClick={downloadCert} variant="outline" size="sm" className="pressable mt-4 min-h-[2.75rem] rounded-xl border-emerald-200 bg-white/80 px-4 font-bold text-emerald-700 shadow-sm hover:bg-white"><CheckCircle2 className="ml-1 h-4 w-4" />تنزيل شهادة المشاركة</Button>
+        {e.is_registered && (myReg?.code || e.qr_code) && (
+          <div className="relative mt-7 overflow-hidden rounded-[1.7rem] bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-950 p-[2px] shadow-[0_24px_48px_-20px_rgba(2,44,34,0.55)] animate-fade-up d-3 sm:rounded-[2rem] lg:col-start-1">
+            <div className="relative overflow-hidden rounded-[calc(1.7rem-2px)] bg-[radial-gradient(circle_at_12%_10%,rgba(52,211,153,0.22),transparent_34%),linear-gradient(135deg,rgba(255,255,255,0.98),rgba(236,253,245,0.94))] sm:rounded-[calc(2rem-2px)]">
+              <div className="pointer-events-none absolute inset-x-6 top-0 h-1 rounded-b-full ft-grad-bar" aria-hidden="true" />
+              <div className="pointer-events-none absolute -left-4 top-1/2 hidden h-8 w-8 -translate-y-1/2 rounded-full bg-slate-950 sm:block" aria-hidden="true" />
+              <div className="pointer-events-none absolute -right-4 top-1/2 hidden h-8 w-8 -translate-y-1/2 rounded-full bg-slate-950 sm:block" aria-hidden="true" />
+              <div className="relative flex flex-col gap-6 p-6 sm:flex-row sm:items-center sm:p-7">
+                <div className="relative mx-auto grid h-32 w-32 shrink-0 place-items-center rounded-[1.6rem] bg-slate-950 shadow-xl ring-4 ring-emerald-100 sm:mx-0 sm:h-36 sm:w-36">
+                  <div className="absolute inset-2 rounded-[1.25rem] border border-dashed border-emerald-300/50" aria-hidden="true" />
+                  <QrCode className="relative h-[4.5rem] w-[4.5rem] text-white sm:h-20 sm:w-20" />
+                </div>
+                <div className="hidden w-px self-stretch bg-[repeating-linear-gradient(to_bottom,rgba(100,116,139,0.45)_0_7px,transparent_7px_14px)] sm:block" aria-hidden="true" />
+                <div className="min-w-0 flex-1 text-center sm:text-right">
+                  <div className="font-head flex items-center justify-center gap-2 text-xl font-black text-slate-950 sm:justify-start"><span className="grid h-9 w-9 place-items-center rounded-xl bg-emerald-600 text-white shadow-lg shadow-emerald-600/25"><CheckCircle2 className="h-5 w-5" /></span> رمز الحضور</div>
+                  <div className="mt-4 inline-block max-w-full break-all rounded-2xl border border-dashed border-slate-300 bg-slate-950 px-5 py-3 font-mono text-xl tracking-[0.24em] text-amber-300 shadow-inner ring-4 ring-white/70">{myReg?.code || e.qr_code}</div>
+                  {(myReg?.attended || e.checked_in) ? (
+                    <div className="mt-4">
+                      <span data-testid="event-attended-badge" className="inline-flex items-center gap-1.5 rounded-full bg-emerald-600 px-4 py-2 text-xs font-extrabold text-white shadow-lg shadow-emerald-600/30">
+                        <BadgeCheck className="h-4 w-4" /> تم تسجيل الحضور
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="mt-3 text-xs font-bold leading-relaxed text-slate-500">أظهر هذا الرمز عند الدخول ليتم تسجيل حضورك</div>
+                  )}
+                  <Button data-testid="download-event-cert-btn" onClick={downloadCert} variant="outline" size="sm" className="pressable mt-5 min-h-[2.85rem] rounded-xl border-emerald-200 bg-white/90 px-4 font-extrabold text-emerald-700 shadow-md transition hover:-translate-y-0.5 hover:bg-white"><CheckCircle2 className="ml-1 h-4 w-4" />تنزيل شهادة المشاركة</Button>
+                </div>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* staff check-in desk */}
+        {canManage && (
+          <div className="relative mt-7 overflow-hidden rounded-[1.7rem] border border-slate-200/80 bg-white p-6 ft-shadow-lg animate-fade-up d-3 sm:rounded-[2rem] sm:p-7 lg:col-start-1">
+            <div className="absolute inset-x-6 top-0 h-1 rounded-b-full ft-grad-bar" aria-hidden="true" />
+            <div className="flex items-center gap-3">
+              <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl ft-icon-tile text-white shadow-lg"><ScanLine className="h-6 w-6" /></span>
+              <div>
+                <div className="font-head text-lg font-black text-slate-900">مكتب تسجيل الحضور</div>
+                <p className="mt-0.5 text-xs font-semibold leading-relaxed text-slate-400">أدخل رمز حضور المشارك كما يظهر في هاتفه ثم اضغط تسجيل.</p>
+              </div>
+            </div>
+            <div className="mt-5 flex flex-col gap-3 rounded-[1.3rem] border border-dashed border-slate-200 bg-slate-50/80 p-3 sm:flex-row sm:items-center">
+              <Input
+                data-testid="event-checkin-input"
+                value={checkinCode}
+                onChange={(ev) => setCheckinCode(ev.target.value)}
+                onKeyDown={(ev) => ev.key === "Enter" && doCheckin()}
+                placeholder="رمز الحضور…"
+                className="h-[3.25rem] flex-1 rounded-2xl border-slate-200 bg-white text-center font-mono text-lg tracking-[0.18em] shadow-inner"
+                dir="ltr"
+              />
+              <Button
+                data-testid="event-checkin-btn"
+                onClick={doCheckin}
+                disabled={!checkinCode.trim() || checkinBusy}
+                className="pressable h-[3.25rem] shrink-0 rounded-2xl ft-btn-primary px-7 font-extrabold shadow-lg"
+              >
+                {checkinBusy ? <Loader2 className="ml-1 h-4 w-4 animate-spin" /> : <BadgeCheck className="ml-1 h-4 w-4" />}
+                تسجيل الحضور
+              </Button>
+            </div>
+            {lastCheckedIn && (
+              <div className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-extrabold text-emerald-700 shadow-sm animate-fade-up">
+                <CheckCircle2 className="h-4 w-4" /> آخر تسجيل: {lastCheckedIn}
+              </div>
+            )}
           </div>
         )}
       </div>

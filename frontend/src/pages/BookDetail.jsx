@@ -2,16 +2,31 @@ import React, { useEffect, useState, lazy, Suspense } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Layout, PageLoader } from "@/components/Layout";
 import api, { apiErr } from "@/lib/api";
+import { signUrl } from "@/lib/signing";
+import { hasOfflineBook, saveOfflineBook, deleteOfflineBook } from "@/lib/offline";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Star, Heart, BookOpen, ArrowRight, Eye, Bookmark, BookmarkCheck, Clock, Check, ListPlus, MessageSquare, Send, Trash2 } from "lucide-react";
+import { Star, Heart, BookOpen, ArrowRight, Eye, Bookmark, BookmarkCheck, Clock, Check, ListPlus, MessageSquare, Send, Trash2, Lightbulb, ThumbsUp, Download, Loader2, Sparkles } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useBookmarks } from "@/components/BookmarkButton";
 import BookCover from "@/components/BookCover";
 import ReportButton from "@/components/ReportButton";
 import { PlaylistPicker } from "@/components/library/PlaylistPicker";
+
+function normInsight(x) {
+  return {
+    id: x.id || x._id,
+    user_id: x.user_id,
+    user_name: x.user_name || x.name || "قارئ",
+    avatar_url: x.avatar_url || "",
+    text: x.text || "",
+    likes: Number(x.likes ?? x.likes_count ?? 0),
+    liked: !!(x.liked ?? x.is_liked),
+    created_at: x.created_at || "",
+  };
+}
 
 const BookReader = lazy(() => import("./reader/BookReader"));
 
@@ -38,6 +53,12 @@ export default function BookDetail() {
   const [showPlaylists, setShowPlaylists] = useState(false);
   const [comments, setComments] = useState([]);
   const [commentText, setCommentText] = useState("");
+  const [prompts, setPrompts] = useState([]);
+  const [insights, setInsights] = useState([]);
+  const [insightText, setInsightText] = useState("");
+  const [postingInsight, setPostingInsight] = useState(false);
+  const [offlineSaved, setOfflineSaved] = useState(false);
+  const [offlineBusy, setOfflineBusy] = useState(false);
   const { map: savedMap, toggle: toggleSaved } = useBookmarks();
   const isSaved = savedMap.has(`book:${id}`);
 
@@ -45,6 +66,13 @@ export default function BookDetail() {
     const [b, r] = await Promise.all([api.get(`/books/${id}`), api.get(`/books/${id}/reviews`)]);
     setBook(b.data); setReviews(r.data);
     api.get(`/books/${id}/comments`).then((res) => setComments(res.data.items || [])).catch(() => {});
+    api.get(`/books/${id}/insights`).then((res) => {
+      const d = res.data || {};
+      setPrompts(Array.isArray(d.prompts) ? d.prompts : []);
+      const list = Array.isArray(d) ? d : (d.insights || d.items || []);
+      setInsights(list.map(normInsight));
+    }).catch(() => {});
+    hasOfflineBook(id).then(setOfflineSaved).catch(() => {});
   };
   const submitComment = async () => {
     if (!commentText.trim()) return;
@@ -59,6 +87,61 @@ export default function BookDetail() {
       await api.delete(`/books/${id}/comments/${cid}`);
       setComments((prev) => prev.filter((c) => c.id !== cid));
     } catch (e) { toast.error(apiErr(e)); }
+  };
+
+  /* ---- رفيق الكتاب: insights ---- */
+  const postInsight = async () => {
+    const text = insightText.trim();
+    if (!text || postingInsight) return;
+    setPostingInsight(true);
+    try {
+      const { data } = await api.post(`/books/${id}/insights`, { text });
+      if (data && (data.id || data.text)) setInsights((prev) => [normInsight(data), ...prev]);
+      else {
+        const res = await api.get(`/books/${id}/insights`);
+        const d = res.data || {};
+        setInsights((Array.isArray(d) ? d : (d.insights || d.items || [])).map(normInsight));
+      }
+      setInsightText("");
+      toast.success("نُشرت رؤيتك في رفيق الكتاب");
+    } catch (e) { toast.error(apiErr(e)); }
+    setPostingInsight(false);
+  };
+
+  const likeInsight = async (ins) => {
+    const next = { ...ins, liked: !ins.liked, likes: ins.likes + (ins.liked ? -1 : 1) };
+    setInsights((prev) => prev.map((x) => (x.id === ins.id ? next : x)));
+    try {
+      const { data } = await api.post(`/books/${id}/insights/${ins.id}/like`);
+      if (data && (data.likes != null || data.likes_count != null)) {
+        setInsights((prev) => prev.map((x) => (x.id === ins.id ? { ...x, likes: Number(data.likes ?? data.likes_count), liked: !!(data.liked ?? data.is_liked ?? x.liked) } : x)));
+      }
+    } catch (e) {
+      setInsights((prev) => prev.map((x) => (x.id === ins.id ? ins : x)));
+      toast.error(apiErr(e));
+    }
+  };
+
+  /* ---- offline copy (IndexedDB) ---- */
+  const downloadOffline = async () => {
+    if (!book?.pdf_url || offlineBusy) return;
+    setOfflineBusy(true);
+    try {
+      const res = await fetch(signUrl(book.pdf_url));
+      if (!res.ok) throw new Error("fetch-failed");
+      const blob = await res.blob();
+      const ok = await saveOfflineBook(id, blob, book.title);
+      if (!ok) throw new Error("idb-failed");
+      setOfflineSaved(true);
+      toast.success("حُفظ الكتاب على جهازك · افتحه واقرأه دون اتصال");
+    } catch { toast.error("تعذّر تحميل الكتاب للقراءة دون اتصال · تحقق من الاتصال وحاول مجدداً"); }
+    setOfflineBusy(false);
+  };
+
+  const removeOffline = async () => {
+    try { await deleteOfflineBook(id); } catch {}
+    setOfflineSaved(false);
+    toast.success("حُذفت النسخة المحلية من جهازك");
   };
   useEffect(() => { load(); }, [id]);
 
@@ -126,6 +209,27 @@ export default function BookDetail() {
                   {isSaved ? "محفوظ في عناصرك" : "احفظ في عناصر محفوظة"}
                 </Button>
               )}
+              {book.pdf_url && (offlineSaved ? (
+                <div data-testid="offline-saved-box" className="relative overflow-hidden rounded-2xl border border-emerald-300/70 bg-gradient-to-l from-emerald-600 via-emerald-500 to-teal-500 px-4 py-4 text-white shadow-lg shadow-emerald-600/20">
+                  <div className="pointer-events-none absolute -left-8 -top-10 h-24 w-24 rounded-full bg-white/15 blur-2xl" aria-hidden="true" />
+                  <div className="relative flex items-center gap-2 text-sm font-black">
+                    <span className="grid h-8 w-8 place-items-center rounded-xl bg-white/15 ring-1 ring-white/25"><Check className="h-4 w-4" /></span>
+                    محمّل للقراءة دون اتصال
+                  </div>
+                  <button
+                    data-testid="offline-delete-btn"
+                    onClick={removeOffline}
+                    className="pressable relative mt-3 inline-flex min-h-[38px] items-center gap-1 rounded-xl border border-white/30 bg-white/95 px-3.5 py-2 text-xs font-extrabold text-emerald-700 shadow-sm transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" /> حذف النسخة المحلية
+                  </button>
+                </div>
+              ) : (
+                <Button data-testid="offline-download-btn" onClick={downloadOffline} disabled={offlineBusy} variant="outline" className="h-12 w-full rounded-2xl border-slate-200 bg-white font-extrabold shadow-sm transition hover:-translate-y-0.5 hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700 disabled:translate-y-0">
+                  {offlineBusy ? <Loader2 className="ml-1 h-4 w-4 animate-spin" /> : <Download className="ml-1 h-4 w-4" />}
+                  {offlineBusy ? "جارٍ التحميل…" : "تحميل للقراءة دون اتصال"}
+                </Button>
+              ))}
             </div>
           </div>
 
@@ -211,6 +315,83 @@ export default function BookDetail() {
                   ))}
                 </div>
               )}
+            </div>
+
+            {/* رفيق الكتاب */}
+            <div className="relative mt-8 overflow-hidden rounded-[2rem] border border-amber-100 bg-white p-5 ft-shadow-lg sm:p-8">
+              <div className="pointer-events-none absolute inset-x-7 top-0 h-1 rounded-b-full bg-gradient-to-l from-amber-300 via-yellow-500 to-amber-700" aria-hidden="true" />
+              <div className="pointer-events-none absolute -left-16 -top-20 h-48 w-48 rounded-full bg-amber-200/25 blur-3xl" aria-hidden="true" />
+              <div className="relative flex flex-wrap items-start gap-4">
+                <span className="grid h-12 w-12 shrink-0 place-items-center rounded-[1.2rem] bg-slate-950 text-amber-300 shadow-lg shadow-amber-600/20 sm:h-14 sm:w-14"><Lightbulb className="h-7 w-7" /></span>
+                <div className="min-w-0 flex-1">
+                  <h2 className="font-head text-2xl font-black text-slate-900">رفيق الكتاب</h2>
+                  <p className="mt-1.5 max-w-2xl text-sm leading-loose text-slate-400">أسئلة تُشعل تفكيرك أثناء القراءة، ورؤى يشاركها قرّاء سبقوك إلى هذا الكتاب.</p>
+                </div>
+                <span className="ft-chip hidden rounded-full px-3.5 py-1.5 text-xs font-black sm:inline-flex">قراءة أعمق</span>
+              </div>
+
+              {prompts.length > 0 && (
+                <div className="relative mt-6 grid gap-4 sm:grid-cols-2">
+                  {prompts.map((p, i) => (
+                    <div key={i} className="group relative overflow-hidden rounded-[1.4rem] border ft-border-accent ft-bg-soft p-5 shadow-sm transition duration-300 hover:-translate-y-0.5 hover:bg-white hover:ft-shadow animate-fade-up" style={{ animationDelay: `${i * 50}ms` }}>
+                      <div className="absolute inset-y-0 right-0 w-1 ft-grad-bar" aria-hidden="true" />
+                      <span className="mb-3 inline-grid h-10 w-10 place-items-center rounded-2xl bg-slate-950 text-amber-300 shadow-md"><Sparkles className="h-5 w-5" /></span>
+                      <p className="text-sm font-extrabold leading-loose text-slate-700">{typeof p === "string" ? p : (p.text || p.prompt || "")}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {user ? (
+                <div className="relative mt-7 flex items-start gap-3 rounded-[1.5rem] border border-slate-200/80 bg-slate-50/90 p-4 shadow-inner sm:p-5">
+                  <Avatar className="h-10 w-10 shrink-0 shadow-md ring-2 ring-white"><AvatarFallback className="bg-amber-100 text-xs font-black text-amber-700">{user.name?.[0]}</AvatarFallback></Avatar>
+                  <div className="flex-1">
+                    <Textarea data-testid="insight-text" value={insightText} onChange={(e) => setInsightText(e.target.value)} placeholder="شارك رؤية أو فكرة لفتتك في الكتاب…" className="rounded-2xl border-slate-200 bg-white shadow-sm focus-visible:ring-amber-200" rows={2} />
+                    <Button data-testid="insight-submit-btn" onClick={postInsight} disabled={!insightText.trim() || postingInsight} className="mt-3 min-h-[2.85rem] rounded-2xl ft-btn-primary px-5 text-white shadow-lg">
+                      {postingInsight ? <Loader2 className="ml-1 h-4 w-4 animate-spin" /> : <Send className="ml-1 h-4 w-4" />}
+                      انشر رؤيتك
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <p className="relative mt-7 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-400">سجّل دخولك لمشاركة رؤيتك حول الكتاب.</p>
+              )}
+
+              <div className="relative mt-8">
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <h3 className="font-head text-base font-black text-slate-900">رؤى القرّاء ({insights.length})</h3>
+                  <span className="hidden h-px flex-1 bg-gradient-to-l from-amber-200 via-slate-100 to-transparent sm:block" aria-hidden="true" />
+                </div>
+                {insights.length === 0 ? (
+                  <p className="rounded-2xl border border-dashed border-amber-200 bg-amber-50/60 px-4 py-5 text-center text-sm text-slate-400">لا رؤى بعد · كن أول من يضيء هذا الكتاب بفكرة.</p>
+                ) : (
+                  <div className="space-y-3.5">
+                    {insights.map((ins) => (
+                      <div key={ins.id} className="group relative flex gap-3.5 overflow-hidden rounded-[1.4rem] border border-slate-100 bg-white px-4 py-4 shadow-sm transition duration-300 hover:-translate-y-0.5 hover:border-amber-100 hover:ft-shadow animate-fade-up sm:px-5">
+                        <div className="absolute inset-y-0 right-0 w-1 bg-gradient-to-b from-amber-300 to-yellow-600 opacity-80" aria-hidden="true" />
+                        {ins.avatar_url ? <img src={ins.avatar_url} alt="" className="h-10 w-10 shrink-0 rounded-full object-cover ring-2 ring-amber-100" /> : (
+                          <Avatar className="h-10 w-10 shrink-0 shadow-sm ring-2 ring-amber-100"><AvatarFallback className="bg-amber-100 text-xs font-black text-amber-700">{ins.user_name?.[0]}</AvatarFallback></Avatar>
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-sm font-extrabold text-slate-800">{ins.user_name}</span>
+                            {ins.created_at && <span className="rounded-full bg-slate-50 px-2 py-0.5 text-[11px] font-bold text-slate-400">{String(ins.created_at).slice(0, 10)}</span>}
+                          </div>
+                          <p className="mt-1.5 whitespace-pre-wrap text-sm leading-loose text-slate-600">{ins.text}</p>
+                          <button
+                            data-testid={`insight-like-${ins.id}`}
+                            onClick={() => user ? likeInsight(ins) : nav("/login")}
+                            className={`mt-3 inline-flex min-h-[34px] items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-extrabold transition ${ins.liked ? "border border-rose-200 bg-rose-50 text-rose-600 shadow-sm" : "border border-slate-200 bg-slate-50 text-slate-500 hover:border-rose-200 hover:bg-rose-50 hover:text-rose-500"}`}
+                          >
+                            <ThumbsUp className={`h-3.5 w-3.5 ${ins.liked ? "fill-rose-500 text-rose-500" : ""}`} />
+                            {ins.likes} إعجاب
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
