@@ -544,9 +544,9 @@ function RoomScreen({ code, onLeave }) {
           {/* RUNNING */}
           {status === "running" && (
             <div className="mt-6 grid lg:grid-cols-[minmax(0,1fr)_320px] gap-5 items-start">
-              {/* mobile sticky score strip */}
+              {/* mobile score strip */}
               {players.length > 0 && (
-                <div className="lg:hidden sticky top-[84px] z-20 flex items-center gap-2 overflow-x-auto rounded-full glass ring-1 ring-slate-200/80 shadow-md px-3 py-2">
+                <div className="lg:hidden relative flex items-center gap-2 overflow-x-auto rounded-full glass ring-1 ring-slate-200/80 shadow-md px-3 py-2">
                   <Trophy className="w-4 h-4 text-amber-500 shrink-0" />
                   {players.slice(0, 3).map((p, i) => (
                     <span key={i} className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-extrabold whitespace-nowrap ${i === 0 ? "bg-amber-100 text-amber-800" : "bg-slate-100 text-slate-600"}`}>
@@ -559,7 +559,7 @@ function RoomScreen({ code, onLeave }) {
               <div key={qIndex} className="relative overflow-hidden rounded-[28px] bg-white border border-slate-100 ft-shadow-lg p-5 sm:p-7 lg:p-9 animate-fade-up flex flex-col">
                 <span className="absolute inset-x-0 top-0 h-1 bg-gradient-to-l from-indigo-500 to-violet-500" />
                 {/* meta row · question counter + countdown ring */}
-                <div className="sticky top-[84px] lg:top-0 z-10 flex items-center justify-between gap-3 glass rounded-full ps-4 pe-2 py-1.5 ring-1 ring-slate-100 shadow-sm">
+                <div className="relative flex items-center justify-between gap-3 glass rounded-full ps-4 pe-2 py-1.5 ring-1 ring-slate-100 shadow-sm">
                   <span className="text-xs sm:text-sm font-extrabold text-slate-500">السؤال {qIndex + 1}{totalQ ? ` من ${totalQ}` : ""}</span>
                   <span className={`relative grid place-items-center w-12 h-12 shrink-0 ${remain <= 5 ? "animate-pulse" : ""}`}>
                     <svg viewBox="0 0 48 48" className="w-12 h-12 -rotate-90">
