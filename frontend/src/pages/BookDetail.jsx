@@ -14,6 +14,7 @@ import { useBookmarks } from "@/components/BookmarkButton";
 import BookCover from "@/components/BookCover";
 import ReportButton from "@/components/ReportButton";
 import { PlaylistPicker } from "@/components/library/PlaylistPicker";
+import BookLearn from "@/components/BookLearn";
 
 function normInsight(x) {
   return {
@@ -249,6 +250,9 @@ export default function BookDetail() {
                 <div key={k} className="bg-white rounded-2xl p-4 border border-slate-100 ft-shadow"><div className="text-slate-400 text-xs font-semibold">{k}</div><div className="font-bold text-slate-800 mt-1">{v}</div></div>
               ))}
             </div>
+
+            {/* قبل أن تقرأ + اختبر فهمك */}
+            <BookLearn book={book} />
 
             {/* Reviews */}
             <div className="mt-10 rounded-[1.75rem] border border-slate-100 bg-white p-5 ft-shadow sm:p-7">
