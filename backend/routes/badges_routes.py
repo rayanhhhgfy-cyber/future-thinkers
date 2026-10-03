@@ -89,6 +89,11 @@ class BadgeDef(BaseModel):
     icon: str = "Award"
     color: str = "#059669"
     order: int = 0
+    seasonal: bool = False
+    starts_at: str | None = None
+    ends_at: str | None = None
+    metric: str = "books"
+    target: int = 1
 
 
 @router.post("")

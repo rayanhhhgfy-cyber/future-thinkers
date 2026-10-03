@@ -45,6 +45,8 @@ from routes.quizlive_routes import router as quizlive_router
 from routes.portfolio_routes import router as portfolio_router
 from routes.reports_routes import router as reports_router
 from routes.cups_routes import router as cups_router
+from routes.learning_routes import router as learning_router
+from routes.growth_routes import router as growth_router
 from ws import hub
 import jwt
 from bson import ObjectId
@@ -62,7 +64,8 @@ for r in (auth_router, geo_router, books_router, files_router, community_router,
           push_router, studio_router, badges_router, ventures_router, goals_router,
           uploads_router, library_router, engage_router, errors_router,
           dm_router, circles_router, qa_router, quizlive_router,
-          portfolio_router, reports_router, cups_router):
+          portfolio_router, reports_router, cups_router,
+          learning_router, growth_router):
     app.include_router(r)
 
 
