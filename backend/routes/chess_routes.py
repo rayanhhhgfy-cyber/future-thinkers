@@ -1,6 +1,8 @@
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from bson import ObjectId
+from datetime import datetime
+from zoneinfo import ZoneInfo
 from db import db, ser, sers, oid, now_iso
 from auth import get_current_user
 from services import award_xp, bump_stat, create_notification
@@ -371,3 +373,19 @@ async def searchable_players(q: str = "", limit: int = 20, user: dict = Depends(
     docs = await db.users.find(query).limit(limit).to_list(limit)
     return [{"id": str(u["_id"]), "name": u["name"], "school_name": u.get("school_name"),
              "rating": u.get("chess_rating", 1200)} for u in docs]
+
+
+class PuzzleClaimBody(BaseModel):
+    puzzle: int
+    attempts: int = 0
+
+
+@router.post("/puzzle/claim")
+async def claim_daily_puzzle(body: PuzzleClaimBody, user: dict = Depends(get_current_user)):
+    today = datetime.now(ZoneInfo("Asia/Amman")).date().isoformat()
+    if user.get("puzzle_claim_day") == today:
+        return {"awarded": 0, "already": True}
+    await db.users.update_one(
+        {"_id": oid(user["id"])}, {"$set": {"puzzle_claim_day": today}})
+    await award_xp(user["id"], 15, "حل لغز الشطرنج اليومي 🧩", f"puzzle-{today}-{body.puzzle}")
+    return {"awarded": 15}
