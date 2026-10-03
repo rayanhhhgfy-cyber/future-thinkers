@@ -10,6 +10,7 @@ import { Star, Search, Upload, BookOpen, Eye, Clock, Heart, ListMusic, Plus, Tra
 import { toast } from "sonner";
 import BookmarkButton from "@/components/BookmarkButton";
 import BookCover from "@/components/BookCover";
+import PullToRefresh from "@/components/PullToRefresh";
 
 const SORTS = [{ v: "recent", l: "الأحدث" }, { v: "popular", l: "الأكثر قراءة" }, { v: "rating", l: "الأعلى تقييماً" }, { v: "title", l: "أبجدي" }];
 const PLAYLIST_COLORS = ["#2563EB", "#059669", "#D97706", "#DC2626", "#7C3AED", "#0891B2", "#E11D48", "#0A192F"];
@@ -88,15 +89,21 @@ export default function Library() {
   const [data, setData] = useState(null);
   const [page, setPage] = useState(1);
   const [featured, setFeatured] = useState(null);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => { api.get("/books/categories").then((r) => setCats(r.data)); }, []);
   useEffect(() => { api.get("/books/featured").then((r) => setFeatured(r.data)).catch(() => {}); }, []);
 
-  const load = useCallback(async () => {
-    setData(null);
+  const load = useCallback(async (soft = false) => {
+    if (!soft) setData(null);
     const { data } = await api.get("/books", { params: { category: cat || undefined, q: q || undefined, sort, page, limit: 15 } });
     setData(data);
   }, [cat, q, sort, page]);
+
+  const handleRefresh = useCallback(async () => {
+    if (tab === "personal" && user) setRefreshKey((k) => k + 1);
+    else await load(true);
+  }, [tab, user, load]);
 
   useEffect(() => { const t = setTimeout(load, q ? 350 : 0); return () => clearTimeout(t); }, [load, q]);
   useEffect(() => { setPage(1); }, [cat, sort]);
@@ -105,6 +112,7 @@ export default function Library() {
 
   return (
     <Layout>
+      <PullToRefresh onRefresh={handleRefresh}>
       <div className="ft-navy-gradient grain relative overflow-hidden text-white">
         <LibraryIcon className="pointer-events-none absolute -bottom-24 -left-12 h-80 w-80 rotate-12 text-white/[0.05] sm:h-96 sm:w-96" />
         <BookOpen className="animate-float pointer-events-none absolute -top-10 right-[38%] hidden h-28 w-28 -rotate-12 text-white/[0.04] lg:block" />
@@ -175,7 +183,7 @@ export default function Library() {
       )}
 
       {tab === "personal" && user ? (
-        <PersonalLibrary />
+        <PersonalLibrary key={refreshKey} />
       ) : (
         <div className="mx-auto max-w-7xl px-4 xl:max-w-[1440px] py-8 sm:px-6 lg:px-8">
           <div className="xl:flex xl:items-start xl:gap-8">
@@ -204,7 +212,7 @@ export default function Library() {
               )}
             </aside>
             <div className="min-w-0 flex-1">
-          <div className="sticky top-3 z-30 mb-6 rounded-[1.6rem] border border-slate-100 bg-white/90 px-4 py-4 shadow-[0_16px_40px_-20px_rgba(15,23,42,0.25)] backdrop-blur-xl sm:top-4 sm:px-5">
+          <div className="relative mb-6 rounded-[1.6rem] border border-slate-100 bg-white/90 px-4 py-4 shadow-[0_16px_40px_-20px_rgba(15,23,42,0.25)] backdrop-blur-xl sm:px-5">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
               <h2 className="flex items-center gap-2.5 font-head text-lg font-extrabold text-slate-900">
                 <span className="grid h-9 w-9 place-items-center rounded-xl ft-icon-tile shadow-md"><BookOpen className="h-5 w-5" /></span>
@@ -249,6 +257,7 @@ export default function Library() {
           </div>
         </div>
       )}
+      </PullToRefresh>
     </Layout>
   );
 }
