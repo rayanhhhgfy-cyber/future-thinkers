@@ -6,6 +6,7 @@ import {
   BookOpen, Sparkles, Users, Calendar, Trophy, Newspaper, Rocket, Crown,
   Gamepad2, Flame, ChevronLeft, ChevronDown, Puzzle, BarChart3, Route as RouteIcon, MessagesSquare, CalendarDays, Target, Timer, Award,
   Mail, HelpCircle, Zap, Bookmark,
+  Layers, HeartHandshake, Radio, BookMarked, ArrowLeftRight, Wand2,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { EASE } from "@/components/anim";
@@ -36,6 +37,12 @@ const DISCOVER_LINKS = [
   { to: "/reading-challenges", label: "تحديات القراءة", icon: Target, tint: "bg-teal-100 text-teal-600" },
   { to: "/focus", label: "غرف التركيز", icon: Timer, tint: "bg-slate-200 text-slate-700" },
   { to: "/messages", label: "الرسائل", icon: Mail, tint: "bg-cyan-100 text-cyan-600" },
+  { to: "/flashcards", label: "بطاقات المراجعة", icon: Layers, tint: "bg-violet-100 text-violet-600" },
+  { to: "/buddies", label: "رفيق القراءة", icon: HeartHandshake, tint: "bg-rose-100 text-rose-600" },
+  { to: "/live-sessions", label: "جلسات مباشرة", icon: Radio, tint: "bg-red-100 text-red-600" },
+  { to: "/mini-books", label: "كتيّبات الطلاب", icon: BookMarked, tint: "bg-fuchsia-100 text-fuchsia-600" },
+  { to: "/swap", label: "تبادل الكتب", icon: ArrowLeftRight, tint: "bg-teal-100 text-teal-600" },
+  { to: "/wrapped", label: "ملخص رحلتي", icon: Wand2, tint: "bg-amber-100 text-amber-600" },
 ];
 
 const PRIMARY_LINKS = DISCOVER_LINKS.slice(0, 6);
@@ -49,6 +56,10 @@ const MORE_GROUPS = [
   ]},
   { title: "التعلم والنمو", items: [
     { to: "/paths", label: "مسارات التعلم", icon: RouteIcon, tint: "bg-emerald-100 text-emerald-700" },
+    { to: "/flashcards", label: "بطاقات المراجعة", icon: Layers, tint: "bg-violet-100 text-violet-600" },
+    { to: "/buddies", label: "رفيق القراءة", icon: HeartHandshake, tint: "bg-rose-100 text-rose-600" },
+    { to: "/live-sessions", label: "جلسات مباشرة", icon: Radio, tint: "bg-red-100 text-red-600" },
+    { to: "/wrapped", label: "ملخص رحلتي", icon: Wand2, tint: "bg-amber-100 text-amber-600" },
     { to: "/circles", label: "دوائر الدراسة", icon: Users, tint: "bg-teal-100 text-teal-600" },
     { to: "/help", label: "أسئلة وأجوبة", icon: HelpCircle, tint: "bg-sky-100 text-sky-600" },
     { to: "/reading-challenges", label: "تحديات القراءة", icon: Target, tint: "bg-teal-100 text-teal-600" },
@@ -58,6 +69,8 @@ const MORE_GROUPS = [
   ]},
   { title: "المجتمع", items: [
     { to: "/community", label: "ساحة المجتمع", icon: MessagesSquare, tint: "bg-rose-100 text-rose-600" },
+    { to: "/mini-books", label: "كتيّبات الطلاب", icon: BookMarked, tint: "bg-fuchsia-100 text-fuchsia-600" },
+    { to: "/swap", label: "تبادل الكتب", icon: ArrowLeftRight, tint: "bg-teal-100 text-teal-600" },
     { to: "/messages", label: "رسائل خاصة", icon: Mail, tint: "bg-cyan-100 text-cyan-600" },
     { to: "/members", label: "الأعضاء", icon: Users, tint: "bg-emerald-100 text-emerald-600" },
     { to: "/news", label: "الأخبار", icon: Newspaper, tint: "bg-sky-100 text-sky-600" },

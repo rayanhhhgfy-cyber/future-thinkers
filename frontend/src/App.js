@@ -40,6 +40,12 @@ const Leaderboard = lazy(() => import("@/pages/Leaderboard"));
 const Profile = lazy(() => import("@/pages/Profile"));
 const Settings = lazy(() => import("@/pages/Settings"));
 const News = lazy(() => import("@/pages/News"));
+const Flashcards = lazy(() => import("@/pages/Flashcards"));
+const Buddies = lazy(() => import("@/pages/Buddies"));
+const LiveSessions = lazy(() => import("@/pages/LiveSessions"));
+const Wrapped = lazy(() => import("@/pages/Wrapped"));
+const MiniBooks = lazy(() => import("@/pages/MiniBooks"));
+const Swap = lazy(() => import("@/pages/Swap"));
 const Studio = lazy(() => import("@/pages/Studio"));
 const StudioWork = lazy(() => import("@/pages/StudioWork"));
 const Ventures = lazy(() => import("@/pages/Ventures"));
@@ -131,6 +137,12 @@ function AnimatedRoutes() {
       <Route path="/calendar" element={<Protected><Calendar /></Protected>} />
       <Route path="/reading-challenges" element={<Protected><ReadingChallenges /></Protected>} />
       <Route path="/focus" element={<Protected><FocusRooms /></Protected>} />
+      <Route path="/flashcards" element={<Protected><Flashcards /></Protected>} />
+      <Route path="/buddies" element={<Protected><Buddies /></Protected>} />
+      <Route path="/live-sessions" element={<Protected><LiveSessions /></Protected>} />
+      <Route path="/wrapped" element={<Protected><Wrapped /></Protected>} />
+      <Route path="/mini-books" element={<Protected><MiniBooks /></Protected>} />
+      <Route path="/swap" element={<Protected><Swap /></Protected>} />
       <Route path="/news" element={<Protected><News /></Protected>} />
       <Route path="/studio" element={<Protected><Studio /></Protected>} />
       <Route path="/studio/:id" element={<Protected><StudioWork /></Protected>} />
