@@ -27,12 +27,16 @@ const QUOTES = [
   { t: "اطلبوا العلم من المهد إلى اللحد", a: "حديث شريف" },
 ];
 
-const StatCard = ({ icon: Icon, label, value, color, sub }) => (
-  <div className="h-full w-full min-w-0 flex flex-col bg-white rounded-3xl p-4 border border-slate-100 ft-shadow hover-lift">
-    <div className="w-10 h-10 rounded-2xl grid place-items-center shrink-0" style={{ background: `${color}15`, color }}><Icon className="w-5 h-5" /></div>
-    <div className="mt-2.5 text-2xl sm:text-[26px] leading-none font-extrabold font-head text-slate-900">{value}</div>
-    <div className="text-xs leading-tight text-slate-500 mt-1.5">{label}</div>
-    {sub && <div className="text-[11px] leading-tight text-slate-400 mt-0.5">{sub}</div>}
+/* One cell of the stats bento band · horizontal, px-fixed so it stays dense
+   at any user font-scale setting. */
+const StatCell = ({ icon: Icon, label, value, color, sub }) => (
+  <div className="min-w-0 bg-white flex items-center gap-[10px] px-[14px] py-[12px]">
+    <div className="w-[38px] h-[38px] rounded-[12px] grid place-items-center shrink-0" style={{ background: `${color}16`, color }}><Icon className="w-[19px] h-[19px]" /></div>
+    <div className="min-w-0">
+      <div className="text-[21px] leading-[1.05] font-extrabold font-head text-slate-900 truncate">{value}</div>
+      <div className="text-[11px] leading-tight text-slate-500 truncate">{label}</div>
+      {sub ? <div className="text-[10px] leading-tight text-slate-400 truncate">{sub}</div> : null}
+    </div>
   </div>
 );
 
@@ -226,13 +230,17 @@ export default function Dashboard() {
           </div>
         </FadeUp>
 
-        {/* ============ 2 · Stat cards · 2×2 mobile → 4 across ============ */}
-        <Stagger className="min-w-0 xl:col-span-12 grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          <Item className="h-full min-w-0"><StatCard icon={Trophy} label="ترتيبك الوطني" value={`#${data.national_rank}`} color="#D97706" sub={data.school_rank ? `مدرستك: #${data.school_rank}` : ""} /></Item>
-          <Item className="h-full min-w-0"><StatCard icon={BookOpen} label="كتب مقروءة" value={data.books_read} color="#2563EB" /></Item>
-          <Item className="h-full min-w-0"><StatCard icon={Crown} label="تصنيف الشطرنج" value={data.chess_rating} color="#0A192F" /></Item>
-          <Item className="h-full min-w-0"><StatCard icon={MessagesSquare} label="مشاركاتك" value={data.posts} color="#059669" /></Item>
-        </Stagger>
+        {/* ============ 2 · Stats bento band · one panel, hairline dividers ============ */}
+        <FadeUp className="min-w-0 xl:col-span-12">
+          <div className="bg-white rounded-3xl border border-slate-100 ft-shadow overflow-hidden">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-px bg-slate-100">
+              <StatCell icon={Trophy} label="ترتيبك الوطني" value={`#${data.national_rank}`} color="#D97706" sub={data.school_rank ? `مدرستك: #${data.school_rank}` : ""} />
+              <StatCell icon={BookOpen} label="كتب مقروءة" value={data.books_read} color="#2563EB" />
+              <StatCell icon={Crown} label="تصنيف الشطرنج" value={data.chess_rating} color="#0A192F" />
+              <StatCell icon={MessagesSquare} label="مشاركاتك" value={data.posts} color="#059669" />
+            </div>
+          </div>
+        </FadeUp>
 
         {/* ============ 3 · Continue + starter checklist (main 8 on xl) ============ */}
         <div className="min-w-0 xl:col-span-8 flex flex-col gap-5 sm:gap-6">
