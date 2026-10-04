@@ -49,6 +49,7 @@ from routes.learning_routes import router as learning_router
 from routes.growth_routes import router as growth_router
 from routes.games_routes import router as games_router
 from routes.stories_routes import router as stories_router
+from routes.control_routes import site_router, admin_router as control_admin_router
 from ws import hub
 import jwt
 from bson import ObjectId
@@ -67,7 +68,8 @@ for r in (auth_router, geo_router, books_router, files_router, community_router,
           uploads_router, library_router, engage_router, errors_router,
           dm_router, circles_router, qa_router, quizlive_router,
           portfolio_router, reports_router, cups_router,
-          learning_router, growth_router, games_router, stories_router):
+          learning_router, growth_router, games_router, stories_router,
+          site_router, control_admin_router):
     app.include_router(r)
 
 

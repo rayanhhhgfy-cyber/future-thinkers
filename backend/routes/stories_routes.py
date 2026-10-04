@@ -12,6 +12,7 @@ from bson import ObjectId
 from db import db, ser, now_iso
 from auth import get_current_user
 from services import award_xp, create_notification
+from routes.control_routes import get_games_config, section_open
 
 router = APIRouter(prefix="/api/stories")
 FINISH_XP = 15
@@ -75,7 +76,13 @@ async def _progress(uid: str, sid: str):
 
 
 @router.get("")
+async def _stories_open():
+    if not await section_open("stories"):
+        raise HTTPException(status_code=403, detail="قسم القصص متوقف مؤقتاً بقرار الإدارة")
+
+
 async def list_stories(user: dict = Depends(get_current_user)):
+    await _stories_open()
     docs = await db.stories.find(
         {"$or": [{"status": "published"}, {"author_id": user["id"]}]},
     ).sort("created_at", -1).to_list(100)
@@ -159,7 +166,7 @@ async def story_move(sid: str, body: MoveBody, user: dict = Depends(get_current_
         updates["finished"] = True
         if not (p and p.get("xp_given")):
             updates["xp_given"] = True
-            xp = FINISH_XP
+            xp = (await get_games_config())["story_finish_xp"]
     await db.story_progress.update_one(
         {"user_id": user["id"], "story_id": sid},
         {"$set": updates, "$setOnInsert": {"created_at": now_iso()}},
