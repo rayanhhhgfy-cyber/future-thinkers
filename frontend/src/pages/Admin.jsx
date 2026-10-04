@@ -28,12 +28,13 @@ import AdminClubs from "@/components/admin/AdminClubs";
 import AdminTheme from "@/components/admin/AdminTheme";
 import AdminReports from "@/components/admin/AdminReports";
 import AdminErrors from "@/components/admin/AdminErrors";
+import AdminGamesRadar from "@/components/admin/AdminGamesRadar";
 import AdminHealth from "@/components/admin/AdminHealth";
 import AdminPoints from "@/components/admin/AdminPoints";
 import AdminAudit from "@/components/admin/AdminAudit";
 import { toast } from "sonner";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area, CartesianGrid } from "recharts";
-import { LayoutDashboard, ShieldCheck, Users, BookOpen, Calendar, Trophy, Newspaper, Settings, ScrollText, Plus, Check, X, Megaphone, PenLine, Medal, Award, Upload, Trash2, Search, MessageSquare, MessagesSquare, Activity, Smartphone, UserPlus, FileCheck, Rocket, Zap, ArrowLeft, Star, Heart, ThumbsUp, Flag, CalendarCheck, Crown, Download, UserSearch, Link2, CalendarDays, Code2, FlaskConical, Terminal, Palette, Globe2, Route as RouteIcon, Bug, Copy, LayoutGrid, ChevronLeft } from "lucide-react";
+import { Gamepad2, LayoutDashboard, ShieldCheck, Users, BookOpen, Calendar, Trophy, Newspaper, Settings, ScrollText, Plus, Check, X, Megaphone, PenLine, Medal, Award, Upload, Trash2, Search, MessageSquare, MessagesSquare, Activity, Smartphone, UserPlus, FileCheck, Rocket, Zap, ArrowLeft, Star, Heart, ThumbsUp, Flag, CalendarCheck, Crown, Download, UserSearch, Link2, CalendarDays, Code2, FlaskConical, Terminal, Palette, Globe2, Route as RouteIcon, Bug, Copy, LayoutGrid, ChevronLeft } from "lucide-react";
 import { THEME_PRESETS, applyTheme } from "@/lib/theme";
 import { timeAgo } from "@/components/NotificationsPanel";
 import { motion, AnimatePresence } from "framer-motion";
@@ -69,13 +70,14 @@ const NAV = [
   { k: "clubs", l: "الأندية", icon: Users, perm: ["club.create", "club.edit", "club.delete", "club.manage"] },
   { k: "points", l: "نظام النقاط", icon: Settings, perm: "points.manage" },
   { k: "audit", l: "سجل العمليات", icon: ScrollText, perm: "audit.view" },
+  { k: "gamesradar", l: "رادار الألعاب", icon: Gamepad2, perm: "analytics.view" },
 ];
 const COLORS = ["#2563EB", "#059669", "#D97706", "#7C3AED", "#0891B2", "#E11D48", "#0A192F"];
 const NAV_GROUPS = [
   { l: "الرئيسية", icon: LayoutDashboard, keys: ["overview"] },
   { l: "المراجعة والمحتوى", icon: ShieldCheck, keys: ["moderation", "studio", "books", "news", "banners", "landing"] },
   { l: "الأعضاء والمجتمع", icon: Users, keys: ["users", "user360", "clubs", "notify"] },
-  { l: "البرامج والأنشطة", icon: Rocket, keys: ["content", "calendar", "coding", "paths", "badges", "certificates"] },
+  { l: "البرامج والأنشطة", icon: Rocket, keys: ["content", "calendar", "coding", "paths", "badges", "certificates", "gamesradar"] },
   { l: "النظام", icon: Settings, keys: ["theme", "points", "reports", "errors", "healthsys", "exports", "audit"] },
 ];
 
@@ -309,6 +311,7 @@ export default function Admin() {
             {tab === "clubs" && <AdminClubs />}
             {tab === "points" && <AdminPoints />}
             {tab === "audit" && <AdminAudit />}
+            {tab === "gamesradar" && <AdminGamesRadar />}
             </div>
           </div>
         </div>

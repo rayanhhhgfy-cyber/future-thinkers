@@ -5,7 +5,7 @@ import api from "@/lib/api";
 import { FadeUp } from "@/components/anim";
 import {
   Gamepad2, BookOpen, Calculator, Keyboard, Crown, Zap, CheckCircle2,
-  ArrowLeft, Flame, Trophy, Play,
+  ArrowLeft, Flame, Trophy, Play, Swords, Compass, GitBranch,
 } from "lucide-react";
 
 const GAMES = [
@@ -138,6 +138,27 @@ export default function Games() {
               </div>
             </Link>
           </FadeUp>
+        </div>
+
+        <div className="grid sm:grid-cols-3 gap-4 sm:gap-5">
+          {[
+            { to: "/games/challenges", icon: Swords, name: "تحدي صديق", desc: "نازِل زميلك على نفس الأسئلة · الفائز 15 XP", grad: "from-orange-500 to-rose-600", testid: "games-hub-challenges" },
+            { to: "/games/missions", icon: Compass, name: "مهمات الأسبوع", desc: "7 مهمات وصندوق كنز كل أسبوع", grad: "from-teal-500 to-emerald-600", testid: "games-hub-missions" },
+            { to: "/stories", icon: GitBranch, name: "قصص «اختر مغامرتك»", desc: "اقرأ واختر طريقك · أو اكتب قصتك", grad: "from-violet-500 to-fuchsia-600", testid: "games-hub-stories" },
+          ].map(({ to, icon: Icon, name, desc, grad, testid }, i) => (
+            <FadeUp key={to} delay={0.08 + i * 0.06}>
+              <Link to={to} data-testid={testid} className="group pressable flex items-center gap-4 h-full bg-white rounded-3xl border border-slate-100 ft-shadow ring-1 ring-slate-100 p-4 sm:p-5 hover:-translate-y-1 transition-transform">
+                <span className={`w-14 h-14 shrink-0 rounded-2xl bg-gradient-to-br ${grad} text-white grid place-items-center shadow-lg`}>
+                  <Icon className="w-7 h-7" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block font-head font-black text-slate-800">{name}</span>
+                  <span className="block text-[12px] text-slate-400 leading-relaxed mt-0.5">{desc}</span>
+                </span>
+                <ArrowLeft className="w-5 h-5 text-slate-300 shrink-0 group-hover:-translate-x-1 transition-transform" />
+              </Link>
+            </FadeUp>
+          ))}
         </div>
 
         <FadeUp delay={0.1}>

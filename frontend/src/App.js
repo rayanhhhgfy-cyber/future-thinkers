@@ -50,6 +50,11 @@ const Games = lazy(() => import("@/pages/Games"));
 const WordGame = lazy(() => import("@/pages/WordGame"));
 const MathSprint = lazy(() => import("@/pages/MathSprint"));
 const TypingRace = lazy(() => import("@/pages/TypingRace"));
+const Challenges = lazy(() => import("@/pages/Challenges"));
+const Missions = lazy(() => import("@/pages/Missions"));
+const Stories = lazy(() => import("@/pages/Stories"));
+const StoryReaderPage = lazy(() => import("@/pages/Stories").then((m) => ({ default: m.StoryReader })));
+const StoryEditor = lazy(() => import("@/pages/StoryEditor"));
 const Studio = lazy(() => import("@/pages/Studio"));
 const StudioWork = lazy(() => import("@/pages/StudioWork"));
 const Ventures = lazy(() => import("@/pages/Ventures"));
@@ -151,6 +156,12 @@ function AnimatedRoutes() {
       <Route path="/games/wordle" element={<Protected><WordGame /></Protected>} />
       <Route path="/games/math" element={<Protected><MathSprint /></Protected>} />
       <Route path="/games/typing" element={<Protected><TypingRace /></Protected>} />
+      <Route path="/games/challenges" element={<Protected><Challenges /></Protected>} />
+      <Route path="/games/missions" element={<Protected><Missions /></Protected>} />
+      <Route path="/stories" element={<Protected><Stories /></Protected>} />
+      <Route path="/stories/new" element={<Protected><StoryEditor /></Protected>} />
+      <Route path="/stories/:id" element={<Protected><StoryReaderPage /></Protected>} />
+      <Route path="/stories/:id/edit" element={<Protected><StoryEditor /></Protected>} />
       <Route path="/news" element={<Protected><News /></Protected>} />
       <Route path="/studio" element={<Protected><Studio /></Protected>} />
       <Route path="/studio/:id" element={<Protected><StudioWork /></Protected>} />
