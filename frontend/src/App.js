@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route, Link, useLocation } from "react-router-do
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "@/context/AuthContext";
+import { SiteConfigProvider, MaintenanceGate, SectionGate } from "@/lib/siteConfig";
 import { Protected } from "@/components/Layout";
 import InstallPWA from "@/components/InstallPWA";
 import { RouteProgress, BackToTop } from "@/components/ShellExtras";
@@ -116,9 +117,9 @@ function AnimatedRoutes() {
       <Route path="/library" element={<Protected><Library /></Protected>} />
       <Route path="/books/:id" element={<Protected><BookDetail /></Protected>} />
       <Route path="/upload-book" element={<Protected><UploadBook /></Protected>} />
-      <Route path="/clubs" element={<Protected><Clubs /></Protected>} />
-      <Route path="/clubs/:slug" element={<Protected><ClubDetail /></Protected>} />
-      <Route path="/discussions/:id" element={<Protected><DiscussionDetail /></Protected>} />
+      <Route path="/clubs" element={<Protected><SectionGate section="clubs"><Clubs /></SectionGate></Protected>} />
+      <Route path="/clubs/:slug" element={<Protected><SectionGate section="clubs"><ClubDetail /></SectionGate></Protected>} />
+      <Route path="/discussions/:id" element={<Protected><SectionGate section="community"><DiscussionDetail /></SectionGate></Protected>} />
       <Route path="/chess/practice" element={<Protected><ChessPractice /></Protected>} />
       <Route path="/chess/robot" element={<Protected><ChessRobot /></Protected>} />
       <Route path="/chess/:id" element={<Protected><ChessGame /></Protected>} />
@@ -142,31 +143,31 @@ function AnimatedRoutes() {
       <Route path="/saved" element={<Protected><Saved /></Protected>} />
       <Route path="/portfolio/:id" element={<Portfolio />} />
       <Route path="/paths" element={<Protected><Paths /></Protected>} />
-      <Route path="/community" element={<Protected><Community /></Protected>} />
+      <Route path="/community" element={<Protected><SectionGate section="community"><Community /></SectionGate></Protected>} />
       <Route path="/calendar" element={<Protected><Calendar /></Protected>} />
       <Route path="/reading-challenges" element={<Protected><ReadingChallenges /></Protected>} />
       <Route path="/focus" element={<Protected><FocusRooms /></Protected>} />
       <Route path="/flashcards" element={<Protected><Flashcards /></Protected>} />
       <Route path="/buddies" element={<Protected><Buddies /></Protected>} />
-      <Route path="/live-sessions" element={<Protected><LiveSessions /></Protected>} />
+      <Route path="/live-sessions" element={<Protected><SectionGate section="live_sessions"><LiveSessions /></SectionGate></Protected>} />
       <Route path="/wrapped" element={<Protected><Wrapped /></Protected>} />
-      <Route path="/mini-books" element={<Protected><MiniBooks /></Protected>} />
-      <Route path="/swap" element={<Protected><Swap /></Protected>} />
-      <Route path="/games" element={<Protected><Games /></Protected>} />
-      <Route path="/games/wordle" element={<Protected><WordGame /></Protected>} />
-      <Route path="/games/math" element={<Protected><MathSprint /></Protected>} />
-      <Route path="/games/typing" element={<Protected><TypingRace /></Protected>} />
-      <Route path="/games/challenges" element={<Protected><Challenges /></Protected>} />
-      <Route path="/games/missions" element={<Protected><Missions /></Protected>} />
-      <Route path="/stories" element={<Protected><Stories /></Protected>} />
-      <Route path="/stories/new" element={<Protected><StoryEditor /></Protected>} />
-      <Route path="/stories/:id" element={<Protected><StoryReaderPage /></Protected>} />
-      <Route path="/stories/:id/edit" element={<Protected><StoryEditor /></Protected>} />
+      <Route path="/mini-books" element={<Protected><SectionGate section="mini_books"><MiniBooks /></SectionGate></Protected>} />
+      <Route path="/swap" element={<Protected><SectionGate section="swap"><Swap /></SectionGate></Protected>} />
+      <Route path="/games" element={<Protected><SectionGate section="games"><Games /></SectionGate></Protected>} />
+      <Route path="/games/wordle" element={<Protected><SectionGate section="games"><WordGame /></SectionGate></Protected>} />
+      <Route path="/games/math" element={<Protected><SectionGate section="games"><MathSprint /></SectionGate></Protected>} />
+      <Route path="/games/typing" element={<Protected><SectionGate section="games"><TypingRace /></SectionGate></Protected>} />
+      <Route path="/games/challenges" element={<Protected><SectionGate section="games"><Challenges /></SectionGate></Protected>} />
+      <Route path="/games/missions" element={<Protected><SectionGate section="games"><Missions /></SectionGate></Protected>} />
+      <Route path="/stories" element={<Protected><SectionGate section="stories"><Stories /></SectionGate></Protected>} />
+      <Route path="/stories/new" element={<Protected><SectionGate section="stories"><StoryEditor /></SectionGate></Protected>} />
+      <Route path="/stories/:id" element={<Protected><SectionGate section="stories"><StoryReaderPage /></SectionGate></Protected>} />
+      <Route path="/stories/:id/edit" element={<Protected><SectionGate section="stories"><StoryEditor /></SectionGate></Protected>} />
       <Route path="/news" element={<Protected><News /></Protected>} />
       <Route path="/studio" element={<Protected><Studio /></Protected>} />
       <Route path="/studio/:id" element={<Protected><StudioWork /></Protected>} />
-      <Route path="/ventures" element={<Protected><Ventures /></Protected>} />
-      <Route path="/ventures/:id" element={<Protected><VentureDetail /></Protected>} />
+      <Route path="/ventures" element={<Protected><SectionGate section="ventures"><Ventures /></SectionGate></Protected>} />
+      <Route path="/ventures/:id" element={<Protected><SectionGate section="ventures"><VentureDetail /></SectionGate></Protected>} />
       <Route path="/profile/:id" element={<Protected><Profile /></Protected>} />
       <Route path="/settings" element={<Protected><Settings /></Protected>} />
       <Route path="/dashboard" element={<Protected><Dashboard /></Protected>} />
@@ -200,9 +201,13 @@ function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
-        <ErrorBoundary>
-          <AnimatedRoutes />
-        </ErrorBoundary>
+        <SiteConfigProvider>
+          <ErrorBoundary>
+            <MaintenanceGate>
+              <AnimatedRoutes />
+            </MaintenanceGate>
+          </ErrorBoundary>
+        </SiteConfigProvider>
         <RouteProgress />
         <BackToTop />
         <InstallPWA />
