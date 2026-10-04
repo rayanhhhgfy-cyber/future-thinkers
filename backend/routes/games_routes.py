@@ -23,6 +23,7 @@ from db import db, now_iso, ser
 from auth import get_current_user, require_permission
 from services import award_xp, create_notification, send_push_to_user
 from routes.badges_routes import award_badge
+from routes.control_routes import get_games_config, section_open
 
 router = APIRouter(prefix="/api/games")
 
@@ -78,8 +79,45 @@ def _day_seed_int(day: str) -> int:
     return int(hashlib.sha256(("ft-wordle-" + day).encode()).hexdigest()[:12], 16)
 
 
-def _wordle_answer(day: str) -> str:
-    return WORDS[_day_seed_int(day) % len(WORDS)]
+async def _word_bank():
+    """Built-in bank plus admin-added words (wordle_words collection)."""
+    extra = set()
+    async for d in db.wordle_words.find({}, {"word": 1}):
+        w = _norm(d.get("word", ""))
+        if len(w) == 5:
+            extra.add(w)
+    if not extra:
+        return WORDS, WORD_SET
+    merged = sorted(WORD_SET | extra)
+    return merged, set(merged)
+
+
+async def _wordle_answer(day: str) -> str:
+    bank, _ = await _word_bank()
+    return bank[_day_seed_int(day) % len(bank)]
+
+
+async def _typing_pool():
+    """Built-in texts plus admin-added ones (typing_texts collection)."""
+    pool = list(TEXTS)
+    async for d in db.typing_texts.find({}, {"text": 1, "lang": 1}):
+        pool.append({"id": str(d["_id"]), "lang": d.get("lang", "ar"), "text": d.get("text", "")})
+    return pool
+
+
+async def _text_by_id(tid: str, pool=None):
+    if tid in TEXT_BY_ID:
+        return TEXT_BY_ID[tid]
+    pool = pool if pool is not None else await _typing_pool()
+    for t in pool:
+        if t["id"] == tid:
+            return t
+    return TEXTS[0]
+
+
+async def _games_open():
+    if not await section_open("games"):
+        raise HTTPException(status_code=403, detail="ساحة الألعاب متوقفة مؤقتاً بقرار الإدارة")
 
 
 def _score_record(user_id: str, game: str, day: str):
@@ -148,6 +186,7 @@ class TypingSubmitBody(BaseModel):
 # ---------------------------------------------------------------- hub
 @router.get("/today")
 async def games_today(user: dict = Depends(get_current_user)):
+    await _games_open()
     await ensure_game_badges()
     day = _today()
     out = {"day": day, "games": {}}
@@ -170,8 +209,9 @@ async def games_today(user: dict = Depends(get_current_user)):
 # ---------------------------------------------------------------- wordle
 @router.get("/wordle/today")
 async def wordle_today(user: dict = Depends(get_current_user)):
+    await _games_open()
     day = _today()
-    ans = _wordle_answer(day)
+    ans = await _wordle_answer(day)
     wp = await db.wordle_plays.find_one({"user_id": user["id"], "day": day})
     tries = []
     if wp:
@@ -186,12 +226,14 @@ async def wordle_today(user: dict = Depends(get_current_user)):
 
 @router.post("/wordle/guess")
 async def wordle_guess(body: GuessBody, user: dict = Depends(get_current_user)):
+    await _games_open()
     day = _today()
-    ans = _wordle_answer(day)
+    ans = await _wordle_answer(day)
     guess = _norm(body.guess)
     if len(guess) != 5:
         raise HTTPException(status_code=400, detail="الكلمة يجب أن تكون 5 أحرف")
-    if guess not in WORD_SET:
+    _, bank_set = await _word_bank()
+    if guess not in bank_set:
         raise HTTPException(status_code=400, detail="كلمة غير معروفة · جرّب كلمة عربية معروفة")
     wp = await db.wordle_plays.find_one({"user_id": user["id"], "day": day})
     if wp and wp.get("finished"):
@@ -202,7 +244,7 @@ async def wordle_guess(body: GuessBody, user: dict = Depends(get_current_user)):
     finished = won or len(tries) >= 6
     xp = 0
     if finished and not (wp and wp.get("xp_given")):
-        full = WORDLE_WIN_XP.get(len(tries), 10) if won else 3
+        full = WORDLE_WIN_XP.get(len(tries), 10) if won else (await get_games_config())["wordle_lose_xp"]
         xp = await _award_game_xp(user["id"], "wordle", day, full, "كلمة اليوم")
     await db.wordle_plays.update_one(
         {"user_id": user["id"], "day": day},
@@ -256,6 +298,7 @@ def _gen_math(rng: random.Random):
 
 @router.post("/math/start")
 async def math_start(user: dict = Depends(get_current_user)):
+    await _games_open()
     rng = random.Random()
     items = _gen_math(rng)
     doc = {"user_id": user["id"], "kind": "math", "items": items,
@@ -294,7 +337,7 @@ async def math_submit(body: MathSubmitBody, user: dict = Depends(get_current_use
     day = _today()
     first = await _record_score(user["id"], "math", day, score,
                                 {"correct": correct, "duration_s": int(duration)})
-    full_xp = min(30, correct * 2) if correct > 0 else 0
+    full_xp = min((await get_games_config())["math_full_cap"], correct * 2) if correct > 0 else 0
     xp = await _award_game_xp(user["id"], "math", day, full_xp, "سباق الحساب")
     badge = None
     if correct >= 15:
@@ -321,7 +364,11 @@ TEXT_BY_ID = {t["id"]: t for t in TEXTS}
 
 @router.get("/typing/text")
 async def typing_text(lang: str = "ar", user: dict = Depends(get_current_user)):
-    pool = [t for t in TEXTS if t["lang"] == (lang if lang in ("ar", "en") else "ar")]
+    await _games_open()
+    pool_all = await _typing_pool()
+    pool = [t for t in pool_all if t["lang"] == (lang if lang in ("ar", "en") else "ar")]
+    if not pool:
+        pool = pool_all
     t = random.choice(pool)
     doc = {"user_id": user["id"], "kind": "typing", "text_id": t["id"],
            "started_at": datetime.now(timezone.utc).isoformat(), "used": False}
@@ -341,7 +388,7 @@ async def typing_submit(body: TypingSubmitBody, user: dict = Depends(get_current
     if duration < 4 or duration > 900:
         raise HTTPException(status_code=400, detail="وقت الجلسة غير صالح")
     await db.game_runs.update_one({"_id": run["_id"]}, {"$set": {"used": True}})
-    original = TEXT_BY_ID[run["text_id"]]["text"]
+    original = (await _text_by_id(run["text_id"]))["text"]
     typed = body.typed or ""
     n = min(len(typed), len(original))
     correct_chars = sum(1 for i in range(n) if typed[i] == original[i])
@@ -354,7 +401,7 @@ async def typing_submit(body: TypingSubmitBody, user: dict = Depends(get_current
     day = _today()
     first = await _record_score(user["id"], "typing", day, score,
                                 {"wpm": wpm, "accuracy": accuracy})
-    full_xp = min(30, int(wpm / 2)) if accuracy >= 70 else 5
+    full_xp = min((await get_games_config())["typing_full_cap"], int(wpm / 2)) if accuracy >= 70 else 5
     xp = await _award_game_xp(user["id"], "typing", day, full_xp, "سباق الكتابة")
     badge = None
     if wpm >= 45 and accuracy >= 90:
@@ -479,16 +526,17 @@ async def _finalize_challenge(ch):
         winner = ch["from_id"]
     elif to:
         winner = ch["to_id"]
+    cfg = await get_games_config()
     payouts = {}
     for uid, res in ((ch["from_id"], fr), (ch["to_id"], to)):
         if not res:
             payouts[uid] = 0
         elif winner == "draw":
-            payouts[uid] = 10
+            payouts[uid] = cfg["challenge_draw_xp"]
         elif winner == uid:
-            payouts[uid] = 15
+            payouts[uid] = cfg["challenge_win_xp"]
         else:
-            payouts[uid] = 5
+            payouts[uid] = cfg["challenge_lose_xp"]
     for uid, xp in payouts.items():
         if xp:
             await award_xp(uid, xp, "تحدي صديق", ref=f"challenge:{ch['_id']}")
@@ -519,6 +567,7 @@ def _challenge_out(ch, me):
 
 @router.post("/challenges")
 async def create_challenge(body: ChallengeBody, user: dict = Depends(get_current_user)):
+    await _games_open()
     if body.game not in ("math", "typing"):
         raise HTTPException(status_code=400, detail="اختر سباق الحساب أو سباق الكتابة")
     if body.to_user_id == user["id"]:
@@ -532,7 +581,8 @@ async def create_challenge(body: ChallengeBody, user: dict = Depends(get_current
     if body.game == "math":
         doc["items"] = _gen_math(random.Random())
     else:
-        t = random.choice(TEXTS)
+        pool = await _typing_pool()
+        t = random.choice(pool)
         doc["text_id"] = t["id"]
     res = await db.game_challenges.insert_one(doc)
     label = "سباق الحساب" if body.game == "math" else "سباق الكتابة"
@@ -582,7 +632,7 @@ async def challenge_play(cid: str, user: dict = Depends(get_current_user)):
                                             {"$set": {f"{side}_started_at": datetime.now(timezone.utc).isoformat()}})
     if ch["game"] == "math":
         return {"game": "math", "questions": [it["q"] for it in ch["items"]], "seconds": 60}
-    t = TEXT_BY_ID[ch["text_id"]]
+    t = await _text_by_id(ch["text_id"])
     return {"game": "typing", "text": t["text"], "lang": t["lang"]}
 
 
@@ -606,7 +656,7 @@ async def challenge_submit(cid: str, body: ChallengeSubmitBody, user: dict = Dep
         correct, score = _math_judge(ch["items"], body.answers or [])
         result = {"score": score, "correct": correct, "total": len(ch["items"]), "duration_s": int(duration)}
     else:
-        wpm, accuracy, score = _typing_judge(TEXT_BY_ID[ch["text_id"]]["text"], body.typed, duration)
+        wpm, accuracy, score = _typing_judge((await _text_by_id(ch["text_id"]))["text"], body.typed, duration)
         if wpm > 220:
             raise HTTPException(status_code=400, detail="نتيجة غير واقعية")
         result = {"score": score, "wpm": wpm, "accuracy": accuracy, "duration_s": int(duration)}
@@ -642,7 +692,12 @@ MISSIONS = [
 CHEST_XP = 75
 
 
+_METRIC_ALIAS = {"wordle_wins": "wordle3", "math_points": "math150", "typing_wpm": "typing40",
+                 "pages": "pages50", "play_days": "days5", "xp_earned": "xp200", "books": "book1"}
+
+
 async def _mission_progress(uid: str, key: str, start: str, end: str) -> int:
+    key = _METRIC_ALIAS.get(key, key)
     if key == "wordle3":
         return await db.wordle_plays.count_documents(
             {"user_id": uid, "won": True, "day": {"$gte": start, "$lt": end}})
@@ -678,18 +733,27 @@ async def _mission_progress(uid: str, key: str, start: str, end: str) -> int:
 
 @router.get("/missions/week")
 async def missions_week(user: dict = Depends(get_current_user)):
+    await _games_open()
+    cfg = await get_games_config()
     start, end, week = _week_bounds(_today())
-    claims = await db.mission_claims.find({"user_id": user["id"], "week": week}).to_list(20)
+    claims = await db.mission_claims.find({"user_id": user["id"], "week": week}).to_list(50)
     claimed = {c["mission"] for c in claims}
     out = []
     for m in MISSIONS:
         prog = await _mission_progress(user["id"], m["key"], start, end)
-        out.append({**m, "progress": min(prog, m["target"]), "done": prog >= m["target"],
+        out.append({**m, "xp": cfg["mission_xp"], "progress": min(prog, m["target"]), "done": prog >= m["target"],
                     "claimed": m["key"] in claimed})
+    custom = await db.mission_defs.find({"active": True}).to_list(50)
+    for c in custom:
+        prog = await _mission_progress(user["id"], c["metric"], start, end)
+        out.append({"key": c["key"], "icon": c.get("icon", "Target"), "title": c["title"],
+                    "desc": c.get("desc", ""), "target": c["target"], "xp": c.get("xp", 12),
+                    "progress": min(prog, c["target"]), "done": prog >= c["target"],
+                    "claimed": c["key"] in claimed})
     chest = await db.mission_claims.find_one({"user_id": user["id"], "week": week, "mission": "__chest__"})
     return {"week": week, "missions": out, "done_count": sum(1 for m in out if m["done"]),
-            "chest_xp": CHEST_XP, "chest_claimed": bool(chest),
-            "chest_ready": all(m["done"] for m in out)}
+            "chest_xp": cfg["chest_xp"], "chest_claimed": bool(chest),
+            "chest_ready": bool(out) and all(m["done"] for m in out)}
 
 
 class ClaimBody(BaseModel):
@@ -699,18 +763,33 @@ class ClaimBody(BaseModel):
 @router.post("/missions/claim")
 async def missions_claim(body: ClaimBody, user: dict = Depends(get_current_user)):
     start, end, week = _week_bounds(_today())
+    cfg = await get_games_config()
+    custom = await db.mission_defs.find({"active": True}).to_list(50)
+    all_defs = [(m["key"], m["target"], cfg["mission_xp"]) for m in MISSIONS] + \
+               [(c["key"], c["target"], c.get("xp", 12)) for c in custom]
+    def _metric_of(key):
+        for m in MISSIONS:
+            if m["key"] == key:
+                return m["key"]
+        for c in custom:
+            if c["key"] == key:
+                return c["metric"]
+        return None
     if body.mission == "__chest__":
-        prog_all = [await _mission_progress(user["id"], m["key"], start, end) >= m["target"] for m in MISSIONS]
-        if not all(prog_all):
-            raise HTTPException(status_code=400, detail="أكمل المهمات السبع أولاً لفتح الصندوق")
-        xp = CHEST_XP
+        prog_all = []
+        for key, target, _x in all_defs:
+            met = _metric_of(key)
+            prog_all.append(await _mission_progress(user["id"], met, start, end) >= target)
+        if not prog_all or not all(prog_all):
+            raise HTTPException(status_code=400, detail="أكمل كل مهمات الأسبوع أولاً لفتح الصندوق")
+        xp = cfg["chest_xp"]
     else:
-        m = next((x for x in MISSIONS if x["key"] == body.mission), None)
-        if not m:
+        d = next((x for x in all_defs if x[0] == body.mission), None)
+        if not d:
             raise HTTPException(status_code=404, detail="مهمة غير موجودة")
-        if await _mission_progress(user["id"], m["key"], start, end) < m["target"]:
+        if await _mission_progress(user["id"], _metric_of(body.mission), start, end) < d[1]:
             raise HTTPException(status_code=400, detail="لم تكمل هذه المهمة بعد")
-        xp = m["xp"]
+        xp = d[2]
     existing = await db.mission_claims.find_one({"user_id": user["id"], "week": week, "mission": body.mission})
     if existing:
         raise HTTPException(status_code=400, detail="استلمت هذه المكافأة من قبل")
@@ -803,3 +882,71 @@ async def maybe_send_streak_reminders(force: bool = False):
                                       "العب أي لعبة اليوم قبل منتصف الليل لتحافظ على إيقاعك", "/games")
     await db.streak_reminder_runs.update_one({"_id": "global"}, {"$set": {"day": today, "sent": sent, "at": now_iso()}}, upsert=True)
     return {"sent": sent, "candidates": len(candidates)}
+
+
+# ================================================================ admin content: word bank + typing texts
+class WordBody(BaseModel):
+    word: str
+
+
+@router.get("/admin/words")
+async def admin_words(user: dict = Depends(require_permission("cms.manage"))):
+    bank, bank_set = await _word_bank()
+    custom = []
+    async for d in db.wordle_words.find({}).sort("created_at", -1):
+        custom.append({"id": str(d["_id"]), "word": d.get("word", "")})
+    return {"bank_size": len(bank), "builtin": len(WORDS), "custom": custom, "days_covered": len(bank)}
+
+
+@router.post("/admin/words")
+async def admin_word_add(body: WordBody, user: dict = Depends(require_permission("cms.manage"))):
+    raw = (body.word or "").strip()
+    w = _norm(raw)
+    if len(w) != 5 or not all("؀" <= ch <= "ۿ" for ch in w):
+        raise HTTPException(status_code=400, detail="الكلمة يجب أن تكون عربية من 5 أحرف بعد التطبيع")
+    _, bank_set = await _word_bank()
+    if w in bank_set:
+        raise HTTPException(status_code=400, detail="هذه الكلمة موجودة في البنك")
+    res = await db.wordle_words.insert_one({"word": raw, "normalized": w, "added_by": user["id"], "created_at": now_iso()})
+    return {"id": str(res.inserted_id), "word": raw}
+
+
+@router.delete("/admin/words/{wid}")
+async def admin_word_delete(wid: str, user: dict = Depends(require_permission("cms.manage"))):
+    if not ObjectId.is_valid(wid):
+        raise HTTPException(status_code=404, detail="الكلمة غير موجودة")
+    r = await db.wordle_words.delete_one({"_id": ObjectId(wid)})
+    if not r.deleted_count:
+        raise HTTPException(status_code=404, detail="الكلمة غير موجودة")
+    return {"ok": True}
+
+
+class TextBody(BaseModel):
+    text: str = Field(min_length=30, max_length=400)
+    lang: str = "ar"
+
+
+@router.get("/admin/texts")
+async def admin_texts(user: dict = Depends(require_permission("cms.manage"))):
+    custom = []
+    async for d in db.typing_texts.find({}).sort("created_at", -1):
+        custom.append({"id": str(d["_id"]), "text": d.get("text", ""), "lang": d.get("lang", "ar")})
+    return {"builtin": len(TEXTS), "custom": custom}
+
+
+@router.post("/admin/texts")
+async def admin_text_add(body: TextBody, user: dict = Depends(require_permission("cms.manage"))):
+    lang = body.lang if body.lang in ("ar", "en") else "ar"
+    res = await db.typing_texts.insert_one({"text": body.text.strip(), "lang": lang,
+                                             "added_by": user["id"], "created_at": now_iso()})
+    return {"id": str(res.inserted_id)}
+
+
+@router.delete("/admin/texts/{tid}")
+async def admin_text_delete(tid: str, user: dict = Depends(require_permission("cms.manage"))):
+    if not ObjectId.is_valid(tid):
+        raise HTTPException(status_code=404, detail="النص غير موجود")
+    r = await db.typing_texts.delete_one({"_id": ObjectId(tid)})
+    if not r.deleted_count:
+        raise HTTPException(status_code=404, detail="النص غير موجود")
+    return {"ok": True}
