@@ -13,15 +13,15 @@ Rules that keep the yard honest:
 """
 import hashlib
 import random
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel, Field
 from bson import ObjectId
 
-from db import db, now_iso
-from auth import get_current_user
-from services import award_xp
+from db import db, now_iso, ser
+from auth import get_current_user, require_permission
+from services import award_xp, create_notification, send_push_to_user
 from routes.badges_routes import award_badge
 
 router = APIRouter(prefix="/api/games")
@@ -425,3 +425,381 @@ async def game_board(game: str, scope: str = "today", user: dict = Depends(get_c
             my_rank = i + 1
     return {"game": game, "scope": scope, "day": day,
             "board": board[:20], "my_rank": my_rank, "total_players": len(board)}
+
+
+# ================================================================ challenges
+# Async friend duels: one shared, server-generated set. Both sides play
+# when they can; the server judges, times, and pays the winner.
+class ChallengeBody(BaseModel):
+    to_user_id: str
+    game: str
+
+
+class ChallengeSubmitBody(BaseModel):
+    answers: list | None = None
+    typed: str | None = None
+
+
+def _math_judge(items, answers):
+    correct = 0
+    for i, it in enumerate(items):
+        got = None
+        if answers and i < len(answers):
+            try:
+                got = int(answers[i])
+            except (TypeError, ValueError):
+                got = None
+        if got == it["a"]:
+            correct += 1
+    wrong = len(items) - correct
+    score = max(0, correct * 10 - wrong * 2 + (10 if correct == len(items) else 0))
+    return correct, score
+
+
+def _typing_judge(original, typed, duration):
+    typed = typed or ""
+    n = min(len(typed), len(original))
+    correct_chars = sum(1 for i in range(n) if typed[i] == original[i])
+    accuracy = round((correct_chars / len(typed)) * 100, 1) if typed else 0.0
+    minutes = max(duration, 1) / 60.0
+    wpm = round((correct_chars / 5.0) / minutes, 1)
+    return wpm, accuracy, int(round(wpm * (accuracy / 100.0)))
+
+
+async def _finalize_challenge(ch):
+    """Both sides in (or expired) -> decide, pay, notify. Returns the doc."""
+    fr, to = ch.get("from_result"), ch.get("to_result")
+    expired = datetime.now(timezone.utc) > datetime.fromisoformat(ch["expires_at"])
+    if ch.get("status") == "done" or (not fr and not to) or (not (fr and to) and not expired):
+        return ch
+    winner = None
+    if fr and to:
+        winner = ch["from_id"] if fr["score"] > to["score"] else ch["to_id"] if to["score"] > fr["score"] else "draw"
+    elif fr:
+        winner = ch["from_id"]
+    elif to:
+        winner = ch["to_id"]
+    payouts = {}
+    for uid, res in ((ch["from_id"], fr), (ch["to_id"], to)):
+        if not res:
+            payouts[uid] = 0
+        elif winner == "draw":
+            payouts[uid] = 10
+        elif winner == uid:
+            payouts[uid] = 15
+        else:
+            payouts[uid] = 5
+    for uid, xp in payouts.items():
+        if xp:
+            await award_xp(uid, xp, "تحدي صديق", ref=f"challenge:{ch['_id']}")
+    await db.game_challenges.update_one({"_id": ch["_id"]},
+                                        {"$set": {"status": "done", "winner": winner, "payouts": payouts}})
+    names = await _users_map([ch["from_id"], ch["to_id"]])
+    for uid, other in ((ch["from_id"], ch["to_id"]), (ch["to_id"], ch["from_id"])):
+        mine = payouts.get(uid, 0)
+        outcome = "تعادل!" if winner == "draw" else ("فزت بالتحدي 🏆" if winner == uid else "انتهى التحدي")
+        await create_notification(uid, "challenge", f"نتيجة التحدي: {outcome}",
+                                  f"ضد {(names.get(other) or {}).get('name', 'صديقك')} · +{mine} XP", "/games/challenges")
+    ch["status"] = "done"
+    ch["winner"] = winner
+    ch["payouts"] = payouts
+    return ch
+
+
+def _challenge_out(ch, me):
+    out = ser(ch)
+    out.pop("items", None)  # answers never leave the server
+    out["is_mine"] = ch["from_id"] == me
+    out["my_result"] = ch.get("from_result") if ch["from_id"] == me else ch.get("to_result")
+    out["opp_result"] = ch.get("to_result") if ch["from_id"] == me else ch.get("from_result")
+    out["opp_id"] = ch["to_id"] if ch["from_id"] == me else ch["from_id"]
+    out["my_turn"] = (not out["my_result"]) and ch.get("status") != "done"
+    return out
+
+
+@router.post("/challenges")
+async def create_challenge(body: ChallengeBody, user: dict = Depends(get_current_user)):
+    if body.game not in ("math", "typing"):
+        raise HTTPException(status_code=400, detail="اختر سباق الحساب أو سباق الكتابة")
+    if body.to_user_id == user["id"]:
+        raise HTTPException(status_code=400, detail="لا يمكنك تحدي نفسك")
+    target = await db.users.find_one({"_id": ObjectId(body.to_user_id)}) if ObjectId.is_valid(body.to_user_id) else None
+    if not target:
+        raise HTTPException(status_code=404, detail="الطالب غير موجود")
+    doc = {"from_id": user["id"], "to_id": body.to_user_id, "game": body.game,
+           "status": "open", "created_at": now_iso(),
+           "expires_at": (datetime.now(timezone.utc) + timedelta(hours=72)).isoformat()}
+    if body.game == "math":
+        doc["items"] = _gen_math(random.Random())
+    else:
+        t = random.choice(TEXTS)
+        doc["text_id"] = t["id"]
+    res = await db.game_challenges.insert_one(doc)
+    label = "سباق الحساب" if body.game == "math" else "سباق الكتابة"
+    await create_notification(body.to_user_id, "challenge",
+                              f"⚔️ {user.get('name', 'طالب')} تحدّاك في {label}!",
+                              "افتح التحدي والعب مجموعته نفسها · الفائز يأخذ 15 XP",
+                              "/games/challenges")
+    return {"challenge_id": str(res.inserted_id), "game": body.game}
+
+
+@router.get("/challenges/mine")
+async def my_challenges(user: dict = Depends(get_current_user)):
+    docs = await db.game_challenges.find(
+        {"$or": [{"from_id": user["id"]}, {"to_id": user["id"]}]},
+    ).sort("created_at", -1).to_list(50)
+    for ch in docs:
+        if ch.get("status") != "done":
+            await _finalize_challenge(ch)
+    docs = await db.game_challenges.find(
+        {"$or": [{"from_id": user["id"]}, {"to_id": user["id"]}]},
+    ).sort("created_at", -1).to_list(50)
+    names = await _users_map(list({d["from_id"] for d in docs} | {d["to_id"] for d in docs}))
+    out = []
+    for ch in docs:
+        o = _challenge_out(ch, user["id"])
+        o["opp_name"] = (names.get(o["opp_id"]) or {}).get("name", "طالب")
+        o["opp_avatar"] = (names.get(o["opp_id"]) or {}).get("avatar_url", "")
+        o["from_name"] = (names.get(ch["from_id"]) or {}).get("name", "طالب")
+        out.append(o)
+    return {"challenges": out}
+
+
+@router.post("/challenges/{cid}/play")
+async def challenge_play(cid: str, user: dict = Depends(get_current_user)):
+    if not ObjectId.is_valid(cid):
+        raise HTTPException(status_code=400, detail="تحدي غير صالح")
+    ch = await db.game_challenges.find_one({"_id": ObjectId(cid)})
+    if not ch or user["id"] not in (ch["from_id"], ch["to_id"]):
+        raise HTTPException(status_code=404, detail="التحدي غير موجود")
+    if ch.get("status") == "done":
+        raise HTTPException(status_code=400, detail="انتهى هذا التحدي")
+    side = "from" if ch["from_id"] == user["id"] else "to"
+    if ch.get(f"{side}_result"):
+        raise HTTPException(status_code=400, detail="لعبت حصتك من هذا التحدي")
+    if not ch.get(f"{side}_started_at"):
+        await db.game_challenges.update_one({"_id": ch["_id"]},
+                                            {"$set": {f"{side}_started_at": datetime.now(timezone.utc).isoformat()}})
+    if ch["game"] == "math":
+        return {"game": "math", "questions": [it["q"] for it in ch["items"]], "seconds": 60}
+    t = TEXT_BY_ID[ch["text_id"]]
+    return {"game": "typing", "text": t["text"], "lang": t["lang"]}
+
+
+@router.post("/challenges/{cid}/submit")
+async def challenge_submit(cid: str, body: ChallengeSubmitBody, user: dict = Depends(get_current_user)):
+    if not ObjectId.is_valid(cid):
+        raise HTTPException(status_code=400, detail="تحدي غير صالح")
+    ch = await db.game_challenges.find_one({"_id": ObjectId(cid)})
+    if not ch or user["id"] not in (ch["from_id"], ch["to_id"]):
+        raise HTTPException(status_code=404, detail="التحدي غير موجود")
+    side = "from" if ch["from_id"] == user["id"] else "to"
+    if ch.get(f"{side}_result"):
+        raise HTTPException(status_code=400, detail="أرسلت نتيجتك من قبل")
+    started_raw = ch.get(f"{side}_started_at")
+    if not started_raw:
+        raise HTTPException(status_code=400, detail="ابدأ اللعب أولاً")
+    duration = (datetime.now(timezone.utc) - datetime.fromisoformat(started_raw)).total_seconds()
+    if duration > 600:
+        raise HTTPException(status_code=400, detail="انتهى وقت التحدي")
+    if ch["game"] == "math":
+        correct, score = _math_judge(ch["items"], body.answers or [])
+        result = {"score": score, "correct": correct, "total": len(ch["items"]), "duration_s": int(duration)}
+    else:
+        wpm, accuracy, score = _typing_judge(TEXT_BY_ID[ch["text_id"]]["text"], body.typed, duration)
+        if wpm > 220:
+            raise HTTPException(status_code=400, detail="نتيجة غير واقعية")
+        result = {"score": score, "wpm": wpm, "accuracy": accuracy, "duration_s": int(duration)}
+    await db.game_challenges.update_one({"_id": ch["_id"]}, {"$set": {f"{side}_result": result}})
+    ch = await db.game_challenges.find_one({"_id": ch["_id"]})
+    ch = await _finalize_challenge(ch)
+    names = await _users_map([ch["from_id"], ch["to_id"]])
+    opp = ch["to_id"] if side == "from" else ch["from_id"]
+    if ch.get("status") != "done":
+        await create_notification(opp, "challenge", "خصمك لعب حصته من التحدي ⚔️",
+                                  "نتيجته محفوظة · العب حصتك قبل انتهاء 72 ساعة", "/games/challenges")
+    o = _challenge_out(ch, user["id"])
+    o["opp_name"] = (names.get(o["opp_id"]) or {}).get("name", "طالب")
+    return o
+
+
+# ================================================================ missions
+def _week_bounds(day_iso: str):
+    d = datetime.fromisoformat(day_iso).date()
+    monday = d - timedelta(days=d.weekday())
+    return monday.isoformat(), (monday + timedelta(days=7)).isoformat(), f"{monday.isocalendar()[0]}-W{monday.isocalendar()[1]:02d}"
+
+
+MISSIONS = [
+    {"key": "wordle3", "icon": "BookOpen", "title": "سيد الكلمة الأسبوعي", "desc": "اربح «كلمة اليوم» 3 مرات هذا الأسبوع", "target": 3, "xp": 12},
+    {"key": "math150", "icon": "Calculator", "title": "قنّاص الحساب", "desc": "اجمع 150 نقطة في سباق الحساب (مجموع أفضل جولات أيامك)", "target": 150, "xp": 12},
+    {"key": "typing40", "icon": "Keyboard", "title": "أصابع سريعة", "desc": "حقق 40 كلمة/دقيقة أو أكثر في سباق الكتابة", "target": 40, "xp": 12},
+    {"key": "pages50", "icon": "BookMarked", "title": "قارئ لا يهدأ", "desc": "اقرأ 50 صفحة هذا الأسبوع", "target": 50, "xp": 12},
+    {"key": "days5", "icon": "Flame", "title": "حاضر كل يوم", "desc": "العب في ساحة الألعاب خلال 5 أيام مختلفة", "target": 5, "xp": 12},
+    {"key": "xp200", "icon": "Zap", "title": "جامع الخبرة", "desc": "اكسب 200 نقطة خبرة من أي نشاط هذا الأسبوع", "target": 200, "xp": 12},
+    {"key": "book1", "icon": "Library", "title": "كتاب الأسبوع", "desc": "أنهِ قراءة كتاب واحد على الأقل", "target": 1, "xp": 12},
+]
+CHEST_XP = 75
+
+
+async def _mission_progress(uid: str, key: str, start: str, end: str) -> int:
+    if key == "wordle3":
+        return await db.wordle_plays.count_documents(
+            {"user_id": uid, "won": True, "day": {"$gte": start, "$lt": end}})
+    if key == "math150":
+        docs = await db.game_scores.find(
+            {"user_id": uid, "game": "math", "day": {"$gte": start, "$lt": end}}).to_list(7)
+        return sum(d.get("best_score", 0) for d in docs)
+    if key == "typing40":
+        docs = await db.game_scores.find(
+            {"user_id": uid, "game": "typing", "day": {"$gte": start, "$lt": end}}).to_list(7)
+        return int(max([float((d.get("meta") or {}).get("wpm", 0)) for d in docs] or [0]))
+    if key == "pages50":
+        docs = await db.user_daily.find(
+            {"user_id": uid, "date": {"$gte": start, "$lt": end}}).to_list(7)
+        return sum(d.get("pages", 0) for d in docs)
+    if key == "days5":
+        days = set()
+        async for d in db.game_scores.find({"user_id": uid, "day": {"$gte": start, "$lt": end}}, {"day": 1}):
+            days.add(d["day"])
+        async for d in db.wordle_plays.find({"user_id": uid, "day": {"$gte": start, "$lt": end}}, {"day": 1}):
+            days.add(d["day"])
+        return len(days)
+    if key == "xp200":
+        docs = await db.xp_transactions.find(
+            {"user_id": uid, "created_at": {"$gte": start, "$lt": end + "T23:59:59"}}).to_list(2000)
+        return sum(max(0, d.get("amount", 0)) for d in docs)
+    if key == "book1":
+        return await db.xp_transactions.count_documents(
+            {"user_id": uid, "reason": "إكمال قراءة كتاب",
+             "created_at": {"$gte": start, "$lt": end + "T23:59:59"}})
+    return 0
+
+
+@router.get("/missions/week")
+async def missions_week(user: dict = Depends(get_current_user)):
+    start, end, week = _week_bounds(_today())
+    claims = await db.mission_claims.find({"user_id": user["id"], "week": week}).to_list(20)
+    claimed = {c["mission"] for c in claims}
+    out = []
+    for m in MISSIONS:
+        prog = await _mission_progress(user["id"], m["key"], start, end)
+        out.append({**m, "progress": min(prog, m["target"]), "done": prog >= m["target"],
+                    "claimed": m["key"] in claimed})
+    chest = await db.mission_claims.find_one({"user_id": user["id"], "week": week, "mission": "__chest__"})
+    return {"week": week, "missions": out, "done_count": sum(1 for m in out if m["done"]),
+            "chest_xp": CHEST_XP, "chest_claimed": bool(chest),
+            "chest_ready": all(m["done"] for m in out)}
+
+
+class ClaimBody(BaseModel):
+    mission: str
+
+
+@router.post("/missions/claim")
+async def missions_claim(body: ClaimBody, user: dict = Depends(get_current_user)):
+    start, end, week = _week_bounds(_today())
+    if body.mission == "__chest__":
+        prog_all = [await _mission_progress(user["id"], m["key"], start, end) >= m["target"] for m in MISSIONS]
+        if not all(prog_all):
+            raise HTTPException(status_code=400, detail="أكمل المهمات السبع أولاً لفتح الصندوق")
+        xp = CHEST_XP
+    else:
+        m = next((x for x in MISSIONS if x["key"] == body.mission), None)
+        if not m:
+            raise HTTPException(status_code=404, detail="مهمة غير موجودة")
+        if await _mission_progress(user["id"], m["key"], start, end) < m["target"]:
+            raise HTTPException(status_code=400, detail="لم تكمل هذه المهمة بعد")
+        xp = m["xp"]
+    existing = await db.mission_claims.find_one({"user_id": user["id"], "week": week, "mission": body.mission})
+    if existing:
+        raise HTTPException(status_code=400, detail="استلمت هذه المكافأة من قبل")
+    await db.mission_claims.insert_one({"user_id": user["id"], "week": week,
+                                        "mission": body.mission, "claimed_at": now_iso()})
+    await award_xp(user["id"], xp, "مهمات الأسبوع", ref=f"mission:{week}:{body.mission}")
+    return {"ok": True, "xp_awarded": xp}
+
+
+# ================================================================ admin radar
+@router.get("/admin/radar")
+async def games_radar(user: dict = Depends(require_permission("analytics.view"))):
+    day = _today()
+    start7 = (datetime.now(timezone.utc).date() - timedelta(days=6)).isoformat()
+    per_game = {}
+    for game in ("wordle", "math", "typing"):
+        t = await db.game_scores.find({"game": game, "day": day}).to_list(2000)
+        w = await db.game_scores.find({"game": game, "day": {"$gte": start7}}).to_list(10000)
+        per_game[game] = {
+            "plays_today": sum(d.get("plays", 0) for d in t),
+            "players_today": len({d["user_id"] for d in t}),
+            "plays_7d": sum(d.get("plays", 0) for d in w),
+            "players_7d": len({d["user_id"] for d in w}),
+        }
+    xp_rows = await db.xp_transactions.find(
+        {"reason": {"$in": ["كلمة اليوم", "سباق الحساب", "سباق الكتابة", "تحدي صديق", "مهمات الأسبوع"]},
+         "created_at": {"$gte": start7}}).to_list(20000)
+    xp_by_reason = {}
+    for r in xp_rows:
+        xp_by_reason[r["reason"]] = xp_by_reason.get(r["reason"], 0) + max(0, r.get("amount", 0))
+    top = await db.game_scores.aggregate([
+        {"$match": {"day": day}},
+        {"$group": {"_id": "$user_id", "score": {"$sum": "$best_score"}, "plays": {"$sum": "$plays"}}},
+        {"$sort": {"score": -1}}, {"$limit": 10},
+    ]).to_list(10)
+    names = await _users_map([t["_id"] for t in top])
+    heavy = await db.game_scores.aggregate([
+        {"$match": {"day": day}},
+        {"$group": {"_id": "$user_id", "plays": {"$sum": "$plays"}}},
+        {"$match": {"plays": {"$gte": 20}}},
+        {"$sort": {"plays": -1}}, {"$limit": 10},
+    ]).to_list(10)
+    hnames = await _users_map([h["_id"] for h in heavy])
+    pending_ch = await db.game_challenges.count_documents({"status": "open"})
+    done_ch = await db.game_challenges.count_documents({"status": "done"})
+    return {
+        "day": day, "per_game": per_game, "xp_by_reason": xp_by_reason,
+        "xp_total_7d": sum(xp_by_reason.values()),
+        "top_today": [{"user_id": t["_id"], "name": (names.get(t["_id"]) or {}).get("name", "طالب"),
+                       "score": t["score"], "plays": t["plays"]} for t in top],
+        "heavy_players": [{"user_id": h["_id"], "name": (hnames.get(h["_id"]) or {}).get("name", "طالب"),
+                           "plays": h["plays"]} for h in heavy],
+        "challenges": {"open": pending_ch, "done": done_ch},
+    }
+
+
+@router.post("/admin/streak-saver")
+async def streak_saver_now(user: dict = Depends(require_permission("notification.broadcast"))):
+    return await maybe_send_streak_reminders(force=True)
+
+
+async def maybe_send_streak_reminders(force: bool = False):
+    """Evening streak rescue: played yesterday, silent today -> one push.
+    Runs once a day (marker doc) inside the 18:00-21:59 Amman window."""
+    amman = timezone(timedelta(hours=3))
+    now_local = datetime.now(amman)
+    if not force and not (18 <= now_local.hour <= 21):
+        return {"sent": 0, "reason": "outside-window"}
+    today = now_local.date().isoformat()
+    yesterday = (now_local.date() - timedelta(days=1)).isoformat()
+    marker = await db.streak_reminder_runs.find_one({"_id": "global"})
+    if marker and marker.get("day") == today and not force:
+        return {"sent": 0, "reason": "already-sent"}
+    y_ids = {d["user_id"] for d in await db.game_scores.find({"day": yesterday}, {"user_id": 1}).to_list(5000)}
+    y_ids |= {d["user_id"] for d in await db.wordle_plays.find({"day": yesterday}, {"user_id": 1}).to_list(5000)}
+    t_ids = {d["user_id"] for d in await db.game_scores.find({"day": today}, {"user_id": 1}).to_list(5000)}
+    t_ids |= {d["user_id"] for d in await db.wordle_plays.find({"day": today}, {"user_id": 1}).to_list(5000)}
+    candidates = y_ids - t_ids
+    sent = 0
+    for uid in candidates:
+        subs = await db.push_subscriptions.count_documents({"user_id": uid})
+        if not subs:
+            continue
+        n = await send_push_to_user(uid, "🔥 سلسلتك في خطر!",
+                                    "لعبت أمس ولم تلعب اليوم بعد · جولة سريعة في ساحة الألعاب تنقذ يومك",
+                                    "/games")
+        if n:
+            sent += 1
+            await create_notification(uid, "games", "🔥 سلسلتك في خطر!",
+                                      "العب أي لعبة اليوم قبل منتصف الليل لتحافظ على إيقاعك", "/games")
+    await db.streak_reminder_runs.update_one({"_id": "global"}, {"$set": {"day": today, "sent": sent, "at": now_iso()}}, upsert=True)
+    return {"sent": sent, "candidates": len(candidates)}
