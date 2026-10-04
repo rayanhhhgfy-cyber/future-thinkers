@@ -46,6 +46,10 @@ const LiveSessions = lazy(() => import("@/pages/LiveSessions"));
 const Wrapped = lazy(() => import("@/pages/Wrapped"));
 const MiniBooks = lazy(() => import("@/pages/MiniBooks"));
 const Swap = lazy(() => import("@/pages/Swap"));
+const Games = lazy(() => import("@/pages/Games"));
+const WordGame = lazy(() => import("@/pages/WordGame"));
+const MathSprint = lazy(() => import("@/pages/MathSprint"));
+const TypingRace = lazy(() => import("@/pages/TypingRace"));
 const Studio = lazy(() => import("@/pages/Studio"));
 const StudioWork = lazy(() => import("@/pages/StudioWork"));
 const Ventures = lazy(() => import("@/pages/Ventures"));
@@ -143,6 +147,10 @@ function AnimatedRoutes() {
       <Route path="/wrapped" element={<Protected><Wrapped /></Protected>} />
       <Route path="/mini-books" element={<Protected><MiniBooks /></Protected>} />
       <Route path="/swap" element={<Protected><Swap /></Protected>} />
+      <Route path="/games" element={<Protected><Games /></Protected>} />
+      <Route path="/games/wordle" element={<Protected><WordGame /></Protected>} />
+      <Route path="/games/math" element={<Protected><MathSprint /></Protected>} />
+      <Route path="/games/typing" element={<Protected><TypingRace /></Protected>} />
       <Route path="/news" element={<Protected><News /></Protected>} />
       <Route path="/studio" element={<Protected><Studio /></Protected>} />
       <Route path="/studio/:id" element={<Protected><StudioWork /></Protected>} />
