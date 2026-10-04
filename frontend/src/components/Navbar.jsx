@@ -7,6 +7,7 @@ import {
   Gamepad2, Flame, ChevronLeft, ChevronDown, Puzzle, BarChart3, Route as RouteIcon, MessagesSquare, CalendarDays, Target, Timer, Award,
   Mail, HelpCircle, Zap, Bookmark,
   Layers, HeartHandshake, Radio, BookMarked, ArrowLeftRight, Wand2,
+  Swords, Compass, GitBranch,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { EASE } from "@/components/anim";
@@ -43,6 +44,7 @@ const DISCOVER_LINKS = [
   { to: "/mini-books", label: "كتيّبات الطلاب", icon: BookMarked, tint: "bg-fuchsia-100 text-fuchsia-600" },
   { to: "/swap", label: "تبادل الكتب", icon: ArrowLeftRight, tint: "bg-teal-100 text-teal-600" },
   { to: "/games", label: "ساحة الألعاب", icon: Gamepad2, tint: "bg-orange-100 text-orange-600" },
+  { to: "/stories", label: "قصص اختر مغامرتك", icon: GitBranch, tint: "bg-violet-100 text-violet-600" },
   { to: "/wrapped", label: "ملخص رحلتي", icon: Wand2, tint: "bg-amber-100 text-amber-600" },
 ];
 
@@ -59,6 +61,9 @@ const MORE_GROUPS = [
     { to: "/paths", label: "مسارات التعلم", icon: RouteIcon, tint: "bg-emerald-100 text-emerald-700" },
     { to: "/flashcards", label: "بطاقات المراجعة", icon: Layers, tint: "bg-violet-100 text-violet-600" },
     { to: "/games", label: "ساحة الألعاب", icon: Gamepad2, tint: "bg-orange-100 text-orange-600" },
+    { to: "/games/challenges", label: "تحدي صديق", icon: Swords, tint: "bg-orange-100 text-orange-600" },
+    { to: "/games/missions", label: "مهمات الأسبوع", icon: Compass, tint: "bg-teal-100 text-teal-600" },
+    { to: "/stories", label: "قصص اختر مغامرتك", icon: GitBranch, tint: "bg-violet-100 text-violet-600" },
     { to: "/buddies", label: "رفيق القراءة", icon: HeartHandshake, tint: "bg-rose-100 text-rose-600" },
     { to: "/live-sessions", label: "جلسات مباشرة", icon: Radio, tint: "bg-red-100 text-red-600" },
     { to: "/wrapped", label: "ملخص رحلتي", icon: Wand2, tint: "bg-amber-100 text-amber-600" },

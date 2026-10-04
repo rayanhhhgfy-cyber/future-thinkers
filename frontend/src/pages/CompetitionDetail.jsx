@@ -18,10 +18,15 @@ export default function CompetitionDetail() {
   const [board, setBoard] = useState([]);
   const [answers, setAnswers] = useState({});
   const [taking, setTaking] = useState(false);
+  const [notFound, setNotFound] = useState(false);
 
   const load = async () => {
-    const [d, lb] = await Promise.all([api.get(`/competitions/${id}`), api.get(`/competitions/${id}/leaderboard`)]);
-    setC(d.data); setBoard(lb.data);
+    try {
+      const [d, lb] = await Promise.all([api.get(`/competitions/${id}`), api.get(`/competitions/${id}/leaderboard`)]);
+      setC(d.data); setBoard(lb.data);
+    } catch {
+      setNotFound(true);
+    }
   };
   useEffect(() => { load(); }, [id]);
 
@@ -46,6 +51,18 @@ export default function CompetitionDetail() {
     } catch (e) { toast.error(apiErr(e)); }
   };
 
+  if (notFound) return (
+    <Layout>
+      <div className="max-w-xl mx-auto px-4 py-20 text-center">
+        <Trophy className="w-14 h-14 mx-auto text-slate-300" />
+        <p className="font-head font-black text-2xl mt-4">هذه المسابقة غير موجودة</p>
+        <p className="text-slate-500 text-sm mt-1.5">ربما حُذفت أو انتهت صلاحية الرابط</p>
+        <button onClick={() => nav("/competitions")} className="mt-6 rounded-2xl bg-slate-900 text-white px-6 py-3 font-head font-black transition hover:scale-[1.02] active:scale-95">
+          عودة إلى المسابقات
+        </button>
+      </div>
+    </Layout>
+  );
   if (!c) return <Layout><PageLoader /></Layout>;
   const registered = !!c.my_entry;
   const submitted = c.my_entry?.submitted;
