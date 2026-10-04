@@ -47,6 +47,7 @@ export default function BookDetail() {
   const nav = useNavigate();
   const { user } = useAuth();
   const [book, setBook] = useState(null);
+  const [gone, setGone] = useState(false);
   const [reviews, setReviews] = useState([]);
   const [reading, setReading] = useState(false);
   const [rating, setRating] = useState(0);
@@ -64,8 +65,10 @@ export default function BookDetail() {
   const isSaved = savedMap.has(`book:${id}`);
 
   const load = async () => {
-    const [b, r] = await Promise.all([api.get(`/books/${id}`), api.get(`/books/${id}/reviews`)]);
-    setBook(b.data); setReviews(r.data);
+    try {
+      const [b, r] = await Promise.all([api.get(`/books/${id}`), api.get(`/books/${id}/reviews`)]);
+      setBook(b.data); setReviews(r.data);
+    } catch { setGone(true); return; }
     api.get(`/books/${id}/comments`).then((res) => setComments(res.data.items || [])).catch(() => {});
     api.get(`/books/${id}/insights`).then((res) => {
       const d = res.data || {};
@@ -173,6 +176,17 @@ export default function BookDetail() {
     catch (e) { toast.error(apiErr(e)); }
   };
 
+  if (gone) return (
+    <Layout>
+      <div className="max-w-xl mx-auto px-4 py-20 text-center">
+        <p className="font-head font-black text-2xl">هذا الكتاب غير موجود</p>
+        <p className="text-slate-500 text-sm mt-1.5">ربما حُذف من المكتبة أو تغيّر رابطه</p>
+        <button onClick={() => nav("/library")} className="mt-6 rounded-2xl bg-slate-900 text-white px-6 py-3 font-head font-black transition hover:scale-[1.02] active:scale-95">
+          عودة إلى المكتبة
+        </button>
+      </div>
+    </Layout>
+  );
   if (!book) return <Layout><PageLoader /></Layout>;
 
   return (

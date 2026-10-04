@@ -307,9 +307,15 @@ export default function ClubDetail() {
   const { user } = useAuth();
   const nav = useNavigate();
   const [club, setClub] = useState(null);
+  const [gone, setGone] = useState(false);
   const [tab, setTab] = useState("main");
 
-  const load = async () => { const { data } = await api.get(`/clubs/${slug}`); setClub(data); };
+  const load = async () => {
+    try {
+      const { data } = await api.get(`/clubs/${slug}`);
+      setClub(data);
+    } catch { setGone(true); }
+  };
   useEffect(() => { load(); setTab(SPECIAL_INIT[slug] || "main"); }, [slug]);
 
   const toggleMember = async () => {
@@ -318,6 +324,17 @@ export default function ClubDetail() {
     load();
   };
 
+  if (gone) return (
+    <Layout>
+      <div className="max-w-xl mx-auto px-4 py-20 text-center">
+        <p className="font-head font-black text-2xl">هذا النادي غير موجود</p>
+        <p className="text-slate-500 text-sm mt-1.5">ربما حُذف أو تغيّر رابطه</p>
+        <button onClick={() => nav("/clubs")} className="mt-6 rounded-2xl bg-slate-900 text-white px-6 py-3 font-head font-black transition hover:scale-[1.02] active:scale-95">
+          عودة إلى الأندية
+        </button>
+      </div>
+    </Layout>
+  );
   if (!club) return <Layout><PageLoader /></Layout>;
   const Icon = Icons[club.icon] || Icons.Circle;
 
@@ -437,7 +454,7 @@ export default function ClubDetail() {
 
 function MembersList({ slug }) {
   const [members, setMembers] = useState(null);
-  useEffect(() => { api.get(`/clubs/${slug}/members`).then((r) => setMembers(r.data)); }, [slug]);
+  useEffect(() => { api.get(`/clubs/${slug}/members`).then((r) => setMembers(r.data)).catch(() => {}); }, [slug]);
   if (!members) return <PageLoader />;
   if (!members.length) return <EmptyState icon={Users} title="لا أعضاء بعد" desc="كن أول المنضمين لهذا النادي" />;
   return (
