@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import { Link, useNavigate, useLocation } from "react-router-dom";
+import { useSiteConfig, sectionOfPath } from "@/lib/siteConfig";
 import {
   Bell, Search, Menu, X, LogOut, User, LayoutDashboard, Shield, Settings,
   BookOpen, Sparkles, Users, Calendar, Trophy, Newspaper, Rocket, Crown,
@@ -88,6 +89,16 @@ const MORE_GROUPS = [
 
 export function Navbar() {
   const { user, logout, isStaff } = useAuth();
+  const { toggles } = useSiteConfig();
+  const navVisible = (l) => {
+    const sec = sectionOfPath(l.to);
+    return !sec || toggles[sec] !== false;
+  };
+  const NAV_DISCOVER = DISCOVER_LINKS.filter(navVisible);
+  const NAV_PRIMARY = NAV_DISCOVER.slice(0, 6);
+  const NAV_GROUPS = MORE_GROUPS
+    .map((g) => ({ ...g, items: g.items.filter(navVisible) }))
+    .filter((g) => g.items.length > 0);
   const nav = useNavigate();
   const loc = useLocation();
   const [open, setOpen] = useState(false);
@@ -194,7 +205,7 @@ export function Navbar() {
           <Link to="/" data-testid="nav-home-link" className="shrink-0"><Logo /></Link>
           <nav className="hidden lg:flex items-center gap-1.5 flex-1 min-w-0">
             <div ref={navScrollRef} className="nav-scroll flex items-center gap-1.5 overflow-x-auto min-w-0 py-1 px-0.5">
-            {PRIMARY_LINKS.map((l) => {
+            {NAV_PRIMARY.map((l) => {
               const active = loc.pathname.startsWith(l.to);
               const Icon = l.icon;
               return (
@@ -218,7 +229,7 @@ export function Navbar() {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-[36rem] max-w-[94vw] p-4 rounded-3xl shadow-2xl">
                 <div className="grid grid-cols-3 gap-4">
-                  {MORE_GROUPS.map((g) => (
+                  {NAV_GROUPS.map((g) => (
                     <div key={g.title}>
                       <div className="text-[11px] font-extrabold text-slate-400 px-2 mb-1.5">{g.title}</div>
                       {g.items.map((l) => {
@@ -483,7 +494,7 @@ function MobileDrawer({ open, onClose, user, gam, isStaff, pathname, nav, logout
               <div>
                 <div className="text-xs font-bold text-slate-400 mb-2 px-1">اكتشف</div>
                 <div className="space-y-1">
-                  {DISCOVER_LINKS.map((l, i) => {
+                  {NAV_DISCOVER.map((l, i) => {
                     const active = pathname === l.to || pathname.startsWith(l.to + "/");
                     return (
                       <motion.div
@@ -506,7 +517,7 @@ function MobileDrawer({ open, onClose, user, gam, isStaff, pathname, nav, logout
               </div>
 
               {/* every section · grouped (mirrors the desktop explore menu) */}
-              {MORE_GROUPS.map((g, gi) => (
+              {NAV_GROUPS.map((g, gi) => (
                 <div key={g.title}>
                   <div className="text-xs font-bold text-slate-400 mb-2 px-1">{g.title}</div>
                   <div className="grid grid-cols-2 gap-2">
