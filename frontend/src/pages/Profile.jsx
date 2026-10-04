@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useNavigate } from "react-router-dom";
 import { Layout, PageLoader } from "@/components/Layout";
 import api from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
@@ -19,6 +19,8 @@ const TABS = [
 export default function Profile() {
   const { id } = useParams();
   const { user } = useAuth();
+  const nav = useNavigate();
+  const [notFound, setNotFound] = useState(false);
   const [p, setP] = useState(null);
   const [skillBadges, setSkillBadges] = useState([]);
   const [certs, setCerts] = useState([]);
@@ -29,10 +31,21 @@ export default function Profile() {
 
   useEffect(() => {
     setP(null);
-    api.get(`/users/${id}/profile`).then((r) => setP(r.data));
+    api.get(`/users/${id}/profile`).then((r) => setP(r.data)).catch(() => setNotFound(true));
     api.get(`/badges/user/${id}`).then((r) => setSkillBadges(r.data)).catch(() => {});
     api.get(`/certificates/user/${id}`).then((r) => setCerts(r.data)).catch(() => setCerts([]));
   }, [id]);
+  if (notFound) return (
+    <Layout>
+      <div className="max-w-xl mx-auto px-4 py-20 text-center">
+        <p className="font-head font-black text-2xl">هذا العضو غير موجود</p>
+        <p className="text-slate-500 text-sm mt-1.5">ربما حُذف الحساب أو تغيّر الرابط</p>
+        <button onClick={() => nav("/members")} className="mt-6 rounded-2xl bg-slate-900 text-white px-6 py-3 font-head font-black transition hover:scale-[1.02] active:scale-95">
+          عودة إلى الأعضاء
+        </button>
+      </div>
+    </Layout>
+  );
   if (!p) return <Layout><PageLoader /></Layout>;
 
   const downloadCert = async (certId) => {
