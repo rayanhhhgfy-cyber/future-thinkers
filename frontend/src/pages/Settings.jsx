@@ -7,7 +7,11 @@ import { toast } from "sonner";
 import {
   KeyRound, Eye, EyeOff, Settings as SettingsIcon, BellRing, User, Target, Shield,
   Download, Palette, Sparkles, AlertTriangle, BookOpen, Crown, Rocket, Heart, Award, Check, Type, RotateCcw,
+  Smartphone, Share, Zap, WifiOff, CheckCircle2, MoreVertical,
+  ChevronDown,
 } from "lucide-react";
+import { usePwaInstall } from "@/lib/pwa";
+import { APP_VERSION, CHANGELOG } from "@/lib/version";
 import { FONT_SCALE_STEPS, getFontScale, applyFontScale } from "@/lib/fontscale";
 import { isPushSupported, pushPermission, enablePush, disablePush, backendPushEnabled } from "@/lib/push";
 import { COVERS, coverCls, FRAME_RING } from "@/lib/cosmetics";
@@ -63,6 +67,10 @@ export default function Settings() {
   const [pushBusy, setPushBusy] = useState(false);
   const [confirmDeactivate, setConfirmDeactivate] = useState(false);
   const [fontScale, setFontScale] = useState(() => getFontScale());
+  const { standalone: isAppMode, canInstall: canInstallPwa, install: promptPwaInstall, isIos: isIosDevice, isAndroid: isAndroidDevice } = usePwaInstall();
+  const [pwaBusy, setPwaBusy] = useState(false);
+  const [pwaAccepted, setPwaAccepted] = useState(false);
+  const [showWhatsNew, setShowWhatsNew] = useState(false);
   const pushSupported = isPushSupported();
   const pushDenied = pushSupported && pushPermission() === "denied";
 
@@ -76,6 +84,16 @@ export default function Settings() {
   useEffect(() => {
     if (!pushSupported) { setPushOn(false); return; }
     backendPushEnabled().then(setPushOn);
+  }, []);
+
+  // Deep link from the user menu / dashboard: /settings#settings-app
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (!hash) return;
+    const t = setTimeout(() => {
+      document.querySelector(hash)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 350);
+    return () => clearTimeout(t);
   }, []);
 
   const save = async (key, payload, msg) => {
@@ -110,6 +128,17 @@ export default function Settings() {
   const pickFontScale = (key) => {
     setFontScale(applyFontScale(key));
     toast.success("تم تطبيق حجم الخط على المنصة ✓");
+  };
+
+  const handlePwaInstall = async () => {
+    setPwaBusy(true);
+    try {
+      const choice = await promptPwaInstall();
+      if (choice?.outcome === "accepted") {
+        setPwaAccepted(true);
+        toast.success("تم قبول التثبيت 🎉 افتح التطبيق من الشاشة الرئيسية");
+      }
+    } finally { setPwaBusy(false); }
   };
 
   const exportData = async () => {
@@ -177,6 +206,7 @@ export default function Settings() {
               <a href="#settings-appearance" className="flex items-center gap-2.5 min-h-[44px] px-3 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"><Palette className="w-4 h-4 text-slate-400" />غلاف الملف والإطارات</a>
               <a href="#settings-goal" className="flex items-center gap-2.5 min-h-[44px] px-3 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"><Target className="w-4 h-4 text-slate-400" />هدف القراءة اليومي</a>
               <a href="#settings-display" className="flex items-center gap-2.5 min-h-[44px] px-3 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"><Type className="w-4 h-4 text-slate-400" />حجم الخط</a>
+              {!isAppMode && <a href="#settings-app" className="flex items-center gap-2.5 min-h-[44px] px-3 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"><Smartphone className="w-4 h-4 text-slate-400" />تثبيت التطبيق</a>}
               <a href="#settings-notifications" className="flex items-center gap-2.5 min-h-[44px] px-3 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"><BellRing className="w-4 h-4 text-slate-400" />الإشعارات</a>
               <a href="#settings-privacy" className="flex items-center gap-2.5 min-h-[44px] px-3 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"><Shield className="w-4 h-4 text-slate-400" />الخصوصية</a>
               <a href="#settings-data" className="flex items-center gap-2.5 min-h-[44px] px-3 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"><Download className="w-4 h-4 text-slate-400" />بياناتي</a>
@@ -287,6 +317,60 @@ export default function Settings() {
         </Card>
         </div>
 
+        {/* install app · يختفي كلياً عند فتح الموقع من التطبيق المثبّت */}
+        {!isAppMode && (
+        <div id="settings-app" className="scroll-mt-24 lg:scroll-mt-28">
+        <Card icon={Smartphone} color="#059669" title="تثبيت التطبيق" desc="ثبّت «مفكري المستقبل» على شاشتك الرئيسية · يفتح أسرع، تصلك الإشعارات، ويعمل حتى مع اتصال ضعيف.">
+          <div className="relative overflow-hidden rounded-3xl ring-1 ring-emerald-100 bg-gradient-to-l from-emerald-600 via-teal-600 to-cyan-700 text-white p-5 sm:p-6">
+            <div className="pointer-events-none absolute -top-14 -left-14 w-44 h-44 rounded-full bg-white/15 blur-3xl" />
+            <div className="pointer-events-none absolute -bottom-16 -right-10 w-48 h-48 rounded-full bg-cyan-300/20 blur-3xl" />
+            <div className="relative flex items-start gap-4">
+              <img src="/icons/icon-192.png" alt="" className="w-16 h-16 sm:w-[72px] sm:h-[72px] rounded-[1.2rem] shadow-2xl ring-1 ring-white/40 shrink-0" />
+              <div className="min-w-0 flex-1">
+                <div className="font-head font-extrabold text-lg sm:text-xl leading-tight">مفكرو المستقبل</div>
+                <p className="text-white/80 text-xs sm:text-sm leading-relaxed mt-1">التطبيق على جهازك · بلا متجر وبلا تحميل طويل</p>
+                <div className="flex flex-wrap gap-1.5 mt-3">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-white/15 ring-1 ring-white/20 backdrop-blur px-2.5 py-1 text-[11px] font-bold"><Zap className="w-3 h-3" /> فتح فوري</span>
+                  <span className="inline-flex items-center gap-1 rounded-full bg-white/15 ring-1 ring-white/20 backdrop-blur px-2.5 py-1 text-[11px] font-bold"><BellRing className="w-3 h-3" /> إشعارات الهاتف</span>
+                  <span className="inline-flex items-center gap-1 rounded-full bg-white/15 ring-1 ring-white/20 backdrop-blur px-2.5 py-1 text-[11px] font-bold"><WifiOff className="w-3 h-3" /> يعمل بمرونة</span>
+                </div>
+              </div>
+            </div>
+            <div className="relative mt-5">
+              {pwaAccepted ? (
+                <div className="flex items-center gap-3 rounded-2xl bg-white/15 ring-1 ring-white/25 backdrop-blur px-4 py-3.5">
+                  <CheckCircle2 className="w-6 h-6 shrink-0 text-emerald-200" />
+                  <p className="text-sm font-bold leading-relaxed">تم قبول التثبيت ✓ أغلق المتصفح وافتح «مفكرو المستقبل» من الشاشة الرئيسية · سيختفي هذا الخيار تلقائياً داخل التطبيق.</p>
+                </div>
+              ) : canInstallPwa ? (
+                <button onClick={handlePwaInstall} disabled={pwaBusy} data-testid="settings-pwa-install"
+                  className="pressable w-full min-h-[52px] rounded-2xl bg-white text-emerald-800 font-head font-extrabold text-base shadow-xl hover:bg-emerald-50 disabled:opacity-60 inline-flex items-center justify-center gap-2 transition">
+                  <Download className="w-5 h-5" /> {pwaBusy ? "جارٍ فتح نافذة التثبيت…" : "تثبيت التطبيق الآن"}
+                </button>
+              ) : isIosDevice ? (
+                <div className="rounded-2xl bg-white/12 ring-1 ring-white/20 backdrop-blur px-4 py-4">
+                  <p className="text-sm font-extrabold mb-2.5">على iPhone أو iPad · ثلاث خطوات:</p>
+                  <ol className="space-y-2 text-[13px] font-semibold text-white/90 list-none">
+                    <li className="flex items-center gap-2.5"><span className="w-6 h-6 rounded-lg bg-white/20 grid place-items-center shrink-0 text-[11px] font-black">1</span><Share className="w-4 h-4 shrink-0" /> اضغط زر «مشاركة» في شريط Safari</li>
+                    <li className="flex items-center gap-2.5"><span className="w-6 h-6 rounded-lg bg-white/20 grid place-items-center shrink-0 text-[11px] font-black">2</span> اختر «إضافة إلى الشاشة الرئيسية»</li>
+                    <li className="flex items-center gap-2.5"><span className="w-6 h-6 rounded-lg bg-white/20 grid place-items-center shrink-0 text-[11px] font-black">3</span> اضغط «إضافة» · ثم افتح التطبيق من الشاشة الرئيسية</li>
+                  </ol>
+                </div>
+              ) : (
+                <div className="rounded-2xl bg-white/12 ring-1 ring-white/20 backdrop-blur px-4 py-4">
+                  <p className="text-sm font-bold leading-relaxed flex items-start gap-2">
+                    <MoreVertical className="w-5 h-5 shrink-0 mt-0.5" />
+                    <span>افتح قائمة المتصفح <b>(⋮)</b> ثم اختر <b>«تثبيت التطبيق»</b> أو <b>«إضافة إلى الشاشة الرئيسية»</b>{isAndroidDevice ? "" : ""} · بعد التثبيت افتح الموقع من أيقونة التطبيق وسيختفي هذا الخيار تلقائياً.</span>
+                  </p>
+                </div>
+              )}
+            </div>
+
+          </div>
+        </Card>
+        </div>
+        )}
+
         {/* notifications */}
         <div id="settings-notifications" className="scroll-mt-24 lg:scroll-mt-28">
         <Card icon={BellRing} color="#D97706" title="الإشعارات" desc="تحكّم فيما يصلك على هاتفك وداخل المنصة.">
@@ -375,6 +459,29 @@ export default function Settings() {
             </div>
           )}
         </section>
+        </div>
+
+        {/* version + what's new */}
+        <div className="text-center pt-1 pb-2" data-testid="settings-version-line">
+          <div className="text-xs font-bold text-slate-400">مفكرو المستقبل · إصدار التطبيق <span dir="ltr">{APP_VERSION}</span></div>
+          <button onClick={() => setShowWhatsNew((v) => !v)} aria-expanded={showWhatsNew}
+            className="pressable inline-flex items-center gap-1 mt-1.5 text-xs font-extrabold ft-text-accent min-h-[36px] px-3">
+            ما الجديد؟ <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showWhatsNew ? "rotate-180" : ""}`} />
+          </button>
+          {showWhatsNew && (
+            <div className="mt-3 text-start bg-white rounded-3xl border border-slate-100 ft-shadow p-5 space-y-4">
+              {CHANGELOG.map((rel) => (
+                <div key={rel.version}>
+                  <div className="font-head font-extrabold text-sm text-slate-800">إصدار <span dir="ltr">{rel.version}</span></div>
+                  <ul className="mt-1.5 space-y-1">
+                    {rel.items.map((it, i) => (
+                      <li key={i} className="flex items-start gap-2 text-[13px] text-slate-500 leading-relaxed"><Check className="w-3.5 h-3.5 mt-1 shrink-0 text-emerald-500" />{it}</li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
         </div>
       </div>

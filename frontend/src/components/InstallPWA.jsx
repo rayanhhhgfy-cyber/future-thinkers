@@ -1,45 +1,15 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useState, useCallback } from "react";
 import { Download, X, Share } from "lucide-react";
+import { usePwaInstall } from "@/lib/pwa";
 
 const DISMISS_KEY = "ft_pwa_install_dismissed";
 
-function isIos() {
-  if (typeof navigator === "undefined") return false;
-  return /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
-}
-
-function isStandalone() {
-  if (typeof window === "undefined") return false;
-  return (
-    window.matchMedia?.("(display-mode: standalone)").matches ||
-    window.navigator.standalone === true
-  );
-}
-
 export default function InstallPWA() {
-  const [deferred, setDeferred] = useState(null);
-  const [installed, setInstalled] = useState(() => isStandalone());
+  const { standalone, installed, canInstall, install: promptInstall, isIos: iosDevice } = usePwaInstall();
   const [dismissed, setDismissed] = useState(
     () => typeof localStorage !== "undefined" && localStorage.getItem(DISMISS_KEY) === "1"
   );
   const [showIosHint, setShowIosHint] = useState(false);
-
-  useEffect(() => {
-    const onPrompt = (e) => {
-      e.preventDefault();
-      setDeferred(e);
-    };
-    const onInstalled = () => {
-      setInstalled(true);
-      setDeferred(null);
-    };
-    window.addEventListener("beforeinstallprompt", onPrompt);
-    window.addEventListener("appinstalled", onInstalled);
-    return () => {
-      window.removeEventListener("beforeinstallprompt", onPrompt);
-      window.removeEventListener("appinstalled", onInstalled);
-    };
-  }, []);
 
   const dismiss = useCallback(() => {
     setDismissed(true);
@@ -47,16 +17,14 @@ export default function InstallPWA() {
   }, []);
 
   const install = useCallback(async () => {
-    if (!deferred) return;
-    deferred.prompt();
-    try { await deferred.userChoice; } catch {}
-    setDeferred(null);
-  }, [deferred]);
+    await promptInstall();
+  }, [promptInstall]);
 
-  if (installed || dismissed) return null;
+  // Opened from the installed app (or just installed) · the banner is gone for good
+  if (standalone || installed || dismissed) return null;
 
   // Android/desktop Chrome: native install prompt available
-  if (deferred) {
+  if (canInstall) {
     return (
       <div className="fixed bottom-0 inset-x-0 z-50 flex justify-center px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pointer-events-none">
         <div className="pointer-events-auto flex items-center gap-3 rounded-2xl bg-slate-900/95 backdrop-blur px-4 py-3 shadow-2xl border border-white/10 max-w-md w-full">
@@ -82,7 +50,7 @@ export default function InstallPWA() {
   }
 
   // iOS Safari: no native prompt · show manual instructions instead
-  if (isIos() && !showIosHint) {
+  if (iosDevice && !showIosHint) {
     return (
       <div className="fixed bottom-0 inset-x-0 z-50 flex justify-center px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pointer-events-none">
         <div className="pointer-events-auto flex items-center gap-3 rounded-2xl bg-slate-900/95 backdrop-blur px-4 py-3 shadow-2xl border border-white/10 max-w-md w-full">
@@ -104,7 +72,7 @@ export default function InstallPWA() {
     );
   }
 
-  if (isIos() && showIosHint) {
+  if (iosDevice && showIosHint) {
     return (
       <div className="fixed bottom-0 inset-x-0 z-50 flex justify-center px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pointer-events-none">
         <div className="pointer-events-auto rounded-2xl bg-slate-900/95 backdrop-blur px-5 py-4 shadow-2xl border border-white/10 max-w-md w-full">
