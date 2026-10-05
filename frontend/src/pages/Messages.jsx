@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import {
   MessageCircle, Send, Search, X, PenSquare, ArrowRight, Loader2, Inbox,
   Smile, SmilePlus, Check, CheckCheck, MoreVertical, Reply, Pencil, Trash2, Ban,
+  ShieldCheck, Lock,
 } from "lucide-react";
 
 const QUICK_REACT = ["❤️", "😂", "😮", "👍", "🔥", "👏"];
@@ -78,6 +79,13 @@ function clockTime(iso) {
 }
 
 function Avatar({ person, size = "w-11 h-11", text = "text-base" }) {
+  if (person?.anonymous) {
+    return (
+      <span className={`${size} rounded-full bg-gradient-to-br from-slate-800 to-slate-950 text-white grid place-items-center ring-2 ring-white shadow-md shrink-0`}>
+        <ShieldCheck className="w-[55%] h-[55%]" />
+      </span>
+    );
+  }
   if (person?.avatar_url) {
     return <img src={person.avatar_url} alt="" className={`${size} rounded-full object-cover ring-2 ring-white shadow-md shrink-0`} />;
   }
@@ -121,6 +129,10 @@ export default function Messages() {
   const [reactFor, setReactFor] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [confirmBlock, setConfirmBlock] = useState(false);
+  const [confirmEnd, setConfirmEnd] = useState(false);
+  const [activeConvId, setActiveConvId] = useState(null);
+  const [convClosed, setConvClosed] = useState(false);
+  const [convTab, setConvTab] = useState("all");
   const [blocked, setBlocked] = useState(false);
   const [headerMenu, setHeaderMenu] = useState(false);
   const [emojiOpen, setEmojiOpen] = useState(false);
@@ -162,10 +174,14 @@ export default function Messages() {
     } catch { /* graceful: header falls back to a generic label */ }
   }, []);
 
-  const openConversation = useCallback(async (otherId, otherObj) => {
+  const openConversation = useCallback(async (otherId, otherObj, convObj) => {
+    const isAnon = !!(otherObj?.anonymous || convObj?.other?.anonymous);
+    const cid = convObj?.id || null;
     stickRef.current = true;
     setActiveId(otherId);
     setActiveOther(otherObj?.name ? otherObj : { id: otherId, name: otherObj?.name || "" });
+    setActiveConvId(cid);
+    setConvClosed(!!convObj?.closed);
     setMsgs(null);
     setThreadError(null);
     setOtherTyping(false);
@@ -177,14 +193,17 @@ export default function Messages() {
     setHeaderMenu(false);
     setConvs((arr) => (arr ? arr.map((c) => (c.other?.id === otherId ? { ...c, unread: 0 } : c)) : arr));
     try {
-      const { data } = await api.get(`/dm/with/${otherId}`);
+      const { data } = isAnon && cid
+        ? await api.get(`/dm/conversations/${cid}`)
+        : await api.get(`/dm/with/${otherId}`);
       if (activeIdRef.current !== otherId) return;
       setMsgs(data?.items || data?.messages || []);
       setOtherTyping(!!data?.other_typing);
+      if (typeof data?.closed === "boolean") setConvClosed(data.closed);
       if (data?.other?.name) setActiveOther(data.other);
     } catch (e) {
       if (activeIdRef.current !== otherId) return;
-      if (e?.response?.status === 404) {
+      if (e?.response?.status === 404 && !isAnon) {
         setMsgs([]); // brand-new thread · created by the first send
       } else {
         setThreadError(e);
@@ -192,8 +211,23 @@ export default function Messages() {
       }
     }
     loadConvs(true);
-    if (!otherObj?.name) resolveName(otherId);
+    if (!otherObj?.name && !isAnon) resolveName(otherId);
   }, [loadConvs, resolveName]);
+
+  /* open a thread straight from its conversation id (notifications deep link) */
+  const openByConversation = useCallback(async (cid) => {
+    try {
+      const { data } = await api.get(`/dm/conversations/${cid}`);
+      const o = data?.other || {};
+      stickRef.current = true;
+      setActiveId(o.id || `anon:${cid}`);
+      setActiveOther(o);
+      setActiveConvId(cid);
+      setConvClosed(!!data?.closed);
+      setMsgs(data?.items || []);
+      setThreadError(null);
+    } catch { /* conversation not mine or gone · list stays visible */ }
+  }, []);
 
   /* initial load + quiet refresh of the list */
   useEffect(() => {
@@ -227,6 +261,15 @@ export default function Messages() {
     }
   }, [ready, user, searchParams, openConversation]);
 
+  /* deep link /messages?conv=<conversationId>: anonymous team chats land here */
+  useEffect(() => {
+    const conv = searchParams.get("conv");
+    if (ready && user && conv && !deepLinkedRef.current) {
+      deepLinkedRef.current = true;
+      openByConversation(conv);
+    }
+  }, [ready, user, searchParams, openByConversation]);
+
   /* fill the chat header name from the conversation list when it arrives */
   useEffect(() => {
     if (activeId && convs) {
@@ -234,18 +277,24 @@ export default function Messages() {
       if (c?.other?.name && activeOther?.id === activeId && activeOther.name !== c.other.name) {
         setActiveOther(c.other);
       }
+      if (c?.id && !activeConvId) setActiveConvId(c.id);
+      if (c && typeof c.closed === "boolean") setConvClosed(c.closed);
     }
-  }, [convs, activeId, activeOther]);
+  }, [convs, activeId, activeOther, activeConvId]);
 
   /* poll the open thread every 3s */
   useEffect(() => {
     if (!activeId) return undefined;
+    const anonPoll = activeOther?.anonymous && activeConvId;
     const t = setInterval(async () => {
       try {
-        const { data } = await api.get(`/dm/with/${activeId}`);
+        const { data } = anonPoll
+          ? await api.get(`/dm/conversations/${activeConvId}`)
+          : await api.get(`/dm/with/${activeId}`);
         if (activeIdRef.current !== activeId) return;
         const items = data?.items || data?.messages || [];
         setOtherTyping(!!data?.other_typing);
+        if (typeof data?.closed === "boolean") setConvClosed(data.closed);
         setMsgs((prev) => {
           const pending = (prev || []).filter((x) => x._pending);
           return [...items, ...pending];
@@ -253,7 +302,7 @@ export default function Messages() {
       } catch { /* silent poll */ }
     }, 3000);
     return () => clearInterval(t);
-  }, [activeId]);
+  }, [activeId, activeConvId, activeOther]);
 
   /* keep the view pinned to the newest message while the user is near the bottom */
   useEffect(() => {
@@ -276,6 +325,7 @@ export default function Messages() {
 
   const pingTyping = useCallback(() => {
     if (!activeIdRef.current) return;
+    if (String(activeIdRef.current).startsWith("anon:")) return; // team chats have no typing indicator
     const now = Date.now();
     if (now - lastPingRef.current < 2500) return;
     lastPingRef.current = now;
@@ -330,7 +380,10 @@ export default function Messages() {
     setMsgs((m) => [...(m || []), tmp]);
     try {
       const payload = reply ? { body, reply_to: reply.id } : { body };
-      const { data } = await api.post(`/dm/with/${activeId}`, payload);
+      const url = activeOther?.anonymous && activeConvId
+        ? `/dm/conversations/${activeConvId}`
+        : `/dm/with/${activeId}`;
+      const { data } = await api.post(url, payload);
       const saved = data?.message || data;
       applySavedMessage(tmp.id, saved && typeof saved === "object" ? saved : {}, body);
       if (saved?.id || saved?.body) {
@@ -392,6 +445,19 @@ export default function Messages() {
       const nowBlocked = typeof data?.blocked === "boolean" ? data.blocked : !blocked;
       setBlocked(nowBlocked);
       toast.success(nowBlocked ? "تم حظر المستخدم · لن تصلك رسائله" : "تم إلغاء الحظر");
+      loadConvs(true);
+    } catch (e) {
+      toast.error(apiErr(e));
+    }
+  };
+
+  const doEndConversation = async () => {
+    setConfirmEnd(false);
+    if (!activeConvId) return;
+    try {
+      await api.post(`/dm/conversations/${activeConvId}/end`);
+      setConvClosed(true);
+      toast.success("انتهت المحادثة · لا يمكن إرسال رسائل جديدة فيها");
       loadConvs(true);
     } catch (e) {
       toast.error(apiErr(e));
@@ -511,7 +577,7 @@ export default function Messages() {
     const push = (p) => {
       if (p?.id && p.id !== myId && !seen.has(p.id)) { seen.add(p.id); out.push(p); }
     };
-    (convs || []).forEach((c) => push(c.other));
+    (convs || []).forEach((c) => { if (!c.other?.anonymous) push(c.other); });
     (suggestions || []).forEach((p) => push(p));
     return out.slice(0, 12);
   }, [convs, suggestions, myId]);
@@ -533,7 +599,11 @@ export default function Messages() {
   }
 
   const totalUnread = (convs || []).reduce((s, c) => s + (c.unread || 0), 0);
-  const visibleConvs = (convs || []).filter((c) => !filter.trim() || (c.other?.name || "").includes(filter.trim()));
+  const visibleConvs = (convs || []).filter((c) => {
+    if (convTab === "team" && c.kind !== "anon_admin") return false;
+    if (convTab === "members" && c.kind === "anon_admin") return false;
+    return !filter.trim() || (c.other?.name || "").includes(filter.trim());
+  });
   const pickerList = pickerResults ?? suggestions ?? [];
   const overlayOpen = menuFor !== null || reactFor !== null || headerMenu;
   const cover = coverGradient(activeId || activeOther?.name);
@@ -797,6 +867,21 @@ export default function Messages() {
                       className="w-full rounded-full border border-white/70 bg-white/60 py-2.5 pe-10 ps-4 text-sm shadow-inner outline-none backdrop-blur transition focus:bg-white/90 focus:ring-2 ft-ring-accent"
                     />
                   </div>
+                  <div className="mt-3 flex gap-1.5" data-testid="messages-tabs">
+                    {[
+                      ["all", "الكل"],
+                      ["team", "فريق المنصة"],
+                      ["members", "الأعضاء"],
+                    ].map(([k, label]) => (
+                      <button
+                        key={k}
+                        onClick={() => setConvTab(k)}
+                        className={`pressable min-h-[38px] flex-1 rounded-full text-xs font-black transition ${convTab === k ? "ft-btn-primary text-white shadow-md" : "bg-white/60 text-slate-500 ring-1 ring-white/70 hover:bg-white"}`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
                 {/* conversation cards */}
@@ -824,7 +909,7 @@ export default function Messages() {
                     return (
                       <button
                         key={c.id || o.id}
-                        onClick={() => { setBlocked(false); openConversation(o.id, o); }}
+                        onClick={() => { setBlocked(false); openConversation(o.id, o, c); }}
                         style={{
                           animationDelay: `${Math.min(i, 8) * 50}ms`,
                           ...(isActive ? {
@@ -840,7 +925,15 @@ export default function Messages() {
                         <Avatar person={o} />
                         <span className="min-w-0 flex-1">
                           <span className="flex items-center justify-between gap-2">
-                            <span className="truncate font-head text-base font-bold text-slate-800">{o.name || "مستخدم"}</span>
+                            <span className="flex min-w-0 items-center gap-1.5">
+                              <span className="truncate font-head text-base font-bold text-slate-800">{o.name || "مستخدم"}</span>
+                              {c.kind === "anon_admin" && (
+                                <span className="shrink-0 rounded-full bg-slate-900 px-2 py-0.5 text-[9px] font-black text-white">فريق المنصة</span>
+                              )}
+                              {c.closed && (
+                                <span className="shrink-0 rounded-full bg-slate-200 px-2 py-0.5 text-[9px] font-black text-slate-500">منتهية</span>
+                              )}
+                            </span>
                             {c.last_at && <span className="shrink-0 text-[10px] text-slate-400">{timeAgo(c.last_at)}</span>}
                           </span>
                           <span className="mt-0.5 flex items-center justify-between gap-2">
@@ -894,7 +987,7 @@ export default function Messages() {
                         }}
                       />
                       <button
-                        onClick={() => setActiveId(null)}
+                        onClick={() => { setActiveId(null); setActiveConvId(null); setConvClosed(false); }}
                         aria-label="رجوع إلى المحادثات"
                         className="pressable absolute start-3 top-3 z-20 grid h-10 w-10 place-items-center rounded-full bg-white/25 text-white ring-1 ring-white/40 backdrop-blur transition hover:bg-white/40 lg:hidden"
                       >
@@ -909,21 +1002,39 @@ export default function Messages() {
                           <MoreVertical className="h-5 w-5" />
                         </button>
                         {headerMenu && (
-                          <div className="absolute end-0 top-12 z-40 w-48 animate-scale-in overflow-hidden rounded-2xl bg-white/95 py-1 shadow-[0_16px_36px_-12px_rgba(15,23,42,0.4)] ring-1 ring-white/60 backdrop-blur-xl">
-                            <Link
-                              to={`/profile/${activeId}`}
-                              onClick={() => setHeaderMenu(false)}
-                              className="flex w-full items-center gap-2 px-3.5 py-2.5 text-start text-[13px] font-semibold text-slate-600 transition hover:bg-slate-50"
-                            >
-                              <MessageCircle className="h-4 w-4" /> عرض الملف الشخصي
-                            </Link>
-                            <button
-                              type="button"
-                              onClick={() => { setHeaderMenu(false); setConfirmBlock(true); }}
-                              className={`flex w-full items-center gap-2 px-3.5 py-2.5 text-start text-[13px] font-semibold transition ${blocked ? "text-slate-600 hover:bg-slate-50" : "text-rose-500 hover:bg-rose-50"}`}
-                            >
-                              <Ban className="h-4 w-4" /> {blocked ? "إلغاء الحظر" : "حظر هذا المستخدم"}
-                            </button>
+                          <div className="absolute end-0 top-12 z-40 w-52 animate-scale-in overflow-hidden rounded-2xl bg-white/95 py-1 shadow-[0_16px_36px_-12px_rgba(15,23,42,0.4)] ring-1 ring-white/60 backdrop-blur-xl">
+                            {!activeOther?.anonymous && (
+                              <>
+                                <Link
+                                  to={`/profile/${activeId}`}
+                                  onClick={() => setHeaderMenu(false)}
+                                  className="flex w-full items-center gap-2 px-3.5 py-2.5 text-start text-[13px] font-semibold text-slate-600 transition hover:bg-slate-50"
+                                >
+                                  <MessageCircle className="h-4 w-4" /> عرض الملف الشخصي
+                                </Link>
+                                <button
+                                  type="button"
+                                  onClick={() => { setHeaderMenu(false); setConfirmBlock(true); }}
+                                  className={`flex w-full items-center gap-2 px-3.5 py-2.5 text-start text-[13px] font-semibold transition ${blocked ? "text-slate-600 hover:bg-slate-50" : "text-rose-500 hover:bg-rose-50"}`}
+                                >
+                                  <Ban className="h-4 w-4" /> {blocked ? "إلغاء الحظر" : "حظر هذا المستخدم"}
+                                </button>
+                              </>
+                            )}
+                            {activeConvId && !convClosed && (
+                              <button
+                                type="button"
+                                onClick={() => { setHeaderMenu(false); setConfirmEnd(true); }}
+                                className="flex w-full items-center gap-2 px-3.5 py-2.5 text-start text-[13px] font-semibold text-amber-600 transition hover:bg-amber-50"
+                              >
+                                <Lock className="h-4 w-4" /> إنهاء المحادثة
+                              </button>
+                            )}
+                            {convClosed && (
+                              <span className="flex w-full items-center gap-2 px-3.5 py-2.5 text-start text-[13px] font-semibold text-slate-400">
+                                <Lock className="h-4 w-4" /> محادثة منتهية
+                              </span>
+                            )}
                           </div>
                         )}
                       </div>
@@ -933,7 +1044,9 @@ export default function Messages() {
                         </span>
                         <div className="min-w-0 flex-1 pb-0.5">
                           {activeOther?.name
-                            ? <Link to={`/profile/${activeId}`} className="ft-hover-text-accent block truncate font-head text-base font-bold text-slate-800 transition-colors">{activeOther.name}</Link>
+                            ? (activeOther?.anonymous
+                              ? <span className="block truncate font-head text-base font-bold text-slate-800">{activeOther.name}</span>
+                              : <Link to={`/profile/${activeId}`} className="ft-hover-text-accent block truncate font-head text-base font-bold text-slate-800 transition-colors">{activeOther.name}</Link>)
                             : <span className="block font-head text-base font-bold text-slate-400">جارٍ التحميل…</span>}
                           {otherTyping ? (
                             <span className="flex items-center gap-1.5 text-[11px] font-bold ft-text-accent">
@@ -942,6 +1055,18 @@ export default function Messages() {
                           ) : blocked ? (
                             <span className="inline-flex items-center gap-1 text-[11px] font-bold text-rose-400">
                               <Ban className="h-3 w-3" /> محظور
+                            </span>
+                          ) : convClosed ? (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-400">
+                              <Lock className="h-3 w-3" /> انتهت هذه المحادثة
+                            </span>
+                          ) : activeOther?.anonymous ? (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-500">
+                              <ShieldCheck className="h-3 w-3" /> إدارة المنصة · الهوية محمية بالكامل
+                            </span>
+                          ) : activeOther?.anonymous_target ? (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-500">
+                              <ShieldCheck className="h-3 w-3" /> الطالب يراك باسم «فريق المنصة» فقط
                             </span>
                           ) : (
                             <span className="text-[11px] text-slate-400">محادثة خاصة</span>
@@ -1004,6 +1129,17 @@ export default function Messages() {
 
                     {/* floating composer dock */}
                     <div className="relative z-20 shrink-0 px-3 pb-[max(0.8rem,env(safe-area-inset-bottom))] pt-1 sm:px-4">
+                      {convClosed ? (
+                        <div className="mx-auto flex w-full max-w-4xl items-center gap-3 rounded-[28px] bg-slate-900 p-4 text-white shadow-[0_18px_44px_-16px_rgba(15,23,42,0.5)]">
+                          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-white/10">
+                            <Lock className="h-5 w-5" />
+                          </span>
+                          <div className="min-w-0">
+                            <p className="font-head text-sm font-extrabold">انتهت هذه المحادثة</p>
+                            <p className="text-[11px] leading-relaxed text-slate-300">لا يمكن إرسال رسائل جديدة فيها من أي طرف · تبقى الرسائل السابقة للقراءة فقط</p>
+                          </div>
+                        </div>
+                      ) : (
                       <div className="relative mx-auto w-full max-w-4xl rounded-[28px] bg-white/80 p-2 shadow-[0_18px_44px_-16px_rgba(15,23,42,0.4)] ring-1 ring-white/70 backdrop-blur-xl">
                         {emojiOpen && (
                           <div className="absolute bottom-[calc(100%+10px)] start-0 z-40 w-[290px] max-w-[86vw] animate-scale-in rounded-3xl bg-white/95 p-3 shadow-2xl ring-1 ring-white/60 backdrop-blur-xl">
@@ -1086,6 +1222,7 @@ export default function Messages() {
                           </button>
                         </div>
                       </div>
+                      )}
                     </div>
                   </>
                 )}
@@ -1135,6 +1272,26 @@ export default function Messages() {
               <button onClick={doBlock} className={`pressable min-h-[44px] flex-1 rounded-full text-sm font-bold text-white shadow-lg transition ${blocked ? "ft-btn-primary" : "bg-rose-500 hover:bg-rose-600"}`}>
                 {blocked ? "إلغاء الحظر" : "حظر"}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* end conversation confirmation */}
+      {confirmEnd && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-slate-900/50 p-4 backdrop-blur-sm" onClick={() => setConfirmEnd(false)}>
+          <div className="relative w-full max-w-sm animate-scale-in overflow-hidden rounded-[26px] bg-white/90 p-6 text-center shadow-[0_24px_60px_-24px_rgba(15,23,42,0.45)] ring-1 ring-white/60 backdrop-blur-xl" onClick={(e) => e.stopPropagation()}>
+            <span className="absolute inset-x-0 top-0 h-1 bg-gradient-to-l from-amber-400 to-amber-600" />
+            <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-amber-50 text-amber-500">
+              <Lock className="h-7 w-7" />
+            </div>
+            <h3 className="mt-4 font-head font-extrabold text-slate-800">إنهاء هذه المحادثة؟</h3>
+            <p className="mt-1.5 text-sm leading-relaxed text-slate-400">
+              ستُقفل المحادثة نهائياً على الطرفين · لن يستطيع أيٌّ منكما إرسال رسائل جديدة فيها أو العودة إليها
+            </p>
+            <div className="mt-6 flex gap-2.5">
+              <button onClick={() => setConfirmEnd(false)} className="pressable min-h-[44px] flex-1 rounded-full bg-slate-100 text-sm font-bold text-slate-600 transition hover:bg-slate-200">تراجع</button>
+              <button onClick={doEndConversation} className="pressable min-h-[44px] flex-1 rounded-full bg-amber-500 text-sm font-bold text-white shadow-lg transition hover:bg-amber-600">إنهاء المحادثة</button>
             </div>
           </div>
         </div>
