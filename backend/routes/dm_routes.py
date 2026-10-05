@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel, Field
 from db import db, oid, now_iso
-from auth import get_current_user
+from auth import get_current_user, require_permission
 from services import create_notification
 
 router = APIRouter(prefix="/api/dm")
@@ -35,7 +35,7 @@ def _pub(doc):
 
 async def _find_conv(me_id: str, uid: str):
     return await db.dm_conversations.find_one(
-        {"members": {"$all": [me_id, uid]}})
+        {"members": {"$all": [me_id, uid]}, "kind": {"$ne": "anon_admin"}})
 
 
 class MessageBody(BaseModel):
@@ -58,13 +58,25 @@ async def list_conversations(user: dict = Depends(get_current_user)):
         {"members": me}).sort("last_at", -1).to_list(200)
     items = []
     for c in convs:
-        other_id = next((m for m in c["members"] if m != me), me)
-        other = await _get_user(other_id)
-        if not other:
-            continue
+        anon = c.get("kind") == "anon_admin"
+        if anon and c.get("admin_id") != me:
+            # the student never learns who messaged them
+            other_pub = {"id": f"anon:{c['id']}", "name": "فريق المنصة",
+                         "avatar_url": None, "anonymous": True}
+            other_id = None
+        else:
+            other_id = next((m for m in c["members"] if m != me), me)
+            other = await _get_user(other_id)
+            if not other:
+                continue
+            other_pub = _pub(other)
+            if anon:
+                other_pub["anonymous_target"] = True
         items.append({
             "id": c["id"],
-            "other": _pub(other),
+            "other": other_pub,
+            "kind": c.get("kind", "peer"),
+            "closed": bool(c.get("closed")),
             "last_message": c.get("last_message", ""),
             "last_at": c.get("last_at", c.get("created_at", "")),
             "unread": (c.get("unread") or {}).get(me, 0),
@@ -136,6 +148,8 @@ async def send_message(uid: str, body: MessageBody,
         raise HTTPException(status_code=400, detail="الرسالة فارغة")
     now = now_iso()
     conv = await _find_conv(me, uid)
+    if conv and conv.get("closed"):
+        raise HTTPException(status_code=403, detail="انتهت هذه المحادثة · لا يمكن إرسال رسائل جديدة فيها")
     if not conv:
         conv = {
             "id": uuid.uuid4().hex,
@@ -262,6 +276,171 @@ async def unread_count(user: dict = Depends(get_current_user)):
     convs = await db.dm_conversations.find({"members": me}).to_list(500)
     count = sum((c.get("unread") or {}).get(me, 0) for c in convs)
     return {"count": count}
+
+
+# ------------------------------------------------------------ conversation-addressed threads
+def _other_pub_for(conv: dict, me: str):
+    """Who the viewer sees as the other side (masked for anonymous admin chats)."""
+    if conv.get("kind") == "anon_admin" and conv.get("admin_id") != me:
+        return {"id": f"anon:{conv['id']}", "name": "فريق المنصة",
+                "avatar_url": None, "anonymous": True}
+    other_id = next((m for m in conv["members"] if m != me), me)
+    return other_id
+
+
+async def _conv_or_403(cid: str, me: str):
+    conv = await db.dm_conversations.find_one({"id": cid, "members": me})
+    if not conv:
+        raise HTTPException(status_code=404, detail="المحادثة غير موجودة")
+    return conv
+
+
+@router.get("/conversations/{cid}")
+async def get_conversation_thread(cid: str, user: dict = Depends(get_current_user)):
+    me = user["id"]
+    conv = await _conv_or_403(cid, me)
+    other_ref = _other_pub_for(conv, me)
+    if isinstance(other_ref, dict):
+        other_pub = other_ref
+        uid = conv.get("admin_id")
+    else:
+        uid = other_ref
+        other = await _get_user(uid)
+        if not other:
+            raise HTTPException(status_code=404, detail="المستخدم غير موجود")
+        other_pub = _pub(other)
+        if conv.get("kind") == "anon_admin":
+            other_pub["anonymous_target"] = True
+    msgs = await db.dm_messages.find(
+        {"conversation_id": conv["id"]}).sort("at", 1).to_list(1000)
+    now = now_iso()
+    updates = {f"last_read.{me}": now}
+    if (conv.get("unread") or {}).get(me, 0):
+        updates[f"unread.{me}"] = 0
+    await db.dm_conversations.update_one({"id": conv["id"]}, {"$set": updates})
+    other_last_read = _parse_ts((conv.get("last_read") or {}).get(uid))
+    items = []
+    for m in msgs:
+        mine = m["sender_id"] == me
+        at_dt = _parse_ts(m.get("at"))
+        item = {
+            "id": m["id"], "from_me": mine,
+            "body": "" if m.get("deleted") else m.get("body", ""),
+            "at": m["at"], "reactions": m.get("reactions") or {},
+            "reply": m.get("reply"), "edited": bool(m.get("edited")),
+            "deleted": bool(m.get("deleted")),
+        }
+        if mine:
+            item["seen"] = bool(other_last_read and at_dt and at_dt <= other_last_read)
+        items.append(item)
+    return {"other": other_pub, "items": items, "other_typing": False,
+            "kind": conv.get("kind", "peer"), "closed": bool(conv.get("closed"))}
+
+
+@router.post("/conversations/{cid}")
+async def send_in_conversation(cid: str, body: MessageBody,
+                               user: dict = Depends(get_current_user)):
+    me = user["id"]
+    conv = await _conv_or_403(cid, me)
+    if conv.get("closed"):
+        raise HTTPException(status_code=403, detail="انتهت هذه المحادثة · لا يمكن إرسال رسائل جديدة فيها")
+    text = body.body.strip()
+    if not text:
+        raise HTTPException(status_code=400, detail="الرسالة فارغة")
+    uid = next((m for m in conv["members"] if m != me), me)
+    other = await _get_user(uid)
+    if not other:
+        raise HTTPException(status_code=404, detail="المستخدم غير موجود")
+    if uid in (user.get("blocked_users") or []):
+        raise HTTPException(status_code=403, detail="لقد حظرت هذا المستخدم")
+    if me in (other.get("blocked_users") or []):
+        raise HTTPException(status_code=403, detail="لا يمكنك مراسلة هذا المستخدم")
+    now = now_iso()
+    reply = None
+    if body.reply_to:
+        orig = await db.dm_messages.find_one(
+            {"id": body.reply_to, "conversation_id": conv["id"]})
+        if orig:
+            reply = {"id": orig["id"],
+                     "name": user.get("name", "") if orig["sender_id"] == me else "فريق المنصة",
+                     "text": (orig.get("body") or "")[:90]}
+    msg = {"id": uuid.uuid4().hex, "conversation_id": conv["id"],
+           "sender_id": me, "body": text, "at": now, "reply": reply}
+    await db.dm_messages.insert_one(msg)
+    await db.dm_conversations.update_one(
+        {"id": conv["id"]},
+        {"$set": {"last_message": text, "last_at": now},
+         "$inc": {f"unread.{uid}": 1}})
+    try:
+        if conv.get("kind") == "anon_admin" and conv.get("admin_id") == me:
+            await create_notification(
+                uid, "message", "رسالة من فريق المنصة",
+                f"وصلتك رسالة جديدة من فريق المنصة: {text[:60]}",
+                link=f"/messages?conv={conv['id']}")
+        else:
+            await create_notification(
+                uid, "message", "رسالة جديدة",
+                f"أرسل لك {user.get('name', '')} رسالة: {text[:60]}",
+                link=f"/messages?conv={conv['id']}")
+    except Exception:
+        pass
+    return {"ok": True}
+
+
+@router.post("/conversations/{cid}/end")
+async def end_conversation(cid: str, user: dict = Depends(get_current_user)):
+    """Either side can end the chat · an ended chat is locked for BOTH sides."""
+    me = user["id"]
+    conv = await _conv_or_403(cid, me)
+    if not conv.get("closed"):
+        await db.dm_conversations.update_one(
+            {"id": conv["id"]},
+            {"$set": {"closed": True, "closed_by": me, "closed_at": now_iso()}})
+    return {"ok": True, "closed": True}
+
+
+class AdminContactBody(BaseModel):
+    user_id: str
+    body: str = Field(min_length=1, max_length=2000)
+
+
+@router.post("/admin-conversations")
+async def admin_contact(body: AdminContactBody,
+                        user: dict = Depends(require_permission("report.manage"))):
+    """Staff message a user anonymously (the user sees «فريق المنصة» only)."""
+    me = user["id"]
+    uid = body.user_id
+    if uid == me:
+        raise HTTPException(status_code=400, detail="لا يمكنك مراسلة نفسك")
+    other = await _get_user(uid)
+    if not other:
+        raise HTTPException(status_code=404, detail="المستخدم غير موجود")
+    conv = await db.dm_conversations.find_one(
+        {"members": {"$all": [me, uid]}, "kind": "anon_admin",
+         "admin_id": me, "closed": {"$ne": True}})
+    now = now_iso()
+    if not conv:
+        conv = {"id": uuid.uuid4().hex, "members": sorted([me, uid]),
+                "kind": "anon_admin", "admin_id": me,
+                "last_message": "", "last_at": now,
+                "unread": {me: 0, uid: 0}, "closed": False, "created_at": now}
+        await db.dm_conversations.insert_one(conv)
+    text = body.body.strip()
+    msg = {"id": uuid.uuid4().hex, "conversation_id": conv["id"],
+           "sender_id": me, "body": text, "at": now, "reply": None}
+    await db.dm_messages.insert_one(msg)
+    await db.dm_conversations.update_one(
+        {"id": conv["id"]},
+        {"$set": {"last_message": text, "last_at": now},
+         "$inc": {f"unread.{uid}": 1}})
+    try:
+        await create_notification(
+            uid, "message", "رسالة من فريق المنصة",
+            f"وصلتك رسالة جديدة من فريق المنصة: {text[:60]}",
+            link=f"/messages?conv={conv['id']}")
+    except Exception:
+        pass
+    return {"ok": True, "conversation_id": conv["id"]}
 
 
 @router.post("/block/{uid}")

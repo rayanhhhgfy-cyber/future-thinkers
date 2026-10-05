@@ -87,18 +87,22 @@ const MORE_GROUPS = [
   ]},
 ];
 
-export function Navbar() {
-  const { user, logout, isStaff } = useAuth();
+function useNavLinks() {
   const { toggles } = useSiteConfig();
   const navVisible = (l) => {
     const sec = sectionOfPath(l.to);
     return !sec || toggles[sec] !== false;
   };
-  const NAV_DISCOVER = DISCOVER_LINKS.filter(navVisible);
-  const NAV_PRIMARY = NAV_DISCOVER.slice(0, 6);
-  const NAV_GROUPS = MORE_GROUPS
+  const discover = DISCOVER_LINKS.filter(navVisible);
+  const groups = MORE_GROUPS
     .map((g) => ({ ...g, items: g.items.filter(navVisible) }))
     .filter((g) => g.items.length > 0);
+  return { discover, primary: discover.slice(0, 6), groups };
+}
+
+export function Navbar() {
+  const { user, logout, isStaff } = useAuth();
+  const { discover: NAV_DISCOVER, primary: NAV_PRIMARY, groups: NAV_GROUPS } = useNavLinks();
   const nav = useNavigate();
   const loc = useLocation();
   const [open, setOpen] = useState(false);
@@ -379,6 +383,7 @@ function MobileTabBar({ user, pathname, dmUnread, onExplore }) {
 /* center with user card, quick actions, grouped nav and animations.   */
 /* ------------------------------------------------------------------ */
 function MobileDrawer({ open, onClose, user, gam, isStaff, pathname, nav, logout }) {
+  const { discover: NAV_DISCOVER, groups: NAV_GROUPS } = useNavLinks();
   const quick = [
     { to: "/dashboard", label: "لوحتي", icon: LayoutDashboard, grad: "from-emerald-500 to-teal-600" },
     { to: user ? `/profile/${user.id}` : "/login", label: "ملفي", icon: User, grad: "from-blue-500 to-indigo-600" },

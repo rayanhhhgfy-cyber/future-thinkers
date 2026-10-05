@@ -3,9 +3,10 @@ import { useNavigate } from "react-router-dom";
 import api, { apiErr } from "@/lib/api";
 import { toast } from "sonner";
 import { PageLoader } from "@/components/Layout";
+import { useAuth } from "@/context/AuthContext";
 import { FadeUp, Stagger, Item } from "@/components/anim";
 import { timeAgo } from "@/components/NotificationsPanel";
-import { Bug, Copy, Mail, CheckCircle2, Trash2, RefreshCw, ChevronDown, Inbox, Wrench, Sigma } from "lucide-react";
+import { Bug, Copy, Mail, CheckCircle2, Trash2, RefreshCw, ChevronDown, Inbox, Wrench, Sigma, ShieldCheck, Send, X } from "lucide-react";
 
 /* سجل الأخطاء
    الإجراءات: resolve و delete كما هي، و«مراسلة المستخدم» تفتح الآن محادثة
@@ -21,6 +22,7 @@ const SRC = {
 
 export default function AdminErrors() {
   const nav = useNavigate();
+  const { user } = useAuth();
   const [items, setItems] = useState(null);
   const [counts, setCounts] = useState({ open: 0, resolved: 0, total: 0 });
   const [status, setStatus] = useState("open");
@@ -56,14 +58,33 @@ export default function AdminErrors() {
     try { await navigator.clipboard.writeText(text); toast.success("تم نسخ الخطأ كاملًا 📋"); }
     catch { toast.error("تعذر النسخ"); }
   };
-  /* مراسلة صاحب البلاغ: محادثة خاصة مباشرة (تُفتح/تُنشأ عند أول رسالة).
-     البلاغات بلا حساب مسجل لا يمكن مراسلتها · نُظهر السبب بدل الصمت. */
+  /* مراسلة صاحب البلاغ: نافذة رسالة مجهولة الهوية باسم «فريق المنصة» ·
+     لا يرى الطالب اسم المشرف ولا بريده ولا ملفه أبداً، وتصله كإشعار. */
+  const [contact, setContact] = useState(null); // error item being messaged
+  const [contactMsg, setContactMsg] = useState("");
+  const [contactSent, setContactSent] = useState(null); // conversation id after send
   const dmUser = (e) => {
     if (!e.user_id) {
       toast.error("هذا البلاغ من زائر غير مسجّل · لا يمكن مراسلته");
       return;
     }
-    nav(`/messages?to=${e.user_id}`);
+    if (e.user_id === user?.id) {
+      toast.info("هذا الخطأ حدث أثناء استخدامك أنت للمنصة · لا حاجة لمراسلة نفسك");
+      return;
+    }
+    setContactSent(null);
+    setContactMsg("مرحبًا، لاحظنا حدوث خطأ أثناء استخدامك المنصة وعملنا على إصلاحه. جرّب الآن وأخبرنا إن تكرر 🙏");
+    setContact(e);
+  };
+  const sendContact = async () => {
+    if (!contact || contactMsg.trim().length < 3) return;
+    setBusy("contact");
+    try {
+      const { data } = await api.post("/dm/admin-conversations", { user_id: contact.user_id, body: contactMsg.trim() });
+      setContactSent(data.conversation_id);
+      toast.success("وصلت الرسالة باسم «فريق المنصة» · لن يظهر اسمك أو بريدك");
+    } catch (er) { toast.error(apiErr(er)); }
+    setBusy("");
   };
 
   const statCards = [
@@ -174,6 +195,58 @@ export default function AdminErrors() {
           <button disabled={page <= 1} onClick={() => { const p = page - 1; setPage(p); load(p); }} className="px-4 py-2 rounded-xl bg-white border border-slate-100 text-sm font-bold disabled:opacity-40">السابق</button>
           <span className="text-sm text-slate-500 font-bold">{page} / {pages}</span>
           <button disabled={page >= pages} onClick={() => { const p = page + 1; setPage(p); load(p); }} className="px-4 py-2 rounded-xl bg-white border border-slate-100 text-sm font-bold disabled:opacity-40">التالي</button>
+        </div>
+      )}
+
+      {/* نافذة المراسلة المجهولة · باسم «فريق المنصة» */}
+      {contact && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-slate-900/50 p-4 backdrop-blur-sm" onClick={() => setContact(null)}>
+          <div className="relative w-full max-w-md animate-scale-in overflow-hidden rounded-[26px] bg-white p-6 shadow-[0_24px_60px_-24px_rgba(15,23,42,0.45)]" onClick={(e) => e.stopPropagation()} data-testid="admin-error-compose">
+            <span className="absolute inset-x-0 top-0 h-1 bg-gradient-to-l from-sky-400 to-indigo-500" />
+            <div className="flex items-start gap-3">
+              <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-slate-900 text-white">
+                <ShieldCheck className="h-6 w-6" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <h3 className="font-head font-extrabold text-slate-900">مراسلة {contact.user_name || "المستخدم"}</h3>
+                <p className="mt-0.5 text-xs leading-relaxed text-slate-400">
+                  ستصل الرسالة باسم «فريق المنصة» فقط · لن يظهر اسمك ولا بريدك ولا ملفك الشخصي، وسيصله إشعار فوراً
+                </p>
+              </div>
+              <button onClick={() => setContact(null)} aria-label="إغلاق" className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-slate-400 hover:bg-slate-100">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            {contactSent ? (
+              <div className="mt-5 rounded-2xl bg-emerald-50 p-4 text-center">
+                <CheckCircle2 className="mx-auto h-8 w-8 text-emerald-500" />
+                <p className="mt-2 text-sm font-bold text-emerald-800">أُرسلت الرسالة بنجاح</p>
+                <p className="mt-1 text-xs leading-relaxed text-emerald-600">يمكنك متابعة الردود من صفحة الرسائل · ويستطيع أي طرف إنهاء المحادثة نهائياً في أي وقت</p>
+                <div className="mt-4 flex gap-2">
+                  <button onClick={() => setContact(null)} className="min-h-[44px] flex-1 rounded-full bg-white text-sm font-bold text-slate-600 ring-1 ring-slate-200">إغلاق</button>
+                  <button onClick={() => nav(`/messages?conv=${contactSent}`)} className="min-h-[44px] flex-1 rounded-full bg-slate-900 text-sm font-bold text-white">فتح المحادثة</button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <textarea
+                  value={contactMsg}
+                  onChange={(e) => setContactMsg(e.target.value)}
+                  rows={4}
+                  maxLength={2000}
+                  autoFocus
+                  className="mt-4 w-full resize-none rounded-2xl border border-slate-200 bg-slate-50/60 p-3.5 text-sm leading-relaxed outline-none transition focus:border-sky-400 focus:bg-white"
+                  placeholder="اكتب رسالتك للمستخدم…"
+                />
+                <div className="mt-4 flex gap-2">
+                  <button onClick={() => setContact(null)} className="min-h-[44px] flex-1 rounded-full bg-slate-100 text-sm font-bold text-slate-600 transition hover:bg-slate-200">إلغاء</button>
+                  <button onClick={sendContact} disabled={busy === "contact" || contactMsg.trim().length < 3} className="flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-full bg-sky-600 text-sm font-bold text-white shadow-lg transition hover:bg-sky-700 disabled:opacity-50">
+                    <Send className="h-4 w-4 -scale-x-100" /> إرسال كفريق المنصة
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       )}
 
