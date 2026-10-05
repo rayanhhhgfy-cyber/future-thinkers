@@ -1,6 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { Logo, LogoMark } from "@/components/Logo";
+import ReportProblem from "@/components/ReportProblem";
 
 const COLS = [
   { title: "استكشف", links: [
@@ -71,6 +72,10 @@ export function Footer() {
       <div className="relative border-t border-white/10">
         <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-10 py-5 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-400">
           <span>© {new Date().getFullYear()} منصة مفكري المستقبل · جميع الحقوق محفوظة</span>
+          <span className="inline-flex flex-wrap items-center gap-2.5" data-testid="footer-made-by">
+            <span className="inline-flex items-center gap-1.5">Made by <span className="text-slate-100 font-bold">ريان الجمل · أوس التميمي · طه عبابنه</span></span>
+            <ReportProblem />
+          </span>
           <span className="inline-flex items-center gap-1.5">صُنعت بشغف لطلاب الأردن <span className="ft-text-accent-bright font-bold">· مفكرو المستقبل</span></span>
         </div>
       </div>

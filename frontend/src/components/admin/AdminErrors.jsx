@@ -20,6 +20,23 @@ const SRC = {
   manual: ["بلاغ مستخدم", "bg-emerald-100 text-emerald-700", "#059669"],
 };
 
+/* صورة البلاغ المرفقة من نموذج «الإبلاغ عن مشكلة» · تُجلب عند فتح البطاقة
+   فقط حتى تبقى قائمة الأخطاء خفيفة */
+function ReportImage({ id }) {
+  const [src, setSrc] = useState("");
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    api.get(`/admin/errors/${id}/image`)
+      .then(({ data }) => { if (alive) setSrc(data.image || ""); })
+      .catch(() => { if (alive) setFailed(true); });
+    return () => { alive = false; };
+  }, [id]);
+  if (failed) return <p className="mt-3 text-[11px] font-bold text-rose-500">تعذر تحميل الصورة المرفقة</p>;
+  if (!src) return <p className="mt-3 text-[11px] text-slate-400">جارٍ تحميل الصورة…</p>;
+  return <img src={src} alt="لقطة شاشة البلاغ" className="mt-3 max-h-80 w-full rounded-2xl border border-slate-100 bg-slate-50 object-contain" />;
+}
+
 export default function AdminErrors() {
   const nav = useNavigate();
   const { user } = useAuth();
@@ -169,6 +186,7 @@ export default function AdminErrors() {
                     {opened && (
                       <div className="mt-3">
                         <pre dir="ltr" className="text-left bg-slate-900 text-emerald-200/90 text-[11px] leading-relaxed rounded-2xl p-3.5 max-h-72 overflow-auto whitespace-pre-wrap break-words">{e.detail || "لا توجد تفاصيل تقنية مرفقة"}</pre>
+                        {e.has_image && <ReportImage id={e.id} />}
                       </div>
                     )}
                     <div className="mt-3.5 flex flex-wrap gap-2">

@@ -7,7 +7,7 @@ admin can see exactly what happened, copy it, and message the affected user.
 from datetime import timedelta
 from fastapi import APIRouter, HTTPException, Depends, Request
 from pydantic import BaseModel
-from db import db, ser, sers, oid, now_iso
+from db import db, ser, oid, now_iso
 from auth import get_optional_user, require_permission
 from services import create_notification, audit_log
 
@@ -20,13 +20,38 @@ class ErrorReportBody(BaseModel):
     page: str = ""
     source: str = "manual"  # manual | auto | client
     context: str = ""
+    # «الإبلاغ عن مشكلة» من المستخدم: عنوان صريح + صورة اختيارية
+    subject: str = ""
+    image: str = ""  # base64 (بلا بادئة data:) لقطة شاشة مضغوطة من المتصفح
+    image_type: str = ""
+
+
+_IMAGE_TYPES = ("image/jpeg", "image/png", "image/webp")
+_MAX_IMAGE_B64 = 1_400_000  # ≈ 1MB ثنائي · الصورة تُضغط أصلًا في المتصفح
+
+
+def _clean_image(raw: str, ctype: str):
+    """Return (base64, content_type) for a valid screenshot, else (None, None)."""
+    img = (raw or "").strip()
+    if img.startswith("data:"):
+        head, _, tail = img.partition(",")
+        if tail:
+            ctype = ctype or head[5:].split(";")[0]
+            img = tail
+    if not img or len(img) > _MAX_IMAGE_B64:
+        return None, None
+    if ctype not in _IMAGE_TYPES:
+        ctype = "image/jpeg"
+    return img, ctype
 
 
 @router.post("/errors/report")
 async def report_error(body: ErrorReportBody, request: Request):
     user = await get_optional_user(request)
     uid = user["id"] if user else None
-    msg = (body.message or "خطأ غير معروف").strip()[:300]
+    subject = (body.subject or "").strip()[:150]
+    msg = (subject or body.message or "خطأ غير معروف").strip()[:300]
+    image, image_type = _clean_image(body.image, body.image_type)
     # de-noise: an identical auto-report storm from one user counts once
     if body.source == "auto" and uid:
         recent = await db.error_reports.count_documents({
@@ -37,10 +62,13 @@ async def report_error(body: ErrorReportBody, request: Request):
             return {"ok": True, "deduped": True}
     doc = {
         "message": msg,
+        "subject": subject,
         "detail": (body.detail or "")[:20000],
         "page": (body.page or "")[:300],
         "source": body.source if body.source in ("manual", "auto", "client") else "manual",
         "context": (body.context or "")[:200],
+        "image": image,
+        "image_type": image_type,
         "user_id": uid,
         "user_name": user["name"] if user else None,
         "user_email": user["email"] if user else None,
@@ -78,7 +106,24 @@ async def list_errors(status: str = "open", source: str = "", page: int = 1, lim
         "total": await db.error_reports.count_documents({}),
     }
     docs = await db.error_reports.find(q).sort("created_at", -1).skip((page - 1) * limit).limit(limit).to_list(limit)
-    return {"items": sers(docs), "total": total, "page": page, "pages": max(1, -(-total // limit)), "counts": counts}
+    items = []
+    for d in docs:
+        item = ser(d)
+        item["has_image"] = bool(d.get("image"))
+        item.pop("image", None)  # الصورة ثقيلة · تُجلب عند الطلب من مسار منفصل
+        items.append(item)
+    return {"items": items, "total": total, "page": page, "pages": max(1, -(-total // limit)), "counts": counts}
+
+
+@router.get("/admin/errors/{eid}/image")
+async def error_image(eid: str, user: dict = Depends(require_permission("report.manage"))):
+    e = await db.error_reports.find_one({"_id": oid(eid)}, {"image": 1, "image_type": 1})
+    if not e:
+        raise HTTPException(status_code=404, detail="غير موجود")
+    if not e.get("image"):
+        raise HTTPException(status_code=404, detail="لا توجد صورة مرفقة")
+    ct = e.get("image_type") or "image/jpeg"
+    return {"image": f"data:{ct};base64,{e['image']}"}
 
 
 class ResolveBody(BaseModel):
