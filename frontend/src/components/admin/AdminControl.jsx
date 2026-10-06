@@ -67,9 +67,9 @@ function Panel({ icon: Icon, grad, shadow, title, sub, children, extra, i = 0 })
   );
 }
 
-function Switch({ on, onClick, busy, testid }) {
+function Switch({ on, onClick, busy, testid, label }) {
   return (
-    <button type="button" disabled={busy} onClick={onClick} data-testid={testid} aria-pressed={on}
+    <button type="button" disabled={busy} onClick={onClick} data-testid={testid} aria-pressed={on} aria-label={label}
       className={`relative h-9 w-16 shrink-0 rounded-full transition-all duration-300 disabled:opacity-50 ${on ? "bg-gradient-to-l from-emerald-400 to-emerald-600 shadow-[0_8px_20px_rgba(16,185,129,0.45)]" : "bg-slate-200 shadow-inner"}`}>
       <span className={`absolute top-1 grid h-7 w-7 place-items-center rounded-full bg-white shadow-md transition-all duration-300 ${on ? "end-1" : "start-1"}`}>
         <Power className={`h-3.5 w-3.5 ${on ? "text-emerald-500" : "text-slate-300"}`} />
@@ -191,7 +191,7 @@ export default function AdminControl() {
                         <span className={`h-1.5 w-1.5 rounded-full ${on ? "bg-white" : "bg-rose-400"}`} />
                         {on ? "مفتوح للطلاب" : "مقفل الآن"}
                       </span>
-                      <Switch on={on} busy={busy === `t-${k}`} testid={`section-toggle-${k}`}
+                      <Switch label={`تبديل قسم ${label}`} on={on} busy={busy === `t-${k}`} testid={`section-toggle-${k}`}
                         onClick={() => act(`t-${k}`, () => api.put("/admin/controls/config", { toggles: { [k]: !cfg.toggles[k] } }), cfg.toggles[k] ? `أُغلق قسم ${label}` : `فُتح قسم ${label}`)} />
                     </div>
                   </div>
@@ -214,7 +214,7 @@ export default function AdminControl() {
                 <p className={`flex-1 font-head text-sm font-black ${maintOn ? "text-rose-700" : "text-slate-700"}`}>
                   {maintOn ? "الموقع مغلق الآن على غير الفريق" : "الموقع مفتوح للجميع"}
                 </p>
-                <Switch on={maintOn} busy={busy === "maint"} testid="maintenance-toggle"
+                <Switch label="وضع الصيانة" on={maintOn} busy={busy === "maint"} testid="maintenance-toggle"
                   onClick={() => act("maint", () => api.put("/admin/controls/config", { maintenance: { on: !cfg.maintenance.on, message: cfg.maintenance.message || "" } }), cfg.maintenance.on ? "أُلغي وضع الصيانة" : "فُعّل وضع الصيانة · الموقع مغلق الآن")} />
               </div>
               <div className="mt-4 flex flex-col gap-2 sm:flex-row">
@@ -422,7 +422,7 @@ export default function AdminControl() {
                   <span className="rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-black text-white shadow-sm shadow-amber-500/40">{d.xp} XP</span>
                 </div>
               </div>
-              <Switch on={!!d.active} busy={busy === `ma-${d.id}`} testid={`mission-toggle-${d.id}`}
+              <Switch label={`تفعيل مهمة ${d.title || ""}`} on={!!d.active} busy={busy === `ma-${d.id}`} testid={`mission-toggle-${d.id}`}
                 onClick={() => act(`ma-${d.id}`, () => api.put(`/admin/controls/missions/${d.id}`, { ...d, active: !d.active }), d.active ? "أُوقفت المهمة" : "فُعّلت المهمة")} />
               <button disabled={busy === `md-${d.id}`} data-testid={`mission-del-${d.id}`} aria-label={`حذف ${d.title}`}
                 onClick={() => act(`md-${d.id}`, () => api.delete(`/admin/controls/missions/${d.id}`), "حُذفت المهمة")}

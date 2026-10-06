@@ -24,9 +24,9 @@ const NOTIF_KINDS = [
   { k: "social", l: "متابِعون جدد", icon: Heart },
 ];
 
-function Toggle({ on, onClick, disabled }) {
+function Toggle({ on, onClick, disabled, label }) {
   return (
-    <button type="button" onClick={onClick} disabled={disabled} role="switch" aria-checked={!!on}
+    <button type="button" onClick={onClick} disabled={disabled} role="switch" aria-checked={!!on} aria-label={label}
       className={`relative w-12 h-7 rounded-full transition-colors shrink-0 disabled:opacity-40 ${on ? "ft-btn-solid" : "bg-slate-300"}`}>
       <span className={`absolute top-1 w-5 h-5 rounded-full bg-white shadow transition-all ${on ? "left-1" : "right-1"}`} />
     </button>
@@ -381,7 +381,7 @@ export default function Settings() {
                 {!pushSupported ? "غير مدعومة على هذا المتصفح" : pushDenied ? "رُفض الإذن من المتصفح · فعّله من إعداداته" : pushOn ? "مفعّلة على هذا الجهاز" : "متوقفة على هذا الجهاز"}
               </div>
             </div>
-            <Toggle on={!!pushOn} onClick={togglePush} disabled={pushBusy || !pushSupported || pushDenied || pushOn === null} />
+            <Toggle label="إشعارات الهاتف (Push)" on={!!pushOn} onClick={togglePush} disabled={pushBusy || !pushSupported || pushDenied || pushOn === null} />
           </div>
           {pushOn && <button onClick={testPush} disabled={pushBusy} className="mt-3 min-h-[44px] px-4 rounded-xl bg-amber-100 text-amber-800 text-sm font-bold disabled:opacity-40">🔔 إرسال إشعار اختبار</button>}
           <p className="text-[11px] text-slate-400 mt-2">على iPhone: ثبّت التطبيق على الشاشة الرئيسية أولاً لتفعيل إشعارات الهاتف.</p>
@@ -390,7 +390,7 @@ export default function Settings() {
             {NOTIF_KINDS.map(({ k, l, icon: Icon }) => (
               <div key={k} className="flex items-center justify-between gap-3 py-2.5 border-b border-slate-50 last:border-0">
                 <span className="flex items-center gap-2 text-sm font-medium text-slate-700"><Icon className="w-4 h-4 text-slate-400" />{l}</span>
-                <Toggle on={prefs[k] !== false} onClick={() => {
+                <Toggle label={l} on={prefs[k] !== false} onClick={() => {
                   const updated = { ...prefs, [k]: prefs[k] === false };
                   setPrefs(updated); save("prefs", { notify_prefs: updated }, "حُفظت تفضيلات الإشعارات");
                 }} />
@@ -409,7 +409,7 @@ export default function Settings() {
           ].map(({ k, l }) => (
             <div key={k} className="flex items-center justify-between gap-3 py-2.5 border-b border-slate-50 last:border-0">
               <span className="text-sm font-medium text-slate-700">{l}</span>
-              <Toggle on={privacy[k] !== false} onClick={() => {
+              <Toggle label={l} on={privacy[k] !== false} onClick={() => {
                 const updated = { ...privacy, [k]: privacy[k] === false };
                 setPrivacy(updated); save("privacy", { privacy: updated }, "حُفظت الخصوصية");
               }} />

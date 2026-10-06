@@ -263,7 +263,7 @@ export function Navbar() {
             <kbd className="text-[10px] font-bold bg-white border border-slate-200 rounded-md px-1.5 py-0.5 shadow-sm">Ctrl K</kbd>
           </button>
           <span className="xl:hidden">
-            <Button variant="ghost" size="icon" data-testid="open-search-btn" onClick={() => setSearchOpen(true)} className="rounded-xl">
+            <Button aria-label="بحث" variant="ghost" size="icon" data-testid="open-search-btn" onClick={() => setSearchOpen(true)} className="rounded-xl">
               <Search className="w-5 h-5" />
             </Button>
           </span>
@@ -272,7 +272,7 @@ export function Navbar() {
           {user ? (
             <>
               <div className="relative">
-                <Button variant="ghost" size="icon" data-testid="notifications-btn" onClick={() => setNotifOpen((v) => !v)} className="rounded-xl relative">
+                <Button variant="ghost" size="icon" data-testid="notifications-btn" aria-label="الإشعارات" onClick={() => setNotifOpen((v) => !v)} className="rounded-xl relative">
                   <Bell className="w-5 h-5" />
                   {unread > 0 && <span className="absolute -top-0.5 -left-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-rose-600 text-white text-[10px] grid place-items-center">{unread}</span>}
                 </Button>
@@ -314,7 +314,7 @@ export function Navbar() {
               <Button data-testid="nav-register-btn" onClick={() => nav("/register")} className="rounded-full ft-btn-primary text-white font-extrabold px-6 h-11 shadow-lg">انضم الآن</Button>
             </div>
           )}
-          <Button variant="ghost" size="icon" className="lg:hidden rounded-xl" data-testid="mobile-menu-btn" onClick={() => setOpen((v) => !v)}>
+          <Button aria-label="القائمة" variant="ghost" size="icon" className="lg:hidden rounded-xl" data-testid="mobile-menu-btn" onClick={() => setOpen((v) => !v)}>
             {open ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </Button>
         </div>
