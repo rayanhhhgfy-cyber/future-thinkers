@@ -252,3 +252,9 @@ html[data-shadow="bold"] .ft-shadow-lg { box-shadow: 0 28px 64px -16px rgba(15, 
   outline: 2px solid var(--ft-accent, #0d9488);
   outline-offset: 2px;
 }
+
+/* Print: clean A4 sheets (achievement file, certificates) */
+@page { margin: 11mm; }
+@media print {
+  .print-sheet { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+}

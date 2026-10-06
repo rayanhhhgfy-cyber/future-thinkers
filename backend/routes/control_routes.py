@@ -224,3 +224,65 @@ async def mission_def_delete(mid: str, user: dict = Depends(require_permission("
     if not r.deleted_count:
         raise HTTPException(status_code=404, detail="المهمة غير موجودة")
     return {"ok": True}
+
+
+# ---------------- book of the week ----------------
+async def get_featured_book() -> dict:
+    doc = await db.settings.find_one({"_id": "featured_book"}) or {}
+    bid = doc.get("book_id")
+    book = None
+    if bid and ObjectId.is_valid(str(bid)):
+        b = await db.books.find_one({"_id": ObjectId(str(bid))})
+        if b:
+            book = {
+                "id": str(b["_id"]),
+                "title": b.get("title", ""),
+                "author": b.get("author", ""),
+                "category": b.get("category", ""),
+                "description": b.get("description", ""),
+                "cover_url": b.get("cover_url") or b.get("cover_path") or None,
+                "pages": b.get("pages") or 0,
+                "rating_avg": b.get("rating_avg") or 0,
+                "rating_count": b.get("rating_count") or 0,
+            }
+    return {"book": book, "updated_at": doc.get("updated_at")}
+
+
+@site_router.get("/featured-book")
+async def featured_book_public():
+    from fastapi.responses import JSONResponse
+    return JSONResponse(content=await get_featured_book(), headers={"Cache-Control": "no-store"})
+
+
+class FeaturedBookBody(BaseModel):
+    book_id: str | None = None
+    notify: bool = False
+
+
+@admin_router.put("/featured-book")
+async def featured_book_set(body: FeaturedBookBody, user: dict = Depends(require_permission("cms.manage"))):
+    book = None
+    if body.book_id:
+        if not ObjectId.is_valid(body.book_id):
+            raise HTTPException(status_code=404, detail="الكتاب غير موجود")
+        b = await db.books.find_one({"_id": ObjectId(body.book_id)})
+        if not b:
+            raise HTTPException(status_code=404, detail="الكتاب غير موجود")
+        book = {"id": str(b["_id"]), "title": b.get("title", ""), "author": b.get("author", "")}
+    await db.settings.update_one(
+        {"_id": "featured_book"},
+        {"$set": {"book_id": body.book_id, "updated_at": now_iso(),
+                  "updated_by": user.get("id", "")}},
+        upsert=True)
+    notified = 0
+    if body.notify and book:
+        ids = [str(u["_id"]) async for u in db.users.find(
+            {"role": {"$in": ["student", "teacher"]}}, {"_id": 1})]
+        if ids:
+            from services import broadcast_notification
+            await broadcast_notification(
+                ids, "featured_book", "📚 كتاب الأسبوع الجديد",
+                f"«{book['title']}» · {book['author']}",
+                f"/books/{book['id']}")
+            notified = len(ids)
+    return {"book": (await get_featured_book())["book"], "notified": notified}

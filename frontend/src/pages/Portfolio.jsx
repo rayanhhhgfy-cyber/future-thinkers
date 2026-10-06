@@ -115,9 +115,9 @@ export default function Portfolio() {
                   {copied ? <Check className="ml-1 h-4 w-4 text-emerald-600" /> : <Share2 className="ml-1 h-4 w-4" />}
                   {copied ? "نُسخ!" : "مشاركة الملف"}
                 </Button>
-                <Button onClick={() => window.print()} variant="outline" className="glass min-h-[46px] rounded-2xl border-white/30 bg-white/10 px-5 font-extrabold text-white shadow-lg transition hover:-translate-y-0.5 hover:bg-white/20">
-                  <Printer className="ml-1 h-4 w-4" /> طباعة
-                </Button>
+                <Link to={`/portfolio/${id}/print`} data-testid="portfolio-export-btn" className="inline-flex items-center justify-center glass min-h-[46px] rounded-2xl border border-white/30 bg-white/10 px-5 font-extrabold text-white shadow-lg transition hover:-translate-y-0.5 hover:bg-white/20">
+                  <Printer className="ml-1 h-4 w-4" /> تصدير PDF
+                </Link>
               </div>
             </div>
           </div>

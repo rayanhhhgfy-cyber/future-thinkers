@@ -15,6 +15,7 @@ import { ErrorBoundary, installErrorReporter } from "@/components/ErrorState";
 
 import Landing from "@/pages/Landing";
 import { PrivacyPage, TermsPage, CookiesPage } from "@/pages/Legal";
+import PortfolioPrint from "@/pages/PortfolioPrint";
 import { LogoMark } from "@/components/Logo";
 
 const Login = lazy(() => import("@/pages/Login"));
@@ -146,6 +147,7 @@ function AnimatedRoutes() {
       <Route path="/members" element={<Protected><Members /></Protected>} />
       <Route path="/saved" element={<Protected><Saved /></Protected>} />
       <Route path="/portfolio/:id" element={<Portfolio />} />
+      <Route path="/portfolio/:id/print" element={<PortfolioPrint />} />
       <Route path="/paths" element={<Protected><Paths /></Protected>} />
       <Route path="/community" element={<Protected><SectionGate section="community"><Community /></SectionGate></Protected>} />
       <Route path="/calendar" element={<Protected><Calendar /></Protected>} />
