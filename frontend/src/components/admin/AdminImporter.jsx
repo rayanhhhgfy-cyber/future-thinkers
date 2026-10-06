@@ -23,6 +23,12 @@ const CAT_NAMES = {
 
 const LANGS = [["any", "كل اللغات"], ["ar", "العربية"], ["en", "English"]];
 
+const KEYWORDS = [
+  "ديوان شعر", "تراث عربي", "تاريخ الأندلس", "تفسير القرآن", "سيرة نبوية",
+  "فلسفة إسلامية", "روايات عربية", "قصص أطفال", "رياضيات كلاسيكية", "طب عربي قديم",
+  "بلاغة ونحو", "المقامات", "تاريخ الدول", "Shakespeare", "Classic novels", "Philosophy",
+];
+
 const fadeUp = (i = 0) => ({
   initial: { opacity: 0, y: 16 }, animate: { opacity: 1, y: 0 },
   transition: { duration: 0.45, delay: i * 0.06, ease: "easeOut" },
@@ -77,16 +83,19 @@ export default function AdminImporter() {
   const [q, setQ] = useState("");
   const [qLang, setQLang] = useState("any");
   const [results, setResults] = useState([]);
+  const [presets, setPresets] = useState([]);
+  const [scanned, setScanned] = useState(0);
   const [picked, setPicked] = useState({});
 
   const load = async () => {
     try {
-      const [c, j, qq] = await Promise.all([
+      const [c, j, qq, pr] = await Promise.all([
         api.get("/admin/importer/config"),
         api.get("/admin/importer/jobs", { params: { limit: 60 } }),
         api.get("/admin/importer/jobs", { params: { status: "queued", limit: 50 } }),
+        api.get("/admin/importer/presets").catch(() => ({ data: { presets: [] } })),
       ]);
-      setCfg(c.data); setJobs(j.data.jobs || []); setQueue(qq.data.jobs || []);
+      setCfg(c.data); setJobs(j.data.jobs || []); setQueue(qq.data.jobs || []); setPresets(pr.data.presets || []);
     } catch (e) { toast.error(apiErr(e, "تعذّر تحميل المستورد")); }
   };
   useEffect(() => { load(); }, []);
@@ -103,13 +112,14 @@ export default function AdminImporter() {
   const cats = cfg.categories || Object.keys(CAT_NAMES);
   const pickedIds = results.filter((r) => picked[r.archive_id] && r.state === "new");
 
-  const doSearch = async () => {
-    if (q.trim().length < 2) return toast.error("اكتب كلمتين للبحث على الأقل");
+  const doSearch = async (termArg) => {
+    const termText = (typeof termArg === "string" ? termArg : q).trim();
+    if (termText.length < 2) return toast.error("اكتب كلمتين للبحث على الأقل");
+    if (typeof termArg === "string") setQ(termArg);
     setBusy("search");
     try {
-      const { data } = await api.get("/admin/importer/config").catch(() => ({ data: null }));
-      const r = await api.post("/admin/importer/search", { query: q.trim(), lang: qLang, rows: 24 });
-      setResults(r.data.items || []); setPicked({});
+      const r = await api.post("/admin/importer/search", { query: termText, lang: qLang, rows: 60 });
+      setResults(r.data.items || []); setPicked({}); setScanned(r.data.scanned || 0);
       if (!(r.data.items || []).length) toast("لا نتائج · جرّب كلمات أخرى");
     } catch (e) { toast.error(apiErr(e, "فشل البحث")); }
     setBusy("");
@@ -126,7 +136,7 @@ export default function AdminImporter() {
       const failed = res.filter((x) => x.status === "failed").length;
       toast.success(`انتهى الاستيراد · نُشر ${done}${qd ? ` · بالانتظار ${qd}` : ""}${failed ? ` · فشل ${failed}` : ""}`);
       await load();
-      const r2 = await api.post("/admin/importer/search", { query: q.trim(), lang: qLang, rows: 24 }).catch(() => null);
+      const r2 = await api.post("/admin/importer/search", { query: q.trim(), lang: qLang, rows: 60 }).catch(() => null);
       if (r2) { setResults(r2.data.items || []); setPicked({}); }
     } catch (e) { toast.error(apiErr(e, "فشل الاستيراد")); }
     setBusy("");
@@ -219,6 +229,37 @@ export default function AdminImporter() {
       {/* sources */}
       <Panel i={2} icon={Globe2} grad="from-sky-500 to-blue-600" shadow="shadow-sky-500/30"
         title="مصادر الاستيراد" sub="كل مصدر = بحث أو مجموعة في Archive.org · يُفحص دورياً ويستورد الأحدث فقط">
+        {presets.length > 0 && (
+          <div className="mb-5">
+            <p className="mb-2.5 flex items-center gap-2 font-head text-xs font-black text-sky-900">
+              <Sparkles className="h-4 w-4 text-sky-500" /> مصادر قوية جاهزة · أضفها بضغطة واحدة
+              <span className="rounded-full bg-sky-500 px-2 py-0.5 text-[10px] font-black text-white">{presets.length} مصدراً</span>
+            </p>
+            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+              {presets.map((p) => {
+                const added = p.added || (cfg.sources || []).some((x) => x.preset === p.key);
+                return (
+                  <div key={p.key} className={`flex flex-col rounded-3xl border p-3.5 transition ${added ? "border-emerald-100 bg-emerald-50/50" : "border-sky-100 bg-gradient-to-b from-sky-50/70 to-white"}`}>
+                    <div className="flex items-start gap-2">
+                      <p className="min-w-0 flex-1 font-head text-[13px] font-black leading-snug text-slate-900">{p.label}</p>
+                      <span className="shrink-0 rounded-full bg-slate-900 px-2 py-0.5 text-[9px] font-black text-white">{p.lang === "en" ? "EN" : "عربي"}</span>
+                    </div>
+                    <p className="mt-1 line-clamp-2 text-[11px] font-semibold leading-relaxed text-slate-400">{p.desc}</p>
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      <span className="rounded-full bg-sky-100 px-2 py-0.5 text-[9px] font-black text-sky-700">{CAT_NAMES[p.category] || p.category}</span>
+                      <span className="rounded-full bg-teal-500 px-2 py-0.5 text-[9px] font-black text-white">حتى {p.max_items} كل فحص</span>
+                    </div>
+                    <button disabled={added || busy === `preset-${p.key}`} data-testid={`imp-preset-add-${p.key}`}
+                      onClick={() => act(`preset-${p.key}`, () => api.post("/admin/importer/presets/add", { key: p.key }), `أُضيف مصدر «${p.label}»`)}
+                      className={`mt-3 inline-flex min-h-[40px] items-center justify-center gap-1.5 rounded-xl font-head text-xs font-black transition active:scale-95 disabled:opacity-60 ${added ? "bg-emerald-100 text-emerald-700" : "bg-gradient-to-l from-sky-500 to-blue-600 text-white shadow-md shadow-sky-500/40 hover:scale-[1.02]"}`}>
+                      {added ? <><Check className="h-3.5 w-3.5" /> مضاف إلى مصادرك</> : busy === `preset-${p.key}` ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <><Plus className="h-3.5 w-3.5" /> إضافة المصدر</>}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
         <div className="grid gap-2.5">
           {(cfg.sources || []).length === 0 && <p className="text-sm font-bold text-slate-400">لا مصادر بعد · أضف أول مصدر من النموذج تحت.</p>}
           {(cfg.sources || []).map((s) => (
@@ -298,9 +339,25 @@ export default function AdminImporter() {
           </button>
         </div>
 
+        <div className="mt-3.5">
+          <p className="mb-2 flex items-center gap-1.5 text-[11px] font-black text-slate-400"><Zap className="h-3.5 w-3.5 text-violet-500" /> كلمات بحث قوية جاهزة</p>
+          <div className="flex flex-wrap gap-1.5">
+            {KEYWORDS.map((k) => (
+              <button key={k} type="button" data-testid={`imp-kw-${k}`} disabled={busy === "search"} onClick={() => doSearch(k)}
+                className="rounded-full bg-violet-50 px-3 py-1.5 text-[11px] font-black text-violet-700 ring-1 ring-violet-100 transition hover:bg-violet-100 active:scale-95 disabled:opacity-50">
+                {k}
+              </button>
+            ))}
+          </div>
+        </div>
+
         {results.length > 0 && (
           <>
-            <div className="mt-4 grid gap-2.5 lg:grid-cols-2">
+            <p className="mt-4 flex items-center gap-1.5 text-[11px] font-black text-slate-400">
+              <Search className="h-3.5 w-3.5 text-violet-500" />
+              بحث عميق · فحصنا {scanned} نتيجة من المصدر ووجدنا {results.length} كتاباً حقيقياً بملفات كاملة
+            </p>
+            <div className="mt-3 grid gap-2.5 lg:grid-cols-2">
               {results.map((r) => (
                 <label key={r.archive_id} className={`flex cursor-pointer items-start gap-3 rounded-3xl border p-3.5 transition ${picked[r.archive_id] && r.state === "new" ? "border-violet-300 bg-violet-50/70" : "border-slate-100 bg-white hover:border-violet-100"}`}>
                   <input type="checkbox" disabled={r.state !== "new"} checked={!!picked[r.archive_id]} data-testid={`imp-pick-${r.archive_id}`}
@@ -310,6 +367,7 @@ export default function AdminImporter() {
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-black text-slate-800">{r.title}</span>
                     <span className="mt-0.5 block truncate text-[11px] font-bold text-slate-400">{r.author || "مؤلف غير معروف"}{r.year ? ` · ${r.year}` : ""} · {r.language}</span>
+                    {r.subjects?.length > 0 && <span className="mt-0.5 block truncate text-[10px] font-semibold text-slate-300">{r.subjects.slice(0, 3).join(" · ")}</span>}
                     {r.description && <span className="mt-1 line-clamp-2 block text-[11px] leading-relaxed text-slate-400">{r.description}</span>}
                   </span>
                   {stateChip(r.state)}

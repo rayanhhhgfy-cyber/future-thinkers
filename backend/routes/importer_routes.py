@@ -51,20 +51,58 @@ CATEGORY_SLUGS = ["science", "culture", "religion", "history", "literature",
 
 # archive.org subject keywords → platform category slug
 CATEGORY_HINTS = [
-    ("novels", ["رواية", "روايات", "novel", "fiction", "أدب"]),
-    ("literature", ["شعر", "أدب", "poetry", "literature", "ديوان"]),
-    ("history", ["تاريخ", "history", "سيرة", "biography"]),
-    ("religion", ["إسلام", "دين", "قرآن", "islam", "religion", "فقه", "حديث"]),
-    ("philosophy", ["فلسفة", "philosophy", "منطق"]),
-    ("science", ["علوم", "science", "فيزياء", "كيمياء", "رياضيات", "mathematics", "physics"]),
-    ("programming", ["برمجة", "programming", "computer", "حاسوب"]),
-    ("ai", ["ذكاء اصطناعي", "artificial intelligence", "machine learning"]),
-    ("economics", ["اقتصاد", "economics", "business"]),
-    ("entrepreneurship", ["ريادة", "entrepreneur", "startup"]),
-    ("self-dev", ["تطوير الذات", "self-help", "self help", "نجاح"]),
-    ("arts", ["فن", "فنون", "art", "موسيقى", "music"]),
-    ("technology", ["تكنولوجيا", "technology", "تقنية"]),
-    ("culture", ["ثقافة", "culture", "حضارة"]),
+    ("novels", ["رواية", "روايات", "novel", "fiction", "قصة", "قصص", "مسرحية", "drama", "story", "stories"]),
+    ("literature", ["شعر", "أدب", "poetry", "literature", "ديوان", "بلاغة", "نثر", "مقامات", "نقد أدبي", "أدب عربي", "arabic literature"]),
+    ("history", ["تاريخ", "history", "سيرة", "biography", "حضارة", "الأندلس", "تراجم", "حضارات", "معارك", "civilization"]),
+    ("religion", ["إسلام", "دين", "قرآن", "islam", "religion", "فقه", "حديث", "تفسير", "سيرة نبوية", "عقيدة", "تصوف", "quran", "hadith"]),
+    ("philosophy", ["فلسفة", "philosophy", "منطق", "أخلاق", "فلاسفة", "وجودية", "logic", "ethics"]),
+    ("science", ["علوم", "science", "فيزياء", "كيمياء", "رياضيات", "mathematics", "physics", "فلك", "astronomy", "طب", "biology", "chemistry", "جغرافيا", "geography"]),
+    ("programming", ["برمجة", "programming", "computer", "حاسوب", "python", "java", "algorithms", "برمجيات", "software"]),
+    ("ai", ["ذكاء اصطناعي", "artificial intelligence", "machine learning", "data science", "neural", "تعلم الآلة"]),
+    ("economics", ["اقتصاد", "economics", "business", "مال", "تجارة", "finance", "اقتصاد إسلامي"]),
+    ("entrepreneurship", ["ريادة", "entrepreneur", "startup", "تسويق", "marketing", "إدارة أعمال", "أعمال"]),
+    ("self-dev", ["تطوير الذات", "self-help", "self help", "نجاح", "عادات", "إنتاجية", "قيادة", "تحفيز", "success", "habits"]),
+    ("arts", ["فن", "فنون", "art", "موسيقى", "music", "رسم", "خط عربي", "عمارة", "سينما", "calligraphy", "architecture"]),
+    ("technology", ["تكنولوجيا", "technology", "تقنية", "إنترنت", "شبكات", "إلكترونيات", "internet", "electronics"]),
+    ("culture", ["ثقافة", "culture", "حضارة", "مجتمع", "تربية", "تعليم", "أطفال", "children", "society", "education"]),
+]
+
+# Curated, strong archive.org sources (public-domain / open-license texts
+# only). Queries use field operators so results stay accurate; the platform
+# category rides along so imports land in the right shelf without guessing.
+PRESET_SOURCES = [
+    {"key": "preset_heritage", "label": "تراث الأدب العربي", "desc": "أمهات كتب الأدب والبلاغة والنثر الكلاسيكي", "lang": "ar", "category": "literature", "max_items": 6,
+     "query": '(subject:"Arabic literature" OR subject:أدب OR subject:تراث OR subject:بلاغة)'},
+    {"key": "preset_poetry", "label": "دواوين الشعر العربي", "desc": "دواوين الشعراء وشروح الشعر عبر العصور", "lang": "ar", "category": "literature", "max_items": 6,
+     "query": '(subject:شعر OR subject:"Arabic poetry" OR subject:ديوان OR title:ديوان)'},
+    {"key": "preset_history", "label": "التاريخ والحضارة الإسلامية", "desc": "تواريخ وحضارات وسير الأمم والدول", "lang": "ar", "category": "history", "max_items": 6,
+     "query": '(subject:تاريخ OR subject:"Islamic history" OR subject:حضارة OR subject:الأندلس)'},
+    {"key": "preset_religion", "label": "الدراسات الإسلامية والتفسير", "desc": "تفسير وفقه وحديث وعلوم شرعية", "lang": "ar", "category": "religion", "max_items": 6,
+     "query": '(subject:تفسير OR subject:فقه OR subject:حديث OR subject:"Islamic studies")'},
+    {"key": "preset_philosophy", "label": "الفلسفة والمنطق", "desc": "فلسفة عربية وعالمية ومنطق وأخلاق", "lang": "ar", "category": "philosophy", "max_items": 5,
+     "query": '(subject:فلسفة OR subject:منطق OR subject:philosophy)'},
+    {"key": "preset_science_ar", "label": "العلوم الكلاسيكية العربية", "desc": "طب وفلك ورياضيات التراث العلمي", "lang": "ar", "category": "science", "max_items": 5,
+     "query": '(subject:طب OR subject:فلك OR subject:رياضيات OR subject:علوم)'},
+    {"key": "preset_novels_ar", "label": "روايات وقصص عربية", "desc": "روايات وقصص من الأدب العربي", "lang": "ar", "category": "novels", "max_items": 6,
+     "query": '(subject:رواية OR subject:"Arabic fiction" OR subject:قصص OR title:رواية)'},
+    {"key": "preset_biography", "label": "السير والتراجم", "desc": "سير الأعلام والتراجم عبر التاريخ", "lang": "ar", "category": "history", "max_items": 5,
+     "query": '(subject:سيرة OR subject:تراجم OR subject:biography)'},
+    {"key": "preset_andalusia", "label": "الأندلس والمغرب العربي", "desc": "تاريخ الأندلس والمغرب وأدبهما", "lang": "ar", "category": "history", "max_items": 5,
+     "query": '(subject:الأندلس OR subject:المغرب OR title:الأندلس)'},
+    {"key": "preset_children", "label": "قصص الأطفال", "desc": "حكايات وقصص مصورة للأطفال", "lang": "ar", "category": "culture", "max_items": 5,
+     "query": '(subject:"Childrens stories" OR subject:أطفال OR subject:"قصص الأطفال")'},
+    {"key": "preset_shakespeare", "label": "Shakespeare & Drama", "desc": "أعمال شكسبير والمسرح العالمي", "lang": "en", "category": "literature", "max_items": 5,
+     "query": '(creator:Shakespeare OR subject:Shakespeare OR subject:Drama)'},
+    {"key": "preset_en_novels", "label": "World Classic Novels", "desc": "روايات عالمية كلاسيكية بالإنجليزية", "lang": "en", "category": "novels", "max_items": 6,
+     "query": '(subject:"Classic novels" OR creator:Dickens OR creator:Austen OR creator:Twain)'},
+    {"key": "preset_en_science", "label": "Classic Science", "desc": "رياضيات وفيزياء وفلك كلاسيكي", "lang": "en", "category": "science", "max_items": 5,
+     "query": '(subject:Mathematics OR subject:Physics OR subject:Astronomy OR subject:"Natural history")'},
+    {"key": "preset_en_philosophy", "label": "Western Philosophy", "desc": "من أفلاطون إلى كانط بالإنجليزية", "lang": "en", "category": "philosophy", "max_items": 5,
+     "query": '(subject:Philosophy OR creator:Plato OR creator:Aristotle OR creator:Kant)'},
+    {"key": "preset_selfdev", "label": "تطوير الذات والنجاح", "desc": "عادات وإنتاجية وقيادة وتطوير شخصي", "lang": "ar", "category": "self-dev", "max_items": 5,
+     "query": '(subject:"تطوير الذات" OR subject:"Self-help" OR subject:نجاح OR subject:عادات)'},
+    {"key": "preset_business", "label": "اقتصاد وريادة أعمال", "desc": "اقتصاد وتسويق وريادة أعمال", "lang": "ar", "category": "economics", "max_items": 5,
+     "query": '(subject:اقتصاد OR subject:"ريادة أعمال" OR subject:تسويق OR subject:Business)'},
 ]
 
 
@@ -91,6 +129,54 @@ def _clean_text(raw, limit=1200):
     return txt[:limit]
 
 
+_AR_DIACRITICS = re.compile(r"[ً-ٰٟـ]")
+
+
+def _norm_title(title: str) -> str:
+    """Arabic-aware title fingerprint for cross-edition dedupe."""
+    t = _AR_DIACRITICS.sub("", str(title or "").lower())
+    t = t.replace("إ", "ا").replace("أ", "ا").replace("آ", "ا")
+    t = t.replace("ة", "ه").replace("ى", "ي").replace("ؤ", "و").replace("ئ", "ي")
+    t = re.sub(r"[^a-z0-9\u0600-\u06FF ]+", " ", t)
+    t = re.sub(r"\s+", " ", t).strip()
+    if t.startswith("كتاب "):
+        t = t[5:].strip()
+    return t
+
+
+_TITLE_CACHE = {"at": 0.0, "norms": set()}
+
+
+async def _known_title_norms():
+    import time as _time
+    if _time.time() - _TITLE_CACHE["at"] < 60 and _TITLE_CACHE["norms"]:
+        return _TITLE_CACHE["norms"]
+    norms = set()
+    async for b in db.books.find({}, {"title": 1, "title_norm": 1}).limit(8000):
+        norms.add(b.get("title_norm") or _norm_title(b.get("title", "")))
+    norms.discard("")
+    _TITLE_CACHE.update(at=_time.time(), norms=norms)
+    return norms
+
+
+def _clean_author(raw) -> str:
+    a = _clean_text(raw, 160)
+    a = re.sub(r"\(\s*\d{3,4}\s*[-–]\s*\d{0,4}\s*\)", "", a)
+    a = re.sub(r",\s*\d{3,4}\s*[-–]\s*\d{0,4}", "", a)
+    return re.sub(r"\s+", " ", a).strip(" ,؛·")
+
+
+def _clean_title(raw) -> str:
+    t = _clean_text(raw, 220)
+    t = t.strip("«»\"'[]()")
+    return re.sub(r"\s+", " ", t).strip()
+
+
+def _year_of(d) -> int:
+    m = re.search(r"(1[0-9]{3}|20[0-2][0-9]|0[7-9][0-9]{2})", str(d.get("year") or d.get("date") or ""))
+    return int(m.group(1)) if m else 0
+
+
 def _guess_category(subjects, fallback):
     blob = " ".join(subjects or []).lower()
     for slug, keys in CATEGORY_HINTS:
@@ -103,48 +189,125 @@ def _http_get(url, timeout=60):
     return requests.get(url, timeout=timeout, headers={"User-Agent": "FutureThinkersBookImporter/1.0"})
 
 
-async def archive_search(query: str, lang: str, rows: int):
-    """Search archive.org texts; returns normalized candidate dicts."""
+async def _ia_docs(full_q: str, rows: int, page: int, fresh: bool):
+    """One archive.org advancedsearch page (retried). Returns raw docs."""
+    params = {
+        "q": full_q,
+        "fl[]": ["identifier", "title", "creator", "description", "language",
+                 "date", "subject", "year", "files_count", "downloads"],
+        "rows": max(1, min(rows, 50)),
+        "page": max(1, page),
+        "output": "json",
+    }
+    if fresh:  # scheduled/source runs want the newest additions first
+        params["sort[]"] = "addeddate desc"
+    r = None
+    for _attempt in range(2):
+        try:
+            r = await asyncio.to_thread(lambda: requests.get(
+                ARCHIVE_SEARCH, params=params, timeout=45,
+                headers={"User-Agent": "FutureThinkersBookImporter/1.0"}))
+            if r.status_code == 200:
+                break
+        except Exception:
+            r = None
+        await asyncio.sleep(1.2)
+    if r is None or r.status_code != 200:
+        raise HTTPException(status_code=502, detail="تعذّر الاتصال بمصدر الكتب الآن")
+    return (((r.json() or {}).get("response") or {}).get("docs")) or []
+
+
+def _doc_to_item(d):
+    ident = d.get("identifier")
+    if not ident:
+        return None
+    try:
+        if int(d.get("files_count") or 0) < 4:  # metadata-only shells hold no book file
+            return None
+    except Exception:
+        pass
+    lang_raw = str(d.get("language") or "")
+    return {
+        "archive_id": ident,
+        "title": _clean_title(d.get("title")) or ident,
+        "author": _clean_author(d.get("creator")),
+        "description": _clean_text(d.get("description"), 500),
+        "language": "العربية" if lang_raw.startswith("ar") else ("English" if lang_raw.startswith("en") else lang_raw),
+        "year": _year_of(d),
+        "subjects": [str(x) for x in (d.get("subject") or [])][:8] if isinstance(d.get("subject"), list) else ([str(d["subject"])] if d.get("subject") else []),
+        "cover_url": ARCHIVE_COVER + ident,
+        "source_url": f"https://archive.org/details/{ident}",
+        "_downloads": int(d.get("downloads") or 0),
+    }
+
+
+async def archive_search(query: str, lang: str, rows: int, fresh: bool = False, deep: bool = False):
+    """Search archive.org texts; returns normalized candidate dicts.
+
+    deep=True powers the manual search: plain terms are expanded into
+    title/subject/creator/general probes fetched in parallel, and operator
+    queries are paged 3 deep · everything merged, de-duplicated and ranked
+    by match strength so real books (with files) surface first.
+    """
     q = (query or "").strip()
     if not q:
         raise HTTPException(status_code=400, detail="اكتب كلمات البحث أو معرّف مجموعة")
-    full = q if (":" in q or "AND" in q) else f"({q})"
-    full += " AND mediatype:texts"
+    tail = " AND mediatype:texts"
     if lang == "ar":
-        full += " AND language:ara"
+        tail += " AND language:ara"
     elif lang == "en":
-        full += " AND language:eng"
-    params = {
-        "q": full,
-        "fl[]": ["identifier", "title", "creator", "description", "language", "date", "subject", "year"],
-        "rows": max(1, min(rows, 50)),
-        "page": 1,
-        "output": "json",
-        "sort[]": "addeddate desc",
-    }
-    r = await asyncio.to_thread(lambda: requests.get(
-        ARCHIVE_SEARCH, params=params, timeout=45,
-        headers={"User-Agent": "FutureThinkersBookImporter/1.0"}))
-    if r.status_code != 200:
-        raise HTTPException(status_code=502, detail="تعذّر الاتصال بمصدر الكتب الآن")
-    docs = (((r.json() or {}).get("response") or {}).get("docs")) or []
-    out = []
-    for d in docs:
-        ident = d.get("identifier")
-        if not ident:
-            continue
-        lang_raw = str(d.get("language") or "")
-        out.append({
-            "archive_id": ident,
-            "title": _clean_text(d.get("title"), 220) or ident,
-            "author": _clean_text(d.get("creator"), 160),
-            "description": _clean_text(d.get("description"), 500),
-            "language": "العربية" if lang_raw.startswith("ar") else ("English" if lang_raw.startswith("en") else lang_raw),
-            "year": int(str(d.get("year") or "")[:4]) if str(d.get("year") or "")[:4].isdigit() else 0,
-            "subjects": [str(s) for s in (d.get("subject") or [])][:8] if isinstance(d.get("subject"), list) else ([str(d["subject"])] if d.get("subject") else []),
-            "cover_url": ARCHIVE_COVER + ident,
-            "source_url": f"https://archive.org/details/{ident}",
-        })
+        tail += " AND language:eng"
+    is_operator = (":" in q) or (" AND " in q) or (" OR " in q) or ('"' in q)
+
+    if not deep:
+        docs = await _ia_docs((q if is_operator else f"({q})") + tail, rows, 1, fresh)
+        items = [it for it in (_doc_to_item(d) for d in docs) if it]
+        for it in items:
+            it.pop("_downloads", None)
+        return items
+
+    if is_operator:
+        pages = await asyncio.gather(*[_ia_docs(q + tail, 50, p, False) for p in (1, 2, 3)],
+                                     return_exceptions=True)
+        docs = []
+        for pg in pages:
+            if isinstance(pg, list):
+                docs.extend(pg)
+        scanned = len(docs)
+        ranked = {}
+        for d in docs:
+            it = _doc_to_item(d)
+            if it:
+                ranked.setdefault(it["archive_id"], it)
+        out = sorted(ranked.values(), key=lambda x: -(x.get("_downloads") or 0))
+    else:
+        variants = [(f"title:({q})", 100), (f"subject:({q})", 80),
+                    (f"creator:({q})", 60), (f"({q})", 40)]
+        pages = await asyncio.gather(
+            *[_ia_docs(v + tail, 50, 1, False) for v, _ in variants],
+            return_exceptions=True)
+        scanned = 0
+        ranked = {}
+        for (v, score), pg in zip(variants, pages):
+            if not isinstance(pg, list):
+                continue
+            scanned += len(pg)
+            for d in pg:
+                it = _doc_to_item(d)
+                if not it:
+                    continue
+                cur = ranked.get(it["archive_id"])
+                if cur is None or score > cur["_score"] or (
+                        score == cur["_score"] and len(it["description"]) > len(cur["description"])):
+                    it["_score"] = score
+                    ranked[it["archive_id"]] = it
+        out = sorted(ranked.values(),
+                     key=lambda x: (-(x.get("_score") or 0), -(x.get("_downloads") or 0)))
+    for it in out:
+        it.pop("_downloads", None)
+        it.pop("_score", None)
+    out = out[:max(1, min(rows, 100))]
+    archive_search.last_scanned = scanned
     return out
 
 
@@ -172,38 +335,55 @@ async def _mark_states(items):
     return items
 
 
-async def _pick_pdf_file(ident):
-    r = await asyncio.to_thread(lambda: requests.get(
-        ARCHIVE_META + ident, timeout=45,
-        headers={"User-Agent": "FutureThinkersBookImporter/1.0"}))
-    if r.status_code != 200:
+async def _pdf_candidates(ident):
+    r = None
+    for _attempt in range(2):
+        try:
+            r = await asyncio.to_thread(lambda: requests.get(
+                ARCHIVE_META + ident, timeout=45,
+                headers={"User-Agent": "FutureThinkersBookImporter/1.0"}))
+            if r.status_code == 200:
+                break
+        except Exception:
+            r = None
+        await asyncio.sleep(1.0)
+    if r is None or r.status_code != 200:
         raise ValueError("تعذّر قراءة بيانات الكتاب من المصدر")
     files = ((r.json() or {}).get("files")) or []
-    pdfs = [f for f in files if str(f.get("name", "")).lower().endswith(".pdf")]
+    JUNK = ("scandata", "_djvu", "_text", "epub", "_bw", "cover", "thumb", "_sample", "preview")
+    pdfs = []
+    for f in files:
+        name = str(f.get("name", "")).lower()
+        if not name.endswith(".pdf"):
+            continue
+        if any(j in name for j in JUNK):
+            continue
+        try:
+            size = int(f.get("size") or 0)
+        except Exception:
+            size = 0
+        if 0 < size < 15 * 1024:  # cover-only stubs are not books
+            continue
+        pdfs.append({"name": f.get("name"), "size": size,
+                     "format": str(f.get("format") or "")})
     if not pdfs:
         raise ValueError("لا توجد نسخة PDF لهذا الكتاب في المصدر")
-    def pref(f):
-        name = str(f.get("name", "")).lower()
+    def rank(f):
         score = 0
-        if name == f"{ident}.pdf":
-            score -= 3
-        if "_bw" in name or "_text" in name:
-            score += 1
-        if "color" in name:
-            score += 1
-        try:
-            score += int(f.get("size") or 0) / 1e12
-        except Exception:
-            pass
-        return score
-    pdfs.sort(key=pref)
-    chosen = pdfs[0]
-    size = 0
-    try:
-        size = int(chosen.get("size") or 0)
-    except Exception:
-        size = 0
-    return chosen.get("name"), size
+        if str(f["name"]).lower() == f"{ident}.pdf":
+            score -= 100
+        if "text pdf" in f["format"].lower() or f["format"].lower() == "pdf":
+            score -= 10
+        if "color" in str(f["name"]).lower():
+            score += 4
+        return (score, -(f["size"] or 0))
+    pdfs.sort(key=rank)
+    return [(f["name"], f["size"]) for f in pdfs[:4]]
+
+
+async def _pick_pdf_file(ident):
+    cands = await _pdf_candidates(ident)
+    return cands[0]
 
 
 async def _download(url, timeout=180):
@@ -238,15 +418,32 @@ async def _import_one(user: dict, item: dict, cfg: dict, source: dict | None):
         if existing:
             log.update(status="skipped_dup", book_id=str(existing["_id"]))
             return log
-        filename, size = await _pick_pdf_file(ident)
+        norm = _norm_title(item.get("title") or "")
+        if norm and norm in await _known_title_norms():
+            log.update(status="skipped_dup", error="موجود بالمكتبة بنفس العنوان (طبعة أخرى)")
+            return log
         max_bytes = int(cfg.get("max_file_mb") or 90) * 1024 * 1024
-        if size and size > max_bytes:
-            raise ValueError(f"حجم الملف ({size // (1024 * 1024)}MB) أكبر من حد الاستيراد ({cfg.get('max_file_mb')}MB)")
-        pdf_bytes = await _download(ARCHIVE_DOWNLOAD + ident + "/" + filename)
-        if size and len(pdf_bytes) > max_bytes:
-            raise ValueError("حجم الملف أكبر من حد الاستيراد")
-        if not pdf_bytes.startswith(b"%PDF"):
-            raise ValueError("الملف المحمّل ليس PDF صالحاً")
+        filename, pdf_bytes = None, None
+        last_err = None
+        for cand_name, cand_size in await _pdf_candidates(ident):
+            if cand_size and cand_size > max_bytes:
+                last_err = f"حجم الملف ({cand_size // (1024 * 1024)}MB) أكبر من حد الاستيراد ({cfg.get('max_file_mb')}MB)"
+                continue
+            try:
+                data = await _download(ARCHIVE_DOWNLOAD + ident + "/" + cand_name)
+            except Exception as e:  # try the next candidate edition
+                last_err = str(e)[:200]
+                continue
+            if len(data) > max_bytes:
+                last_err = "حجم الملف أكبر من حد الاستيراد"
+                continue
+            if not data.startswith(b"%PDF"):
+                last_err = "الملف المحمّل ليس PDF صالحاً"
+                continue
+            filename, pdf_bytes = cand_name, data
+            break
+        if pdf_bytes is None:
+            raise ValueError(last_err or "لا توجد نسخة PDF لهذا الكتاب في المصدر")
         cover_bytes = None
         try:
             cover_bytes = await _download(ARCHIVE_COVER + ident, timeout=30)
@@ -278,6 +475,7 @@ async def _import_one(user: dict, item: dict, cfg: dict, source: dict | None):
         await db.books.update_one(
             {"_id": ObjectId(book_id)},
             {"$set": {"source": "archive.org", "source_archive_id": ident,
+                      "title_norm": norm,
                       "source_url": item.get("source_url") or f"https://archive.org/details/{ident}"}})
         log.update(status="imported", book_id=book_id)
         return log
@@ -292,7 +490,7 @@ async def _run_source(user: dict, cfg: dict, source: dict, budget: int):
     if budget <= 0:
         return results
     items = await archive_search(source.get("query", ""), source.get("lang") or "any",
-                                 max(10, int(source.get("max_items") or 5) * 2))
+                                 max(10, int(source.get("max_items") or 5) * 2), fresh=True)
     items = await _mark_states(items)
     fresh = [i for i in items if i["state"] == "new"]
     cap = min(int(source.get("max_items") or 5), budget)
@@ -402,17 +600,50 @@ async def source_delete(key: str, user: dict = Depends(require_permission("book.
     return {"ok": True}
 
 
+# ---------------- preset sources ----------------
+@router.get("/presets")
+async def importer_presets(user: dict = Depends(require_permission("book.edit"))):
+    cfg = await get_config()
+    added = {s.get("preset") for s in (cfg.get("sources") or [])}
+    return {"presets": [{**p, "added": p["key"] in added} for p in PRESET_SOURCES]}
+
+
+class PresetBody(BaseModel):
+    key: str
+
+
+@router.post("/presets/add")
+async def preset_add(body: PresetBody, user: dict = Depends(require_permission("book.edit"))):
+    preset = next((p for p in PRESET_SOURCES if p["key"] == body.key), None)
+    if not preset:
+        raise HTTPException(status_code=404, detail="المصدر الجاهز غير موجود")
+    cfg = await get_config()
+    for s in cfg["sources"]:
+        if s.get("preset") == preset["key"]:
+            return {"source": s, "added": False}
+    src = {k: preset[k] for k in ("label", "query", "lang", "category", "max_items")}
+    src["key"] = uuid.uuid4().hex[:8]
+    src["preset"] = preset["key"]
+    src["active"] = True
+    src["last_run_at"] = None
+    src["last_stats"] = ""
+    cfg["sources"].append(src)
+    await _save_config(cfg)
+    return {"source": src, "added": True}
+
+
 # ---------------- search & manual import ----------------
 class SearchBody(BaseModel):
     query: str = Field(min_length=2, max_length=300)
     lang: str = "any"
-    rows: int = Field(default=20, ge=1, le=50)
+    rows: int = Field(default=24, ge=1, le=100)
 
 
 @router.post("/search")
 async def importer_search(body: SearchBody, user: dict = Depends(require_permission("book.edit"))):
-    items = await archive_search(body.query, body.lang, body.rows)
-    return {"items": await _mark_states(items)}
+    items = await archive_search(body.query, body.lang, body.rows, deep=True)
+    return {"items": await _mark_states(items),
+            "scanned": getattr(archive_search, "last_scanned", len(items))}
 
 
 class ImportBody(BaseModel):
