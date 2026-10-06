@@ -79,7 +79,7 @@ const NAV = [
 const COLORS = ["#2563EB", "#059669", "#D97706", "#7C3AED", "#0891B2", "#E11D48", "#0A192F"];
 const NAV_GROUPS = [
   { l: "الرئيسية", icon: LayoutDashboard, keys: ["overview"] },
-  { l: "المراجعة والمحتوى", icon: ShieldCheck, keys: ["moderation", "studio", "books", "news", "banners", "landing"] },
+  { l: "المراجعة والمحتوى", icon: ShieldCheck, keys: ["moderation", "studio", "books", "importer", "news", "banners", "landing"] },
   { l: "الأعضاء والمجتمع", icon: Users, keys: ["users", "user360", "clubs", "notify"] },
   { l: "البرامج والأنشطة", icon: Rocket, keys: ["content", "calendar", "coding", "paths", "badges", "certificates", "gamesradar", "control"] },
   { l: "النظام", icon: Settings, keys: ["theme", "points", "reports", "errors", "healthsys", "exports", "audit"] },

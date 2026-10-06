@@ -135,10 +135,10 @@ export default function AdminImporter() {
   return (
     <div className="space-y-5">
       {/* hero */}
-      <motion.div {...fadeUp(0)} className="relative overflow-hidden rounded-[2rem] ft-hero-gradient grain p-6 text-white sm:p-7">
+      <motion.div {...fadeUp(0)} className="relative overflow-hidden rounded-[2rem] ft-hero-gradient grain p-5 text-white sm:p-7">
         <div className="pointer-events-none absolute -top-16 left-1/4 h-64 w-64 rounded-full blur-3xl" style={{ background: "color-mix(in srgb, var(--ft-accent) 30%, transparent)" }} />
-        <div className="relative flex flex-wrap items-center gap-4">
-          <span className="grid h-14 w-14 place-items-center rounded-3xl bg-white/10 ring-1 ring-white/20"><CloudDownload className="h-7 w-7" /></span>
+        <div className="relative flex flex-col items-start gap-3.5 sm:flex-row sm:items-center sm:gap-4">
+          <span className="grid h-14 w-14 shrink-0 place-items-center rounded-3xl bg-white/10 ring-1 ring-white/20"><CloudDownload className="h-7 w-7" /></span>
           <div className="min-w-0 flex-1">
             <h2 className="font-head text-2xl font-black">مستورد الكتب</h2>
             <p className="mt-0.5 text-sm font-semibold text-slate-300">يسحب كتباً ملكية عامة عربية وإنجليزية من مصادر مفتوحة، يرفعها إلى Telegram، ويضيفها للمكتبة كاملة البيانات · بلا تكرار</p>
@@ -210,7 +210,7 @@ export default function AdminImporter() {
         </div>
         <button disabled={busy === "runall"} data-testid="imp-runall"
           onClick={() => act("runall", () => api.post("/admin/importer/run-now"), "اكتمل فحص كل المصادر")}
-          className="pressable mt-4 inline-flex min-h-[48px] items-center gap-2 rounded-2xl bg-gradient-to-l from-teal-500 to-emerald-600 px-6 font-head text-sm font-black text-white shadow-[0_14px_28px_-10px_rgba(20,184,166,0.55)] transition hover:scale-[1.02] active:scale-95 disabled:opacity-40">
+          className="pressable mt-4 inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-l from-teal-500 to-emerald-600 px-6 font-head text-sm font-black text-white shadow-[0_14px_28px_-10px_rgba(20,184,166,0.55)] transition hover:scale-[1.02] active:scale-95 disabled:opacity-40 sm:w-auto">
           {busy === "runall" ? <RefreshCw className="h-4.5 w-4.5 animate-spin" /> : <Play className="h-4.5 w-4.5" />} تشغيل فحص كل المصادر الآن
         </button>
         {cfg.last_run_at && <p className="mt-2 text-[11px] font-bold text-slate-400">آخر فحص شامل: <span dir="ltr">{String(cfg.last_run_at).slice(0, 16).replace("T", " ")}</span></p>}
@@ -222,30 +222,34 @@ export default function AdminImporter() {
         <div className="grid gap-2.5">
           {(cfg.sources || []).length === 0 && <p className="text-sm font-bold text-slate-400">لا مصادر بعد · أضف أول مصدر من النموذج تحت.</p>}
           {(cfg.sources || []).map((s) => (
-            <div key={s.key} className={`flex flex-wrap items-center gap-3 rounded-3xl border p-4 transition ${s.active ? "border-sky-100 bg-gradient-to-b from-sky-50/70 to-white" : "border-slate-100 bg-slate-50/60"}`}>
-              <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-sky-500 to-blue-600 text-white shadow-lg shadow-sky-500/30 ${s.active ? "" : "opacity-35 saturate-50"}`}><Globe2 className="h-5 w-5" /></span>
-              <div className="min-w-0 flex-1">
-                <p className={`truncate font-head text-sm font-black ${s.active ? "text-slate-900" : "text-slate-400"}`}>{s.label}</p>
-                <p className="truncate text-[11px] font-bold text-slate-400" dir="ltr">{s.query}</p>
-                <div className="mt-1.5 flex flex-wrap gap-1.5">
-                  <span className="rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-black text-sky-700">{(LANGS.find(([v]) => v === s.lang) || LANGS[0])[1]}</span>
-                  <span className="rounded-full bg-slate-900 px-2 py-0.5 text-[10px] font-black text-white">{s.category === "auto" ? "تصنيف تلقائي" : (CAT_NAMES[s.category] || s.category)}</span>
-                  <span className="rounded-full bg-teal-500 px-2 py-0.5 text-[10px] font-black text-white">حتى {s.max_items} كل فحص</span>
-                  {s.last_stats && <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-black text-slate-500 ring-1 ring-slate-200">{s.last_stats}</span>}
+            <div key={s.key} className={`rounded-3xl border p-4 transition ${s.active ? "border-sky-100 bg-gradient-to-b from-sky-50/70 to-white" : "border-slate-100 bg-slate-50/60"}`}>
+              <div className="flex items-start gap-3">
+                <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-sky-500 to-blue-600 text-white shadow-lg shadow-sky-500/30 ${s.active ? "" : "opacity-35 saturate-50"}`}><Globe2 className="h-5 w-5" /></span>
+                <div className="min-w-0 flex-1">
+                  <p className={`truncate font-head text-sm font-black ${s.active ? "text-slate-900" : "text-slate-400"}`}>{s.label}</p>
+                  <p className="truncate text-[11px] font-bold text-slate-400" dir="ltr">{s.query}</p>
                 </div>
+                <Toggle label={`تفعيل مصدر ${s.label}`} testid={`imp-src-toggle-${s.key}`} on={!!s.active} busy={busy === `src-${s.key}`}
+                  onClick={() => act(`src-${s.key}`, () => api.put(`/admin/importer/sources/${s.key}`, { ...s, active: !s.active }), s.active ? "أُوقف المصدر" : "فُعّل المصدر")} />
               </div>
-              <Toggle label={`تفعيل مصدر ${s.label}`} testid={`imp-src-toggle-${s.key}`} on={!!s.active} busy={busy === `src-${s.key}`}
-                onClick={() => act(`src-${s.key}`, () => api.put(`/admin/importer/sources/${s.key}`, { ...s, active: !s.active }), s.active ? "أُوقف المصدر" : "فُعّل المصدر")} />
-              <button disabled={busy === `run-${s.key}`} data-testid={`imp-src-run-${s.key}`}
-                onClick={() => act(`run-${s.key}`, () => api.post("/admin/importer/run-now", null, { params: { source_key: s.key } }), `اكتمل فحص «${s.label}»`)}
-                className="inline-flex min-h-[42px] items-center gap-1.5 rounded-2xl bg-sky-500 px-3.5 text-xs font-black text-white shadow-md shadow-sky-500/40 transition hover:bg-sky-600 disabled:opacity-40">
-                <Play className="h-3.5 w-3.5" /> فحص الآن
-              </button>
-              <button disabled={busy === `del-${s.key}`} data-testid={`imp-src-del-${s.key}`} aria-label={`حذف مصدر ${s.label}`}
-                onClick={() => act(`del-${s.key}`, () => api.delete(`/admin/importer/sources/${s.key}`), "حُذف المصدر")}
-                className="grid h-10 w-10 place-items-center rounded-2xl text-slate-300 transition hover:bg-rose-50 hover:text-rose-500 disabled:opacity-40">
-                <Trash2 className="h-4.5 w-4.5" />
-              </button>
+              <div className="mt-2.5 flex flex-wrap gap-1.5">
+                <span className="rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-black text-sky-700">{(LANGS.find(([v]) => v === s.lang) || LANGS[0])[1]}</span>
+                <span className="rounded-full bg-slate-900 px-2 py-0.5 text-[10px] font-black text-white">{s.category === "auto" ? "تصنيف تلقائي" : (CAT_NAMES[s.category] || s.category)}</span>
+                <span className="rounded-full bg-teal-500 px-2 py-0.5 text-[10px] font-black text-white">حتى {s.max_items} كل فحص</span>
+                {s.last_stats && <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-black text-slate-500 ring-1 ring-slate-200">{s.last_stats}</span>}
+              </div>
+              <div className="mt-3 flex items-center gap-2">
+                <button disabled={busy === `run-${s.key}`} data-testid={`imp-src-run-${s.key}`}
+                  onClick={() => act(`run-${s.key}`, () => api.post("/admin/importer/run-now", null, { params: { source_key: s.key } }), `اكتمل فحص «${s.label}»`)}
+                  className="inline-flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-2xl bg-sky-500 px-3.5 text-xs font-black text-white shadow-md shadow-sky-500/40 transition hover:bg-sky-600 active:scale-[0.98] disabled:opacity-40 sm:flex-none sm:px-5">
+                  <Play className="h-3.5 w-3.5" /> فحص الآن
+                </button>
+                <button disabled={busy === `del-${s.key}`} data-testid={`imp-src-del-${s.key}`} aria-label={`حذف مصدر ${s.label}`}
+                  onClick={() => act(`del-${s.key}`, () => api.delete(`/admin/importer/sources/${s.key}`), "حُذف المصدر")}
+                  className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-white text-slate-300 ring-1 ring-slate-100 transition hover:bg-rose-50 hover:text-rose-500 disabled:opacity-40">
+                  <Trash2 className="h-4.5 w-4.5" />
+                </button>
+              </div>
             </div>
           ))}
         </div>
