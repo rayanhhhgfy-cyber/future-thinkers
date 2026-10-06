@@ -281,14 +281,15 @@ async def archive_search(query: str, lang: str, rows: int, fresh: bool = False, 
                 ranked.setdefault(it["archive_id"], it)
         out = sorted(ranked.values(), key=lambda x: -(x.get("_downloads") or 0))
     else:
-        variants = [(f"title:({q})", 100), (f"subject:({q})", 80),
-                    (f"creator:({q})", 60), (f"({q})", 40)]
+        variants = [(f"title:({q})", 100, (1, 2)), (f"subject:({q})", 80, (1,)),
+                    (f"creator:({q})", 60, (1,)), (f"({q})", 40, (1, 2))]
+        calls = [(v, score, p) for v, score, pgs in variants for p in pgs]
         pages = await asyncio.gather(
-            *[_ia_docs(v + tail, 50, 1, False) for v, _ in variants],
+            *[_ia_docs(v + tail, 50, p, False) for v, _, p in calls],
             return_exceptions=True)
         scanned = 0
         ranked = {}
-        for (v, score), pg in zip(variants, pages):
+        for (v, score, _p), pg in zip(calls, pages):
             if not isinstance(pg, list):
                 continue
             scanned += len(pg)

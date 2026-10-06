@@ -23,6 +23,12 @@ const CAT_NAMES = {
 
 const LANGS = [["any", "كل اللغات"], ["ar", "العربية"], ["en", "English"]];
 
+/* book + source names are capped to a fixed character count on cards */
+const shortTitle = (t, n = 30) => {
+  const v = String(t || "");
+  return v.length > n ? v.slice(0, n).trimEnd() + "…" : v;
+};
+
 const KEYWORDS = [
   "ديوان شعر", "تراث عربي", "تاريخ الأندلس", "تفسير القرآن", "سيرة نبوية",
   "فلسفة إسلامية", "روايات عربية", "قصص أطفال", "رياضيات كلاسيكية", "طب عربي قديم",
@@ -118,7 +124,7 @@ export default function AdminImporter() {
     if (typeof termArg === "string") setQ(termArg);
     setBusy("search");
     try {
-      const r = await api.post("/admin/importer/search", { query: termText, lang: qLang, rows: 60 });
+      const r = await api.post("/admin/importer/search", { query: termText, lang: qLang, rows: 80 });
       setResults(r.data.items || []); setPicked({}); setScanned(r.data.scanned || 0);
       if (!(r.data.items || []).length) toast("لا نتائج · جرّب كلمات أخرى");
     } catch (e) { toast.error(apiErr(e, "فشل البحث")); }
@@ -136,7 +142,7 @@ export default function AdminImporter() {
       const failed = res.filter((x) => x.status === "failed").length;
       toast.success(`انتهى الاستيراد · نُشر ${done}${qd ? ` · بالانتظار ${qd}` : ""}${failed ? ` · فشل ${failed}` : ""}`);
       await load();
-      const r2 = await api.post("/admin/importer/search", { query: q.trim(), lang: qLang, rows: 60 }).catch(() => null);
+      const r2 = await api.post("/admin/importer/search", { query: q.trim(), lang: qLang, rows: 80 }).catch(() => null);
       if (r2) { setResults(r2.data.items || []); setPicked({}); }
     } catch (e) { toast.error(apiErr(e, "فشل الاستيراد")); }
     setBusy("");
@@ -176,7 +182,7 @@ export default function AdminImporter() {
       {/* general controls */}
       <Panel i={1} icon={Power} grad="from-emerald-500 to-teal-600" shadow="shadow-emerald-500/30"
         title="التحكم العام" sub="التفعيل، النشر، والحدود · تحفظ فوراً وتسري على كل تشغيل">
-        <div className="grid gap-3 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
           <div className="flex items-center gap-3 rounded-3xl border border-slate-100 bg-slate-50/50 p-4">
             <div className="min-w-0 flex-1">
               <p className="font-head text-sm font-black text-slate-900">تفعيل المستورد والفحص المستمر</p>
@@ -194,7 +200,7 @@ export default function AdminImporter() {
               onClick={() => act("cfg", () => api.put("/admin/importer/config", { auto_publish: !cfg.auto_publish }), cfg.auto_publish ? "صار النشر بمراجعة أولاً" : "صار النشر مباشراً")} />
           </div>
         </div>
-        <div className="mt-3 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
           <label className="block">
             <span className="mb-1.5 block text-[11px] font-black text-slate-400">التصنيف الافتراضي</span>
             <select value={cfg.default_category} data-testid="imp-defcat" className={inp}
@@ -235,7 +241,7 @@ export default function AdminImporter() {
               <Sparkles className="h-4 w-4 text-sky-500" /> مصادر قوية جاهزة · أضفها بضغطة واحدة
               <span className="rounded-full bg-sky-500 px-2 py-0.5 text-[10px] font-black text-white">{presets.length} مصدراً</span>
             </p>
-            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3">
               {presets.map((p) => {
                 const added = p.added || (cfg.sources || []).some((x) => x.preset === p.key);
                 return (
@@ -260,14 +266,14 @@ export default function AdminImporter() {
             </div>
           </div>
         )}
-        <div className="grid gap-2.5">
+        <div className="flex flex-col gap-2.5">
           {(cfg.sources || []).length === 0 && <p className="text-sm font-bold text-slate-400">لا مصادر بعد · أضف أول مصدر من النموذج تحت.</p>}
           {(cfg.sources || []).map((s) => (
             <div key={s.key} className={`rounded-3xl border p-4 transition ${s.active ? "border-sky-100 bg-gradient-to-b from-sky-50/70 to-white" : "border-slate-100 bg-slate-50/60"}`}>
               <div className="flex items-start gap-3">
                 <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-sky-500 to-blue-600 text-white shadow-lg shadow-sky-500/30 ${s.active ? "" : "opacity-35 saturate-50"}`}><Globe2 className="h-5 w-5" /></span>
                 <div className="min-w-0 flex-1">
-                  <p className={`truncate font-head text-sm font-black ${s.active ? "text-slate-900" : "text-slate-400"}`}>{s.label}</p>
+                  <p className={`truncate font-head text-sm font-black ${s.active ? "text-slate-900" : "text-slate-400"}`} title={s.label}>{shortTitle(s.label, 34)}</p>
                   <p className="truncate text-[11px] font-bold text-slate-400" dir="ltr">{s.query}</p>
                 </div>
                 <Toggle label={`تفعيل مصدر ${s.label}`} testid={`imp-src-toggle-${s.key}`} on={!!s.active} busy={busy === `src-${s.key}`}
@@ -297,7 +303,7 @@ export default function AdminImporter() {
 
         <div className="mt-4 rounded-3xl border border-sky-100 bg-gradient-to-b from-sky-50/80 to-white p-4">
           <p className="mb-3 flex items-center gap-2 font-head text-xs font-black text-sky-900"><Sparkles className="h-4 w-4 text-sky-500" /> مصدر جديد</p>
-          <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
             <input value={srcForm.label} onChange={(e) => setSrcForm({ ...srcForm, label: e.target.value })} data-testid="imp-src-label"
               placeholder="اسم المصدر · مثال: كلاسيكيات الأدب العربي" className={inp} />
             <input value={srcForm.query} onChange={(e) => setSrcForm({ ...srcForm, query: e.target.value })} data-testid="imp-src-query" dir="ltr"
@@ -357,7 +363,7 @@ export default function AdminImporter() {
               <Search className="h-3.5 w-3.5 text-violet-500" />
               بحث عميق · فحصنا {scanned} نتيجة من المصدر ووجدنا {results.length} كتاباً حقيقياً بملفات كاملة
             </p>
-            <div className="mt-3 grid gap-2.5 lg:grid-cols-2">
+            <div className="mt-3 grid grid-cols-1 gap-2.5 lg:grid-cols-2">
               {results.map((r) => (
                 <label key={r.archive_id} className={`flex cursor-pointer items-start gap-3 rounded-3xl border p-3.5 transition ${picked[r.archive_id] && r.state === "new" ? "border-violet-300 bg-violet-50/70" : "border-slate-100 bg-white hover:border-violet-100"}`}>
                   <input type="checkbox" disabled={r.state !== "new"} checked={!!picked[r.archive_id]} data-testid={`imp-pick-${r.archive_id}`}
@@ -365,7 +371,7 @@ export default function AdminImporter() {
                     className="mt-1.5 h-5 w-5 shrink-0 accent-violet-600 disabled:opacity-30" />
                   <img src={r.cover_url} alt={r.title} loading="lazy" className="h-16 w-11 shrink-0 rounded-md object-cover shadow ring-1 ring-slate-100" />
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-black text-slate-800">{r.title}</span>
+                    <span className="block truncate text-sm font-black text-slate-800" title={r.title}>{shortTitle(r.title)}</span>
                     <span className="mt-0.5 block truncate text-[11px] font-bold text-slate-400">{r.author || "مؤلف غير معروف"}{r.year ? ` · ${r.year}` : ""} · {r.language}</span>
                     {r.subjects?.length > 0 && <span className="mt-0.5 block truncate text-[10px] font-semibold text-slate-300">{r.subjects.slice(0, 3).join(" · ")}</span>}
                     {r.description && <span className="mt-1 line-clamp-2 block text-[11px] leading-relaxed text-slate-400">{r.description}</span>}
@@ -393,13 +399,13 @@ export default function AdminImporter() {
         {queue.length === 0 ? (
           <p className="text-sm font-bold text-slate-400">القائمة فارغة · كل شيء منشور أو لا توجد استيرادات معلّقة.</p>
         ) : (
-          <div className="grid gap-2.5 lg:grid-cols-2">
+          <div className="grid grid-cols-1 gap-2.5 lg:grid-cols-2">
             {queue.map((j) => (
               <div key={j.id} className="flex items-start gap-3 rounded-3xl border border-amber-100 bg-gradient-to-b from-amber-50/70 to-white p-3.5">
                 {j.cover_url ? <img src={j.cover_url} alt={j.title} className="h-16 w-11 shrink-0 rounded-md object-cover shadow ring-1 ring-amber-100" /> :
                   <span className="grid h-16 w-11 shrink-0 place-items-center rounded-md bg-amber-100 text-amber-600"><BookOpen className="h-5 w-5" /></span>}
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-black text-slate-800">{j.title}</p>
+                  <p className="truncate text-sm font-black text-slate-800" title={j.title}>{shortTitle(j.title)}</p>
                   <p className="mt-0.5 truncate text-[11px] font-bold text-slate-400">{j.author || "مؤلف غير معروف"} · {j.source_label || "استيراد يدوي"}</p>
                   <div className="mt-2.5 flex gap-2">
                     <button disabled={busy === `qa-${j.id}`} data-testid={`imp-approve-${j.id}`}
@@ -426,12 +432,12 @@ export default function AdminImporter() {
         {jobs.length === 0 ? (
           <p className="text-sm font-bold text-slate-400">لا عمليات بعد.</p>
         ) : (
-          <div className="grid gap-2">
+          <div className="flex flex-col gap-2">
             {jobs.filter((j) => j.status !== "queued").slice(0, 25).map((j) => (
               <div key={j.id} className="flex flex-wrap items-center gap-3 rounded-2xl border border-slate-100 px-4 py-3">
                 {stateChip(j.status)}
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-black text-slate-800">{j.title}</p>
+                  <p className="truncate text-sm font-black text-slate-800" title={j.title}>{shortTitle(j.title)}</p>
                   <p className="truncate text-[11px] font-bold text-slate-400">
                     {j.source_label || (j.via === "manual" ? "استيراد يدوي" : j.via === "schedule" ? "فحص مجدول" : "تشغيل يدوي")} · <span dir="ltr">{String(j.created_at || "").slice(0, 16).replace("T", " ")}</span>
                   </p>
