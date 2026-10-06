@@ -160,7 +160,7 @@ function PanelBody({ items, unread, markAll, openItem, onClose, sheet }) {
             </Button>
           )}
           {sheet && (
-            <button onClick={onClose} className="w-8 h-8 rounded-full bg-slate-100 grid place-items-center text-slate-500"><X className="w-4 h-4" /></button>
+            <button onClick={onClose} aria-label="إغلاق" className="w-8 h-8 rounded-full bg-slate-100 grid place-items-center text-slate-500"><X className="w-4 h-4" /></button>
           )}
         </div>
       </div>

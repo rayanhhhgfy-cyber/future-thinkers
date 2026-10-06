@@ -46,7 +46,7 @@ export function PlaylistPicker({ bookId, bookTitle, onClose }) {
       <div className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl" onClick={(e) => e.stopPropagation()} dir="rtl">
         <div className="flex items-center justify-between mb-1">
           <h3 className="font-head font-extrabold text-lg text-slate-900">أضف إلى قائمة 📚</h3>
-          <button onClick={onClose} className="w-8 h-8 grid place-items-center rounded-full hover:bg-slate-100 text-slate-500"><X className="w-4 h-4" /></button>
+          <button onClick={onClose} aria-label="إغلاق" className="w-8 h-8 grid place-items-center rounded-full hover:bg-slate-100 text-slate-500"><X className="w-4 h-4" /></button>
         </div>
         <p className="text-xs text-slate-500 mb-4 line-clamp-1">{bookTitle}</p>
 

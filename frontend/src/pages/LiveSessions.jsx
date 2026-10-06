@@ -238,7 +238,7 @@ function SessionRoom({ sessionId, onClose }) {
               </div>
               {s.description && <p className="text-sm text-slate-600 leading-relaxed mt-2">{s.description}</p>}
             </div>
-            <button onClick={onClose} className="w-9 h-9 shrink-0 grid place-items-center rounded-full bg-slate-900/[0.05] text-slate-500"><X className="w-4 h-4" /></button>
+            <button onClick={onClose} aria-label="إغلاق" className="w-9 h-9 shrink-0 grid place-items-center rounded-full bg-slate-900/[0.05] text-slate-500"><X className="w-4 h-4" /></button>
           </div>
           {!joined && !ended && (
             <button onClick={join} disabled={busy} className="pressable w-full h-11 mt-4 rounded-2xl bg-gradient-to-l from-rose-500 to-orange-500 text-white text-sm font-extrabold shadow-lg shadow-rose-500/30 disabled:opacity-50 inline-flex items-center justify-center gap-2">

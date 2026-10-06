@@ -311,7 +311,7 @@ function QuizPlayer({ quiz, bid, onClose }) {
           <>
             <div className="flex items-center justify-between gap-3">
               <span className="text-[11px] font-extrabold px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-700">سؤال {i + 1} من {total}</span>
-              <button onClick={onClose} className="w-9 h-9 grid place-items-center rounded-full bg-slate-900/[0.05] text-slate-500"><X className="w-4 h-4" /></button>
+              <button onClick={onClose} aria-label="إغلاق" className="w-9 h-9 grid place-items-center rounded-full bg-slate-900/[0.05] text-slate-500"><X className="w-4 h-4" /></button>
             </div>
             <div className="h-1.5 rounded-full bg-slate-900/[0.06] mt-3 overflow-hidden">
               <div className="h-full rounded-full bg-gradient-to-l from-emerald-400 to-teal-400 transition-all duration-500" style={{ width: `${((i) / total) * 100}%` }} />
