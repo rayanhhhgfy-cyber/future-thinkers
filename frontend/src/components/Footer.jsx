@@ -70,6 +70,13 @@ export function Footer() {
         </div>
       </div>
       <div className="relative border-t border-white/10">
+        <nav aria-label="السياسات والقوانين" className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-10 py-4 flex flex-wrap items-center justify-center gap-x-7 gap-y-2 text-xs font-bold">
+          <Link to="/privacy" className="text-slate-300 hover:text-white transition-colors">سياسة الخصوصية</Link>
+          <Link to="/terms" className="text-slate-300 hover:text-white transition-colors">الشروط والأحكام</Link>
+          <Link to="/cookies" className="text-slate-300 hover:text-white transition-colors">سياسة ملفات الارتباط</Link>
+        </nav>
+      </div>
+      <div className="relative border-t border-white/10">
         <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-10 py-5 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-400">
           <span>© {new Date().getFullYear()} منصة مفكري المستقبل · جميع الحقوق محفوظة</span>
           <span className="inline-flex flex-wrap items-center gap-2.5" data-testid="footer-made-by">

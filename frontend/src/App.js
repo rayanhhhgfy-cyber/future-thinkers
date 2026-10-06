@@ -14,6 +14,7 @@ import { EASE } from "@/components/anim";
 import { ErrorBoundary, installErrorReporter } from "@/components/ErrorState";
 
 import Landing from "@/pages/Landing";
+import { PrivacyPage, TermsPage, CookiesPage } from "@/pages/Legal";
 import { LogoMark } from "@/components/Logo";
 
 const Login = lazy(() => import("@/pages/Login"));
@@ -112,6 +113,9 @@ function AnimatedRoutes() {
   const routes = (
     <Routes location={location}>
       <Route path="/" element={<Landing />} />
+      <Route path="/privacy" element={<PrivacyPage />} />
+      <Route path="/terms" element={<TermsPage />} />
+      <Route path="/cookies" element={<CookiesPage />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route path="/library" element={<Protected><Library /></Protected>} />

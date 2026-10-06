@@ -127,10 +127,7 @@ export default function Landing() {
                 ))}
               </div>
               <div>
-                <div className="flex items-center gap-1 text-amber-300">
-                  {[0, 1, 2, 3, 4].map((i) => (<span key={i} className="text-base leading-none">★</span>))}
-                </div>
-                <p className="text-sm text-slate-300 mt-1">مجتمع طلابي نشط من مختلف مدارس المملكة ومديرياتها</p>
+                <p className="text-sm text-slate-300">مجتمع طلابي نشط من مختلف مدارس المملكة ومديرياتها</p>
               </div>
             </div>
           </div>
@@ -176,7 +173,7 @@ export default function Landing() {
                 })}
               </div>
               <div className="mt-3 flex items-center justify-between text-[11px] font-bold">
-                <span className="text-slate-200">أحمد م. × ليان ع.</span>
+                <span className="text-slate-200">أنت × منافسك</span>
                 <span className="rounded-full bg-white/15 border border-white/15 px-2 py-0.5">3 دقائق</span>
               </div>
             </div>
@@ -191,7 +188,7 @@ export default function Landing() {
                 </div>
               </div>
               <div className="mt-3.5 flex items-center justify-between">
-                <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-slate-200"><Users className="w-3.5 h-3.5" /> 124 عضواً</span>
+                <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-slate-200"><Users className="w-3.5 h-3.5" /> مجتمع طلابي نشط</span>
                 <span className="text-[11px] font-extrabold rounded-full bg-white text-slate-800 px-2.5 py-1">انضم الآن</span>
               </div>
             </div>
@@ -406,7 +403,7 @@ export default function Landing() {
           <div className="relative max-w-3xl mx-auto">
           <Float className="inline-block relative"><Trophy className="w-14 h-14 lg:w-[4.5rem] lg:h-[4.5rem] ft-text-accent-bright ft-on-hero-icon mx-auto mb-5" /></Float>
           <h2 className="relative font-head text-3xl lg:text-5xl font-extrabold ft-on-hero">جاهز لتكون من مفكري المستقبل؟</h2>
-          <p className="relative mt-4 text-slate-300 max-w-xl lg:max-w-2xl lg:text-lg mx-auto ft-on-hero">انضم إلى آلاف الطلاب في رحلة معرفية تنافسية، واجمع نقاط الخبرة، وتصدّر قوائم الصدارة الوطنية.</p>
+          <p className="relative mt-4 text-slate-300 max-w-xl lg:max-w-2xl lg:text-lg mx-auto ft-on-hero">انضم إلى طلاب من مختلف مدارس المملكة في رحلة معرفية تنافسية، واجمع نقاط الخبرة، وتصدّر قوائم الصدارة الوطنية.</p>
           <Button data-testid="cta-join-btn" onClick={() => nav(user ? "/dashboard" : "/register")} size="lg" className="pressable relative mt-8 rounded-2xl ft-btn-solid h-12 px-8 text-base">
             <Rocket className="w-5 h-5 ml-2" /> {user ? "لوحتي" : "ابدأ الآن مجاناً"}
           </Button>

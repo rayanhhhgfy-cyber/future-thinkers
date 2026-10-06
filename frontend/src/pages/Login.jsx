@@ -108,11 +108,11 @@ export default function Login() {
           <form onSubmit={submit} className="mt-8 space-y-4">
             <div>
               <Label htmlFor="email">البريد الإلكتروني</Label>
-              <Input id="email" data-testid="login-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="mt-1.5 rounded-xl" placeholder="you@example.com" />
+              <Input id="email" data-testid="login-email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="mt-1.5 rounded-xl" placeholder="you@example.com" />
             </div>
             <div>
               <Label htmlFor="password">كلمة المرور</Label>
-              <Input id="password" data-testid="login-password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} className="mt-1.5 rounded-xl" placeholder="••••••••" />
+              <Input id="password" data-testid="login-password" type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} className="mt-1.5 rounded-xl" placeholder="••••••••" />
             </div>
             <Button type="submit" data-testid="login-submit" disabled={loading} className="w-full rounded-xl ft-btn-solid h-11">
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "دخول"}

@@ -20,6 +20,7 @@ export default function Register() {
   const [gov, setGov] = useState("");
   const [dir, setDir] = useState("");
   const [school, setSchool] = useState("");
+  const [agree, setAgree] = useState(false);
   const [loading, setLoading] = useState(false);
 
   // defensive dedupe by name: guards against any duplicate rows that may linger in the DB
@@ -61,6 +62,7 @@ export default function Register() {
 
   const submit = async (e) => {
     e.preventDefault();
+    if (!agree) { toast.error("يرجى الموافقة على الشروط والأحكام وسياسة الخصوصية أولاً"); return; }
     if (form.role === "student" && !school) { toast.error("يرجى اختيار المدرسة"); return; }
     setLoading(true);
     try {
@@ -93,23 +95,23 @@ export default function Register() {
           <p className="text-slate-500 text-sm mt-1">انضم إلى مجتمع مفكري المستقبل</p>
           <form onSubmit={submit} className="mt-6 space-y-3.5">
             <div>
-              <Label>الاسم الكامل</Label>
-              <Input data-testid="reg-name" required value={form.name} onChange={(e) => set("name")(e.target.value)} className="mt-1.5 rounded-xl" placeholder="اسمك الكامل" />
+              <Label htmlFor="reg-name">الاسم الكامل</Label>
+              <Input id="reg-name" data-testid="reg-name" autoComplete="name" required value={form.name} onChange={(e) => set("name")(e.target.value)} className="mt-1.5 rounded-xl" placeholder="اسمك الكامل" />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label>البريد الإلكتروني</Label>
-                <Input data-testid="reg-email" type="email" required value={form.email} onChange={(e) => set("email")(e.target.value)} className="mt-1.5 rounded-xl" placeholder="you@mail.com" />
+                <Label htmlFor="reg-email">البريد الإلكتروني</Label>
+                <Input id="reg-email" data-testid="reg-email" type="email" autoComplete="email" required value={form.email} onChange={(e) => set("email")(e.target.value)} className="mt-1.5 rounded-xl" placeholder="you@mail.com" />
               </div>
               <div>
-                <Label>كلمة المرور</Label>
-                <Input data-testid="reg-password" type="password" required value={form.password} onChange={(e) => set("password")(e.target.value)} className="mt-1.5 rounded-xl" placeholder="••••••" />
+                <Label htmlFor="reg-password">كلمة المرور</Label>
+                <Input id="reg-password" data-testid="reg-password" type="password" autoComplete="new-password" required value={form.password} onChange={(e) => set("password")(e.target.value)} className="mt-1.5 rounded-xl" placeholder="••••••" />
               </div>
             </div>
             <div>
               <Label>نوع الحساب</Label>
               <Select value={form.role} onValueChange={set("role")}>
-                <SelectTrigger data-testid="reg-role" className="mt-1.5 rounded-xl"><SelectValue /></SelectTrigger>
+                <SelectTrigger data-testid="reg-role" aria-label="نوع الحساب" className="mt-1.5 rounded-xl"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="student">طالب</SelectItem>
                   <SelectItem value="teacher">معلم</SelectItem>
@@ -126,7 +128,7 @@ export default function Register() {
               <div>
                 <Label>المحافظة</Label>
                 <Select value={gov} onValueChange={setGov}>
-                  <SelectTrigger data-testid="reg-governorate" className="mt-1.5 rounded-xl"><SelectValue placeholder="اختر المحافظة" /></SelectTrigger>
+                  <SelectTrigger data-testid="reg-governorate" aria-label="المحافظة" className="mt-1.5 rounded-xl"><SelectValue placeholder="اختر المحافظة" /></SelectTrigger>
                   <SelectContent>{govs.map((g) => <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
@@ -134,24 +136,42 @@ export default function Register() {
                 <div>
                   <Label>المديرية</Label>
                   <Select value={dir} onValueChange={setDir} disabled={!gov}>
-                    <SelectTrigger data-testid="reg-directorate" className="mt-1.5 rounded-xl"><SelectValue placeholder="المديرية" /></SelectTrigger>
+                    <SelectTrigger data-testid="reg-directorate" aria-label="المديرية" className="mt-1.5 rounded-xl"><SelectValue placeholder="المديرية" /></SelectTrigger>
                     <SelectContent>{dirs.map((d) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
                 <div>
                   <Label>المدرسة</Label>
                   <Select value={school} onValueChange={setSchool} disabled={!dir}>
-                    <SelectTrigger data-testid="reg-school" className="mt-1.5 rounded-xl"><SelectValue placeholder="المدرسة" /></SelectTrigger>
+                    <SelectTrigger data-testid="reg-school" aria-label="المدرسة" className="mt-1.5 rounded-xl"><SelectValue placeholder="المدرسة" /></SelectTrigger>
                     <SelectContent>{schools.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
               </div>
               {form.role === "student" && (
                 <div className="grid grid-cols-2 gap-3">
-                  <div><Label>الصف</Label><Input data-testid="reg-grade" value={form.grade} onChange={(e) => set("grade")(e.target.value)} className="mt-1.5 rounded-xl" placeholder="مثال: العاشر" /></div>
-                  <div><Label>الشعبة</Label><Input data-testid="reg-section" value={form.section} onChange={(e) => set("section")(e.target.value)} className="mt-1.5 rounded-xl" placeholder="أ" /></div>
+                  <div><Label htmlFor="reg-grade">الصف</Label><Input id="reg-grade" data-testid="reg-grade" value={form.grade} onChange={(e) => set("grade")(e.target.value)} className="mt-1.5 rounded-xl" placeholder="مثال: العاشر" /></div>
+                  <div><Label htmlFor="reg-section">الشعبة</Label><Input id="reg-section" data-testid="reg-section" value={form.section} onChange={(e) => set("section")(e.target.value)} className="mt-1.5 rounded-xl" placeholder="أ" /></div>
                 </div>
               )}
+            </div>
+
+            <div className="flex items-start gap-3 rounded-2xl bg-slate-50 border border-slate-200 px-4 py-3.5">
+              <input
+                id="reg-consent"
+                data-testid="reg-consent"
+                type="checkbox"
+                checked={agree}
+                onChange={(e) => setAgree(e.target.checked)}
+                className="mt-1 w-5 h-5 shrink-0 rounded-md accent-teal-700 cursor-pointer"
+              />
+              <label htmlFor="reg-consent" className="text-[13px] leading-relaxed text-slate-600 cursor-pointer">
+                أوافق على{" "}
+                <Link to="/terms" target="_blank" rel="noreferrer" className="font-bold ft-text-accent underline underline-offset-4">الشروط والأحكام</Link>
+                {" "}و{" "}
+                <Link to="/privacy" target="_blank" rel="noreferrer" className="font-bold ft-text-accent underline underline-offset-4">سياسة الخصوصية</Link>
+                {" "}الخاصة بمنصة مفكري المستقبل.
+              </label>
             </div>
 
             <Button type="submit" data-testid="reg-submit" disabled={loading} className="w-full rounded-xl ft-btn-solid h-11 mt-2">
