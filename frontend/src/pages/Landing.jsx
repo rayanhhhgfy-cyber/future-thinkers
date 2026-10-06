@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import api from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import * as Icons from "lucide-react";
-import { BookOpen, Crown, MessagesSquare, Users, GraduationCap, Building2, Calendar, ArrowLeft, Sparkles, Target, Flag, Trophy, Rocket, Mic, Users2, ChevronDown, Flame, Zap, TrendingUp, UserPlus, Route, Quote } from "lucide-react";
+import { BookOpen, Crown, MessagesSquare, Users, GraduationCap, Building2, Calendar, ArrowLeft, Sparkles, Target, Flag, Trophy, Rocket, Mic, Users2, ChevronDown, Flame, TrendingUp, UserPlus, Route, Quote } from "lucide-react";
 
 const CLUB_ICON = (name) => Icons[name] || Icons.Circle;
 
@@ -179,22 +179,6 @@ export default function Landing() {
                 <span className="text-slate-200">أحمد م. × ليان ع.</span>
                 <span className="rounded-full bg-white/15 border border-white/15 px-2 py-0.5">3 دقائق</span>
               </div>
-            </div>
-
-            {/* leaderboard card */}
-            <div className="absolute bottom-0 left-0 w-64 rotate-[-2deg] rounded-3xl bg-white text-slate-800 shadow-2xl p-4 z-10">
-              <div className="flex items-center gap-2 mb-2.5">
-                <span className="w-8 h-8 rounded-xl bg-amber-100 grid place-items-center"><Zap className="w-4 h-4 text-amber-500" /></span>
-                <span className="text-sm font-extrabold font-head">لوحة الصدارة الوطنية</span>
-              </div>
-              {[["أحمد م.", "12,450", "#F59E0B"], ["ليان ع.", "11,980", "#94A3B8"], ["عمر خ.", "11,205", "#B45309"]].map(([name, xp, medal], i) => (
-                <div key={name} className="flex items-center gap-2.5 py-1.5 border-t border-slate-100 first:border-t-0">
-                  <span className="w-6 h-6 rounded-lg grid place-items-center text-[11px] font-extrabold text-white shrink-0" style={{ background: medal }}>{i + 1}</span>
-                  <span className="w-7 h-7 rounded-full bg-slate-100 grid place-items-center text-[11px] font-bold shrink-0">{name[0]}</span>
-                  <span className="text-[13px] font-bold flex-1">{name}</span>
-                  <span className="text-[11px] text-slate-500 font-bold">{xp} XP</span>
-                </div>
-              ))}
             </div>
 
             {/* club card */}
@@ -407,38 +391,6 @@ export default function Landing() {
                 </Item>
               );
             })}
-          </Stagger>
-        </div>
-      </section>
-
-      {/* Voices of the community · desktop band */}
-      <section className="hidden lg:block relative overflow-hidden ft-hero-gradient grain text-white">
-        <div className="pointer-events-none absolute -top-20 right-1/4 w-[26rem] h-44 rotate-[18deg] rounded-full opacity-20" style={{ background: "linear-gradient(90deg, var(--ft-grad-a, #052e26), var(--ft-accent, #0d9488))" }} />
-        <div className="pointer-events-none absolute -bottom-24 -left-16 w-96 h-96 rounded-full blur-3xl" style={{ background: "color-mix(in srgb, var(--ft-accent) 20%, transparent)" }} />
-        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-28 relative">
-          <SectionTag num="٠٦" label="ماذا يقول مفكرونا؟" center dark />
-          <FadeUp className="text-center">
-            <h2 className="font-head text-4xl font-extrabold ft-on-hero">أصوات من المجتمع</h2>
-            <p className="mt-3 text-slate-300 ft-on-hero">طلاب من مدارس ومديريات مختلفة يشاركونك تجربتهم</p>
-          </FadeUp>
-          <Stagger className="grid grid-cols-3 gap-6 mt-14">
-            {[
-              { q: "غيّرت المنصة طريقة قراءتي بالكامل؛ صرت أقرأ كل يوم وأتنافس مع أصدقائي من مدارس أخرى على إنهاء الكتب.", n: "سارة ع.", r: "طالبة · نادي القراءة" },
-              { q: "مسابقات الشطرنج والبرمجة رفعت مستواي كثيراً، واليوم أبني مع فريقي مشروعاً ريادياً حقيقياً داخل المنصة.", n: "عمر خ.", r: "طالب · نادي الشطرنج والبرمجة" },
-              { q: "غرف التركيز ومهام اليوم ساعدتني أنظّم وقتي، وحافظت على سلسلة قراءة تجاوزت ستين يوماً متواصلاً.", n: "ليان م.", r: "طالبة · تحديات القراءة" },
-            ].map((t) => (
-              <Item key={t.n} className="rounded-3xl bg-white/10 border border-white/15 backdrop-blur-md p-8">
-                <Quote className="w-8 h-8 ft-text-accent-bright ft-on-hero-icon mb-4" />
-                <p className="leading-loose text-slate-100">{t.q}</p>
-                <div className="mt-6 flex items-center gap-3 border-t border-white/10 pt-5">
-                  <span className="w-11 h-11 rounded-full ft-icon-tile grid place-items-center font-bold">{t.n[0]}</span>
-                  <div>
-                    <div className="font-bold">{t.n}</div>
-                    <div className="text-xs text-slate-400 mt-0.5">{t.r}</div>
-                  </div>
-                </div>
-              </Item>
-            ))}
           </Stagger>
         </div>
       </section>
