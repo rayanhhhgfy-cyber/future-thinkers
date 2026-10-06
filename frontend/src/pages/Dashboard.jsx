@@ -28,6 +28,23 @@ const StatCell = ({ icon: Icon, label, value, color, sub }) => (
   </div>
 );
 
+/* Book names on the dashboard are capped to a fixed character count so a
+   long title can never stretch a card · full name stays in the tooltip. */
+const shortTitle = (t, n = 30) => {
+  const s = String(t || "");
+  return s.length > n ? s.slice(0, n).trimEnd() + "…" : s;
+};
+
+/* One consistent section header across every dashboard card. */
+const SectionHead = ({ icon: Icon, tint, title, extra }) => (
+  <div className="flex items-center gap-2.5 mb-4 min-w-0">
+    <span className={`w-9 h-9 rounded-xl grid place-items-center shrink-0 ${tint}`}><Icon className="w-5 h-5" /></span>
+    <h3 className="font-head font-bold text-slate-800 whitespace-nowrap">{title}</h3>
+    <span className="h-px flex-1 bg-gradient-to-l from-slate-200/90 to-transparent" aria-hidden="true" />
+    {extra}
+  </div>
+);
+
 export default function Dashboard() {
   const { user, refresh } = useAuth();
   const [data, setData] = useState(null);
@@ -163,6 +180,11 @@ export default function Dashboard() {
 
         {/* ============ 2 · Stats bento band · one panel, hairline dividers ============ */}
         <FadeUp className="min-w-0 xl:col-span-12">
+          <div className="flex items-center gap-2 px-1 pb-2.5">
+            <Zap className="w-4 h-4 text-amber-500" />
+            <h2 className="font-head text-sm font-black text-slate-700">إنجازك بلمحة سريعة</h2>
+            <span className="h-px flex-1 bg-gradient-to-l from-slate-200/80 to-transparent" aria-hidden="true" />
+          </div>
           <div className="bg-white rounded-3xl border border-slate-100 ft-shadow overflow-hidden">
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-px bg-slate-100">
               <StatCell icon={Trophy} label="ترتيبك الوطني" value={`#${data.national_rank}`} color="#D97706" sub={data.school_rank ? `مدرستك: #${data.school_rank}` : ""} />
@@ -186,7 +208,7 @@ export default function Dashboard() {
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-400 text-slate-950 px-3 py-1 text-[11px] font-black shadow-lg shadow-amber-500/30">
                     <Sparkles className="w-3.5 h-3.5" /> كتاب الأسبوع
                   </span>
-                  <h2 className="mt-3 font-head text-2xl sm:text-3xl font-black leading-snug">{featured.title}</h2>
+                  <h2 className="mt-3 font-head text-2xl sm:text-3xl font-black leading-snug" title={featured.title}>{shortTitle(featured.title, 44)}</h2>
                   <p className="mt-1 text-sm font-bold text-slate-300">{featured.author}</p>
                   {featured.description && <p className="mt-2.5 text-sm leading-relaxed text-slate-300 line-clamp-2 max-w-2xl">{featured.description}</p>}
                   <div className="mt-4 flex flex-wrap items-center justify-center sm:justify-start gap-2">
@@ -210,12 +232,12 @@ export default function Dashboard() {
           {recs.length > 0 && (
             <FadeUp>
               <section className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-100 ft-shadow">
-                <h2 className="font-head font-bold text-lg flex items-center gap-2 mb-4 min-w-0"><Sparkles className="w-5 h-5 ft-text-accent shrink-0" /> موصى لك</h2>
+                <SectionHead icon={Sparkles} tint="ft-bg-soft ft-text-accent" title="موصى لك" />
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                   {recs.slice(0, 4).map((b) => (
                     <Link key={b.id} to={`/books/${b.id}`} className="group min-w-0">
                       <BookCover book={b} className="w-full aspect-[3/4] rounded-xl ft-shadow" imgClassName="w-full aspect-[3/4] object-cover rounded-xl ft-shadow group-hover:scale-[1.03] transition-transform" />
-                      <div className="mt-2 text-sm font-medium text-slate-800 truncate">{b.title}</div>
+                      <div className="mt-2 text-sm font-medium text-slate-800 truncate" title={b.title}>{shortTitle(b.title)}</div>
                       <div className="text-xs text-slate-400 truncate">{b.author}</div>
                     </Link>
                   ))}
@@ -229,13 +251,8 @@ export default function Dashboard() {
         <div className="min-w-0 xl:col-span-4 flex flex-col gap-5 sm:gap-6">
           <FadeUp className="min-w-0">
             <section className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-100 ft-shadow">
-              <div className="flex items-center justify-between gap-2 mb-4 flex-wrap">
-                <h3 className="font-head font-bold text-slate-800 flex items-center gap-2 min-w-0">
-                  <span className="w-9 h-9 rounded-xl grid place-items-center bg-rose-50 text-rose-600 shrink-0"><Target className="w-5 h-5" /></span>
-                  مهام اليوم
-                </h3>
-                <span className="text-[11px] font-bold px-2 py-1 rounded-full bg-rose-100 text-rose-700 shrink-0">تتجدّد يومياً</span>
-              </div>
+              <SectionHead icon={Target} tint="bg-rose-50 text-rose-600" title="مهام اليوم"
+                extra={<span className="text-[11px] font-bold px-2 py-1 rounded-full bg-rose-100 text-rose-700 shrink-0">تتجدّد يومياً</span>} />
               {quests.length === 0 ? (
                 <p className="text-sm text-slate-400 py-4 text-center">جارٍ تجهيز مهامك…</p>
               ) : (
@@ -272,13 +289,8 @@ export default function Dashboard() {
 
           <FadeUp className="min-w-0">
             <section className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-100 ft-shadow">
-              <div className="flex items-center justify-between gap-2 mb-3">
-                <h3 className="font-head font-bold text-slate-800 flex items-center gap-2 min-w-0">
-                  <span className="w-9 h-9 rounded-xl grid place-items-center bg-rose-50 text-rose-600 shrink-0"><Rocket className="w-5 h-5" /></span>
-                  مشاريعي
-                </h3>
-                <Link to="/ventures" className="text-xs text-rose-600 font-medium flex items-center gap-0.5 shrink-0">الكل <ArrowLeft className="w-3 h-3" /></Link>
-              </div>
+              <SectionHead icon={Rocket} tint="bg-rose-50 text-rose-600" title="مشاريعي"
+                extra={<Link to="/ventures" className="text-xs text-rose-600 font-medium flex items-center gap-0.5 shrink-0">الكل <ArrowLeft className="w-3 h-3" /></Link>} />
               {(data.my_ventures || []).length === 0 ? (
                 <div className="text-sm text-slate-400 text-center py-4">لم تنضم لأي مشروع بعد<br /><Link to="/ventures" className="text-rose-600 font-medium">اكتشف المشاريع 🚀</Link></div>
               ) : (data.my_ventures || []).slice(0, 4).map((v) => (
@@ -292,7 +304,7 @@ export default function Dashboard() {
 
           <FadeUp className="min-w-0">
             <section className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-100 ft-shadow">
-              <h2 className="font-head font-bold text-lg flex items-center gap-2 mb-4 min-w-0"><Calendar className="w-5 h-5 text-amber-600 shrink-0" /> فعاليات قادمة</h2>
+              <SectionHead icon={Calendar} tint="bg-amber-50 text-amber-600" title="فعاليات قادمة" />
               {(data.upcoming_events || []).length === 0 ? <div className="text-sm text-slate-400 text-center py-4">لا فعاليات حالياً</div> : data.upcoming_events.map((e) => (
                 <Link key={e.id} to={`/events/${e.id}`} className="block min-w-0 p-3 rounded-xl hover:bg-slate-50 border-r-2 border-amber-500 mb-2 bg-slate-50/50 transition-colors">
                   <div className="font-medium text-sm text-slate-800 truncate">{e.title}</div>

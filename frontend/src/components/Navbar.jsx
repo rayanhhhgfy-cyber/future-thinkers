@@ -256,14 +256,20 @@ export function Navbar() {
         </div>
 
         <div className="flex items-center gap-2">
-          <button data-testid="open-search-pill" onClick={() => setSearchOpen(true)}
-            className="hidden xl:flex items-center gap-2.5 w-60 h-11 px-4 rounded-full bg-slate-100/90 hover:bg-slate-100 border border-slate-200/70 text-slate-400 transition-colors">
-            <Search className="w-4 h-4 shrink-0" />
-            <span className="flex-1 text-right text-sm">بحث سريع…</span>
-            <kbd className="text-[10px] font-bold bg-white border border-slate-200 rounded-md px-1.5 py-0.5 shadow-sm">Ctrl K</kbd>
+          <button data-testid="open-search-pill" onClick={() => setSearchOpen(true)} aria-label="بحث سريع"
+            className="group relative hidden xl:flex items-center gap-2.5 w-72 h-11 ps-4 pe-1.5 rounded-full text-slate-400 transition-all duration-300 hover:-translate-y-px hover:shadow-[0_14px_30px_-12px_rgba(4,47,38,0.45)] focus-visible:outline-none"
+            style={{ background: "linear-gradient(#fff,#fff) padding-box, linear-gradient(120deg, rgba(16,185,129,.55), rgba(245,158,11,.5), rgba(13,148,136,.55)) border-box", border: "1.5px solid transparent", boxShadow: "inset 0 1px 0 rgba(255,255,255,.9), 0 8px 20px -12px rgba(4,47,38,.35)" }}>
+            <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full ft-icon-tile text-white shadow-md transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-6">
+              <Search className="w-3.5 h-3.5" />
+            </span>
+            <span className="flex-1 text-right text-sm font-semibold text-slate-400 transition-colors group-hover:text-slate-500">ابحث في كل المنصة…</span>
+            <kbd className="inline-flex shrink-0 items-center gap-1 rounded-full bg-slate-900 px-2.5 py-1 text-[10px] font-black text-amber-300 shadow-md">
+              Ctrl K
+            </kbd>
           </button>
           <span className="xl:hidden">
-            <Button aria-label="بحث" variant="ghost" size="icon" data-testid="open-search-btn" onClick={() => setSearchOpen(true)} className="rounded-xl">
+            <Button aria-label="بحث" variant="ghost" size="icon" data-testid="open-search-btn" onClick={() => setSearchOpen(true)}
+              className="h-10 w-10 rounded-2xl ft-icon-tile text-white shadow-md transition hover:scale-105 active:scale-95 [&_svg]:text-white">
               <Search className="w-5 h-5" />
             </Button>
           </span>

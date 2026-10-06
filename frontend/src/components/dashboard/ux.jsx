@@ -10,6 +10,8 @@ import {
   Award, Sparkles, Timer, Users, User, X, ChevronLeft,
 } from "lucide-react";
 
+const shortTitle = (t, n = 30) => { const s = String(t || ""); return s.length > n ? s.slice(0, n).trimEnd() + "…" : s; };
+
 /* ============================================================
    1) «تابع من حيث توقفت» · continuation rail
    Book comes from the /dashboard aggregate (currently_reading is already
@@ -59,7 +61,7 @@ export function ContinueRail({ data }) {
               <BookCover book={book} className="w-12 h-[68px] rounded-lg shrink-0 ft-shadow" imgClassName="w-12 h-[68px] object-cover rounded-lg" />
               <span className="flex-1 min-w-0">
                 <span className="flex items-center gap-1.5 text-[10px] font-extrabold text-blue-600"><BookOpen className="w-3 h-3" /> كتاب تقرؤه</span>
-                <span className="block font-bold text-sm text-slate-800 truncate mt-0.5">{book.title}</span>
+                <span className="block font-bold text-sm text-slate-800 truncate mt-0.5" title={book.title}>{shortTitle(book.title)}</span>
                 <span className="block text-[11px] text-slate-400 truncate">{book.author}</span>
                 <span className="flex items-center gap-2 mt-1.5">
                   <span className="flex-1 h-1.5 rounded-full bg-blue-100 overflow-hidden">
