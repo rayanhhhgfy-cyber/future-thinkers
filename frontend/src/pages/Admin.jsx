@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import AdminBooks from "@/components/admin/AdminBooks";
+import AdminImporter from "@/components/admin/AdminImporter";
 import AdminBadges from "@/components/admin/AdminBadges";
 import AdminCertificates from "@/components/admin/AdminCertificates";
 import AdminNews from "@/components/admin/AdminNews";
@@ -35,7 +36,7 @@ import AdminPoints from "@/components/admin/AdminPoints";
 import AdminAudit from "@/components/admin/AdminAudit";
 import { toast } from "sonner";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area, CartesianGrid } from "recharts";
-import { Gamepad2, LayoutDashboard, ShieldCheck, Users, BookOpen, Calendar, Trophy, Newspaper, Settings, ScrollText, Plus, Check, X, Megaphone, PenLine, Medal, Award, Upload, Trash2, Search, MessageSquare, MessagesSquare, Activity, Smartphone, UserPlus, FileCheck, Rocket, Zap, ArrowLeft, Star, Heart, ThumbsUp, Flag, CalendarCheck, Crown, Download, UserSearch, Link2, CalendarDays, Code2, FlaskConical, Terminal, Palette, Globe2, Route as RouteIcon, Bug, Copy, LayoutGrid, ChevronLeft, SlidersHorizontal } from "lucide-react";
+import { Gamepad2, LayoutDashboard, ShieldCheck, Users, BookOpen, Calendar, Trophy, Newspaper, Settings, ScrollText, Plus, Check, X, Megaphone, PenLine, Medal, Award, Upload, Trash2, Search, MessageSquare, MessagesSquare, Activity, Smartphone, UserPlus, FileCheck, Rocket, Zap, ArrowLeft, Star, Heart, ThumbsUp, Flag, CalendarCheck, Crown, Download, UserSearch, Link2, CalendarDays, Code2, FlaskConical, Terminal, Palette, Globe2, Route as RouteIcon, Bug, Copy, LayoutGrid, ChevronLeft, SlidersHorizontal, CloudDownload } from "lucide-react";
 import { THEME_PRESETS, applyTheme } from "@/lib/theme";
 import { timeAgo } from "@/components/NotificationsPanel";
 import { motion, AnimatePresence } from "framer-motion";
@@ -51,6 +52,7 @@ const NAV = [
   { k: "moderation", l: "مراجعة المحتوى", icon: ShieldCheck, perm: "book.approve" },
   { k: "studio", l: "مراجعة الاستوديو", icon: PenLine, perm: "studio.review" },
   { k: "books", l: "الكتب", icon: BookOpen, perm: ["book.edit", "book.delete"] },
+  { k: "importer", l: "مستورد الكتب", icon: CloudDownload, perm: "book.edit" },
   { k: "badges", l: "شارات المهارات", icon: Medal, perm: "badge.award" },
   { k: "certificates", l: "الشهادات", icon: Award, perm: "certificate.manage" },
   { k: "users", l: "المستخدمون", icon: Users, perm: "user.view" },
@@ -293,6 +295,7 @@ export default function Admin() {
             {tab === "moderation" && <AdminReviewDesk />}
             {tab === "studio" && <AdminStudioReview />}
             {tab === "books" && <AdminBooks />}
+            {tab === "importer" && <AdminImporter />}
             {tab === "badges" && <AdminBadges />}
             {tab === "certificates" && <AdminCertificates />}
             {tab === "users" && <AdminUsers />}
