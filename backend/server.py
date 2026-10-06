@@ -50,6 +50,7 @@ from routes.growth_routes import router as growth_router
 from routes.games_routes import router as games_router
 from routes.stories_routes import router as stories_router
 from routes.control_routes import site_router, admin_router as control_admin_router
+from routes.importer_routes import router as importer_router, cron_router as importer_cron_router
 from ws import hub
 import jwt
 from bson import ObjectId
@@ -69,7 +70,7 @@ for r in (auth_router, geo_router, books_router, files_router, community_router,
           dm_router, circles_router, qa_router, quizlive_router,
           portfolio_router, reports_router, cups_router,
           learning_router, growth_router, games_router, stories_router,
-          site_router, control_admin_router):
+          site_router, control_admin_router, importer_router, importer_cron_router):
     app.include_router(r)
 
 
@@ -82,7 +83,13 @@ async def cron_dispatch_scheduled(request: Request):
         raise HTTPException(403, "forbidden")
     from services import dispatch_due_campaigns
     n = await dispatch_due_campaigns()
-    return {"ok": True, "dispatched": n}
+    imp = None
+    try:
+        from routes.importer_routes import maybe_run_scheduled_import
+        imp = await maybe_run_scheduled_import()
+    except Exception:
+        imp = None
+    return {"ok": True, "dispatched": n, "importer": imp}
 
 
 _last_opportunistic_dispatch = 0.0
