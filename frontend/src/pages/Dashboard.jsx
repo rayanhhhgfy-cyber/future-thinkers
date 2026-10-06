@@ -35,6 +35,7 @@ export default function Dashboard() {
   const [checkedIn, setCheckedIn] = useState(false);
   const [quests, setQuests] = useState([]);
   const [online, setOnline] = useState(0);
+  const [featured, setFeatured] = useState(null);
 
   const load = async () => {
     const [d, g, r] = await Promise.all([
@@ -57,6 +58,7 @@ export default function Dashboard() {
     } catch (e) { toast.error(e.response?.data?.detail || "تعذّرت المطالبة"); }
   };
   useEffect(() => { load(); }, []);
+  useEffect(() => { api.get("/site/featured-book").then((r) => setFeatured(r.data?.book || null)).catch(() => {}); }, []);
 
   const checkin = async () => {
     try {
@@ -169,6 +171,36 @@ export default function Dashboard() {
             </div>
           </div>
         </FadeUp>
+
+        {/* ============ Book of the week ============ */}
+        {featured && (
+          <FadeUp className="min-w-0 xl:col-span-12">
+            <section data-testid="featured-book-card" className="relative overflow-hidden rounded-3xl ft-hero-gradient grain text-white p-5 sm:p-6">
+              <div className="pointer-events-none absolute -top-16 left-1/4 w-72 h-72 rounded-full blur-3xl" style={{ background: "color-mix(in srgb, var(--ft-accent) 26%, transparent)" }} />
+              <div className="relative flex flex-col sm:flex-row items-start gap-5">
+                <Link to={`/books/${featured.id}`} className="shrink-0 mx-auto sm:mx-0">
+                  <BookCover book={featured} className="w-28 sm:w-32 aspect-[3/4] rounded-2xl shadow-2xl ring-1 ring-white/30" imgClassName="w-28 sm:w-32 aspect-[3/4] object-cover rounded-2xl" />
+                </Link>
+                <div className="min-w-0 flex-1 text-center sm:text-start w-full">
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-400 text-slate-950 px-3 py-1 text-[11px] font-black shadow-lg shadow-amber-500/30">
+                    <Sparkles className="w-3.5 h-3.5" /> كتاب الأسبوع
+                  </span>
+                  <h2 className="mt-3 font-head text-2xl sm:text-3xl font-black leading-snug">{featured.title}</h2>
+                  <p className="mt-1 text-sm font-bold text-slate-300">{featured.author}</p>
+                  {featured.description && <p className="mt-2.5 text-sm leading-relaxed text-slate-300 line-clamp-2 max-w-2xl">{featured.description}</p>}
+                  <div className="mt-4 flex flex-wrap items-center justify-center sm:justify-start gap-2">
+                    {featured.pages > 0 && <span className="rounded-full bg-white/10 border border-white/15 px-3 py-1 text-[11px] font-bold">{featured.pages} صفحة</span>}
+                    {featured.category && <span className="rounded-full bg-white/10 border border-white/15 px-3 py-1 text-[11px] font-bold">{featured.category}</span>}
+                    {featured.rating_count > 0 && <span className="rounded-full bg-white/10 border border-white/15 px-3 py-1 text-[11px] font-bold">★ {Number(featured.rating_avg).toFixed(1)} · {featured.rating_count} تقييم</span>}
+                  </div>
+                </div>
+                <Link to={`/books/${featured.id}`} className="pressable shrink-0 mx-auto sm:mx-0 sm:self-center inline-flex items-center gap-2 rounded-2xl bg-white text-slate-900 px-5 py-3 text-sm font-black shadow-xl transition hover:-translate-y-0.5 min-h-[48px]">
+                  <BookOpen className="w-4.5 h-4.5" /> ابدأ القراءة
+                </Link>
+              </div>
+            </section>
+          </FadeUp>
+        )}
 
         {/* ============ 3 · Main column (8 on xl): continue, starter, recommended ============ */}
         <div className="min-w-0 xl:col-span-8 flex flex-col gap-5 sm:gap-6">

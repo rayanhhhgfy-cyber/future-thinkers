@@ -5,7 +5,7 @@ import {
   SlidersHorizontal, Power, Construction, Gamepad2, BookOpenText, Keyboard,
   Trophy, Target, Plus, Trash2, Save, RefreshCw, Crown, Archive, Sparkles,
   Calculator, Type, Swords, BookOpen, Gift, Users, Rocket, Layers, Radio,
-  ArrowLeftRight, ShieldCheck, CalendarRange, ListChecks,
+  ArrowLeftRight, ShieldCheck, CalendarRange, ListChecks, Search, BellRing, X,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { PageLoader } from "@/components/Layout";
@@ -94,6 +94,10 @@ export default function AdminControl() {
   const [newTextLang, setNewTextLang] = useState("ar");
   const [seasonName, setSeasonName] = useState("");
   const [mForm, setMForm] = useState({ title: "", desc: "", icon: "Target", metric: "wordle_wins", target: 1, xp: 12 });
+  const [feat, setFeat] = useState(undefined);
+  const [featQuery, setFeatQuery] = useState("");
+  const [featResults, setFeatResults] = useState([]);
+  const [featPick, setFeatPick] = useState(null);
   const [busy, setBusy] = useState("");
 
   const load = async () => {
@@ -108,6 +112,43 @@ export default function AdminControl() {
     } catch { toast.error("تعذّر تحميل غرفة التحكم"); }
   };
   useEffect(() => { load(); }, []);
+
+  const loadFeatured = async () => {
+    try { const { data } = await api.get("/site/featured-book"); setFeat(data.book || null); }
+    catch { setFeat(null); }
+  };
+  useEffect(() => { loadFeatured(); }, []);
+
+  useEffect(() => {
+    if (!featQuery.trim()) { setFeatResults([]); return; }
+    const t = setTimeout(async () => {
+      try {
+        const { data } = await api.get("/books", { params: { q: featQuery.trim(), limit: 8 } });
+        setFeatResults(data.items || []);
+      } catch { setFeatResults([]); }
+    }, 300);
+    return () => clearTimeout(t);
+  }, [featQuery]);
+
+  const saveFeatured = async (notify) => {
+    if (!featPick) return;
+    setBusy("feat");
+    try {
+      const { data } = await api.put("/admin/controls/featured-book", { book_id: featPick.id, notify });
+      setFeat(data.book || null); setFeatPick(null); setFeatQuery(""); setFeatResults([]);
+      toast.success(notify ? `نُشر كتاب الأسبوع · أُشعر ${data.notified} طالباً ومعلماً` : "حُفظ كتاب الأسبوع");
+    } catch (e) { toast.error(e?.response?.data?.detail || "حدث خطأ"); }
+    setBusy("");
+  };
+
+  const clearFeatured = async () => {
+    setBusy("feat");
+    try {
+      await api.put("/admin/controls/featured-book", { book_id: null });
+      setFeat(null); toast.success("أُزيل كتاب الأسبوع");
+    } catch { toast.error("حدث خطأ"); }
+    setBusy("");
+  };
 
   const act = async (key, fn, msg) => {
     setBusy(key);
@@ -432,6 +473,69 @@ export default function AdminControl() {
             </div>
           )) : <p className="text-xs font-bold text-slate-400 lg:col-span-2">لا مهمات خاصة بعد</p>}
         </div>
+      </Panel>
+
+      <Panel i={8} icon={BookOpen} grad="from-emerald-500 to-teal-600" shadow="shadow-emerald-500/30"
+        title="كتاب الأسبوع" sub="يظهر في الصفحة الرئيسية ولوحات الطلاب · اختر كتاباً وانشره مع إشعار للجميع"
+        extra={feat ? <span className="hidden shrink-0 items-center gap-1.5 rounded-full bg-emerald-500 px-3 py-1.5 text-[11px] font-black text-white shadow-md shadow-emerald-500/40 sm:inline-flex"><Sparkles className="h-3.5 w-3.5" /> يُعرض الآن</span> : null}>
+        {feat === undefined ? (
+          <p className="text-xs font-bold text-slate-400">جارٍ التحميل…</p>
+        ) : feat ? (
+          <div className="flex flex-wrap items-center gap-4 rounded-3xl border border-emerald-100 bg-gradient-to-b from-emerald-50/80 to-white p-4">
+            {feat.cover_url ? (
+              <img src={feat.cover_url} alt={feat.title} className="h-20 w-14 shrink-0 rounded-lg object-cover shadow-md" />
+            ) : (
+              <span className="grid h-20 w-14 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-emerald-500 to-teal-700 text-white shadow-md"><BookOpen className="h-6 w-6" /></span>
+            )}
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] font-black text-emerald-600">كتاب الأسبوع الحالي</p>
+              <p className="mt-0.5 truncate font-head text-base font-black text-slate-900">{feat.title}</p>
+              <p className="truncate text-xs font-bold text-slate-400">{feat.author}{feat.pages ? ` · ${feat.pages} صفحة` : ""}</p>
+            </div>
+            <button disabled={busy === "feat"} onClick={clearFeatured} data-testid="feat-clear"
+              className="inline-flex min-h-[44px] items-center gap-1.5 rounded-2xl bg-rose-50 px-4 text-sm font-black text-rose-600 ring-1 ring-rose-100 transition hover:bg-rose-100 disabled:opacity-40">
+              <X className="h-4 w-4" /> إزالة
+            </button>
+          </div>
+        ) : (
+          <p className="text-xs font-bold text-slate-400">لا يوجد كتاب أسبوع حالياً · ابحث بالأسفل واختر أول كتاب.</p>
+        )}
+
+        <div className="relative mt-4">
+          <Search className="pointer-events-none absolute start-3.5 top-1/2 h-4.5 w-4.5 -translate-y-1/2 text-slate-300" />
+          <input value={featQuery} onChange={(e) => { setFeatQuery(e.target.value); setFeatPick(null); }} data-testid="feat-search"
+            placeholder="ابحث عن كتاب بالعنوان أو المؤلف…" className={`${inp} ps-11`} aria-label="ابحث عن كتاب" />
+        </div>
+        {featResults.length > 0 && !featPick && (
+          <div className="mt-2 overflow-hidden rounded-2xl border border-slate-100">
+            {featResults.map((b) => (
+              <button key={b.id} onClick={() => setFeatPick(b)} data-testid={`feat-result-${b.id}`}
+                className="flex w-full items-center gap-3 border-b border-slate-50 px-4 py-3 text-start transition last:border-0 hover:bg-emerald-50/60">
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-emerald-50 text-emerald-600"><BookOpen className="h-4 w-4" /></span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-black text-slate-800">{b.title}</span>
+                  <span className="block truncate text-[11px] font-bold text-slate-400">{b.author}</span>
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
+        {featPick && (
+          <div className="mt-3 flex flex-wrap items-center gap-2.5 rounded-3xl border border-emerald-100 bg-emerald-50/60 p-4">
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] font-black text-emerald-600">اختيارك الجديد</p>
+              <p className="truncate font-head text-sm font-black text-slate-900">{featPick.title} · <span className="text-slate-400">{featPick.author}</span></p>
+            </div>
+            <button disabled={busy === "feat"} onClick={() => saveFeatured(false)} data-testid="feat-save"
+              className="inline-flex min-h-[44px] items-center gap-1.5 rounded-2xl bg-white px-4 text-sm font-black text-slate-700 ring-1 ring-slate-200 transition hover:bg-slate-50 disabled:opacity-40">
+              <Save className="h-4 w-4" /> حفظ فقط
+            </button>
+            <button disabled={busy === "feat"} onClick={() => saveFeatured(true)} data-testid="feat-publish"
+              className="inline-flex min-h-[44px] items-center gap-1.5 rounded-2xl bg-gradient-to-l from-emerald-500 to-teal-600 px-4 font-head text-sm font-black text-white shadow-[0_14px_28px_-10px_rgba(16,185,129,0.6)] transition hover:scale-[1.02] active:scale-95 disabled:opacity-40">
+              <BellRing className="h-4 w-4" /> نشر وإشعار الطلاب
+            </button>
+          </div>
+        )}
       </Panel>
 
       <p className="flex items-center justify-center gap-1.5 pt-1 text-center text-[11px] font-bold text-slate-400">
