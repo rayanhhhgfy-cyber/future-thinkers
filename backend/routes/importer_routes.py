@@ -43,6 +43,12 @@ DEFAULT_CONFIG = {
     "sources": [],
     "last_run_at": None,
     "stats": {"imported": 0, "queued": 0, "failed": 0, "skipped": 0},
+    # continuous import engine: stopped (latched) | running | complete.
+    # Nothing automatic may search unless the engine is running, and only
+    # an admin pressing start can move it out of stopped/complete.
+    "engine": {"state": "stopped", "started_at": None, "stopped_at": None,
+               "cycles": 0, "session_imported": 0, "session_queued": 0,
+               "session_failed": 0, "empty_cycles": 0, "last_cycle_at": None},
 }
 
 CATEGORY_SLUGS = ["science", "culture", "religion", "history", "literature",
@@ -111,6 +117,7 @@ async def get_config() -> dict:
     cfg = {**DEFAULT_CONFIG, **{k: v for k, v in doc.items() if k != "_id"}}
     cfg["sources"] = doc.get("sources") or []
     cfg["stats"] = {**DEFAULT_CONFIG["stats"], **(doc.get("stats") or {})}
+    cfg["engine"] = {**DEFAULT_CONFIG["engine"], **(doc.get("engine") or {})}
     return cfg
 
 
@@ -387,6 +394,35 @@ async def _pick_pdf_file(ident):
     return cands[0]
 
 
+async def _archive_metadata(ident):
+    """Item-level metadata (publisher, date, full description…) for enrichment."""
+    r = None
+    for _attempt in range(2):
+        try:
+            r = await asyncio.to_thread(lambda: requests.get(
+                ARCHIVE_META + ident, timeout=45,
+                headers={"User-Agent": "FutureThinkersBookImporter/1.0"}))
+            if r.status_code == 200:
+                break
+        except Exception:
+            r = None
+        await asyncio.sleep(1.0)
+    if r is None or r.status_code != 200:
+        return {}
+    return ((r.json() or {}).get("metadata")) or {}
+
+
+def _subjects_of(md):
+    raw = (md or {}).get("subject")
+    if not raw:
+        return []
+    if isinstance(raw, str):
+        parts = re.split(r"[;,،]", raw)
+    else:
+        parts = [str(x) for x in raw]
+    return [p.strip() for p in parts if p and p.strip()]
+
+
 async def _download(url, timeout=180):
     def _go():
         with requests.get(url, timeout=timeout, stream=True,
@@ -452,20 +488,36 @@ async def _import_one(user: dict, item: dict, cfg: dict, source: dict | None):
                 cover_bytes = None
         except Exception:
             cover_bytes = None
+        # enrich sparse search-snippet fields from the item's own metadata
+        md = await _archive_metadata(ident)
+        author = item.get("author") or _clean_author(md.get("creator"))
+        desc = item.get("description") or ""
+        md_desc = _clean_text(md.get("description"), 1200)
+        if len(md_desc) > len(desc):
+            desc = md_desc
+        year = item.get("year") or 0
+        if not year:
+            year = _year_of({"year": md.get("year"), "date": md.get("date")})
+        pub = _clean_text(md.get("publisher"), 120)
+        subjects = list(dict.fromkeys((item.get("subjects") or []) + _subjects_of(md)))[:8]
+        raw_lang = str(md.get("language") or "").lower()
+        language = item.get("language") or ""
+        if not language and raw_lang:
+            language = "العربية" if raw_lang.startswith("ar") else ("English" if raw_lang.startswith("en") else raw_lang)
         category = (source or {}).get("category") or "auto"
         if category == "auto":
-            category = _guess_category(item.get("subjects"), cfg.get("default_category") or "general")
+            category = _guess_category(subjects or item.get("subjects"), cfg.get("default_category") or "general")
         meta = {
-            "title": item.get("title") or ident,
-            "author": item.get("author") or "مؤلف غير معروف",
-            "description": item.get("description") or "",
+            "title": item.get("title") or _clean_title(md.get("title")) or ident,
+            "author": author or "مؤلف غير معروف",
+            "description": desc,
             "category": category,
-            "language": item.get("language") or "العربية",
+            "language": language or "العربية",
             "pages": 0,
-            "year": item.get("year") or 0,
-            "publisher": "archive.org",
+            "year": year,
+            "publisher": pub or "archive.org",
             "age": "عام",
-            "tags": ",".join((item.get("subjects") or [])[:5]),
+            "tags": ",".join(subjects[:5]),
         }
         from routes.books_routes import _create_book_from_pdf
         res = await _create_book_from_pdf(
@@ -486,19 +538,39 @@ async def _import_one(user: dict, item: dict, cfg: dict, source: dict | None):
 
 
 async def _run_source(user: dict, cfg: dict, source: dict, budget: int):
-    """Fetch a source's newest candidates and import/queue unseen ones."""
+    """Fetch a source's candidates and import/queue the unseen ones.
+
+    Scans several pages deep (not just the newest handful), treats books an
+    admin already rejected as seen, and imports with bounded concurrency so
+    one slow book does not stall the whole run.
+    """
     results = []
     if budget <= 0:
         return results
+    max_items = int(source.get("max_items") or 5)
+    rows = min(50, max(30, max_items * 4))
     items = await archive_search(source.get("query", ""), source.get("lang") or "any",
-                                 max(10, int(source.get("max_items") or 5) * 2), fresh=True)
+                                 rows, fresh=True)
     items = await _mark_states(items)
     fresh = [i for i in items if i["state"] == "new"]
-    cap = min(int(source.get("max_items") or 5), budget)
-    for item in fresh[:cap]:
-        if cfg.get("auto_publish"):
-            results.append(await _import_one(user, item, cfg, source))
-        else:
+    if fresh:
+        rejected = await db.import_jobs.find(
+            {"archive_id": {"$in": [i["archive_id"] for i in fresh]}, "status": "rejected"},
+            {"archive_id": 1}).to_list(len(fresh))
+        seen_rejected = {j["archive_id"] for j in rejected}
+        fresh = [i for i in fresh if i["archive_id"] not in seen_rejected]
+    chosen = fresh[:min(max_items, budget)]
+
+    if cfg.get("auto_publish"):
+        sem = asyncio.Semaphore(2)
+
+        async def _one(it):
+            async with sem:
+                return await _import_one(user, it, cfg, source)
+
+        results = list(await asyncio.gather(*[_one(it) for it in chosen])) if chosen else []
+    else:
+        for item in chosen:
             doc = {
                 "archive_id": item["archive_id"], "title": item["title"],
                 "author": item["author"], "description": item.get("description", ""),
@@ -514,9 +586,32 @@ async def _run_source(user: dict, cfg: dict, source: dict, budget: int):
     return results
 
 
+def _bump_stats(cfg, results):
+    st = cfg.setdefault("stats", {"imported": 0, "queued": 0, "failed": 0, "skipped": 0})
+    st["imported"] = st.get("imported", 0) + len([r for r in results if r.get("status") == "imported"])
+    st["queued"] = st.get("queued", 0) + len([r for r in results if r.get("status") == "queued"])
+    st["failed"] = st.get("failed", 0) + len([r for r in results if r.get("status") == "failed"])
+    st["skipped"] = st.get("skipped", 0) + len([r for r in results if r.get("status") == "skipped_dup"])
+
+
+def _record_source_run(cfg, source, results=None, error=None):
+    """Write a truthful per-source outcome (only for sources that really ran)."""
+    source["last_run_at"] = now_iso()
+    if error:
+        source["last_stats"] = f"تعذّرت قراءة المصدر: {str(error)[:80]}"
+        return
+    done = len([r for r in (results or []) if r.get("status") == "imported"])
+    qd = len([r for r in (results or []) if r.get("status") == "queued"])
+    fl = len([r for r in (results or []) if r.get("status") == "failed"])
+    txt = f"استورد {done} · بالانتظار {qd}"
+    if fl:
+        txt += f" · تعذّر {fl}"
+    source["last_stats"] = txt
+
+
 def _public_cfg(cfg):
     out = {k: cfg.get(k) for k in ("enabled", "auto_publish", "default_category",
-                                   "max_file_mb", "per_run", "interval_hours", "last_run_at", "stats")}
+                                   "max_file_mb", "per_run", "interval_hours", "last_run_at", "stats", "engine")}
     out["sources"] = cfg.get("sources") or []
     out["categories"] = CATEGORY_SLUGS
     return out
@@ -543,6 +638,9 @@ async def importer_config_put(body: ConfigBody, user: dict = Depends(require_per
     for k, v in body.model_dump().items():
         if v is not None:
             cfg[k] = v
+    if cfg.get("enabled") is False and cfg["engine"].get("state") == "running":
+        cfg["engine"]["state"] = "stopped"
+        cfg["engine"]["stopped_at"] = now_iso()
     if cfg["default_category"] not in CATEGORY_SLUGS:
         cfg["default_category"] = "general"
     await _save_config(cfg)
@@ -695,6 +793,9 @@ async def importer_import(body: ImportBody, user: dict = Depends(require_permiss
                 "status": res["status"], "book_id": res.get("book_id"),
                 "error": res.get("error"), "created_at": now_iso(), "via": "manual",
             })
+    if results:
+        _bump_stats(cfg, results)
+        await _save_config(cfg)
     return {"results": results}
 
 
@@ -724,6 +825,8 @@ async def job_approve(job_id: str, user: dict = Depends(require_permission("book
     await db.import_jobs.update_one({"_id": job["_id"]}, {"$set": {
         "status": res["status"], "book_id": res.get("book_id"),
         "error": res.get("error"), "created_at": now_iso()}})
+    _bump_stats(cfg, [res])
+    await _save_config(cfg)
     return res
 
 
@@ -738,6 +841,53 @@ async def job_reject(job_id: str, user: dict = Depends(require_permission("book.
     return {"ok": True}
 
 
+async def _run_pass(user: dict, cfg: dict, sources, budget: int, via: str):
+    """One fair pass over the given sources.
+
+    Rotates the starting point (persisted run_cursor) so no source starves,
+    gives each source a fair quota of the remaining budget, isolates
+    per-source errors, and checkpoints config after every source so a
+    timeout can never rewind progress or misreport stats.
+    """
+    all_results = []
+    if not sources:
+        return all_results
+    if len(sources) > 1:
+        cur = int(cfg.get("run_cursor") or 0) % len(sources)
+        ordered = sources[cur:] + sources[:cur]
+    else:
+        ordered = sources
+    processed_ids = set()
+    remaining = len(ordered)
+    for s in ordered:
+        remaining -= 1
+        if budget <= 0:
+            break  # untouched sources keep their previous (truthful) stats
+        quota = min(int(s.get("max_items") or 5),
+                    max(1, -(-budget // max(1, remaining + 1))))
+        try:
+            res = await _run_source(user, cfg, s, quota)
+        except Exception as e:  # one bad source must not kill the whole pass
+            res = []
+            _record_source_run(cfg, s, error=e)
+        else:
+            _record_source_run(cfg, s, res)
+        budget -= len([r for r in res if r.get("status") in ("imported", "queued")])
+        processed_ids.add(s.get("key"))
+        for r in res:
+            if r.get("status") != "queued":
+                await db.import_jobs.insert_one({**r, "via": via})
+        all_results.extend(res)
+        _bump_stats(cfg, res)
+        cfg["last_run_at"] = now_iso()
+        if cfg.get("sources"):
+            last_idx = max((i for i, x in enumerate(cfg["sources"])
+                            if x.get("key") in processed_ids), default=-1)
+            cfg["run_cursor"] = (last_idx + 1) % len(cfg["sources"])
+        await _save_config(cfg)  # checkpoint: a timeout later loses nothing
+    return all_results
+
+
 @router.post("/run-now")
 async def run_now(source_key: str = "", user: dict = Depends(require_permission("book.edit"))):
     cfg = await get_config()
@@ -746,74 +896,102 @@ async def run_now(source_key: str = "", user: dict = Depends(require_permission(
         sources = [s for s in sources if s.get("key") == source_key]
     if not sources:
         raise HTTPException(status_code=400, detail="لا توجد مصادر مفعّلة")
-    budget = int(cfg.get("per_run") or 5)
-    all_results = []
-    for s in sources:
-        if budget <= 0:
-            break
-        res = await _run_source(user, cfg, s, budget)
-        used = len([r for r in res if r.get("status") in ("imported", "queued")])
-        budget -= used
-        s["last_run_at"] = now_iso()
-        done = len([r for r in res if r.get("status") == "imported"])
-        qd = len([r for r in res if r.get("status") == "queued"])
-        s["last_stats"] = f"استورد {done} · بالانتظار {qd}"
-        for r in res:
-            if r.get("status") != "queued":
-                await db.import_jobs.insert_one({**r, "via": "run"})
-        all_results.extend(res)
-    cfg["last_run_at"] = now_iso()
-    stats = cfg["stats"]
-    stats["imported"] = stats.get("imported", 0) + len([r for r in all_results if r.get("status") == "imported"])
-    stats["queued"] = stats.get("queued", 0) + len([r for r in all_results if r.get("status") == "queued"])
-    stats["failed"] = stats.get("failed", 0) + len([r for r in all_results if r.get("status") == "failed"])
-    stats["skipped"] = stats.get("skipped", 0) + len([r for r in all_results if r.get("status") == "skipped_dup"])
-    cfg["stats"] = stats
+    results = await _run_pass(user, cfg, sources, int(cfg.get("per_run") or 5), "run")
+    return {"results": results}
+
+
+# ---------------- continuous import engine ----------------
+async def _engine_cycle(user: dict, cfg: dict):
+    """Advance the continuous engine by one full cycle over all sources.
+
+    The engine keeps cycling until every active source yields nothing new
+    (two consecutive empty cycles = all required books complete) or an
+    admin force-stops it. Returns a small cycle summary.
+    """
+    eng = cfg["engine"]
+    if eng.get("state") != "running":
+        return {"ran": False, "state": eng.get("state")}
+    sources = [s for s in cfg["sources"] if s.get("active", True)]
+    results = await _run_pass(user, cfg, sources, int(cfg.get("per_run") or 5), "engine") if sources else []
+    cfg = await get_config()  # _run_pass checkpoint-saved along the way
+    eng = cfg["engine"]
+    if eng.get("state") != "running":  # force-stopped mid-cycle
+        return {"ran": True, "state": eng.get("state"),
+                "imported": len([r for r in results if r.get("status") == "imported"]),
+                "queued": len([r for r in results if r.get("status") == "queued"])}
+    eng["cycles"] = int(eng.get("cycles") or 0) + 1
+    eng["last_cycle_at"] = now_iso()
+    eng["session_imported"] = int(eng.get("session_imported") or 0) + len([r for r in results if r.get("status") == "imported"])
+    eng["session_queued"] = int(eng.get("session_queued") or 0) + len([r for r in results if r.get("status") == "queued"])
+    eng["session_failed"] = int(eng.get("session_failed") or 0) + len([r for r in results if r.get("status") == "failed"])
+    fresh = len([r for r in results if r.get("status") in ("imported", "queued")])
+    if fresh == 0:
+        eng["empty_cycles"] = int(eng.get("empty_cycles") or 0) + 1
+        if eng["empty_cycles"] >= 2:
+            eng["state"] = "complete"
+            eng["stopped_at"] = now_iso()
+    else:
+        eng["empty_cycles"] = 0
+    cfg["engine"] = eng
     await _save_config(cfg)
-    return {"results": all_results}
+    return {"ran": True, "state": eng["state"], "cycles": eng["cycles"],
+            "imported": len([r for r in results if r.get("status") == "imported"]),
+            "queued": len([r for r in results if r.get("status") == "queued"]),
+            "failed": len([r for r in results if r.get("status") == "failed"]),
+            "engine": eng}
+
+
+@router.post("/engine/start")
+async def engine_start(user: dict = Depends(require_permission("book.edit"))):
+    cfg = await get_config()
+    if not [s for s in cfg["sources"] if s.get("active", True)]:
+        raise HTTPException(status_code=400, detail="فعّل مصدراً واحداً على الأقل أولاً")
+    cfg["enabled"] = True
+    cfg["engine"] = {"state": "running", "started_at": now_iso(), "stopped_at": None,
+                     "cycles": 0, "session_imported": 0, "session_queued": 0,
+                     "session_failed": 0, "empty_cycles": 0, "last_cycle_at": None}
+    await _save_config(cfg)
+    return {"engine": cfg["engine"]}
+
+
+@router.post("/engine/stop")
+async def engine_stop(user: dict = Depends(require_permission("book.edit"))):
+    cfg = await get_config()
+    eng = cfg["engine"]
+    eng["state"] = "stopped"
+    eng["stopped_at"] = now_iso()
+    cfg["engine"] = eng
+    cfg["enabled"] = False  # force latch: nothing searches until started again
+    await _save_config(cfg)
+    return {"engine": eng}
+
+
+@router.post("/engine/advance")
+async def engine_advance(user: dict = Depends(require_permission("book.edit"))):
+    cfg = await get_config()
+    if cfg["engine"].get("state") != "running":
+        return {"ran": False, "state": cfg["engine"].get("state"), "engine": cfg["engine"]}
+    out = await _engine_cycle(user, cfg)
+    out["engine"] = (await get_config())["engine"]
+    return out
 
 
 async def maybe_run_scheduled_import():
-    """Cron entry: run all active sources when enabled and due."""
+    """Cron entry: advance the continuous engine by one cycle.
+
+    Latched by design: unless an admin has started the engine, this does
+    nothing at all · no searching happens on its own, ever.
+    """
     cfg = await get_config()
-    if not cfg.get("enabled"):
-        return {"ran": False, "reason": "disabled"}
-    from datetime import datetime, timezone
-    last = cfg.get("last_run_at")
-    if last:
-        try:
-            last_dt = datetime.fromisoformat(str(last).replace("Z", "+00:00"))
-            age_h = (datetime.now(timezone.utc) - last_dt).total_seconds() / 3600
-            if age_h < float(cfg.get("interval_hours") or 12):
-                return {"ran": False, "reason": "not_due"}
-        except Exception:
-            pass
+    if cfg["engine"].get("state") != "running":
+        return {"ran": False, "reason": "engine_not_running"}
     admin = await db.users.find_one({"role": {"$in": ["super_admin", "admin"]}})
     if not admin:
         return {"ran": False, "reason": "no_admin"}
     from db import ser as _ser
     user = _ser(admin)
-    sources = [s for s in cfg["sources"] if s.get("active", True)]
-    budget = int(cfg.get("per_run") or 5)
-    total = []
-    for s in sources:
-        if budget <= 0:
-            break
-        try:
-            res = await _run_source(user, cfg, s, budget)
-        except Exception:
-            res = []
-        budget -= len([r for r in res if r.get("status") in ("imported", "queued")])
-        s["last_run_at"] = now_iso()
-        for r in res:
-            if r.get("status") != "queued":
-                await db.import_jobs.insert_one({**r, "via": "schedule"})
-        total.extend(res)
-    cfg["last_run_at"] = now_iso()
-    cfg["stats"]["imported"] = cfg["stats"].get("imported", 0) + len([r for r in total if r.get("status") == "imported"])
-    cfg["stats"]["failed"] = cfg["stats"].get("failed", 0) + len([r for r in total if r.get("status") == "failed"])
-    await _save_config(cfg)
-    return {"ran": True, "results": len(total)}
+    out = await _engine_cycle(user, cfg)
+    return {"ran": True, **out}
 
 
 @cron_router.get("/importer-tick")

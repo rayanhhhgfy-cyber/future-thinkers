@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import api, { apiErr } from "@/lib/api";
 import { toast } from "sonner";
@@ -6,7 +6,7 @@ import { motion } from "framer-motion";
 import {
   CloudDownload, Power, Sparkles, Search, Play, Trash2, Plus, Save,
   RefreshCw, Check, X, BookOpen, ListChecks, ShieldCheck, Clock3,
-  LibraryBig, AlertTriangle, Globe2, Layers, Zap,
+  LibraryBig, AlertTriangle, Globe2, Layers, Zap, Square, Cpu,
 } from "lucide-react";
 import { PageLoader } from "@/components/Layout";
 
@@ -112,6 +112,39 @@ export default function AdminImporter() {
     catch (e) { toast.error(apiErr(e, "حدث خطأ")); }
     setBusy("");
   };
+
+  /* ---- continuous import engine (start / force-stop / driving loop) ---- */
+  const engineState = (cfg && cfg.engine && cfg.engine.state) || "stopped";
+  const engineRef = useRef(engineState);
+  engineRef.current = engineState;
+  const drivingRef = useRef(false);
+
+  const startEngine = () => act("engine", () => api.post("/admin/importer/engine/start"),
+    "اشتغل المحرك · بيضل يستورد لحد ما يخلّص كل الكتب أو توقّفه بالقوة");
+  const stopEngine = () => act("engine", () => api.post("/admin/importer/engine/stop"),
+    "توقّف المحرك · ما راح يبحث لحاله إلا لما تشغّله من جديد");
+
+  useEffect(() => {
+    if (engineState !== "running" || drivingRef.current) return;
+    drivingRef.current = true;
+    let alive = true;
+    (async () => {
+      while (alive && engineRef.current === "running") {
+        try {
+          const r = await api.post("/admin/importer/engine/advance");
+          if (r.data && r.data.engine) {
+            setCfg((p) => (p ? { ...p, engine: r.data.engine } : p));
+          }
+          if (!r.data || !r.data.ran || r.data.state !== "running") break;
+        } catch { break; }
+        await new Promise((res) => setTimeout(res, 2000));
+      }
+      drivingRef.current = false;
+      if (alive) load();
+    })();
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [engineState]);
 
   if (!cfg) return <PageLoader />;
   const st = cfg.stats || {};
@@ -224,13 +257,65 @@ export default function AdminImporter() {
               onBlur={(e) => { const v = Number(e.target.value); if (v && v !== cfg.interval_hours) act("cfg", () => api.put("/admin/importer/config", { interval_hours: v }), "حُفظت فترة الفحص"); }} />
           </label>
         </div>
-        <button disabled={busy === "runall"} data-testid="imp-runall"
-          onClick={() => act("runall", () => api.post("/admin/importer/run-now"), "اكتمل فحص كل المصادر")}
-          className="pressable mt-4 inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-l from-teal-500 to-emerald-600 px-6 font-head text-sm font-black text-white shadow-[0_14px_28px_-10px_rgba(20,184,166,0.55)] transition hover:scale-[1.02] active:scale-95 disabled:opacity-40 sm:w-auto">
-          {busy === "runall" ? <RefreshCw className="h-4.5 w-4.5 animate-spin" /> : <Play className="h-4.5 w-4.5" />} تشغيل فحص كل المصادر الآن
-        </button>
+        {engineState === "running" ? (
+          <button disabled={busy === "engine"} data-testid="imp-engine-stop-hero" onClick={stopEngine}
+            className="pressable mt-4 inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-l from-rose-500 to-red-600 px-6 font-head text-sm font-black text-white shadow-[0_14px_28px_-10px_rgba(244,63,94,0.55)] transition hover:scale-[1.02] active:scale-95 disabled:opacity-40 sm:w-auto">
+            {busy === "engine" ? <RefreshCw className="h-4.5 w-4.5 animate-spin" /> : <Square className="h-4.5 w-4.5" />} إيقاف المحرك قسراً
+          </button>
+        ) : (
+          <button disabled={busy === "engine"} data-testid="imp-runall" onClick={startEngine}
+            className="pressable mt-4 inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-l from-teal-500 to-emerald-600 px-6 font-head text-sm font-black text-white shadow-[0_14px_28px_-10px_rgba(20,184,166,0.55)] transition hover:scale-[1.02] active:scale-95 disabled:opacity-40 sm:w-auto">
+            {busy === "engine" ? <RefreshCw className="h-4.5 w-4.5 animate-spin" /> : <Play className="h-4.5 w-4.5" />} تشغيل فحص كل المصادر · مستمر حتى يكتمل
+          </button>
+        )}
         {cfg.last_run_at && <p className="mt-2 text-[11px] font-bold text-slate-400">آخر فحص شامل: <span dir="ltr">{String(cfg.last_run_at).slice(0, 16).replace("T", " ")}</span></p>}
       </Panel>
+
+      {/* continuous engine */}
+      {(() => { const eng = cfg.engine || {}; return (
+      <section className="relative mt-5 overflow-hidden rounded-[26px] border border-violet-100 bg-gradient-to-l from-violet-50 via-white to-fuchsia-50 p-5 shadow-sm sm:p-6">
+        <div className="pointer-events-none absolute -top-14 -start-14 h-40 w-40 rounded-full bg-violet-300/20 blur-3xl" />
+        <div className="relative flex flex-col gap-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-violet-500 to-fuchsia-600 text-white shadow-lg shadow-violet-500/25"><Cpu className="h-5 w-5" /></span>
+            <div className="min-w-0 flex-1">
+              <h3 className="font-head text-base font-black text-slate-900">محرك الاستيراد المستمر</h3>
+              <p className="text-xs font-bold leading-6 text-slate-500">يبحث بكل المصادر جولة وراء جولة وما بيوقف إلا لما يخلّص كل الكتب المطلوبة · أو لما توقّفه انت بالقوة. وبعد الإيقاف القسري ما في أي بحث تلقائي لحد ما تشغّله من جديد بإيدك.</p>
+            </div>
+            <span data-testid="imp-engine-state" className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-black ${engineState === "running" ? "bg-emerald-100 text-emerald-700" : engineState === "complete" ? "bg-sky-100 text-sky-700" : "bg-slate-100 text-slate-500"}`}>
+              <span className={`h-2 w-2 rounded-full ${engineState === "running" ? "animate-pulse bg-emerald-500" : engineState === "complete" ? "bg-sky-500" : "bg-slate-400"}`} />
+              {engineState === "running" ? "يعمل الآن" : engineState === "complete" ? "اكتمل كل شيء" : "متوقف"}
+            </span>
+          </div>
+          {engineState !== "stopped" && (
+            <div className="flex flex-wrap gap-1.5 text-[11px] font-black">
+              <span className="rounded-full bg-white px-2.5 py-1 text-slate-600 ring-1 ring-violet-100">جولات مكتملة: {eng.cycles || 0}</span>
+              <span className="rounded-full bg-white px-2.5 py-1 text-emerald-600 ring-1 ring-emerald-100">استورد بالجلسة: {eng.session_imported || 0}</span>
+              <span className="rounded-full bg-white px-2.5 py-1 text-amber-600 ring-1 ring-amber-100">بالانتظار: {eng.session_queued || 0}</span>
+              {(eng.session_failed || 0) > 0 && <span className="rounded-full bg-white px-2.5 py-1 text-rose-600 ring-1 ring-rose-100">تعذّر: {eng.session_failed}</span>}
+              {eng.last_cycle_at && <span className="rounded-full bg-white px-2.5 py-1 text-slate-500 ring-1 ring-slate-200">آخر جولة <span dir="ltr">{String(eng.last_cycle_at).slice(11, 16)}</span></span>}
+            </div>
+          )}
+          <div className="flex flex-col gap-2 sm:flex-row">
+            {engineState === "running" ? (
+              <button data-testid="imp-engine-stop" onClick={stopEngine} disabled={busy === "engine"}
+                className="inline-flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-2xl bg-gradient-to-l from-rose-500 to-red-600 px-4 font-head text-sm font-black text-white shadow-lg shadow-rose-600/20 transition hover:shadow-rose-600/40 disabled:opacity-50">
+                <Square className="h-4 w-4" /> إيقاف قسري · لا بحث بعدها أبداً
+              </button>
+            ) : (
+              <button data-testid="imp-engine-start" onClick={startEngine} disabled={busy === "engine"}
+                className="inline-flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-2xl bg-gradient-to-l from-violet-500 to-fuchsia-600 px-4 font-head text-sm font-black text-white shadow-lg shadow-violet-600/25 transition hover:shadow-violet-600/40 disabled:opacity-50">
+                <Play className="h-4 w-4" /> {engineState === "complete" ? "تشغيل من جديد" : "تشغيل البحث المستمر لكل المصادر"}
+              </button>
+            )}
+            <button data-testid="imp-quick-pass" disabled={busy === "runall" || engineState === "running"}
+              onClick={() => act("runall", () => api.post("/admin/importer/run-now"), "اكتمل الفحص السريع")}
+              className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-2xl bg-white px-4 font-head text-sm font-black text-violet-700 ring-1 ring-violet-200 transition hover:bg-violet-50 disabled:opacity-50">
+              <RefreshCw className="h-4 w-4" /> فحص واحد سريع الآن
+            </button>
+          </div>
+        </div>
+      </section> ); })()}
 
       {/* sources */}
       <Panel i={2} icon={Globe2} grad="from-sky-500 to-blue-600" shadow="shadow-sky-500/30"
