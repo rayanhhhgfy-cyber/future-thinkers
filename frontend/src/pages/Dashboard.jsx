@@ -10,6 +10,7 @@ import * as Icons from "lucide-react";
 import { FadeUp } from "@/components/anim";
 import { ContinueRail, StarterChecklist } from "@/components/dashboard/ux";
 import BookCover from "@/components/BookCover";
+import Onboarding from "@/components/Onboarding";
 
 const VSTATUS = { idea: "فكرة", in_progress: "قيد التنفيذ", completed: "مكتمل" };
 const VSTATUS_C = { idea: "bg-sky-100 text-sky-700", in_progress: "bg-amber-100 text-amber-700", completed: "bg-emerald-100 text-emerald-700" };
@@ -303,6 +304,7 @@ export default function Dashboard() {
         </div>
 
       </div>
+      <Onboarding user={user} />
     </Layout>
   );
 }

@@ -8,10 +8,10 @@ import {
   KeyRound, Eye, EyeOff, Settings as SettingsIcon, BellRing, User, Target, Shield,
   Download, Palette, Sparkles, AlertTriangle, BookOpen, Crown, Rocket, Heart, Award, Check, Type, RotateCcw,
   Smartphone, Share, Zap, WifiOff, CheckCircle2, MoreVertical,
-  ChevronDown,
-} from "lucide-react";
+  ChevronDown, Map } from "lucide-react";
 import { usePwaInstall } from "@/lib/pwa";
 import { APP_VERSION, CHANGELOG } from "@/lib/version";
+import { resetOnboarding } from "@/components/Onboarding";
 import { FONT_SCALE_STEPS, getFontScale, applyFontScale } from "@/lib/fontscale";
 import { isPushSupported, pushPermission, enablePush, disablePush, backendPushEnabled } from "@/lib/push";
 import { COVERS, coverCls, FRAME_RING } from "@/lib/cosmetics";
@@ -462,6 +462,14 @@ export default function Settings() {
         </div>
 
         {/* version + what's new */}
+        {/* onboarding replay */}
+        <Card icon={Map} color="#0D9488" title="الجولة التعريفية" desc="جولة سريعة من ثماني خطوات تعرّفك كل أقسام المنصة · يمكنك إعادة تشغيلها في أي وقت.">
+          <Link to="/dashboard" onClick={() => resetOnboarding(user?.id)} data-testid="settings-replay-tour"
+            className="pressable inline-flex items-center gap-2 rounded-2xl bg-teal-600 px-5 py-3 text-sm font-black text-white shadow-lg shadow-teal-600/30 transition hover:-translate-y-0.5 min-h-[46px]">
+            <Map className="w-4.5 h-4.5" /> إعادة الجولة التعريفية
+          </Link>
+        </Card>
+
         <div className="text-center pt-1 pb-2" data-testid="settings-version-line">
           <div className="text-xs font-bold text-slate-400">مفكرو المستقبل · إصدار التطبيق <span dir="ltr">{APP_VERSION}</span></div>
           <button onClick={() => setShowWhatsNew((v) => !v)} aria-expanded={showWhatsNew}
