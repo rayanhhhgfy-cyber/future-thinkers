@@ -693,7 +693,7 @@ export default function Messages() {
             onPointerUp={cancelLongPress}
             onPointerLeave={cancelLongPress}
             onContextMenu={(e) => { if (canAct) { e.preventDefault(); setReactFor(m.id); setMenuFor(null); } }}
-            className={`select-text rounded-[24px] px-[18px] py-3 ${deleted
+            className={`select-text rounded-[26px] px-5 py-3.5 ${deleted
               ? "bg-white/70 text-slate-400 shadow-sm ring-1 ring-white/80 backdrop-blur"
               : mine
                 ? `ft-btn-primary text-white shadow-[0_14px_30px_-12px_rgba(15,23,42,0.45)] ${lastInGroup ? tailMine : ""}`
@@ -750,12 +750,12 @@ export default function Messages() {
   };
 
   return (
-    <Layout>
+    <Layout noFooter>
       <style>{MSG_CSS}</style>
-      <div className="relative mx-auto max-w-[1440px] px-2.5 pb-3 pt-2.5 sm:px-5 sm:pt-4 lg:px-8">
+      <div className="relative mx-auto max-w-[1440px] px-2.5 pb-2 pt-2 sm:px-5 sm:pt-3 lg:px-8">
         {/* aurora stage */}
         <section
-          className="grain relative overflow-hidden rounded-[30px] px-3 py-4 sm:rounded-[38px] sm:px-5 sm:py-5 lg:px-6"
+          className="grain relative overflow-hidden rounded-[30px] px-3 py-3 sm:rounded-[38px] sm:px-5 sm:py-4 lg:px-6"
           style={{
             background:
               "radial-gradient(760px 440px at 10% -10%, color-mix(in srgb, var(--ft-accent, #10b981) 22%, transparent), transparent 62%)," +
@@ -776,8 +776,8 @@ export default function Messages() {
           />
 
           <div className="relative z-10">
-            {/* compact title row */}
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-3 px-1">
+            {/* compact title row · على الجوال يختفي أثناء فتح محادثة ليتسع صندوق الدردشة */}
+            <div className={`mb-3 flex-wrap items-center justify-between gap-3 px-1 ${activeId ? "hidden lg:flex" : "flex"}`}>
               <div className="flex items-center gap-3">
                 <span className="ft-icon-tile grid h-11 w-11 shrink-0 place-items-center rounded-2xl shadow-lg">
                   <MessageCircle className="h-5 w-5" />
@@ -795,8 +795,8 @@ export default function Messages() {
               </button>
             </div>
 
-            {/* floating glass panels */}
-            <div className="relative grid h-[calc(100dvh-308px)] min-h-[420px] gap-4 sm:min-h-[480px] lg:h-[calc(100dvh-216px)] lg:min-h-[600px] lg:grid-cols-[400px_minmax(0,1fr)] lg:gap-5">
+            {/* floating glass panels · صندوق دردشة كبير يملأ الشاشة */}
+            <div className={`relative grid gap-4 lg:grid-cols-[420px_minmax(0,1fr)] lg:gap-5 ${activeId ? "h-[calc(100dvh-178px)] min-h-[470px] lg:h-[calc(100dvh-176px)] lg:min-h-[640px]" : "h-[calc(100dvh-264px)] min-h-[440px] sm:min-h-[520px] lg:h-[calc(100dvh-176px)] lg:min-h-[640px]"}`}>
               {/* ── list panel ── */}
               <aside className="flex min-h-0 animate-fade-up flex-col overflow-hidden rounded-[28px] bg-white/70 shadow-[0_24px_60px_-24px_rgba(15,23,42,0.38)] ring-1 ring-white/60 backdrop-blur-xl">
                 <div className="px-4 pb-3 pt-4">
@@ -918,7 +918,7 @@ export default function Messages() {
                               "0 16px 34px -16px color-mix(in srgb, var(--ft-accent, #10b981) 60%, transparent)",
                           } : undefined),
                         }}
-                        className={`flex w-full animate-fade-up items-center gap-3 rounded-3xl p-3.5 text-start ring-1 backdrop-blur transition duration-300 hover:-translate-y-0.5 hover:bg-white/85 hover:shadow-[0_14px_30px_-12px_rgba(15,23,42,0.25)] ${isActive
+                        className={`flex w-full animate-fade-up items-center gap-3 rounded-3xl p-4 text-start ring-1 backdrop-blur transition duration-300 hover:-translate-y-0.5 hover:bg-white/85 hover:shadow-[0_14px_30px_-12px_rgba(15,23,42,0.25)] ${isActive
                           ? "bg-white/85 ring-white/80"
                           : "bg-white/55 shadow-[0_6px_20px_-10px_rgba(15,23,42,0.18)] ring-white/70"}`}
                       >
@@ -980,7 +980,7 @@ export default function Messages() {
                     {/* cover header */}
                     <div className="relative shrink-0">
                       <div
-                        className="h-[92px] sm:h-[104px]"
+                        className="h-[108px] sm:h-[122px]"
                         style={{
                           backgroundImage: `radial-gradient(rgba(255,255,255,.22) 1.2px, transparent 1.4px), ${cover}`,
                           backgroundSize: "16px 16px, cover",
@@ -1040,7 +1040,7 @@ export default function Messages() {
                       </div>
                       <div className="relative z-10 -mt-9 flex items-end gap-3 px-4 pb-3">
                         <span className="shrink-0 rounded-full shadow-[0_12px_26px_-10px_rgba(15,23,42,0.55)]">
-                          <Avatar person={activeOther} size="w-[72px] h-[72px]" text="text-xl" />
+                          <Avatar person={activeOther} size="w-[76px] h-[76px] sm:w-[84px] sm:h-[84px]" text="text-xl" />
                         </span>
                         <div className="min-w-0 flex-1 pb-0.5">
                           {activeOther?.name
@@ -1140,7 +1140,7 @@ export default function Messages() {
                           </div>
                         </div>
                       ) : (
-                      <div className="relative mx-auto w-full max-w-4xl rounded-[28px] bg-white/80 p-2 shadow-[0_18px_44px_-16px_rgba(15,23,42,0.4)] ring-1 ring-white/70 backdrop-blur-xl">
+                      <div className="relative mx-auto w-full max-w-4xl rounded-[30px] bg-white/80 p-2.5 shadow-[0_18px_44px_-16px_rgba(15,23,42,0.4)] ring-1 ring-white/70 backdrop-blur-xl">
                         {emojiOpen && (
                           <div className="absolute bottom-[calc(100%+10px)] start-0 z-40 w-[290px] max-w-[86vw] animate-scale-in rounded-3xl bg-white/95 p-3 shadow-2xl ring-1 ring-white/60 backdrop-blur-xl">
                             <span className="absolute inset-x-0 top-0 h-1 rounded-t-3xl ft-grad-bar" />
@@ -1197,7 +1197,7 @@ export default function Messages() {
                             type="button"
                             onClick={() => setEmojiOpen((v) => !v)}
                             aria-label="إيموجي"
-                            className={`pressable grid h-12 w-12 shrink-0 place-items-center rounded-full transition ${emojiOpen ? "ft-bg-soft ft-text-accent" : "text-slate-400 hover:bg-amber-50 hover:text-amber-500"}`}
+                            className={`pressable grid h-[52px] w-[52px] shrink-0 place-items-center rounded-full transition ${emojiOpen ? "ft-bg-soft ft-text-accent" : "text-slate-400 hover:bg-amber-50 hover:text-amber-500"}`}
                           >
                             <Smile className="h-5 w-5" />
                           </button>
@@ -1209,13 +1209,13 @@ export default function Messages() {
                             rows={1}
                             maxLength={2000}
                             placeholder={editingId ? "عدّل رسالتك…" : "اكتب رسالتك…"}
-                            className="max-h-40 flex-1 resize-none border-0 bg-transparent px-2 py-3 text-[15px] leading-relaxed outline-none placeholder:text-slate-400 focus:ring-0"
+                            className="max-h-40 flex-1 resize-none border-0 bg-transparent px-2 py-3.5 text-base leading-relaxed outline-none placeholder:text-slate-400 focus:ring-0"
                           />
                           <button
                             onClick={send}
                             disabled={sending || !text.trim()}
                             aria-label={editingId ? "حفظ التعديل" : "إرسال"}
-                            className="pressable grid h-12 w-12 shrink-0 place-items-center rounded-full ft-btn-primary text-white shadow-lg transition hover:scale-105 disabled:opacity-50 disabled:hover:scale-100"
+                            className="pressable grid h-[52px] w-[52px] shrink-0 place-items-center rounded-full ft-btn-primary text-white shadow-lg transition hover:scale-105 disabled:opacity-50 disabled:hover:scale-100"
                             style={{ boxShadow: "0 10px 24px -8px color-mix(in srgb, var(--ft-accent, #10b981) 70%, transparent)" }}
                           >
                             {sending ? <Loader2 className="h-5 w-5 animate-spin" /> : editingId ? <Check className="h-5 w-5" /> : <Send className="h-5 w-5 -scale-x-100" />}
