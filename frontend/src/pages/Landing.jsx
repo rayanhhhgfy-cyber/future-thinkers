@@ -5,6 +5,7 @@ import { Counter } from "@/components/Counter";
 import { Stagger, Item, FadeUp, Float } from "@/components/anim";
 import { Button } from "@/components/ui/button";
 import api from "@/lib/api";
+import BookCover from "@/components/BookCover";
 import { useAuth } from "@/context/AuthContext";
 import * as Icons from "lucide-react";
 import { BookOpen, Crown, MessagesSquare, Users, GraduationCap, Building2, Calendar, ArrowLeft, Sparkles, Target, Flag, Trophy, Rocket, Mic, Users2, ChevronDown, Flame, TrendingUp, UserPlus, Route, Quote } from "lucide-react";
@@ -50,12 +51,14 @@ export default function Landing() {
   const [stats, setStats] = useState(null);
   const [clubs, setClubs] = useState([]);
   const [cms, setCms] = useState(null);
+  const [featured, setFeatured] = useState(null);
   const [goalsExpanded, setGoalsExpanded] = useState(false);
 
   useEffect(() => {
     api.get("/stats/public").then((r) => setStats(r.data)).catch(() => {});
     api.get("/clubs").then((r) => setClubs(r.data)).catch(() => {});
     api.get("/landing/cms").then((r) => setCms(r.data)).catch(() => {});
+    api.get("/site/featured-book").then((r) => setFeatured(r.data?.book || null)).catch(() => {});
   }, []);
 
   const statItems = stats ? [
@@ -220,7 +223,41 @@ export default function Landing() {
       </section>
 
       {/* About Us */}
-      <section className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-28 bg-white">
+            {/* Book of the week */}
+      {featured && (
+        <section className="relative overflow-hidden">
+          <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 pt-14 lg:pt-20">
+            <FadeUp>
+              <div data-testid="landing-featured-book" className="relative overflow-hidden rounded-[2rem] ft-hero-gradient grain text-white p-6 sm:p-8 lg:p-10 shadow-[0_30px_60px_-25px_rgba(4,47,38,0.55)]">
+                <div className="pointer-events-none absolute -top-20 right-1/4 w-80 h-80 rounded-full blur-3xl" style={{ background: "color-mix(in srgb, var(--ft-accent) 28%, transparent)" }} />
+                <div className="relative flex flex-col md:flex-row items-center gap-6 lg:gap-9">
+                  <Link to={`/books/${featured.id}`} className="shrink-0">
+                    <BookCover book={featured} className="w-32 lg:w-40 aspect-[3/4] rounded-2xl shadow-2xl ring-1 ring-white/30 rotate-[-2deg]" imgClassName="w-32 lg:w-40 aspect-[3/4] object-cover rounded-2xl" />
+                  </Link>
+                  <div className="min-w-0 flex-1 text-center md:text-start">
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-400 text-slate-950 px-3.5 py-1.5 text-[11px] font-black shadow-lg shadow-amber-500/30">
+                      <Sparkles className="w-3.5 h-3.5" /> كتاب الأسبوع في النادي
+                    </span>
+                    <h2 className="mt-3.5 font-head text-2xl lg:text-4xl font-black leading-snug">{featured.title}</h2>
+                    <p className="mt-1.5 text-sm lg:text-base font-bold text-slate-300">{featured.author}</p>
+                    {featured.description && <p className="mt-3 text-sm lg:text-[15px] leading-relaxed text-slate-300 line-clamp-3 max-w-2xl">{featured.description}</p>}
+                    <div className="mt-4 flex flex-wrap items-center justify-center md:justify-start gap-2">
+                      {featured.pages > 0 && <span className="rounded-full bg-white/10 border border-white/15 px-3 py-1 text-[11px] font-bold">{featured.pages} صفحة</span>}
+                      {featured.category && <span className="rounded-full bg-white/10 border border-white/15 px-3 py-1 text-[11px] font-bold">{featured.category}</span>}
+                      {featured.rating_count > 0 && <span className="rounded-full bg-white/10 border border-white/15 px-3 py-1 text-[11px] font-bold">★ {Number(featured.rating_avg).toFixed(1)} · {featured.rating_count} تقييم</span>}
+                    </div>
+                  </div>
+                  <Link to={`/books/${featured.id}`} className="pressable shrink-0 inline-flex items-center gap-2 rounded-2xl bg-white text-slate-900 px-6 py-3.5 text-sm font-black shadow-xl transition hover:-translate-y-0.5 min-h-[52px]">
+                    <BookOpen className="w-5 h-5" /> ابدأ القراءة
+                  </Link>
+                </div>
+              </div>
+            </FadeUp>
+          </div>
+        </section>
+      )}
+
+<section className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-28 bg-white">
         <FadeUp>
         <SectionTag num="٠١" label="من نحن" />
         <div className="lg:grid lg:grid-cols-12 lg:gap-14">
