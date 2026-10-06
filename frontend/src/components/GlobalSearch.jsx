@@ -7,7 +7,7 @@ import BookCover from "@/components/BookCover";
 import { EASE } from "@/components/anim";
 import {
   Search, X, BookOpen, Rocket, Users, CalendarDays, Newspaper,
-  Clock, Trash2, Loader2, Sparkles,
+  Clock, Trash2, Loader2, Sparkles, TrendingUp, ChevronLeft, CornerDownLeft,
 } from "lucide-react";
 
 /* ------------------------------------------------------------------ */
@@ -28,6 +28,8 @@ function loadRecent() {
 function storeRecent(list) {
   try { localStorage.setItem(RECENT_KEY, JSON.stringify(list.slice(0, 6))); } catch {}
 }
+
+const SUGGESTED = ["كتب", "شطرنج", "مسابقات", "مشاريع", "فعاليات", "نادي"];
 
 const asList = (data) =>
   data?.items || data?.books || data?.ventures || data?.events || data?.news ||
@@ -174,123 +176,122 @@ export function GlobalSearch({ onClose }) {
     <motion.div
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
       transition={{ duration: 0.22 }}
-      className="fixed inset-0 z-[100] flex items-start justify-center bg-[#02150f]/60 px-3 pt-[9vh] backdrop-blur-xl sm:px-4 sm:pt-[7vh]"
+      className="fixed inset-0 z-[100] flex items-start justify-center bg-slate-950/45 px-3 pt-[10vh] backdrop-blur-md sm:px-4 sm:pt-[12vh]"
       onClick={onClose}
       data-testid="global-search"
     >
       <motion.div
-        initial={{ opacity: 0, y: 34, scale: 0.965 }}
+        initial={{ opacity: 0, y: 26, scale: 0.97 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: 20, scale: 0.97 }}
-        transition={{ type: "spring", stiffness: 320, damping: 30 }}
+        exit={{ opacity: 0, y: 16, scale: 0.98 }}
+        transition={{ type: "spring", stiffness: 340, damping: 30 }}
         onClick={(e) => e.stopPropagation()}
-        className="flex max-h-[80vh] w-full max-w-2xl flex-col overflow-hidden rounded-[28px] bg-white shadow-[0_50px_110px_-24px_rgba(1,10,7,0.7)] ring-1 ring-white/50 sm:max-h-[86vh] sm:rounded-[32px]"
+        className="flex max-h-[78vh] w-full max-w-xl flex-col overflow-hidden rounded-[26px] bg-white/[0.97] shadow-[0_40px_90px_-20px_rgba(2,20,14,0.55)] ring-1 ring-slate-900/[0.06] backdrop-blur-2xl sm:max-h-[80vh]"
       >
-        {/* ===== gradient search header ===== */}
-        <div className="ft-hero-gradient grain relative shrink-0 overflow-hidden px-4 pb-5 pt-[max(1.1rem,env(safe-area-inset-top))] text-white sm:px-6 sm:pt-5">
-          <div className="pointer-events-none absolute -top-20 start-1/4 h-56 w-56 rounded-full blur-3xl" style={{ background: "color-mix(in srgb, var(--ft-accent) 38%, transparent)" }} />
-          <div className="pointer-events-none absolute -bottom-24 end-8 h-48 w-48 rounded-full bg-amber-400/20 blur-3xl" />
-          <div className="relative">
-            <div className="flex items-center gap-2.5">
-              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-2xl bg-amber-400 text-slate-950 shadow-lg shadow-amber-500/40">
-                <Sparkles className="h-4.5 w-4.5" />
-              </span>
-              <p className="font-head text-[15px] font-black leading-none">بحث المنصة الذكي</p>
-              <span className="rounded-full bg-white/10 px-2.5 py-1 text-[10px] font-black text-slate-200 ring-1 ring-white/15">كتب · مشاريع · أعضاء · فعاليات · أخبار</span>
-              <span className="flex-1" />
-              <button onClick={onClose} aria-label="إغلاق البحث"
-                className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white/10 text-white ring-1 ring-white/15 transition hover:bg-white/20 active:scale-90">
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
-            <div className="mt-4 flex items-center gap-2 rounded-[22px] bg-white p-2 shadow-[0_20px_40px_-16px_rgba(1,10,7,0.55)] ring-1 ring-black/5 transition-shadow focus-within:shadow-[0_24px_48px_-14px_rgba(1,10,7,0.6)]">
-              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl ft-icon-tile text-white shadow-md">
-                <Search className="h-5 w-5" />
-              </span>
-              <input
-                ref={inputRef}
-                data-testid="global-search-input"
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                onKeyDown={onKeyDown}
-                placeholder="ابحث عن كتاب، مشروع، عضو، فعالية…"
-                className="min-w-0 flex-1 bg-transparent text-base font-bold text-slate-800 outline-none placeholder:font-semibold placeholder:text-slate-300 sm:text-lg"
-              />
-              {loading
-                ? <Loader2 className="ft-text-accent h-5 w-5 shrink-0 animate-spin" />
-                : term && (
-                  <button onClick={() => setQ("")} aria-label="مسح البحث"
-                    className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-slate-100 text-slate-500 transition hover:bg-rose-50 hover:text-rose-500 active:scale-90">
-                    <X className="h-4 w-4" />
-                  </button>
-                )}
-              <kbd className="hidden shrink-0 items-center rounded-lg bg-slate-900 px-2 py-1 text-[10px] font-black text-amber-300 sm:inline-flex">ESC</kbd>
-            </div>
+        {/* ===== header: softly rounded typing field ===== */}
+        <div className="relative shrink-0 px-4 pb-3.5 pt-4 sm:px-5">
+          <div className="flex items-center gap-1.5 rounded-[22px] bg-slate-100/90 p-1.5 ring-1 ring-transparent transition-all duration-300 focus-within:bg-white focus-within:shadow-[0_14px_34px_-12px_rgba(4,120,87,0.4)] focus-within:ring-2 focus-within:ring-emerald-400/70">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[16px] bg-white text-emerald-600 shadow-sm ring-1 ring-emerald-100">
+              <Search className="h-5 w-5" />
+            </span>
+            <input
+              ref={inputRef}
+              data-testid="global-search-input"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              onKeyDown={onKeyDown}
+              placeholder="ابحث عن كتاب، مشروع، عضو، فعالية…"
+              aria-label="بحث المنصة"
+              className="h-11 min-w-0 flex-1 bg-transparent px-1 text-[17px] font-semibold text-slate-900 outline-none placeholder:font-medium placeholder:text-slate-400"
+            />
+            {loading
+              ? <Loader2 className="me-2 h-5 w-5 shrink-0 animate-spin text-emerald-600" />
+              : term ? (
+                <button onClick={() => setQ("")} aria-label="مسح البحث"
+                  className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white text-slate-400 shadow-sm ring-1 ring-slate-200/80 transition hover:text-rose-500 active:scale-90">
+                  <X className="h-4 w-4" />
+                </button>
+              ) : null}
+            <button onClick={onClose} aria-label="إغلاق البحث"
+              className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-slate-400 transition hover:bg-white hover:text-slate-600 hover:shadow-sm active:scale-90">
+              <X className="h-[18px] w-[18px]" />
+            </button>
           </div>
         </div>
+        <div className="mx-4 h-px shrink-0 bg-gradient-to-l from-transparent via-slate-200 to-transparent sm:mx-5" aria-hidden="true" />
 
         {/* ===== body ===== */}
-        <div ref={listRef} className="flex-1 overflow-y-auto overscroll-contain bg-gradient-to-b from-white to-slate-50/60">
+        <div ref={listRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2.5 py-2.5 sm:px-3">
           {showRecents ? (
-            <div className="p-4 sm:p-6">
+            <div className="px-1.5 py-1">
               {recent.length > 0 && (
                 <>
-                  <div className="mb-3 flex items-center justify-between">
-                    <span className="inline-flex items-center gap-1.5 text-xs font-extrabold text-slate-400">
-                      <Clock className="h-3.5 w-3.5" /> عمليات بحث سابقة
+                  <div className="mb-2 flex items-center justify-between">
+                    <span className="inline-flex items-center gap-1.5 text-[11px] font-black tracking-wide text-slate-400">
+                      <Clock className="h-3.5 w-3.5" /> بحثت عنه مؤخراً
                     </span>
                     <button onClick={clearRecent}
-                      className="inline-flex min-h-[32px] items-center gap-1 px-2 text-[11px] font-bold text-slate-300 transition hover:text-rose-500">
+                      className="inline-flex min-h-[30px] items-center gap-1 px-1.5 text-[11px] font-bold text-slate-300 transition hover:text-rose-500">
                       <Trash2 className="h-3.5 w-3.5" /> مسح الكل
                     </button>
                   </div>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="mb-4 flex flex-wrap gap-1.5">
                     {recent.map((r) => (
                       <button key={r} onClick={() => { setQ(r); inputRef.current?.focus(); }}
-                        className="pressable inline-flex min-h-[42px] items-center gap-1.5 rounded-full bg-white px-4 text-sm font-bold text-slate-600 shadow-sm ring-1 ring-slate-200/80 transition hover:-translate-y-px hover:text-teal-700 hover:ring-teal-200">
-                        <Clock className="h-3.5 w-3.5 text-teal-500" /> {r}
+                        className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[13px] font-semibold text-slate-600 transition hover:border-emerald-200 hover:bg-emerald-50/60 hover:text-emerald-700">
+                        <Clock className="h-3 w-3 text-slate-300" /> {r}
                       </button>
                     ))}
                   </div>
                 </>
               )}
-              <div className="ft-bg-soft ft-ring-accent mt-6 flex items-start gap-3 rounded-[24px] p-4 ring-1 sm:p-5">
-                <span className="ft-icon-tile grid h-10 w-10 shrink-0 place-items-center rounded-2xl text-white shadow-md"><Sparkles className="h-4.5 w-4.5" /></span>
-                <p className="text-[13px] font-semibold leading-relaxed text-slate-500">
-                  بحث واحد يغطي الموقع كله: جرّب اسم كتاب من المكتبة، مشروعاً من المشاريع، عضواً من الأعضاء، فعالية قادمة أو خبراً جديداً.
-                </p>
+              <div className="mb-2 flex items-center gap-1.5 text-[11px] font-black tracking-wide text-slate-400">
+                <TrendingUp className="h-3.5 w-3.5" /> جرّب تبحث عن
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {SUGGESTED.map((t) => (
+                  <button key={t} onClick={() => { setQ(t); inputRef.current?.focus(); }}
+                    className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1.5 text-[13px] font-semibold text-slate-600 transition hover:bg-emerald-100/80 hover:text-emerald-800">
+                    <Sparkles className="h-3 w-3 text-emerald-500" /> {t}
+                  </button>
+                ))}
+              </div>
+              <div className="mt-5 flex items-start gap-2.5 rounded-2xl bg-emerald-50/70 px-3.5 py-3 text-[12.5px] font-medium leading-relaxed text-emerald-900 ring-1 ring-emerald-100">
+                <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+                <span>بحث واحد يغطي <b>الكتب والمشاريع والأعضاء والفعاليات والأخبار</b> · جرّب اسم كتاب أو اسم زميلك.</span>
               </div>
               {term.length === 1 && <p className="mt-4 text-center text-xs font-bold text-slate-300">اكتب حرفاً آخر لبدء البحث</p>}
             </div>
           ) : loading && flat.length === 0 ? (
-            <div className="space-y-3 p-4 sm:p-6" aria-hidden="true">
-              {[0, 1, 2, 3, 4].map((i) => (
-                <div key={i} className="flex animate-pulse items-center gap-3">
-                  <span className="h-12 w-12 shrink-0 rounded-2xl bg-slate-100" />
-                  <span className="flex-1 space-y-2">
-                    <span className="block h-3 w-2/3 rounded-full bg-slate-100" />
-                    <span className="block h-2.5 w-1/3 rounded-full bg-slate-50" />
+            <div className="space-y-1.5 px-1.5 py-1" aria-hidden="true">
+              {[0, 1, 2, 3].map((i) => (
+                <div key={i} className="flex items-center gap-3 rounded-2xl px-2 py-2">
+                  <span className="h-11 w-11 shrink-0 animate-pulse rounded-xl bg-slate-100" />
+                  <span className="flex-1 space-y-1.5">
+                    <span className="block h-3 w-2/3 animate-pulse rounded-full bg-slate-100" />
+                    <span className="block h-2.5 w-1/3 animate-pulse rounded-full bg-slate-100" />
                   </span>
                 </div>
               ))}
+              <p className="flex items-center gap-2 px-2 pt-1 text-sm font-semibold text-slate-400"><Loader2 className="h-4 w-4 animate-spin text-emerald-600" /> جارٍ البحث في المنصة…</p>
             </div>
           ) : noResults ? (
-            <div className="p-10 text-center sm:p-12">
-              <span className="ft-hero-gradient mx-auto grid h-16 w-16 place-items-center rounded-[22px] text-white shadow-xl"><Search className="h-7 w-7" /></span>
-              <p className="font-head mt-4 text-lg font-black text-slate-800">لا نتائج لـ «{term}»</p>
-              <p className="mt-1 text-[13px] font-semibold text-slate-400">جرّب كلمة أقصر أو تأكد من الإملاء</p>
+            <div className="px-4 py-10 text-center">
+              <span className="mx-auto mb-3 grid h-14 w-14 place-items-center rounded-[20px] bg-slate-100 text-slate-400"><Search className="h-6 w-6" /></span>
+              <p className="font-head text-[16px] font-black text-slate-800">لا نتائج لـ «{term}»</p>
+              <p className="mx-auto mt-1.5 max-w-[280px] text-[13px] leading-relaxed text-slate-400">جرّب كلمة أقصر أو أعد صياغتها، أو تصفّح المكتبة والمشاريع مباشرة.</p>
             </div>
           ) : (
             groups.map((g) => {
               const GIcon = g.source.icon;
               return (
-                <div key={g.source.key} className="px-2.5 py-2 sm:px-3.5">
-                  <div className="flex items-center gap-2 px-2 pb-1.5 pt-2">
-                    <span className={`grid h-6 w-6 place-items-center rounded-lg ${g.source.tint}`}><GIcon className="h-3.5 w-3.5" /></span>
-                    <span className="text-[11px] font-black tracking-wide text-slate-500">{g.source.label}</span>
-                    <span className="rounded-full bg-slate-900 px-2 py-0.5 text-[10px] font-black text-white">{g.items.length}</span>
-                    <span className="h-px flex-1 bg-gradient-to-l from-slate-200/80 to-transparent" />
+                <div key={g.source.key} className="mb-1.5 last:mb-0">
+                  <div className="sticky top-0 z-10 flex items-center gap-2 bg-white/[0.97] px-2 pb-1 pt-2 backdrop-blur-2xl">
+                    <span className="inline-flex items-center gap-1.5 text-[11px] font-black tracking-wide text-slate-400">
+                      <GIcon className="h-3.5 w-3.5 text-emerald-600" /> {g.source.label}
+                    </span>
+                    <span className="rounded-full bg-slate-100 px-1.5 py-px text-[10px] font-black text-slate-500">{g.items.length}</span>
+                    <span className="h-px flex-1 bg-slate-100" aria-hidden="true" />
                   </div>
                   {g.items.map((it) => {
                     const idx = flat.findIndex((f) => f.uid === it.uid);
@@ -303,24 +304,23 @@ export function GlobalSearch({ onClose }) {
                         data-testid={`global-search-item-${it.uid}`}
                         onClick={() => go(it)}
                         onMouseEnter={() => setActive(idx)}
-                        className={`group flex w-full items-center gap-3 rounded-[20px] px-3 py-2.5 text-right transition-all duration-200 ${isActive ? "ft-bg-soft shadow-sm ring-1 ft-ring-accent" : "hover:bg-white"}`}
+                        className={`group relative flex w-full items-center gap-3 rounded-2xl px-2 py-2 text-right transition ${isActive ? "bg-emerald-50/90 ring-1 ring-emerald-100" : "hover:bg-slate-50"}`}
                       >
+                        <span aria-hidden="true" className={`absolute inset-y-2 right-0 w-[3px] rounded-full bg-emerald-500 transition ${isActive ? "opacity-100" : "opacity-0"}`} />
                         {it.book ? (
-                          <BookCover book={it.book} className="h-14 w-10 shrink-0 overflow-hidden rounded-[10px] shadow-md ring-1 ring-black/5" imgClassName="h-full w-full object-cover" />
+                          <BookCover book={it.book} className="h-12 w-9 shrink-0 rounded-lg shadow ring-1 ring-slate-900/5" imgClassName="h-12 w-9 rounded-lg object-cover" />
                         ) : it.user ? (
                           <Avatar user={it.user} tint={g.source.tint} />
                         ) : it.cover ? (
-                          <img src={fileUrl(it.cover)} alt="" className="h-11 w-11 shrink-0 rounded-2xl object-cover ring-1 ring-slate-200" />
+                          <img src={fileUrl(it.cover)} alt="" className="h-10 w-10 shrink-0 rounded-xl object-cover ring-1 ring-slate-200" />
                         ) : (
-                          <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-2xl shadow-sm ${g.source.tint}`}><Icon className="h-5 w-5" /></span>
+                          <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl transition ${isActive ? "bg-white text-emerald-600 shadow-sm ring-1 ring-emerald-100" : "bg-slate-100 text-slate-400"}`}><Icon className="h-[18px] w-[18px]" /></span>
                         )}
                         <span className="min-w-0 flex-1">
-                          <span className={`block truncate text-[15px] font-bold ${isActive ? "ft-text-accent" : "text-slate-700"}`}>{it.title}</span>
-                          {it.sub && <span className="mt-0.5 block truncate text-[11px] font-semibold text-slate-400">{it.sub}</span>}
+                          <span className={`block truncate text-[14.5px] font-bold ${isActive ? "text-emerald-950" : "text-slate-800"}`}>{it.title}</span>
+                          {it.sub && <span className="block truncate text-[12px] font-medium text-slate-400">{it.sub}</span>}
                         </span>
-                        <span className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-black transition ${isActive ? "ft-btn-primary text-white shadow-md" : "bg-slate-100 text-slate-400 group-hover:bg-slate-200/70"}`}>
-                          {g.source.label}
-                        </span>
+                        {isActive && <ChevronLeft className="h-4 w-4 shrink-0 text-emerald-500" />}
                       </button>
                     );
                   })}
@@ -330,13 +330,17 @@ export function GlobalSearch({ onClose }) {
           )}
         </div>
 
-        {/* ===== footer hints ===== */}
-        <div className="hidden shrink-0 items-center gap-4 border-t border-slate-100 bg-white/80 px-6 py-3 text-[11px] font-bold text-slate-400 backdrop-blur sm:flex">
-          <span className="inline-flex items-center gap-1.5"><kbd className="rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 font-black text-slate-500 shadow-sm">↑↓</kbd> للتنقل</span>
-          <span className="inline-flex items-center gap-1.5"><kbd className="rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 font-black text-slate-500 shadow-sm">Enter</kbd> للفتح</span>
-          <span className="inline-flex items-center gap-1.5"><kbd className="rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 font-black text-slate-500 shadow-sm">Esc</kbd> للإغلاق</span>
-          <span className="flex-1" />
-          {searched && flat.length > 0 && <span className="ft-text-accent font-black">{flat.length} نتيجة</span>}
+        {/* ===== footer ===== */}
+        <div className="flex shrink-0 items-center gap-3 border-t border-slate-100 bg-slate-50/70 px-4 py-2.5 text-[11px] font-semibold text-slate-400 sm:px-5">
+          <span className="hidden items-center gap-1.5 sm:inline-flex">
+            <kbd className="rounded-md border border-slate-200 bg-white px-1.5 py-0.5 font-sans text-[10px] font-bold text-slate-500 shadow-sm">↑↓</kbd> تنقّل
+          </span>
+          <span className="hidden items-center gap-1.5 sm:inline-flex">
+            <kbd className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-1.5 py-0.5 font-sans text-[10px] font-bold text-slate-500 shadow-sm"><CornerDownLeft className="h-3 w-3" /> Enter</kbd> افتح
+          </span>
+          <span className="ms-auto shrink-0 font-bold">
+            {term ? (loading ? "جارٍ البحث…" : `${flat.length} نتيجة`) : "بحث المنصة"}
+          </span>
         </div>
       </motion.div>
     </motion.div>,

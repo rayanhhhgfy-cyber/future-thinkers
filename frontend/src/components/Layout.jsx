@@ -57,7 +57,7 @@ export function Layout({ children, noFooter }) {
   const { pathname } = useLocation();
   const reduce = useReducedMotion();
   return (
-    <div className={`min-h-screen flex flex-col ${pathname.startsWith("/admin") ? "" : "pb-[86px] lg:pb-0"}`}>
+    <div className={`min-h-screen flex flex-col ${pathname.startsWith("/admin") ? "" : "pb-[86px] xl:pb-0"}`}>
       <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:right-3 focus:z-[100] focus:rounded-xl focus:bg-white focus:px-4 focus:py-2.5 focus:text-sm focus:font-bold focus:text-slate-900 focus:shadow-2xl focus:ring-2 focus:ring-teal-600">
         تخطَّ إلى المحتوى الرئيسي
       </a>

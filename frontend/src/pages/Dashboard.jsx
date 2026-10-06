@@ -39,8 +39,8 @@ const shortTitle = (t, n = 30) => {
 const SectionHead = ({ icon: Icon, tint, title, extra }) => (
   <div className="flex items-center gap-2.5 mb-4 min-w-0">
     <span className={`w-9 h-9 rounded-xl grid place-items-center shrink-0 ${tint}`}><Icon className="w-5 h-5" /></span>
-    <h3 className="font-head font-bold text-slate-800 whitespace-nowrap">{title}</h3>
-    <span className="h-px flex-1 bg-gradient-to-l from-slate-200/90 to-transparent" aria-hidden="true" />
+    <h3 className="font-head font-bold text-slate-800">{title}</h3>
+    <span className="hidden h-px flex-1 bg-gradient-to-l from-slate-200/90 to-transparent sm:block" aria-hidden="true" />
     {extra}
   </div>
 );
@@ -97,11 +97,11 @@ export default function Dashboard() {
      ============================================================ */
   return (
     <Layout>
-      <div className="w-full max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 xl:py-10 flex flex-col gap-5 sm:gap-6 xl:grid xl:grid-cols-12 xl:items-start">
+      <div className="w-full max-w-[1440px] mx-auto px-3 sm:px-6 xl:px-8 py-4 sm:py-8 xl:py-10 flex flex-col gap-4 sm:gap-6 lg:grid lg:grid-cols-12 lg:items-start">
 
         {/* ============ 1 · Hero ============ */}
-        <FadeUp className="min-w-0 xl:col-span-12">
-          <div className="ft-navy-gradient grain relative overflow-hidden rounded-[1.75rem] sm:rounded-3xl p-5 sm:p-8 lg:p-10 text-white ft-shadow-lg">
+        <FadeUp className="min-w-0 lg:col-span-12">
+          <div className="ft-navy-gradient grain relative overflow-hidden rounded-[1.4rem] sm:rounded-3xl p-4 sm:p-8 lg:p-10 text-white ft-shadow-lg">
             <div aria-hidden className="pointer-events-none absolute -top-20 -left-20 w-64 h-64 sm:w-80 sm:h-80 bg-white/10 rounded-full blur-3xl animate-float" />
             <div aria-hidden className="pointer-events-none absolute -bottom-28 -right-20 w-72 h-72 bg-emerald-400/15 rounded-full blur-3xl" />
             <div aria-hidden className="pointer-events-none absolute -bottom-24 -left-24 w-64 h-64 rounded-full border-[26px] border-white/5" />
@@ -179,14 +179,14 @@ export default function Dashboard() {
         </FadeUp>
 
         {/* ============ 2 · Stats bento band · one panel, hairline dividers ============ */}
-        <FadeUp className="min-w-0 xl:col-span-12">
+        <FadeUp className="min-w-0 lg:col-span-12">
           <div className="flex items-center gap-2 px-1 pb-2.5">
             <Zap className="w-4 h-4 text-amber-500" />
             <h2 className="font-head text-sm font-black text-slate-700">إنجازك بلمحة سريعة</h2>
             <span className="h-px flex-1 bg-gradient-to-l from-slate-200/80 to-transparent" aria-hidden="true" />
           </div>
           <div className="bg-white rounded-3xl border border-slate-100 ft-shadow overflow-hidden">
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-px bg-slate-100">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-slate-100">
               <StatCell icon={Trophy} label="ترتيبك الوطني" value={`#${data.national_rank}`} color="#D97706" sub={data.school_rank ? `مدرستك: #${data.school_rank}` : ""} />
               <StatCell icon={BookOpen} label="كتب مقروءة" value={data.books_read} color="#2563EB" />
               <StatCell icon={Crown} label="تصنيف الشطرنج" value={data.chess_rating} color="#0A192F" />
@@ -197,7 +197,7 @@ export default function Dashboard() {
 
         {/* ============ Book of the week ============ */}
         {featured && (
-          <FadeUp className="min-w-0 xl:col-span-12">
+          <FadeUp className="min-w-0 lg:col-span-12">
             <section data-testid="featured-book-card" className="relative overflow-hidden rounded-3xl ft-hero-gradient grain text-white p-5 sm:p-6">
               <div className="pointer-events-none absolute -top-16 left-1/4 w-72 h-72 rounded-full blur-3xl" style={{ background: "color-mix(in srgb, var(--ft-accent) 26%, transparent)" }} />
               <div className="relative flex flex-col sm:flex-row items-start gap-5">
@@ -217,7 +217,7 @@ export default function Dashboard() {
                     {featured.rating_count > 0 && <span className="rounded-full bg-white/10 border border-white/15 px-3 py-1 text-[11px] font-bold">★ {Number(featured.rating_avg).toFixed(1)} · {featured.rating_count} تقييم</span>}
                   </div>
                 </div>
-                <Link to={`/books/${featured.id}`} className="pressable shrink-0 mx-auto sm:mx-0 sm:self-center inline-flex items-center gap-2 rounded-2xl bg-white text-slate-900 px-5 py-3 text-sm font-black shadow-xl transition hover:-translate-y-0.5 min-h-[48px]">
+                <Link to={`/books/${featured.id}`} className="pressable w-full sm:w-auto shrink-0 sm:self-center inline-flex items-center justify-center gap-2 rounded-2xl bg-white text-slate-900 px-5 py-3 text-sm font-black shadow-xl transition hover:-translate-y-0.5 min-h-[48px]">
                   <BookOpen className="w-4.5 h-4.5" /> ابدأ القراءة
                 </Link>
               </div>
@@ -226,14 +226,14 @@ export default function Dashboard() {
         )}
 
         {/* ============ 3 · Main column (8 on xl): continue, starter, recommended ============ */}
-        <div className="min-w-0 xl:col-span-8 flex flex-col gap-5 sm:gap-6">
+        <div className="min-w-0 lg:col-span-8 flex flex-col gap-4 sm:gap-6">
           <ContinueRail data={data} />
           <StarterChecklist data={data} />
           {recs.length > 0 && (
             <FadeUp>
               <section className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-100 ft-shadow">
                 <SectionHead icon={Sparkles} tint="ft-bg-soft ft-text-accent" title="موصى لك" />
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
                   {recs.slice(0, 4).map((b) => (
                     <Link key={b.id} to={`/books/${b.id}`} className="group min-w-0">
                       <BookCover book={b} className="w-full aspect-[3/4] rounded-xl ft-shadow" imgClassName="w-full aspect-[3/4] object-cover rounded-xl ft-shadow group-hover:scale-[1.03] transition-transform" />
@@ -248,7 +248,7 @@ export default function Dashboard() {
         </div>
 
         {/* ============ 4 · Rail column (4 on xl): quests, my projects, events ============ */}
-        <div className="min-w-0 xl:col-span-4 flex flex-col gap-5 sm:gap-6">
+        <div className="min-w-0 lg:col-span-4 flex flex-col gap-4 sm:gap-6">
           <FadeUp className="min-w-0">
             <section className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-100 ft-shadow">
               <SectionHead icon={Target} tint="bg-rose-50 text-rose-600" title="مهام اليوم"

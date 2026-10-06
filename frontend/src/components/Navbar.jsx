@@ -207,7 +207,7 @@ export function Navbar() {
       <div className={`max-w-[1440px] mx-auto glass rounded-[22px] border border-white/60 ring-1 ring-slate-900/5 px-3.5 sm:px-5 lg:px-6 h-16 lg:h-[68px] flex items-center justify-between gap-3 transition-shadow duration-300 ${scrolled ? "shadow-[0_20px_48px_-16px_rgba(15,23,42,0.38)]" : "shadow-[0_10px_30px_-14px_rgba(15,23,42,0.22)]"}`}>
         <div className="flex items-center gap-8 min-w-0">
           <Link to="/" data-testid="nav-home-link" className="shrink-0"><Logo /></Link>
-          <nav className="hidden lg:flex items-center gap-1.5 flex-1 min-w-0">
+          <nav className="hidden xl:flex items-center gap-1.5 flex-1 min-w-0">
             <div ref={navScrollRef} className="nav-scroll flex items-center gap-1.5 overflow-x-auto min-w-0 py-1 px-0.5">
             {NAV_PRIMARY.map((l) => {
               const active = loc.pathname.startsWith(l.to);
@@ -257,19 +257,18 @@ export function Navbar() {
 
         <div className="flex items-center gap-2">
           <button data-testid="open-search-pill" onClick={() => setSearchOpen(true)} aria-label="بحث سريع"
-            className="group relative hidden xl:flex items-center gap-2.5 w-72 h-11 ps-4 pe-1.5 rounded-full text-slate-400 transition-all duration-300 hover:-translate-y-px hover:shadow-[0_14px_30px_-12px_rgba(4,47,38,0.45)] focus-visible:outline-none"
-            style={{ background: "linear-gradient(#fff,#fff) padding-box, linear-gradient(120deg, rgba(16,185,129,.55), rgba(245,158,11,.5), rgba(13,148,136,.55)) border-box", border: "1.5px solid transparent", boxShadow: "inset 0 1px 0 rgba(255,255,255,.9), 0 8px 20px -12px rgba(4,47,38,.35)" }}>
-            <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full ft-icon-tile text-white shadow-md transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-6">
+            className="group hidden h-11 w-64 items-center gap-2.5 rounded-full border border-slate-200/80 bg-white/85 ps-2 pe-2 text-slate-400 shadow-[0_2px_12px_-6px_rgba(10,25,47,0.25)] backdrop-blur transition-all duration-300 hover:w-72 hover:border-emerald-200 hover:text-slate-500 hover:shadow-[0_10px_28px_-12px_rgba(4,120,87,0.4)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 xl:flex 2xl:w-72">
+            <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100 transition group-hover:bg-emerald-100">
               <Search className="w-3.5 h-3.5" />
             </span>
-            <span className="flex-1 text-right text-sm font-semibold text-slate-400 transition-colors group-hover:text-slate-500">ابحث في كل المنصة…</span>
-            <kbd className="inline-flex shrink-0 items-center gap-1 rounded-full bg-slate-900 px-2.5 py-1 text-[10px] font-black text-amber-300 shadow-md">
+            <span className="flex-1 text-right text-sm font-semibold">ابحث في المنصة…</span>
+            <kbd className="hidden shrink-0 items-center rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-bold text-slate-400 2xl:inline-flex">
               Ctrl K
             </kbd>
           </button>
           <span className="xl:hidden">
             <Button aria-label="بحث" variant="ghost" size="icon" data-testid="open-search-btn" onClick={() => setSearchOpen(true)}
-              className="h-10 w-10 rounded-2xl ft-icon-tile text-white shadow-md transition hover:scale-105 active:scale-95 [&_svg]:text-white">
+              className="h-10 w-10 rounded-full border border-slate-200/80 bg-white/85 text-slate-600 shadow-[0_2px_12px_-6px_rgba(10,25,47,0.25)] backdrop-blur transition hover:border-emerald-200 hover:text-emerald-600 active:scale-95">
               <Search className="w-5 h-5" />
             </Button>
           </span>
@@ -320,7 +319,7 @@ export function Navbar() {
               <Button data-testid="nav-register-btn" onClick={() => nav("/register")} className="rounded-full ft-btn-primary text-white font-extrabold px-6 h-11 shadow-lg">انضم الآن</Button>
             </div>
           )}
-          <Button aria-label="القائمة" variant="ghost" size="icon" className="lg:hidden rounded-xl" data-testid="mobile-menu-btn" onClick={() => setOpen((v) => !v)}>
+          <Button aria-label="القائمة" variant="ghost" size="icon" className="xl:hidden rounded-xl" data-testid="mobile-menu-btn" onClick={() => setOpen((v) => !v)}>
             {open ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </Button>
         </div>
@@ -358,7 +357,7 @@ function MobileTabBar({ user, pathname, dmUnread, onExplore }) {
     { to: user ? `/profile/${user.id}` : "/login", label: "حسابي", icon: User },
   ];
   return (
-    <nav className="lg:hidden fixed bottom-0 inset-x-0 z-40" style={{ paddingBottom: "env(safe-area-inset-bottom)" }} data-testid="mobile-tabbar">
+    <nav className="xl:hidden fixed bottom-0 inset-x-0 z-40" style={{ paddingBottom: "env(safe-area-inset-bottom)" }} data-testid="mobile-tabbar">
       <div className="mx-3 mb-3 rounded-[26px] glass border border-white/60 ring-1 ring-slate-900/5 shadow-[0_18px_44px_-14px_rgba(15,23,42,0.4)] px-2 py-1.5 grid grid-cols-5">
         {tabs.map((t) => {
           const active = t.to && (pathname === t.to || (t.to !== "/" && pathname.startsWith(t.to + "/")));
@@ -400,7 +399,7 @@ function MobileDrawer({ open, onClose, user, gam, isStaff, pathname, nav, logout
   return createPortal(
     <AnimatePresence>
       {open && (
-        <motion.div key="mnav" className="lg:hidden" initial={false}>
+        <motion.div key="mnav" className="xl:hidden" initial={false}>
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             transition={{ duration: 0.25 }}
