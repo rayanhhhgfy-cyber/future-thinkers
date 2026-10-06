@@ -29,7 +29,90 @@ export const THEMES = {
     dot: "rgba(15,40,70,0.40)", cap: "rgba(15,40,70,0.55)",
     coordOnLight: "#7d97a5", coordOnDark: "#dee3e6",
   },
+  royal: {
+    id: "royal", label: "ملكي",
+    light: "#e9e5f7", dark: "#7768ae",
+    lastLight: "#f2e7b8", lastDark: "#c9b978",
+    selA: "rgba(76,29,149,0.55)", selB: "rgba(76,29,149,0.32)",
+    dot: "rgba(49,25,105,0.40)", cap: "rgba(49,25,105,0.55)",
+    coordOnLight: "#7768ae", coordOnDark: "#e9e5f7",
+  },
+  ocean: {
+    id: "ocean", label: "محيطي",
+    light: "#e2eff3", dark: "#4f8299",
+    lastLight: "#f2e7b8", lastDark: "#c2af74",
+    selA: "rgba(8,90,120,0.55)", selB: "rgba(8,90,120,0.32)",
+    dot: "rgba(10,60,85,0.40)", cap: "rgba(10,60,85,0.55)",
+    coordOnLight: "#4f8299", coordOnDark: "#e2eff3",
+  },
+  crimson: {
+    id: "crimson", label: "قرمزي",
+    light: "#f4e6e2", dark: "#a96055",
+    lastLight: "#f5e9ba", lastDark: "#c9b878",
+    selA: "rgba(127,29,29,0.50)", selB: "rgba(127,29,29,0.30)",
+    dot: "rgba(100,25,20,0.38)", cap: "rgba(100,25,20,0.52)",
+    coordOnLight: "#a96055", coordOnDark: "#f4e6e2",
+  },
+  sand: {
+    id: "sand", label: "رملي",
+    light: "#f6edd8", dark: "#c0a26f",
+    lastLight: "#f8f0a8", lastDark: "#d3c078",
+    selA: "rgba(133,77,14,0.50)", selB: "rgba(133,77,14,0.28)",
+    dot: "rgba(105,70,20,0.36)", cap: "rgba(105,70,20,0.50)",
+    coordOnLight: "#c0a26f", coordOnDark: "#f6edd8",
+  },
+  forest: {
+    id: "forest", label: "غابي",
+    light: "#eceeda", dark: "#5c7052",
+    lastLight: "#f3ecb6", lastDark: "#bfc07a",
+    selA: "rgba(30,64,32,0.55)", selB: "rgba(30,64,32,0.32)",
+    dot: "rgba(24,50,26,0.40)", cap: "rgba(24,50,26,0.55)",
+    coordOnLight: "#5c7052", coordOnDark: "#eceeda",
+  },
 };
+
+/* piece-set themes · color/glow treatments layered over the base SVGs */
+export const PIECE_SETS = [
+  { id: "classic", label: "كلاسيكية", w: "", b: "" },
+  { id: "gold", label: "ذهبية",
+    w: "sepia(0.55) saturate(2.7) hue-rotate(-9deg) brightness(1.07) contrast(1.03)",
+    b: "sepia(0.5) saturate(2.3) hue-rotate(-11deg) brightness(0.74) contrast(1.06)" },
+  { id: "silver", label: "فضية",
+    w: "grayscale(1) brightness(1.13) contrast(1.06)",
+    b: "grayscale(1) brightness(0.55) contrast(1.12)" },
+  { id: "neon", label: "نيون",
+    w: "drop-shadow(0 0 5px rgba(34,211,238,0.95)) brightness(1.06)",
+    b: "drop-shadow(0 0 5px rgba(244,114,182,0.95)) brightness(0.9)" },
+  { id: "candy", label: "ملوّنة",
+    w: "hue-rotate(165deg) saturate(1.5) brightness(1.05)",
+    b: "hue-rotate(-35deg) saturate(1.6) brightness(0.8)" },
+];
+export const pieceFilterOf = (setId, color) => {
+  const set = PIECE_SETS.find((x) => x.id === setId) || PIECE_SETS[0];
+  return color === "w" ? set.w : set.b;
+};
+export function usePieceSet() {
+  const [pieceSetId, setPieceSetIdState] = useState(() => {
+    try { return localStorage.getItem("ft-chess-pieces") || "classic"; } catch { return "classic"; }
+  });
+  const setPieceSet = (id) => {
+    setPieceSetIdState(id);
+    try { localStorage.setItem("ft-chess-pieces", id); } catch {}
+    try { window.dispatchEvent(new CustomEvent("ft-pieceset", { detail: id })); } catch {}
+  };
+  return [pieceSetId, setPieceSet];
+}
+export function useSyncedPieceSet() {
+  const [id, setId] = useState(() => {
+    try { return localStorage.getItem("ft-chess-pieces") || "classic"; } catch { return "classic"; }
+  });
+  useEffect(() => {
+    const fn = (e) => setId((e && e.detail) || "classic");
+    window.addEventListener("ft-pieceset", fn);
+    return () => window.removeEventListener("ft-pieceset", fn);
+  }, []);
+  return id;
+}
 
 const START_COUNT = { p: 8, n: 2, b: 2, r: 2, q: 1 };
 const VAL = { p: 1, n: 3, b: 3, r: 5, q: 9 };
@@ -105,11 +188,12 @@ export function StatusPill({ myTurn, finished, label }) {
 }
 
 export function PlayerBar({ name, rating, active, you, caps = [], matAhead = 0, color }) {
+  const pieceSetId = useSyncedPieceSet();
   return (
     <motion.div
       animate={active ? { scale: [1, 1.012, 1] } : { scale: 1 }}
       transition={active ? { duration: 2.2, repeat: Infinity } : {}}
-      className={`w-full max-w-[min(94vw,600px)] lg:max-w-[min(780px,calc(100dvh_-_190px))] xl:max-w-[min(860px,calc(100dvh_-_170px))] mx-auto rounded-3xl p-[1.5px] transition-all duration-300
+      className={`w-full max-w-[min(96vw,660px)] lg:max-w-[min(940px,calc(100dvh_-_170px))] xl:max-w-[min(1020px,calc(100dvh_-_150px))] mx-auto rounded-3xl p-[1.5px] transition-all duration-300
         ${active
           ? "bg-gradient-to-l from-emerald-400/70 via-emerald-400/20 to-emerald-400/70 shadow-[0_0_40px_-6px_rgba(16,185,129,0.55)]"
           : "bg-gradient-to-l from-white/15 via-white/5 to-white/15 shadow-[0_12px_32px_-16px_rgba(0,0,0,0.8)]"}`}>
@@ -139,6 +223,7 @@ export function PlayerBar({ name, rating, active, you, caps = [], matAhead = 0, 
           <div className="flex items-center shrink-0 bg-black/25 rounded-full pl-3 pr-2 py-1 lg:pl-3.5 lg:pr-2.5 lg:py-1.5 ring-1 ring-white/10" dir="ltr" title="قطع مأسورة">
             {caps.slice(0, 10).map((t, i) => (
               <img key={i} src={pieceSrc(t, color === "w" ? "b" : "w")} alt=""
+                style={{ filter: pieceFilterOf(pieceSetId, color === "w" ? "b" : "w") || undefined }}
                 className="w-6 h-6 lg:w-7 lg:h-7 -ml-2.5 lg:-ml-3 first:ml-0 drop-shadow-[0_2px_3px_rgba(0,0,0,0.6)]" draggable={false} />
             ))}
             {caps.length > 10 && <span className="text-[10px] lg:text-[11px] text-slate-400 ml-1 font-bold">+{caps.length - 10}</span>}

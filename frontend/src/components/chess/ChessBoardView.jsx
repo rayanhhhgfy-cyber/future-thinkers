@@ -1,7 +1,7 @@
 import React, { useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Repeat, Volume2, VolumeX } from "lucide-react";
-import { FILES, THEMES, pieceSrc } from "./shared";
+import { FILES, THEMES, PIECE_SETS, pieceFilterOf, pieceSrc, usePieceSet } from "./shared";
 import { isMuted, setMuted as persistMuted } from "./sounds";
 
 /**
@@ -22,6 +22,8 @@ export default function ChessBoardView({
   movableColor, showToolbar = true,
 }) {
   const boardRef = useRef(null);
+  const [pieceSetId, setPieceSet] = usePieceSet();
+  const pieceFilter = (c) => pieceFilterOf(pieceSetId, c);
   const [drag, setDrag] = useState(null); // {square, type, color, x, y, active}
   const [soundOn, setSoundOn] = useState(() => !isMuted());
   const toggleSound = () => {
@@ -79,12 +81,21 @@ export default function ChessBoardView({
   return (
     <div>
       {showToolbar && (
-        <div className="flex items-center justify-center gap-2 lg:gap-3 mb-3 lg:mb-5">
+        <div className="flex flex-wrap items-center justify-center gap-2 lg:gap-3 mb-3 lg:mb-5">
           <div className="flex items-center gap-1.5 lg:gap-2 bg-white/[0.06] border border-white/10 rounded-full px-3 py-2 lg:px-4 lg:py-2.5 backdrop-blur-xl shadow-[0_8px_24px_-10px_rgba(0,0,0,0.7)]">
             {Object.values(THEMES).map((t) => (
               <button key={t.id} title={t.label} onClick={() => setTheme(t.id)}
                 className={`w-7 h-7 lg:w-8 lg:h-8 rounded-full transition-all duration-200 ${themeId === t.id ? "ring-2 ring-amber-300 ring-offset-2 ring-offset-slate-900 scale-110" : "ring-1 ring-white/20 hover:scale-110"}`}
                 style={{ background: `linear-gradient(135deg, ${t.light} 50%, ${t.dark} 50%)` }} />
+            ))}
+          </div>
+          <div className="flex items-center gap-1.5 lg:gap-2 bg-white/[0.06] border border-white/10 rounded-full px-3 py-2 lg:px-4 lg:py-2.5 backdrop-blur-xl shadow-[0_8px_24px_-10px_rgba(0,0,0,0.7)]">
+            {PIECE_SETS.map((ps) => (
+              <button key={ps.id} title={`قطع ${ps.label}`} onClick={() => setPieceSet(ps.id)} data-testid={`pieceset-${ps.id}`}
+                className={`w-7 h-7 lg:w-8 lg:h-8 rounded-full grid place-items-center bg-white/10 transition-all duration-200 ${pieceSetId === ps.id ? "ring-2 ring-amber-300 ring-offset-2 ring-offset-slate-900 scale-110" : "ring-1 ring-white/20 hover:scale-110"}`}>
+                <img src={pieceSrc("k", "w")} alt="" draggable={false} className="w-5 h-5 lg:w-6 lg:h-6"
+                  style={{ filter: ps.w || undefined }} />
+              </button>
             ))}
           </div>
           <button title="قلب الرقعة" onClick={() => setFlipped((f) => !f)}
@@ -102,7 +113,7 @@ export default function ChessBoardView({
         initial={{ opacity: 0, scale: 0.97 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-        className="w-full max-w-[min(94vw,600px)] lg:max-w-[min(780px,calc(100dvh_-_190px))] xl:max-w-[min(860px,calc(100dvh_-_170px))] mx-auto rounded-[28px] lg:rounded-[32px] p-2 sm:p-3 lg:p-4"
+        className="w-full max-w-[min(96vw,660px)] lg:max-w-[min(940px,calc(100dvh_-_170px))] xl:max-w-[min(1020px,calc(100dvh_-_150px))] mx-auto rounded-[28px] lg:rounded-[32px] p-2 sm:p-3 lg:p-4"
         style={{
           background: `
             repeating-linear-gradient(93deg, rgba(255,255,255,0.025) 0 3px, transparent 3px 9px),
@@ -134,7 +145,7 @@ export default function ChessBoardView({
                         : isSel
                           ? `linear-gradient(135deg, ${theme.selA}, ${theme.selB})`
                           : isLast
-                            ? `linear-gradient(135deg, ${theme.lastLight}, ${theme.lastDark})`
+                            ? `linear-gradient(rgba(255,246,190,0.42), rgba(255,246,190,0.42)), ${darkSq ? theme.dark : theme.light}`
                             : (darkSq ? theme.dark : theme.light),
                       boxShadow: isSel
                         ? "inset 0 0 0 3px rgba(255,255,255,0.6), inset 0 0 22px rgba(0,0,0,0.3)"
@@ -203,46 +214,21 @@ export default function ChessBoardView({
                       alt="" draggable={false}
                       className="w-full h-full"
                       style={{
-                        filter: p.color === "w"
+                        filter: `${pieceFilter(p.color) ? pieceFilter(p.color) + " " : ""}${p.color === "w"
                           ? "drop-shadow(0 5px 5px rgba(0,0,0,0.45)) drop-shadow(0 1px 1px rgba(0,0,0,0.4))"
-                          : "drop-shadow(0 6px 6px rgba(0,0,0,0.55)) drop-shadow(0 1px 2px rgba(0,0,0,0.5))",
+                          : "drop-shadow(0 6px 6px rgba(0,0,0,0.55)) drop-shadow(0 1px 2px rgba(0,0,0,0.5))"}`,
                       }} />
                   </motion.div>
                 );
               })}
             </div>
-            {/* last-move arrow */}
-            {lastMove && (() => {
-              const a = posOf(lastMove.from);
-              const b = posOf(lastMove.to);
-              const x1 = a.x + 0.5, y1 = a.y + 0.5, x2 = b.x + 0.5, y2 = b.y + 0.5;
-              const dx = x2 - x1, dy = y2 - y1;
-              const len = Math.hypot(dx, dy) || 1;
-              const ux = dx / len, uy = dy / len;
-              return (
-                <svg viewBox="0 0 8 8" className="absolute inset-0 w-full h-full pointer-events-none z-[15]">
-                  <defs>
-                    <marker id="ft-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="3.2" markerHeight="3.2" orient="auto-start-reverse">
-                      <path d="M0,0 L10,5 L0,10 z" fill="rgba(245,158,11,0.85)" />
-                    </marker>
-                  </defs>
-                  <motion.line
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    x1={x1 + ux * 0.28} y1={y1 + uy * 0.28}
-                    x2={x2 - ux * 0.18} y2={y2 - uy * 0.18}
-                    stroke="rgba(245,158,11,0.75)" strokeWidth="0.16" strokeLinecap="round"
-                    markerEnd="url(#ft-arrow)" />
-                </svg>
-              );
-            })()}
             {/* drag ghost */}
             {drag && drag.active && (
               <div className="absolute pointer-events-none z-30"
                 style={{ left: drag.x, top: drag.y, width: "13.5%", aspectRatio: "1", transform: "translate(-50%, -55%)" }}>
                 <img src={pieceSrc(drag.type, drag.color)} alt="" draggable={false}
                   className="w-full h-full scale-110"
-                  style={{ filter: "drop-shadow(0 14px 16px rgba(0,0,0,0.6))" }} />
+                  style={{ filter: `${pieceFilter(drag.color) ? pieceFilter(drag.color) + " " : ""}drop-shadow(0 14px 16px rgba(0,0,0,0.6))` }} />
               </div>
             )}
             {/* promotion picker */}
@@ -260,7 +246,9 @@ export default function ChessBoardView({
                           whileHover={{ scale: 1.12, y: -4 }} whileTap={{ scale: 0.94 }}
                           onClick={() => onPromote(t)}
                           className="w-16 h-16 sm:w-20 sm:h-20 lg:w-24 lg:h-24 rounded-2xl grid place-items-center bg-gradient-to-b from-white/15 to-white/5 border border-white/15 hover:border-amber-300/60 hover:shadow-[0_0_28px_rgba(252,211,77,0.4)] transition-shadow">
-                          <img src={pieceSrc(t, promo.color)} alt={t} draggable={false} className="w-12 h-12 sm:w-14 sm:h-14 lg:w-[68px] lg:h-[68px] drop-shadow-[0_4px_6px_rgba(0,0,0,0.5)]" />
+                          <img src={pieceSrc(t, promo.color)} alt={t} draggable={false}
+                            style={{ filter: pieceFilter(promo.color) || undefined }}
+                            className="w-12 h-12 sm:w-14 sm:h-14 lg:w-[68px] lg:h-[68px] drop-shadow-[0_4px_6px_rgba(0,0,0,0.5)]" />
                         </motion.button>
                       ))}
                     </div>

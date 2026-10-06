@@ -11,6 +11,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { EASE } from "@/components/anim";
 import { FILES, pieceSrc, useSyncedPieces, useChessTheme, capturedBy, materialOf, PlayerBar, StatusPill } from "@/components/chess/shared";
 import ChessBoardView from "@/components/chess/ChessBoardView";
+import ChessAnalysis from "@/components/chess/ChessAnalysis";
+import { Gauge } from "lucide-react";
 import { playChessSound } from "@/components/chess/sounds";
 
 export default function ChessGame() {
@@ -28,6 +30,7 @@ export default function ChessGame() {
   const [flipped, setFlipped] = useState(false);
   const [theme, themeId, setTheme] = useChessTheme();
   const [showResign, setShowResign] = useState(false);
+  const [analysis, setAnalysis] = useState(null);
   const movesRef = useRef(null);
   const prevMovesRef = useRef(0);
 
@@ -275,6 +278,13 @@ export default function ChessGame() {
         </AnimatePresence>
 
         <AnimatePresence>
+          {analysis && (
+            <ChessAnalysis sans={analysis.sans} myColor={analysis.myColor} opponentLabel="الخصم"
+              onClose={() => setAnalysis(null)} />
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
           {finished && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               className="fixed inset-0 z-50 grid place-items-center bg-black/70 backdrop-blur-sm p-4">
@@ -295,6 +305,12 @@ export default function ChessGame() {
                 <p className="text-slate-400 text-sm mb-6 relative">
                   {game.result === "draw" ? "لا غالب ولا مغلوب هذه المرة" : `الفائز: ${game.result === "white" ? game.white_name : game.black_name}`}
                 </p>
+                {(game.moves || []).length > 0 && (
+                  <button onClick={() => setAnalysis({ sans: game.moves.map((m) => m.san), myColor })}
+                    className="w-full relative mb-2 rounded-2xl h-11 bg-gradient-to-b from-violet-500 to-fuchsia-600 hover:from-violet-400 text-white font-bold text-sm inline-flex items-center justify-center gap-2">
+                    <Gauge className="w-4 h-4" /> تحليل المباراة · كل نقلة وأفضل بديل 🔍
+                  </button>
+                )}
                 <div className="flex gap-2 relative">
                   <Button onClick={() => nav("/clubs/chess")} className="flex-1 rounded-2xl bg-gradient-to-b from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-500 text-slate-950 font-bold shadow-[0_10px_30px_-8px_rgba(245,158,11,0.6)]">عودة للحلبة</Button>
                   <Button onClick={() => nav("/leaderboard")} variant="outline" className="flex-1 rounded-2xl border-white/20 text-white bg-transparent hover:bg-white/10">الترتيب</Button>

@@ -162,3 +162,102 @@ export function pickRobotMove(chess, difficultyId) {
 }
 
 export { Chess };
+
+/* ---------------- ELO-driven robot ----------------
+   One slider, honest mapping: low ELO = shallow search + frequent human
+   mistakes, high ELO = deepest search this JS engine can do. */
+export function eloToParams(elo) {
+  const e = Math.max(100, Math.min(3500, Math.round(elo || 1200)));
+  if (e <= 400) return { depth: 1, blunder: 0.45, spread: 260, random: 0.18 };
+  if (e <= 800) return { depth: 1, blunder: 0.30, spread: 180, random: 0.08 };
+  if (e <= 1200) return { depth: 2, blunder: 0.18, spread: 120, random: 0.03 };
+  if (e <= 1600) return { depth: 2, blunder: 0.08, spread: 70, random: 0 };
+  if (e <= 2000) return { depth: 3, blunder: 0.03, spread: 35, random: 0 };
+  if (e <= 2400) return { depth: 3, blunder: 0, spread: 18, random: 0 };
+  if (e <= 2900) return { depth: 4, blunder: 0, spread: 8, random: 0 };
+  return { depth: 4, blunder: 0, spread: 0, random: 0 };
+}
+
+function rankRoot(chess, depth) {
+  const moves = orderMoves(chess.moves({ verbose: true }));
+  const maximizing = chess.turn() === "w";
+  const scored = moves.map((m) => {
+    chess.move(m);
+    const s = search(chess, Math.max(0, depth - 1), -Infinity, Infinity);
+    chess.undo();
+    return { move: m, score: s };
+  });
+  scored.sort((a, b) => (maximizing ? b.score - a.score : a.score - b.score));
+  return scored;
+}
+
+export function pickMoveElo(chess, elo) {
+  const p = eloToParams(elo);
+  const moves = chess.moves({ verbose: true });
+  if (!moves.length) return null;
+  if (Math.random() < p.random) return moves[Math.floor(Math.random() * moves.length)];
+  const scored = rankRoot(chess, p.depth);
+  if (Math.random() < p.blunder && scored.length > 3) {
+    /* a human-like mistake: pick from the weaker half of the move list */
+    const weak = scored.slice(Math.floor(scored.length / 2));
+    return weak[Math.floor(Math.random() * weak.length)].move;
+  }
+  const best = scored[0].score;
+  const pool = scored.filter((s) => Math.abs(s.score - best) <= p.spread);
+  return pool[Math.floor(Math.random() * pool.length)].move;
+}
+
+/* ---------------- post-game analysis ----------------
+   Replays the game with the platform engine and grades every move:
+   best move available, centipawn loss of the played move, verdict. */
+export const VERDICTS = [
+  { id: "best", label: "الأفضل ⭐", max: 15 },
+  { id: "good", label: "جيدة 👍", max: 45 },
+  { id: "ok", label: "مقبولة", max: 95 },
+  { id: "inaccuracy", label: "غير دقيقة ⚠️", max: 190 },
+  { id: "mistake", label: "خطأ ✖", max: 380 },
+  { id: "blunder", label: "غلطة فادحة 💥", max: Infinity },
+];
+
+export async function analyseGame(sans, { depth = 2, onProgress } = {}) {
+  const chess = new Chess();
+  const out = [];
+  const totals = {
+    w: { loss: 0, n: 0, counts: {} }, b: { loss: 0, n: 0, counts: {} },
+  };
+  for (let i = 0; i < sans.length; i++) {
+    const mover = chess.turn();
+    const ranked = rankRoot(chess, depth);
+    if (!ranked.length) break;
+    const best = ranked[0];
+    const playedSan = sans[i];
+    const playedMove = chess.move(playedSan);
+    if (!playedMove) break;
+    const actual = ranked.find((r) => r.move.from === playedMove.from && r.move.to === playedMove.to
+      && (r.move.promotion || "q") === (playedMove.promotion || "q")) || best;
+    let loss = mover === "w" ? best.score - actual.score : actual.score - best.score;
+    loss = Math.max(0, Math.min(1500, loss));
+    const verdict = VERDICTS.find((v) => loss <= v.max) || VERDICTS[VERDICTS.length - 1];
+    const entry = {
+      ply: i, san: playedSan, color: mover,
+      bestSan: best.move.san, bestFrom: best.move.from, bestTo: best.move.to,
+      isBest: best.move.from === playedMove.from && best.move.to === playedMove.to,
+      loss, verdict: verdict.id,
+      evalAfter: actual.score, /* centipawns, white perspective */
+    };
+    out.push(entry);
+    const t = totals[mover];
+    t.loss += loss; t.n += 1;
+    t.counts[verdict.id] = (t.counts[verdict.id] || 0) + 1;
+    if (onProgress) onProgress(i + 1, sans.length);
+    /* stay responsive on long games */
+    // eslint-disable-next-line no-await-in-loop
+    await new Promise((r) => setTimeout(r, 0));
+  }
+  const accuracy = (c) => {
+    const t = totals[c];
+    if (!t.n) return null;
+    return Math.max(1, Math.min(99, Math.round(100 * Math.exp(-0.004 * (t.loss / t.n)))));
+  };
+  return { moves: out, totals, accuracyW: accuracy("w"), accuracyB: accuracy("b") };
+}

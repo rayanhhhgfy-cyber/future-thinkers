@@ -4,12 +4,14 @@ import { Chess } from "chess.js";
 import { Layout } from "@/components/Layout";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Undo2, Plus, Bot, User, History } from "lucide-react";
+import { ArrowRight, Undo2, Plus, Bot, User, History, Gauge, BookOpenCheck } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { EASE } from "@/components/anim";
 import { FILES, pieceSrc, useSyncedPieces, useChessTheme, capturedBy, materialOf, PlayerBar } from "@/components/chess/shared";
 import ChessBoardView from "@/components/chess/ChessBoardView";
-import { pickRobotMove, DIFFICULTIES } from "@/components/chess/engine";
+import { pickMoveElo, DIFFICULTIES } from "@/components/chess/engine";
+import { detectOpening } from "@/components/chess/openings";
+import ChessAnalysis from "@/components/chess/ChessAnalysis";
 import { playChessSound } from "@/components/chess/sounds";
 
 /* Play against the built-in robot: 3 difficulty levels. */
@@ -30,7 +32,17 @@ export default function ChessRobot() {
   const [history, setHistory] = useState([]);
   const [started, setStarted] = useState(false);
   const [myColor, setMyColor] = useState("w");
-  const [difficulty, setDifficulty] = useState("medium");
+  const [difficulty] = useState("medium"); // legacy: old history labels only
+  const [elo, setElo] = useState(() => {
+    try { const v = Number(localStorage.getItem("ft-robot-elo")); return v >= 100 && v <= 3500 ? v : 1200; }
+    catch { return 1200; }
+  });
+  const changeElo = (v) => {
+    const n = Math.max(100, Math.min(3500, Math.round(Number(v) || 1200)));
+    setElo(n);
+    try { localStorage.setItem("ft-robot-elo", String(n)); } catch {}
+  };
+  const [analysis, setAnalysis] = useState(null); // {sans, myColor}
   const [thinking, setThinking] = useState(false);
   const [matchLog, setMatchLog] = useState(() => {
     try { const raw = JSON.parse(localStorage.getItem(ROBOT_HISTORY_KEY) || "[]"); return Array.isArray(raw) ? raw : []; }
@@ -64,7 +76,7 @@ export default function ChessRobot() {
     if (chess.isGameOver()) return;
     setThinking(true);
     timerRef.current = setTimeout(() => {
-      const mv = pickRobotMove(chess, difficulty);
+      const mv = pickMoveElo(chess, elo);
       setThinking(false);
       if (!mv) return;
       const move = chess.move({ from: mv.from, to: mv.to, promotion: mv.promotion || "q" });
@@ -123,7 +135,7 @@ export default function ChessRobot() {
       setTimeout(() => {
         setThinking(true);
         timerRef.current = setTimeout(() => {
-          const mv = pickRobotMove(chess, difficulty);
+          const mv = pickMoveElo(chess, elo);
           setThinking(false);
           if (mv) { chess.move({ from: mv.from, to: mv.to, promotion: mv.promotion || "q" }); playChessSound("move"); refresh(); }
         }, 500);
@@ -178,14 +190,17 @@ export default function ChessRobot() {
     else movePairs[movePairs.length - 1].push(m);
   });
 
-  const diffLabel = DIFFICULTIES.find((d) => d.id === difficulty)?.label || "";
+  const diffLabel = `ELO ${elo}`;
+  const sansNow = history.map((m) => m.san);
+  const openingNow = detectOpening(sansNow);
+  const histLabel = (m) => (m.elo ? `روبوت ELO ${m.elo}` : (DIFFICULTIES.find((d) => d.id === m.difficulty)?.label || "الروبوت"));
 
   /* record each finished robot game once into the local match history */
   useEffect(() => {
     if (!over || !started || recordedRef.current) return;
     recordedRef.current = true;
     const result = iWon ? "win" : chess.isCheckmate() ? "loss" : "draw";
-    const entry = { result, difficulty, moves: history.length, date: new Date().toISOString() };
+    const entry = { result, difficulty, elo, myColor, sans: history.map((m) => m.san), moves: history.length, date: new Date().toISOString() };
     setMatchLog((prev) => {
       const next = [entry, ...prev].slice(0, 30);
       try { localStorage.setItem(ROBOT_HISTORY_KEY, JSON.stringify(next)); } catch {}
@@ -240,18 +255,31 @@ export default function ChessRobot() {
 
               <div className="rounded-3xl p-5 sm:p-6 bg-white/[0.05] border border-white/10 backdrop-blur-xl space-y-6">
                 <div>
-                  <div className="text-sm font-bold text-slate-300 mb-3">مستوى الصعوبة</div>
-                  <div className="grid grid-cols-3 gap-2">
-                    {DIFFICULTIES.map((d) => (
-                      <button key={d.id} onClick={() => setDifficulty(d.id)}
-                        className={`rounded-2xl px-3 py-3.5 text-sm font-bold border transition-all ${difficulty === d.id
-                          ? "bg-gradient-to-b from-indigo-500 to-violet-600 border-indigo-300/50 text-white shadow-[0_12px_30px_-10px_rgba(99,102,241,0.7)] scale-[1.03]"
+                  <div className="flex items-end justify-between gap-3 mb-3">
+                    <div className="text-sm font-bold text-slate-300">قوة الروبوت (ELO)</div>
+                    <div className="flex items-center gap-1.5">
+                      <input type="number" min="100" max="3500" step="10" value={elo} data-testid="robot-elo-input"
+                        onChange={(e) => changeElo(e.target.value)}
+                        className="w-24 rounded-xl bg-white/[0.06] border border-indigo-300/30 px-2.5 py-1.5 text-center font-head text-lg font-black text-white tabular-nums outline-none focus:border-indigo-300/70" dir="ltr" />
+                    </div>
+                  </div>
+                  <input type="range" min="100" max="3500" step="10" value={elo} data-testid="robot-elo-slider"
+                    onChange={(e) => changeElo(e.target.value)} dir="ltr"
+                    className="w-full accent-indigo-500 h-2 cursor-pointer" />
+                  <div className="flex justify-between text-[10px] text-slate-500 font-bold tabular-nums" dir="ltr"><span>100</span><span>3500</span></div>
+                  <div className="flex flex-wrap gap-1.5 mt-3">
+                    {[[300, "مبتدئ 🌱"], [800, "هاوٍ"], [1200, "متوسط ⚔️"], [1700, "قوي"], [2200, "خبير 🔥"], [2800, "أستاذ"], [3500, "خارق 👑"]].map(([v, l]) => (
+                      <button key={v} onClick={() => changeElo(v)} data-testid={`robot-elo-${v}`}
+                        className={`rounded-full px-3 py-1.5 text-[11px] font-extrabold border transition-all ${elo === v
+                          ? "bg-gradient-to-b from-indigo-500 to-violet-600 border-indigo-300/50 text-white scale-105"
                           : "bg-white/[0.05] border-white/10 text-slate-300 hover:bg-white/[0.09]"}`}>
-                        {d.label}
+                        {l} · {v}
                       </button>
                     ))}
                   </div>
-                  <p className="text-xs text-slate-500 mt-2.5 text-center">{DIFFICULTIES.find((d) => d.id === difficulty)?.desc}</p>
+                  <p className="text-xs text-slate-500 mt-3 text-center">
+                    {elo <= 500 ? "روبوت وديع يتعلم معك · يخطئ كثيراً" : elo <= 1100 ? "تحدٍّ لطيف للمبتدئين" : elo <= 1700 ? "خصم متوازن لأغلب اللاعبين" : elo <= 2400 ? "خصم شرس · فكّر قبل كل نقلة" : "أقصى قوة عند محرك المنصة · بالتوفيق 👑"}
+                  </p>
                 </div>
 
                 <div>
@@ -303,8 +331,14 @@ export default function ChessRobot() {
                           {m.result === "win" ? "فوز 🏆" : m.result === "loss" ? "خسارة" : "تعادل"}
                         </span>
                         <span className="flex-1 min-w-0 text-xs font-bold text-slate-300 truncate">
-                          {DIFFICULTIES.find((d) => d.id === m.difficulty)?.label || m.difficulty}
+                          {histLabel(m)}
                         </span>
+                        {Array.isArray(m.sans) && m.sans.length > 0 && (
+                          <button onClick={() => setAnalysis({ sans: m.sans, myColor: m.myColor || "w" })}
+                            className="shrink-0 rounded-full bg-violet-500/15 border border-violet-400/30 text-violet-200 px-2.5 py-1 text-[11px] font-extrabold hover:bg-violet-500/25 transition">
+                            تحليل 🔍
+                          </button>
+                        )}
                         <span className="text-[11px] text-slate-500 tabular-nums">{m.moves} نقلة</span>
                         <span className="text-[11px] text-slate-500 tabular-nums" dir="ltr">{String(m.date || "").slice(0, 10)}</span>
                       </div>
@@ -316,7 +350,7 @@ export default function ChessRobot() {
           ) : (
             <div className="grid lg:grid-cols-[minmax(0,1fr)_360px] xl:grid-cols-[minmax(0,1fr)_380px] gap-5 lg:gap-6 items-start">
               <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, ease: EASE }} className="min-w-0">
-                <PlayerBar name={`الروبوت · ${diffLabel}`} rating={null} active={thinking || (turn === robotColor && !over)} you={false}
+                <PlayerBar name="الروبوت" rating={elo} active={thinking || (turn === robotColor && !over)} you={false}
                   caps={robotCaps} matAhead={matDiff < 0 ? -matDiff : 0} color={robotColor} />
                 <div className="my-3 sm:my-4 lg:my-5">
                   <ChessBoardView
@@ -357,6 +391,15 @@ export default function ChessRobot() {
                     </motion.div>
                   </AnimatePresence>
                   {inCheck && !over && <div className="text-sm text-red-400 mt-2 font-bold animate-pulse">كش! 👑</div>}
+                  {openingNow && (
+                    <div data-testid="robot-opening" className="mt-3 flex items-start gap-2 rounded-2xl bg-violet-500/10 border border-violet-400/25 px-3 py-2.5">
+                      <BookOpenCheck className="w-4 h-4 text-violet-300 shrink-0 mt-0.5" />
+                      <p className="text-xs leading-5 text-slate-300">
+                        الافتتاحية: <b className="text-white">{openingNow.ar}</b>
+                        <span className="block text-slate-400" dir="ltr">{openingNow.name}</span>
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 <div className="rounded-3xl p-4 sm:p-5 lg:p-6 border border-white/10 bg-white/[0.05] backdrop-blur-xl shadow-[0_20px_50px_-20px_rgba(0,0,0,0.6)]">
@@ -383,6 +426,13 @@ export default function ChessRobot() {
         </div>
 
         <AnimatePresence>
+          {analysis && (
+            <ChessAnalysis sans={analysis.sans} myColor={analysis.myColor} opponentLabel="الروبوت"
+              onClose={() => setAnalysis(null)} />
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
           {started && over && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               className="fixed inset-0 z-50 grid place-items-center bg-black/70 backdrop-blur-sm p-4">
@@ -395,7 +445,11 @@ export default function ChessRobot() {
                   style={{ background: iWon ? "rgba(252,211,77,0.18)" : "rgba(99,102,241,0.18)" }} />
                 <div className="text-6xl mb-4 relative">{iWon ? "🏆" : chess.isCheckmate() ? "🤖" : "🤝"}</div>
                 <h2 className="font-head text-2xl font-extrabold mb-1 relative">{resultText}</h2>
-                <p className="text-slate-400 text-sm mb-6 relative">{history.length} نقلة · مستوى {diffLabel}</p>
+                <p className="text-slate-400 text-sm mb-6 relative">{history.length} نقلة · روبوت ELO {elo}</p>
+                <button onClick={() => setAnalysis({ sans: sansNow, myColor })}
+                  className="w-full relative mb-2 rounded-2xl h-11 bg-gradient-to-b from-violet-500 to-fuchsia-600 hover:from-violet-400 text-white font-bold text-sm inline-flex items-center justify-center gap-2">
+                  <Gauge className="w-4 h-4" /> تحليل المباراة · كل نقلة وأفضل بديل 🔍
+                </button>
                 <div className="flex gap-2 relative">
                   <Button onClick={newGame} className="flex-1 rounded-2xl bg-gradient-to-b from-indigo-500 to-violet-600 hover:from-indigo-400 text-white font-bold">مباراة جديدة</Button>
                   <Button onClick={() => nav("/clubs/chess")} variant="outline" className="flex-1 rounded-2xl border-white/20 text-white bg-transparent hover:bg-white/10">عودة للحلبة</Button>
