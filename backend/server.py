@@ -96,21 +96,36 @@ async def cron_dispatch_scheduled(request: Request):
 _last_opportunistic_dispatch = 0.0
 
 
+async def _run_opportunistic_sweeps():
+    """Run the throttle-gated maintenance sweeps WITHOUT blocking a request.
+
+    dispatch_due_campaigns() and maybe_send_streak_reminders() send real web
+    pushes sequentially per recipient; one dead push subscription can stall
+    the whole loop. Awaiting them in the request path turned every cold
+    invocation into a hanging login (2026-10-07). They now run detached:
+    the request returns immediately and the sweeps finish in the background
+    (cron remains the guaranteed driver)."""
+    try:
+        from services import dispatch_due_campaigns
+        await dispatch_due_campaigns()
+    except Exception:
+        pass
+    try:
+        from routes.games_routes import maybe_send_streak_reminders
+        await maybe_send_streak_reminders()
+    except Exception:
+        pass
+
+
 @app.middleware("http")
 async def opportunistic_dispatch_middleware(request: Request, call_next):
-    """Safety net: if cron misses, any API traffic flushes due campaigns (throttled)."""
+    """Safety net: if cron misses, any API traffic flushes due campaigns (throttled, background-only)."""
     global _last_opportunistic_dispatch
     try:
         now = time.time()
         if request.url.path.startswith("/api/") and now - _last_opportunistic_dispatch > 120:
             _last_opportunistic_dispatch = now
-            from services import dispatch_due_campaigns
-            await dispatch_due_campaigns()
-            try:
-                from routes.games_routes import maybe_send_streak_reminders
-                await maybe_send_streak_reminders()
-            except Exception:
-                pass
+            asyncio.create_task(_run_opportunistic_sweeps())
     except Exception:
         pass
     return await call_next(request)

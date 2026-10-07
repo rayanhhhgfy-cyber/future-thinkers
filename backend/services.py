@@ -155,9 +155,12 @@ def _do_webpush(subscription_info, data, private_key, subject):
     from pywebpush import webpush
     if isinstance(data, dict):
         data = json.dumps(data, ensure_ascii=False)
+    # Hard 6s cap: without a timeout, a dead push endpoint can hold the
+    # underlying HTTP call until the OS TCP timeout (minutes), which used
+    # to hang the whole request when sweeps ran inline (2026-10-07).
     webpush(subscription_info=subscription_info, data=data,
             vapid_private_key=private_key,
-            vapid_claims={"sub": subject})
+            vapid_claims={"sub": subject}, timeout=6)
 
 
 async def send_push_to_user(user_id: str, title: str, body: str = "", link: str = None):

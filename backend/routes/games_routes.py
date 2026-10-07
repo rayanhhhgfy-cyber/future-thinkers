@@ -868,6 +868,16 @@ async def maybe_send_streak_reminders(force: bool = False):
     t_ids = {d["user_id"] for d in await db.game_scores.find({"day": today}, {"user_id": 1}).to_list(5000)}
     t_ids |= {d["user_id"] for d in await db.wordle_plays.find({"day": today}, {"user_id": 1}).to_list(5000)}
     candidates = y_ids - t_ids
+    # Claim the day BEFORE the send loop: if this process is killed mid-loop
+    # (serverless time limit), the day must still count as attempted so the
+    # next request does not re-run the entire loop (2026-10-07 hang).
+    try:
+        await db.streak_reminder_runs.update_one(
+            {"_id": "global"},
+            {"$set": {"day": today, "sent": 0, "at": now_iso(), "claim": "in-progress"}},
+            upsert=True)
+    except Exception:
+        pass
     sent = 0
     for uid in candidates:
         subs = await db.push_subscriptions.count_documents({"user_id": uid})
@@ -880,7 +890,7 @@ async def maybe_send_streak_reminders(force: bool = False):
             sent += 1
             await create_notification(uid, "games", "🔥 سلسلتك في خطر!",
                                       "العب أي لعبة اليوم قبل منتصف الليل لتحافظ على إيقاعك", "/games")
-    await db.streak_reminder_runs.update_one({"_id": "global"}, {"$set": {"day": today, "sent": sent, "at": now_iso()}}, upsert=True)
+    await db.streak_reminder_runs.update_one({"_id": "global"}, {"$set": {"day": today, "sent": sent, "at": now_iso()}, "$unset": {"claim": ""}}, upsert=True)
     return {"sent": sent, "candidates": len(candidates)}
 
 
