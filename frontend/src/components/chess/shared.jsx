@@ -2,7 +2,15 @@ import React, { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 
 export const FILES = ["a", "b", "c", "d", "e", "f", "g", "h"];
-export const pieceSrc = (t, c) => `${process.env.PUBLIC_URL}/pieces/${c}${t.toUpperCase()}.svg`;
+/* piece SHAPE sets · each set is a folder of 12 SVGs with its own silhouettes */
+export const PIECE_SETS = [
+  { id: "classic", label: "كلاسيكية", dir: "pieces" },
+  { id: "modern", label: "عصرية", dir: "pieces-modern" },
+  { id: "royal", label: "ملكية", dir: "pieces-royal" },
+];
+export const pieceSetOf = (setId) => PIECE_SETS.find((x) => x.id === setId) || PIECE_SETS[0];
+export const pieceSrc = (t, c, setId) =>
+  `${process.env.PUBLIC_URL}/${pieceSetOf(setId).dir}/${c}${t.toUpperCase()}.svg`;
 
 export const THEMES = {
   emerald: {
@@ -71,29 +79,11 @@ export const THEMES = {
   },
 };
 
-/* piece-set themes · color/glow treatments layered over the base SVGs */
-export const PIECE_SETS = [
-  { id: "classic", label: "كلاسيكية", w: "", b: "" },
-  { id: "gold", label: "ذهبية",
-    w: "sepia(0.55) saturate(2.7) hue-rotate(-9deg) brightness(1.07) contrast(1.03)",
-    b: "sepia(0.5) saturate(2.3) hue-rotate(-11deg) brightness(0.74) contrast(1.06)" },
-  { id: "silver", label: "فضية",
-    w: "grayscale(1) brightness(1.13) contrast(1.06)",
-    b: "grayscale(1) brightness(0.55) contrast(1.12)" },
-  { id: "neon", label: "نيون",
-    w: "drop-shadow(0 0 5px rgba(34,211,238,0.95)) brightness(1.06)",
-    b: "drop-shadow(0 0 5px rgba(244,114,182,0.95)) brightness(0.9)" },
-  { id: "candy", label: "ملوّنة",
-    w: "hue-rotate(165deg) saturate(1.5) brightness(1.05)",
-    b: "hue-rotate(-35deg) saturate(1.6) brightness(0.8)" },
-];
-export const pieceFilterOf = (setId, color) => {
-  const set = PIECE_SETS.find((x) => x.id === setId) || PIECE_SETS[0];
-  return color === "w" ? set.w : set.b;
-};
+/* kept for API compatibility · shape sets carry no color filter */
+export const pieceFilterOf = () => "";
 export function usePieceSet() {
   const [pieceSetId, setPieceSetIdState] = useState(() => {
-    try { return localStorage.getItem("ft-chess-pieces") || "classic"; } catch { return "classic"; }
+    try { return pieceSetOf(localStorage.getItem("ft-chess-pieces") || "classic").id; } catch { return "classic"; }
   });
   const setPieceSet = (id) => {
     setPieceSetIdState(id);
@@ -104,7 +94,7 @@ export function usePieceSet() {
 }
 export function useSyncedPieceSet() {
   const [id, setId] = useState(() => {
-    try { return localStorage.getItem("ft-chess-pieces") || "classic"; } catch { return "classic"; }
+    try { return pieceSetOf(localStorage.getItem("ft-chess-pieces") || "classic").id; } catch { return "classic"; }
   });
   useEffect(() => {
     const fn = (e) => setId((e && e.detail) || "classic");
@@ -222,8 +212,7 @@ export function PlayerBar({ name, rating, active, you, caps = [], matAhead = 0, 
         {caps.length > 0 && (
           <div className="flex items-center shrink-0 bg-black/25 rounded-full pl-3 pr-2 py-1 lg:pl-3.5 lg:pr-2.5 lg:py-1.5 ring-1 ring-white/10" dir="ltr" title="قطع مأسورة">
             {caps.slice(0, 10).map((t, i) => (
-              <img key={i} src={pieceSrc(t, color === "w" ? "b" : "w")} alt=""
-                style={{ filter: pieceFilterOf(pieceSetId, color === "w" ? "b" : "w") || undefined }}
+              <img key={i} src={pieceSrc(t, color === "w" ? "b" : "w", pieceSetId)} alt=""
                 className="w-6 h-6 lg:w-7 lg:h-7 -ml-2.5 lg:-ml-3 first:ml-0 drop-shadow-[0_2px_3px_rgba(0,0,0,0.6)]" draggable={false} />
             ))}
             {caps.length > 10 && <span className="text-[10px] lg:text-[11px] text-slate-400 ml-1 font-bold">+{caps.length - 10}</span>}

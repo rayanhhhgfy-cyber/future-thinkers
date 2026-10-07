@@ -93,8 +93,7 @@ export default function ChessBoardView({
             {PIECE_SETS.map((ps) => (
               <button key={ps.id} title={`قطع ${ps.label}`} onClick={() => setPieceSet(ps.id)} data-testid={`pieceset-${ps.id}`}
                 className={`w-7 h-7 lg:w-8 lg:h-8 rounded-full grid place-items-center bg-white/10 transition-all duration-200 ${pieceSetId === ps.id ? "ring-2 ring-amber-300 ring-offset-2 ring-offset-slate-900 scale-110" : "ring-1 ring-white/20 hover:scale-110"}`}>
-                <img src={pieceSrc("k", "w")} alt="" draggable={false} className="w-5 h-5 lg:w-6 lg:h-6"
-                  style={{ filter: ps.w || undefined }} />
+                <img src={pieceSrc("k", "w", ps.id)} alt="" draggable={false} className="w-5 h-5 lg:w-6 lg:h-6" />
               </button>
             ))}
           </div>
@@ -210,7 +209,7 @@ export default function ChessBoardView({
                       initial={{ scale: 0.5, opacity: 0 }}
                       animate={{ scale: isSelected ? 1.1 : 1, opacity: 1 }}
                       transition={{ type: "spring", stiffness: 500, damping: 24 }}
-                      src={pieceSrc(p.type, p.color)}
+                      src={pieceSrc(p.type, p.color, pieceSetId)}
                       alt="" draggable={false}
                       className="w-full h-full"
                       style={{
@@ -226,7 +225,7 @@ export default function ChessBoardView({
             {drag && drag.active && (
               <div className="absolute pointer-events-none z-30"
                 style={{ left: drag.x, top: drag.y, width: "13.5%", aspectRatio: "1", transform: "translate(-50%, -55%)" }}>
-                <img src={pieceSrc(drag.type, drag.color)} alt="" draggable={false}
+                <img src={pieceSrc(drag.type, drag.color, pieceSetId)} alt="" draggable={false}
                   className="w-full h-full scale-110"
                   style={{ filter: `${pieceFilter(drag.color) ? pieceFilter(drag.color) + " " : ""}drop-shadow(0 14px 16px rgba(0,0,0,0.6))` }} />
               </div>
@@ -246,7 +245,7 @@ export default function ChessBoardView({
                           whileHover={{ scale: 1.12, y: -4 }} whileTap={{ scale: 0.94 }}
                           onClick={() => onPromote(t)}
                           className="w-16 h-16 sm:w-20 sm:h-20 lg:w-24 lg:h-24 rounded-2xl grid place-items-center bg-gradient-to-b from-white/15 to-white/5 border border-white/15 hover:border-amber-300/60 hover:shadow-[0_0_28px_rgba(252,211,77,0.4)] transition-shadow">
-                          <img src={pieceSrc(t, promo.color)} alt={t} draggable={false}
+                          <img src={pieceSrc(t, promo.color, pieceSetId)} alt={t} draggable={false}
                             style={{ filter: pieceFilter(promo.color) || undefined }}
                             className="w-12 h-12 sm:w-14 sm:h-14 lg:w-[68px] lg:h-[68px] drop-shadow-[0_4px_6px_rgba(0,0,0,0.5)]" />
                         </motion.button>
