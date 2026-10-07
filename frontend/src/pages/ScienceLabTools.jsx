@@ -52,15 +52,18 @@ export default function ScienceLabTools() {
     <Layout>
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-5 sm:py-8 pb-24 overflow-x-clip" dir="rtl">
         <div className="ft-navy-gradient grain relative overflow-hidden rounded-[1.75rem] sm:rounded-3xl p-5 sm:p-8 lg:p-10 text-white ft-shadow-lg">
-          <div className="absolute -top-20 -left-20 w-72 h-72 rounded-full bg-cyan-400/20 blur-3xl" />
-          <div className="absolute -bottom-24 right-10 w-80 h-80 rounded-full bg-emerald-500/20 blur-3xl" />
+          <div className="absolute -top-20 -left-20 w-72 h-72 rounded-full bg-cyan-400/25 blur-3xl" />
+          <div className="absolute -bottom-24 right-10 w-80 h-80 rounded-full bg-emerald-500/25 blur-3xl" />
+          <div className="absolute top-1/3 left-1/3 w-64 h-64 rounded-full bg-violet-400/15 blur-3xl" />
+          <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-l from-cyan-400 via-emerald-400 to-amber-400" />
+          <div className="pointer-events-none absolute inset-0 opacity-[0.35] bg-[radial-gradient(rgba(255,255,255,0.13)_1px,transparent_1.3px)] [background-size:24px_24px]" />
           <div className="relative">
             <Link to="/clubs/science" className="inline-flex items-center gap-1.5 text-cyan-200/80 hover:text-cyan-100 text-[13px] font-bold mb-4 transition"><ChevronLeft className="w-4 h-4 rotate-180" /> نادي العلوم</Link>
             <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 ring-1 ring-white/15 px-3 py-1 text-[11px] font-black">
               <FlaskConical className="w-3.5 h-3.5 text-amber-300" /> مختبر نادي العلوم التفاعلي
             </span>
-            <h1 className="font-head text-4xl sm:text-5xl lg:text-6xl font-black mt-3 leading-tight">المختبر العلمي <span className="text-transparent bg-clip-text bg-gradient-to-l from-cyan-300 to-emerald-300">الكبير</span></h1>
-            <p className="text-slate-300 text-sm sm:text-base mt-2 max-w-xl leading-relaxed">ثماني أدوات وتجارب علمية من منهاجك: الحموضة واللهب والذرة والمولات والتسخين وسلاسل النشاط والاتجاهات الدورية · وتجارب كلاسيكية بخطواتها</p>
+            <h1 className="font-head text-4xl sm:text-5xl lg:text-6xl font-black mt-3 leading-tight">المختبر العلمي <span className="text-transparent bg-clip-text bg-gradient-to-l from-cyan-300 via-emerald-300 to-amber-300">الكبير</span></h1>
+            <p className="text-slate-300 text-sm sm:text-base mt-2 max-w-xl leading-relaxed">خمس ميزات ضخمة بدل أدوات صغيرة متناثرة: مستكشف الذرة والجدول الدوري · حاسبة كيمياء شاملة بخطوات محلولة · مختبر الكشف عن المواد المجهولة · وقاعة التجارب الأسطورية · بعد المحاكاة التكيفية ثلاثية الأبعاد بالمختبر الرئيسي</p>
             <div className="flex flex-wrap gap-2 mt-6">
               <Link to="/clubs/science/lab" data-testid="tools-to-sim"
                 className="pressable inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-gradient-to-l from-emerald-500 to-teal-600 font-head font-black text-white ft-shadow hover:scale-[1.03] active:scale-95 transition">
