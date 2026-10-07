@@ -140,7 +140,7 @@ const RAW = [
 ];
 
 export const ELEMENTS = RAW.map(([z, sym, ar, en, mass, cat, g, p, state, col, en2, melt, boil, desc]) => ({
-  z, sym, ar, en, mass, cat, g, p, state, col, en: en2, melt, boil, desc,
+  z, sym, ar, enName: en, mass, cat, g, p, state, col, en: en2, melt, boil, desc,
 }));
 export const EL = Object.fromEntries(ELEMENTS.map((e) => [e.sym, e]));
 
