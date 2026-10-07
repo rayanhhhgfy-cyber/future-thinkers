@@ -407,6 +407,22 @@ export default function ClubDetail() {
                 </div>
               </Link>
             )}
+            {slug === "science" && (
+              <Link to="/clubs/science/tools" data-testid="science-tools-card"
+                className="group block relative overflow-hidden rounded-[24px] mb-6 text-white shadow-[0_24px_50px_-18px_rgba(5,150,105,0.5)] hover:scale-[1.005] transition-transform">
+                <div className="absolute inset-0 bg-gradient-to-l from-emerald-600 via-teal-700 to-cyan-700" />
+                <div className="absolute inset-0 opacity-40 bg-[radial-gradient(50%_120%_at_85%_10%,rgba(255,255,255,0.35),transparent),radial-gradient(40%_100%_at_10%_90%,rgba(52,211,153,0.45),transparent)]" />
+                <div className="relative p-5 sm:p-7 flex items-center gap-4 sm:gap-6">
+                  <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-[20px] bg-white/15 border border-white/25 backdrop-blur grid place-items-center text-4xl sm:text-5xl shrink-0 shadow-inner group-hover:rotate-6 transition-transform">🧑‍🔬</div>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-[11px] font-black tracking-wide text-emerald-100/90">جديد · نادي العلوم</div>
+                    <div className="text-xl sm:text-3xl font-black mt-0.5 leading-snug">المختبر العلمي الكبير · أدوات وتجارب</div>
+                    <p className="text-emerald-50/85 text-[13px] sm:text-sm mt-1 leading-relaxed">مقياس الحموضة، اختبار اللهب، بنّاء الذرة، حاسبة المولات، سلسلة النشاط، الاتجاهات الدورية وتجارب كلاسيكية بخطواتها</p>
+                  </div>
+                  <span className="hidden sm:grid w-12 h-12 rounded-full bg-white text-emerald-700 place-items-center font-black text-lg shrink-0 shadow-lg group-hover:-translate-x-1 transition-transform">←</span>
+                </div>
+              </Link>
+            )}
             <ClubAnnouncements slug={slug} club={club} color={club.color} />
             {slug === "chess" && activeTab === "main" && <ChessArena />}
             {activeTab === "coding" && <CodingPanel />}
