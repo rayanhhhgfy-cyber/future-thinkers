@@ -11,6 +11,7 @@ import api from "@/lib/api";
 import { ELEMENTS, EL, CATS, COMPOUNDS, shells, parseFormula } from "@/components/lab/chemData";
 import { predict, compoundInfo, COND_LIST } from "@/components/lab/reactions";
 import SimCanvas from "@/components/lab/SimCanvas";
+import ScienceTools from "@/components/lab/ScienceTools";
 
 /* element symbols that react as diatomic molecules */
 const DIATOMIC = { H: "H2", N: "N2", O: "O2", F: "F2", Cl: "Cl2", Br: "Br2", I: "I2" };
@@ -39,6 +40,11 @@ const HAZARD = {
   "Pb(NO3)2": "ملح رصاصي سام · لا يُبتلع أبداً", PbI2: "مركب رصاصي سام", CH3COOH: "حمض عضوي · المركز منه آكل",
 };
 const SUBS = { 0: "₀", 1: "₁", 2: "₂", 3: "₃", 4: "₄", 5: "₅", 6: "₆", 7: "₇", 8: "₈", 9: "₉" };
+const GAS_TEST = {
+  CO2: { test: "مرّره في ماء الجير الصافي", pass: "يتعكّر ماء الجير حليبياً · مؤكد ✓", icon: "🥛" },
+  H2: { test: "قرّب شظية مشتعلة من فوهته", pass: "فرقعة مميزة (اختبار الفرقعة) · مؤكد ✓", icon: "💥" },
+  O2: { test: "أدخل شظية متوهّجة بلا لهب", pass: "تشتعل الشظية من جديد · مؤكد ✓", icon: "✨" },
+};
 const plainFx = (f) => f.replace(/\d/g, (d) => SUBS[d]);
 const eqText = (eq) => {
   const side = (arr) => arr.map(({ f, n }) => `${n > 1 ? n : ""}${plainFx(f)}(${stateOf(f)})`).join(" + ");
@@ -501,6 +507,34 @@ export default function ChemLab() {
                       })}
                     </div>
                   </div>
+                  {result.condUsed === "electric" && (
+                    <div className="mt-6 rounded-3xl bg-gradient-to-b from-cyan-50/80 to-white ring-1 ring-cyan-100 p-4 sm:p-5" data-testid="electrolysis-card">
+                      <div className="font-head font-black text-slate-900 mb-3">🔌 التحليل الكهربائي: ماذا يحدث عند القطبين؟</div>
+                      <div className="grid sm:grid-cols-2 gap-3">
+                        <div className="rounded-2xl bg-white ring-1 ring-slate-100 p-4 text-center">
+                          <div className="text-3xl">−</div>
+                          <div className="text-[11px] font-black text-slate-400">القطب السالب (مهبط)</div>
+                          <div className="font-black font-head text-cyan-800 mt-1">ينجذب إليه أيون الهيدروجين H⁺</div>
+                          <div className="text-[12px] font-bold text-slate-500 mt-1">يتصاعد غاز الهيدروجين H₂ · <b>ضعف حجم</b> الأكسجين</div>
+                        </div>
+                        <div className="rounded-2xl bg-white ring-1 ring-slate-100 p-4 text-center">
+                          <div className="text-3xl">+</div>
+                          <div className="text-[11px] font-black text-slate-400">القطب الموجب (مصعد)</div>
+                          <div className="font-black font-head text-cyan-800 mt-1">ينجذب إليه أيون الهيدروكسيد OH⁻</div>
+                          <div className="text-[12px] font-bold text-slate-500 mt-1">يتصاعد غاز الأكسجين O₂ · نصف حجم الهيدروجين</div>
+                        </div>
+                      </div>
+                      <p className="text-[11.5px] text-slate-400 font-semibold mt-3">النسبة 2:1 هي بصمة معادلة الماء نفسها (H₂O) · وبها اكتشف العلماء تركيب الماء أصلاً.</p>
+                    </div>
+                  )}
+                  {result.eq.products.some(({ f }) => GAS_TEST[f]) && (
+                    <div className="mt-6" data-testid="gas-tests">
+                      <div className="font-head font-black text-slate-900 mb-3">🔬 اختبر الغازات الناتجة كالمحقق العلمي</div>
+                      <div className="grid sm:grid-cols-3 gap-3">
+                        {result.eq.products.filter(({ f }) => GAS_TEST[f]).map(({ f }) => <GasTestCard key={f} f={f} runId={runId} />)}
+                      </div>
+                    </div>
+                  )}
                   {involvedElements.length > 0 && (
                     <div className="mt-6">
                       <div className="font-head font-black text-slate-900 mb-2.5">العناصر المشاركة · اضغط أي عنصر لملفّه الكامل</div>
@@ -533,6 +567,10 @@ export default function ChemLab() {
             </motion.div>
           )}
         </AnimatePresence>
+
+        <div className="mt-8">
+          <ScienceTools onInfo={setElModal} onTry={(items, c) => { const o = items.map((f) => ({ f })); setTray(o); setCond(c); run(o, c); }} />
+        </div>
 
         {/* ===== أبطال المختبر: صدارة واكتشافات وأوسمة ===== */}
         <div className="mt-8">
@@ -806,3 +844,28 @@ const PickerDeck = React.memo(function PickerDeck({ tray, cond, onCond, onAddIte
         
   );
 });
+
+function GasTestCard({ f, runId }) {
+  const [done, setDone] = React.useState(false);
+  React.useEffect(() => setDone(false), [runId, f]);
+  const g = GAS_TEST[f];
+  return (
+    <div className="rounded-3xl bg-white ring-1 ring-slate-100 ft-shadow p-4">
+      <div className="flex items-center gap-2.5">
+        <span className="text-3xl">{g.icon}</span>
+        <div>
+          <Fx f={f} className="text-lg text-slate-900" />
+          <div className="text-[11px] font-black text-slate-400">اختبار الكشف الكلاسيكي</div>
+        </div>
+      </div>
+      <p className="text-[12.5px] text-slate-500 font-semibold leading-relaxed mt-2.5">{g.test}</p>
+      <AnimatePresence mode="wait">
+        {done ? (
+          <motion.p key="p" initial={{ opacity: 0, scale: 0.92 }} animate={{ opacity: 1, scale: 1 }} className="mt-3 rounded-2xl bg-emerald-50 ring-1 ring-emerald-200 text-emerald-800 text-[12.5px] font-black px-3 py-2.5">{g.pass}</motion.p>
+        ) : (
+          <motion.button key="b" exit={{ opacity: 0 }} onClick={() => setDone(true)} className="pressable mt-3 w-full py-2.5 rounded-2xl bg-slate-900 text-white text-[12.5px] font-head font-black active:scale-95 transition">نفّذ الاختبار</motion.button>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
