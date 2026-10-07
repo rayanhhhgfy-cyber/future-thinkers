@@ -324,17 +324,29 @@ app.add_middleware(
 )
 
 
-@app.on_event("startup")
-async def on_startup():
+async def _seed_background():
     try:
-        init_db()
         await seed_all()
         logger.info("Seed complete")
     except Exception:
-        # A DB/seed failure at startup must never take the whole API down:
-        # request handlers (re)initialize the DB lazily via get_db(), and the
-        # global error handler reports the real problem per request.
-        logger.exception("Startup DB init/seed failed; continuing without it")
+        # A DB/seed failure must never take the whole API down: request
+        # handlers (re)initialize the DB lazily via get_db(), and the global
+        # error handler reports the real problem per request.
+        logger.exception("Background seed failed; continuing without it")
+
+
+@app.on_event("startup")
+async def on_startup():
+    # Seed in the BACKGROUND. seed_all() performs ~2,000 sequential writes
+    # (Jordan school lists on every boot); gating the first response on it
+    # made cold serverless instances hang for tens of seconds, health check
+    # included (2026-10-07). Seeding is idempotent and the production DB is
+    # already seeded, so requests may serve immediately while it converges.
+    try:
+        init_db()
+    except Exception:
+        logger.exception("Startup DB init failed; continuing without it")
+    asyncio.create_task(_seed_background())
 
 
 @app.on_event("shutdown")

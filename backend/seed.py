@@ -1,6 +1,7 @@
 """Static reference data + idempotent seeding for development.
 Jordan national hierarchy, book categories, clubs, achievements, admin, sample books."""
 from bson import ObjectId
+from pymongo import UpdateOne
 from db import db, now_iso
 from auth import hash_password
 import os
@@ -338,9 +339,10 @@ async def seed_all():
                 upsert=True, return_document=True)
             did = str(d["_id"])
             real = school_data.get(dname)
+            _ops = []
             if real is not None:
                 for sch in real:
-                    await db.schools.update_one(
+                    _ops.append(UpdateOne(
                         {"directorate_id": did, "name": sch["name"]},
                         {"$setOnInsert": {
                             "name": sch["name"],
@@ -350,18 +352,23 @@ async def seed_all():
                             "directorate_id": did, "directorate_name": dname,
                             "governorate_id": gid, "governorate_name": gname,
                             "students_count": 0, "created_at": now_iso()}},
-                        upsert=True)
+                        upsert=True))
             else:
                 for sname in SCHOOL_NAMES[:4]:
                     s_full = f"{sname} - {dname.replace('مديرية ', '')}"
-                    await db.schools.update_one(
+                    _ops.append(UpdateOne(
                         {"directorate_id": did, "name": s_full},
                         {"$setOnInsert": {
                             "name": s_full,
                             "directorate_id": did, "directorate_name": dname,
                             "governorate_id": gid, "governorate_name": gname,
                             "students_count": 0, "created_at": now_iso()}},
-                        upsert=True)
+                        upsert=True))
+            if _ops:
+                # Batched: ~1,880 one-by-one upserts on every cold start
+                # kept instances unresponsive for tens of seconds
+                # (2026-10-07). One bulk_write per directorate instead.
+                await db.schools.bulk_write(_ops, ordered=False)
 
     # one-time merge: collapse pre-official directorate names (e.g. "مديرية
     # إربد الأولى") into the official 42 when they share a distinctive name
