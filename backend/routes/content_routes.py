@@ -254,8 +254,23 @@ async def resolve_report(rid: str, body: ReportActionBody, user: dict = Depends(
     r = await db.reports.find_one({"_id": oid(rid)})
     if not r:
         raise HTTPException(status_code=404, detail="غير موجود")
+    if body.action == "warn" and r.get("reported_user_id"):
+        try:
+            await create_notification(
+                r["reported_user_id"], "moderation", "تحذير من فريق المنصة",
+                body.note or "وصلنا بلاغ عن رسائلك · التزم بأدب الحوار حتى لا يُقيّد حسابك",
+                "/messages")
+        except Exception:
+            pass
     if body.action == "delete":
-        if r["entity_type"] == "discussion":
+        if r["entity_type"] == "message":
+            msg = await db.dm_messages.find_one({"id": r["entity_id"]})
+            if msg and not msg.get("deleted"):
+                await db.dm_messages.update_one(
+                    {"id": r["entity_id"]},
+                    {"$set": {"deleted": True,
+                              "deleted_body": msg.get("body", ""), "body": ""}})
+        elif r["entity_type"] == "discussion":
             await db.discussions.delete_one({"_id": oid(r["entity_id"])})
         elif r["entity_type"] == "reply":
             await db.discussion_replies.delete_one({"_id": oid(r["entity_id"])})

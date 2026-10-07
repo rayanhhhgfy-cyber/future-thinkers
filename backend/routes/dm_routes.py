@@ -244,8 +244,10 @@ async def edit_message(mid: str, body: EditBody,
     text = body.body.strip()
     if not text:
         raise HTTPException(status_code=400, detail="الرسالة فارغة")
-    await db.dm_messages.update_one(
-        {"id": mid}, {"$set": {"body": text, "edited": True}})
+    upd = {"body": text, "edited": True}
+    if not msg.get("edited"):
+        upd["original_body"] = msg.get("body", "")
+    await db.dm_messages.update_one({"id": mid}, {"$set": upd})
     return {"ok": True}
 
 
@@ -256,7 +258,8 @@ async def delete_message(mid: str, user: dict = Depends(get_current_user)):
     if msg["sender_id"] != me:
         raise HTTPException(status_code=403, detail="لا يمكنك حذف رسالة لست صاحبها")
     await db.dm_messages.update_one(
-        {"id": mid}, {"$set": {"deleted": True, "body": ""}})
+        {"id": mid}, {"$set": {"deleted": True,
+                               "deleted_body": msg.get("body", ""), "body": ""}})
     return {"ok": True}
 
 
@@ -461,3 +464,101 @@ async def toggle_block(uid: str, user: dict = Depends(get_current_user)):
     await db.users.update_one(
         {"_id": oid(me)}, {"$set": {"blocked_users": blocked}})
     return {"blocked": is_blocked}
+
+
+# ------------------------------------------------------------ reports & admin review
+class DmReportBody(BaseModel):
+    message_id: str | None = None
+    target_user_id: str | None = None
+    reason: str = Field(min_length=2, max_length=120)
+    details: str = Field(default="", max_length=500)
+
+
+@router.post("/report")
+async def report_dm(body: DmReportBody, user: dict = Depends(get_current_user)):
+    """Report a message or a chat partner. Lands in the admin reports center
+    (db.reports) with a snapshot of the offending message, so the evidence
+    survives later edits/deletes by its author."""
+    me = user["id"]
+    reported_id = None
+    conv_id = None
+    snapshot = None
+    if body.message_id:
+        msg, conv = await _member_message(body.message_id, me)
+        if msg["sender_id"] == me:
+            raise HTTPException(status_code=400, detail="لا يمكنك الإبلاغ عن رسالتك")
+        reported_id = msg["sender_id"]
+        conv_id = conv["id"]
+        snapshot = {"body": msg.get("deleted_body") or msg.get("body", ""),
+                    "at": msg.get("at", ""), "deleted": bool(msg.get("deleted"))}
+        entity_type, entity_id = "message", body.message_id
+    elif body.target_user_id:
+        other = await _get_user(body.target_user_id)
+        if not other:
+            raise HTTPException(status_code=404, detail="المستخدم غير موجود")
+        if body.target_user_id == me:
+            raise HTTPException(status_code=400, detail="لا يمكنك الإبلاغ عن نفسك")
+        reported_id = body.target_user_id
+        conv = await _find_conv(me, body.target_user_id)
+        conv_id = conv["id"] if conv else None
+        entity_type, entity_id = "user", body.target_user_id
+    else:
+        raise HTTPException(status_code=400, detail="حدد رسالة أو مستخدماً للإبلاغ")
+
+    dup = await db.reports.find_one(
+        {"entity_type": entity_type, "entity_id": entity_id,
+         "reporter_id": me, "status": "open"}, {"_id": 1})
+    if dup:
+        return {"id": str(dup["_id"]), "status": "open", "duplicate": True}
+
+    reported = await _get_user(reported_id)
+    doc = {
+        "entity_type": entity_type, "entity_id": entity_id,
+        "reason": body.reason.strip(), "details": body.details.strip(),
+        "status": "open",
+        "reporter_id": me, "reporter_name": user.get("name", ""),
+        "reported_user_id": reported_id,
+        "reported_name": (reported or {}).get("name", ""),
+        "conversation_id": conv_id,
+        "message_snapshot": snapshot,
+        "created_at": now_iso(),
+    }
+    res = await db.reports.insert_one(doc)
+    return {"id": str(res.inserted_id), "status": "open"}
+
+
+@router.get("/admin/conversations/{cid}/full")
+async def admin_full_conversation(cid: str,
+                                  user: dict = Depends(require_permission("report.manage"))):
+    """The complete transcript for moderation: every message ever sent,
+    including deleted ones (original text) and pre-edit originals."""
+    conv = await db.dm_conversations.find_one({"id": cid})
+    if not conv:
+        raise HTTPException(status_code=404, detail="المحادثة غير موجودة")
+    names = {}
+    for m in conv.get("members", []):
+        u = await _get_user(m)
+        if u:
+            names[m] = u.get("name", "")
+    msgs = await db.dm_messages.find(
+        {"conversation_id": cid}).sort("at", 1).to_list(5000)
+    items = []
+    for m in msgs:
+        deleted = bool(m.get("deleted"))
+        items.append({
+            "id": m["id"], "sender_id": m["sender_id"],
+            "sender_name": names.get(m["sender_id"], ""),
+            "body": (m.get("deleted_body") if deleted else m.get("body")) or "",
+            "deleted": deleted,
+            "edited": bool(m.get("edited")),
+            "original_body": m.get("original_body"),
+            "at": m.get("at", ""),
+            "reactions": m.get("reactions") or {},
+        })
+    return {
+        "conversation": {"id": conv["id"], "kind": conv.get("kind", "peer"),
+                         "closed": bool(conv.get("closed")),
+                         "members": [{"id": mid, "name": names.get(mid, "")}
+                                     for mid in conv.get("members", [])]},
+        "items": items,
+    }
