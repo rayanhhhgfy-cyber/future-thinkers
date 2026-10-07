@@ -3,6 +3,7 @@ import "@/App.css";
 import { BrowserRouter, Routes, Route, Link, useLocation } from "react-router-dom";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Toaster } from "@/components/ui/sonner";
+import ChunkBoundary from "@/components/ChunkBoundary";
 import { AuthProvider } from "@/context/AuthContext";
 import { SiteConfigProvider, MaintenanceGate, SectionGate } from "@/lib/siteConfig";
 import { Protected } from "@/components/Layout";
@@ -214,7 +215,7 @@ function App() {
         <SiteConfigProvider>
           <ErrorBoundary>
             <MaintenanceGate>
-              <AnimatedRoutes />
+              <ChunkBoundary><AnimatedRoutes /></ChunkBoundary>
             </MaintenanceGate>
           </ErrorBoundary>
         </SiteConfigProvider>

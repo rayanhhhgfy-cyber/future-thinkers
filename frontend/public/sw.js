@@ -2,7 +2,7 @@
    - Static assets (JS/CSS/images/fonts): cache-first, so the app shell loads instantly.
    - Navigations: network-first with cached-app-shell fallback for offline.
    - /api/* and websockets: never cached, always network. */
-const VERSION = "ft-v2";
+const VERSION = "ft-v3";
 const STATIC_CACHE = `ft-static-${VERSION}`;
 const SHELL_CACHE = `ft-shell-${VERSION}`;
 

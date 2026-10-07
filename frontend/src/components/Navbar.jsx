@@ -20,6 +20,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import api from "@/lib/api";
 import { wsUrl } from "@/lib/api";
 import { toast } from "sonner";
+import AchievementToast from "@/components/AchievementToast";
 import { NotificationsPanel } from "@/components/NotificationsPanel";
 import { GlobalSearch } from "@/components/GlobalSearch";
 import { ShareButton } from "@/components/ShellExtras";
@@ -112,6 +113,7 @@ export function Navbar() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [gam, setGam] = useState(null);
+  const [achToasts, setAchToasts] = useState([]);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 10);
@@ -187,10 +189,18 @@ export function Navbar() {
           const d = JSON.parse(ev.data);
           if (d.kind === "notification") {
             setUnread((n) => n + 1);
-            toast(d.title, {
-              description: d.body,
-              ...(d.link ? { action: { label: "عرض", onClick: () => nav(d.link) } } : {}),
-            });
+            const ACH = ["achievement", "certificate", "challenge", "circle_challenge_done", "competition"];
+            const isAch = ACH.includes(d.type) || /وسام|شهادة|إنجاز|🏆|تحدّ|بطول/.test(d.title || "");
+            if (isAch) {
+              const aid = `ach-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+              setAchToasts((prev) => [...prev.slice(-1), { id: aid, title: d.title, body: d.body, link: d.link }]);
+              setTimeout(() => setAchToasts((prev) => prev.filter((x) => x.id !== aid)), 7000);
+            } else {
+              toast(d.title, {
+                description: d.body,
+                ...(d.link ? { action: { label: "عرض", onClick: () => nav(d.link) } } : {}),
+              });
+            }
           }
         } catch {}
       };
@@ -203,6 +213,29 @@ export function Navbar() {
 
   return (
   <>
+    {/* achievement glass toasts: fixed bottom-center, wide, warm glass */}
+    <div dir="rtl" className="fixed inset-x-0 bottom-[84px] xl:bottom-6 z-[95] flex flex-col items-center gap-2 px-2.5 pointer-events-none">
+      <AnimatePresence>
+        {achToasts.map((t) => (
+          <motion.div
+            key={t.id}
+            initial={{ opacity: 0, y: 48, scale: 0.94 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 24, scale: 0.96 }}
+            transition={{ type: "spring", stiffness: 320, damping: 26 }}
+            className="pointer-events-auto w-full max-w-[700px]"
+          >
+            <AchievementToast
+              title={t.title}
+              body={t.body}
+              link={t.link}
+              onView={() => { setAchToasts((prev) => prev.filter((x) => x.id !== t.id)); if (t.link) nav(t.link); }}
+              onDismiss={() => setAchToasts((prev) => prev.filter((x) => x.id !== t.id))}
+            />
+          </motion.div>
+        ))}
+      </AnimatePresence>
+    </div>
     <header className="sticky top-0 z-50 px-3 sm:px-5 lg:px-8 pt-[max(0.6rem,env(safe-area-inset-top))]">
       <div className={`max-w-[1440px] mx-auto glass rounded-[22px] border border-white/60 ring-1 ring-slate-900/5 px-3.5 sm:px-5 lg:px-6 h-16 lg:h-[68px] flex items-center justify-between gap-3 transition-shadow duration-300 ${scrolled ? "shadow-[0_20px_48px_-16px_rgba(15,23,42,0.38)]" : "shadow-[0_10px_30px_-14px_rgba(15,23,42,0.22)]"}`}>
         <div className="flex items-center gap-8 min-w-0">

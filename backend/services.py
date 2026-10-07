@@ -133,7 +133,7 @@ async def create_notification(user_id: str, type_: str, title: str, body: str = 
     await db.notifications.insert_one(doc)
     try:
         from ws import hub
-        await hub.notify_user(user_id, {"kind": "notification", "title": title, "body": body, "link": link})
+        await hub.notify_user(user_id, {"kind": "notification", "type": type_, "title": title, "body": body, "link": link})
     except Exception:
         pass
     # best-effort phone push; never breaks the request
@@ -217,7 +217,7 @@ async def deliver_notification(user_ids, type_, title, body="", link=None, chann
         try:
             from ws import hub
             for uid in user_ids:
-                await hub.notify_user(uid, {"kind": "notification", "title": title,
+                await hub.notify_user(uid, {"kind": "notification", "type": type_, "title": title,
                                             "body": body, "link": link})
         except Exception:
             pass
