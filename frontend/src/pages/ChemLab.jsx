@@ -11,7 +11,6 @@ import api from "@/lib/api";
 import { ELEMENTS, EL, CATS, COMPOUNDS, shells, parseFormula } from "@/components/lab/chemData";
 import { predict, compoundInfo, COND_LIST } from "@/components/lab/reactions";
 import SimCanvas from "@/components/lab/SimCanvas";
-import ScienceTools from "@/components/lab/ScienceTools";
 
 /* element symbols that react as diatomic molecules */
 const DIATOMIC = { H: "H2", N: "N2", O: "O2", F: "F2", Cl: "Cl2", Br: "Br2", I: "I2" };
@@ -198,6 +197,18 @@ export default function ChemLab() {
   React.useEffect(() => {
     api.get("/lab/me").then(({ data }) => setMe(data)).catch(() => {});
     api.get("/lab/leaderboard").then(({ data }) => setBoard(data.items || [])).catch(() => {});
+    try {
+      const raw = sessionStorage.getItem("ft-lab-try");
+      if (raw) {
+        sessionStorage.removeItem("ft-lab-try");
+        const t2 = JSON.parse(raw);
+        if (Array.isArray(t2.items) && t2.items.length) {
+          const o = t2.items.map((f) => ({ f }));
+          setTray(o); setCond(t2.cond ?? null);
+          setTimeout(() => run(o, t2.cond ?? null), 450);
+        }
+      }
+    } catch { /* ignore */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -568,9 +579,20 @@ export default function ChemLab() {
           )}
         </AnimatePresence>
 
-        <div className="mt-8">
-          <ScienceTools onInfo={setElModal} onTry={(items, c) => { const o = items.map((f) => ({ f })); setTray(o); setCond(c); run(o, c); }} />
-        </div>
+        <Link to="/clubs/science/tools" data-testid="lab-tools-entry"
+          className="group mt-8 relative block overflow-hidden rounded-[1.75rem] sm:rounded-3xl text-white ft-shadow-lg hover:scale-[1.004] transition-transform">
+          <div className="absolute inset-0 bg-gradient-to-l from-emerald-600 via-teal-700 to-cyan-700" />
+          <div className="absolute inset-0 opacity-40 bg-[radial-gradient(50%_120%_at_85%_10%,rgba(255,255,255,0.35),transparent),radial-gradient(40%_100%_at_10%_90%,rgba(52,211,153,0.45),transparent)]" />
+          <div className="relative p-5 sm:p-7 flex items-center gap-4 sm:gap-6">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-[20px] bg-white/15 border border-white/25 backdrop-blur grid place-items-center text-4xl sm:text-5xl shrink-0 shadow-inner group-hover:rotate-6 transition-transform">🧑‍🔬</div>
+            <div className="min-w-0 flex-1">
+              <div className="text-[11px] font-black tracking-wide text-emerald-100/90">صفحة جديدة كاملة</div>
+              <div className="text-xl sm:text-3xl font-black mt-0.5 leading-snug">المختبر العلمي الكبير · أدوات وتجارب</div>
+              <p className="text-emerald-50/85 text-[13px] sm:text-sm mt-1 leading-relaxed">الحموضة واللهب وبنّاء الذرة والمولات ومنحنى التسخين وسلسلة النشاط والاتجاهات الدورية ومكتبة تجارب كلاسيكية</p>
+            </div>
+            <span className="hidden sm:grid w-12 h-12 rounded-full bg-white text-emerald-700 place-items-center font-black text-lg shrink-0 shadow-lg group-hover:-translate-x-1 transition-transform">←</span>
+          </div>
+        </Link>
 
         {/* ===== أبطال المختبر: صدارة واكتشافات وأوسمة ===== */}
         <div className="mt-8">
@@ -583,7 +605,8 @@ export default function ChemLab() {
           </div>
           <div className="grid lg:grid-cols-3 gap-4">
             <div className="bg-white rounded-3xl border border-slate-100 ft-shadow p-5" data-testid="lab-board">
-              <div className="font-head font-black text-slate-900 mb-3">🏅 لوحة صدارة الكيميائيين</div>
+              <div className="font-head font-black text-slate-900 mb-1">🏅 لوحة صدارة نادي العلوم</div>
+              <p className="text-[11px] text-slate-400 font-bold mb-3">نفس لوحة النادي الرسمية · خبرة المختبر تصعد بك فيها تلقائياً</p>
               <div className="space-y-2">
                 {board.slice(0, 10).map((u) => (
                   <div key={u.id} className={`flex items-center gap-2.5 rounded-2xl px-3 py-2 ring-1 ${u.me ? "bg-emerald-50 ring-emerald-300" : u.rank <= 3 ? "bg-amber-50/70 ring-amber-100" : "bg-slate-50/60 ring-slate-100"}`}>
@@ -593,8 +616,8 @@ export default function ChemLab() {
                       <span className="block text-[10.5px] text-slate-400 font-bold truncate">{u.school_name || u.level_title}</span>
                     </span>
                     <span className="mr-auto text-left shrink-0">
-                      <span className="block text-[13px] font-black text-slate-900" dir="ltr">{u.lab_xp} XP</span>
-                      <span className="block text-[10px] text-slate-400 font-bold">{u.discoveries} مادة · {u.runs} تجربة</span>
+                      <span className="block text-[13px] font-black text-slate-900" dir="ltr">{u.xp ?? u.lab_xp} XP</span>
+                      <span className="block text-[10px] text-slate-400 font-bold">مختبر: {u.discoveries} مادة · {u.runs} تجربة</span>
                     </span>
                   </div>
                 ))}

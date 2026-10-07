@@ -14,7 +14,7 @@ from bson import ObjectId
 
 from db import db
 from auth import get_current_user
-from services import award_xp
+from services import award_xp, create_notification
 from routes.control_routes import section_open
 
 router = APIRouter(prefix="/api/lab")
@@ -117,25 +117,33 @@ async def lab_me(user: dict = Depends(get_current_user)):
 
 @router.get("/leaderboard")
 async def lab_leaderboard(limit: int = 20, user: dict = Depends(get_current_user)):
+    """نفس لوحة صدارة نادي العلوم حرفياً: أعضاء النادي مرتّبون بخبرة المنصة،
+    والمختبر قسم تابع للنادي — كل خبرة مختبر تُرفع عبر award_xp فتتقدّم بها هنا.
+    نُلحق بكل صف لمحة مختبره (اكتشافات وتجارب)."""
     await _gate()
-    limit = max(1, min(50, limit))
-    cur = db.users.find({"lab_xp": {"$gt": 0}},
-                        {"name": 1, "school_name": 1, "lab_xp": 1, "lab_discoveries": 1,
-                         "lab_elements": 1, "lab_runs": 1, "avatar_url": 1}) \
-        .sort("lab_xp", -1).limit(limit)
+    from routes.community_routes import _club_member_rows
+    rows = await _club_member_rows("science")
+    rows.sort(key=lambda r: -r.get("xp", 0))
+    rows = rows[:max(1, min(50, limit))]
+    lab = {}
+    if rows:
+        ids = [ObjectId(r["id"]) for r in rows]
+        async for u in db.users.find({"_id": {"$in": ids}},
+                                      {"lab_xp": 1, "lab_discoveries": 1, "lab_elements": 1, "lab_runs": 1}):
+            title, _ = _lab_level(u.get("lab_xp", 0))
+            lab[str(u["_id"])] = {
+                "lab_xp": u.get("lab_xp", 0), "lab_level": title,
+                "discoveries": len(u.get("lab_discoveries", [])),
+                "elements": len(u.get("lab_elements", [])),
+                "runs": u.get("lab_runs", 0),
+            }
     out = []
-    async for u in cur:
-        title, _ = _lab_level(u.get("lab_xp", 0))
-        out.append({
-            "rank": len(out) + 1, "id": str(u["_id"]), "name": u.get("name", ""),
-            "school_name": u.get("school_name"), "avatar": u.get("avatar_url"),
-            "lab_xp": u.get("lab_xp", 0), "level_title": title,
-            "discoveries": len(u.get("lab_discoveries", [])),
-            "elements": len(u.get("lab_elements", [])),
-            "runs": u.get("lab_runs", 0),
-            "me": str(u["_id"]) == str(user["_id"]),
-        })
-    return {"items": out}
+    for r in rows:
+        extra = lab.get(r["id"], {"lab_xp": 0, "lab_level": LAB_LEVELS[0][1], "discoveries": 0, "elements": 0, "runs": 0})
+        out.append({**r, **extra, "rank": len(out) + 1,
+                    "xp": r.get("xp", 0), "level_title": extra["lab_level"],
+                    "me": r["id"] == str(user["_id"])})
+    return {"items": out, "club": "science"}
 
 
 @router.post("/run")
@@ -204,6 +212,11 @@ async def lab_run(body: RunBody, user: dict = Depends(get_current_user)):
     fresh = await db.users.find_one({"_id": ObjectId(uid)})
     before = {b["key"] for b in _badges(old) if b["earned"]}
     new_badges = [b for b in _badges(fresh) if b["earned"] and b["key"] not in before]
+    for b in new_badges:
+        await create_notification(uid, "achievement",
+                                  f"وسام كيمياء جديد: {b['icon']} {b['title']}",
+                                  f"{b['desc']} · أُنجز داخل مختبر نادي العلوم · أكمل التجارب لفتح بقية أوسمتك الاثني عشر.",
+                                  "/clubs/science/lab")
     return {"gained": gained, "platform_xp": platform,
             "new_species": new_species, "new_elements": new_elems,
             "new_badges": new_badges, "daily_done": daily_hit or fresh.get("lab_daily_done") == today,
