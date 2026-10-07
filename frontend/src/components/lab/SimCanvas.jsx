@@ -43,7 +43,7 @@ function slots(count, spread) {
   return out;
 }
 
-export default function SimCanvas({ result, runId, playing, speed = 1, ambient = 25, onTemp, onPhase }) {
+export default function SimCanvas({ result, runId, playing, speed = 1, ambient = 25, onTemp, onPhase, light = false }) {
   const ref = useRef(null);
   const stateRef = useRef({ yaw: 0.5, pitch: -0.25, drag: null, t: 0, lastTemp: null, lastPhase: "" });
 
@@ -110,12 +110,12 @@ export default function SimCanvas({ result, runId, playing, speed = 1, ambient =
       const glow = ctx.createRadialGradient(W / 2, H / 2, 10, W / 2, H / 2, Math.max(W, H) * 0.7);
       const flash = reacts && t > 0.36 && t < 0.55 ? Math.sin((t - 0.36) / 0.19 * Math.PI) : 0;
       const exo = (result?.dH ?? 0) < 0;
-      glow.addColorStop(0, flash > 0.1 ? (exo ? `rgba(249,115,22,${0.14 + flash * 0.22})` : `rgba(56,189,248,${0.12 + flash * 0.2})`) : "rgba(56,189,248,0.07)");
+      glow.addColorStop(0, flash > 0.1 ? (exo ? `rgba(249,115,22,${0.14 + flash * 0.22})` : `rgba(56,189,248,${0.12 + flash * 0.2})`) : (light ? "rgba(14,165,233,0.10)" : "rgba(56,189,248,0.07)"));
       glow.addColorStop(1, "rgba(2,6,23,0)");
       ctx.fillStyle = glow; ctx.fillRect(0, 0, W, H);
 
       if (!S.drag) S.yaw += dt * 0.12;
-      const f = Math.min(W, H) * 0.085;
+      const f = Math.min(W, H) * 0.125;
       const proj = (p) => { const s = f * 9.5 / (9.5 + p[2] + 6); return [W / 2 + p[0] * s, H / 2 + p[1] * s, s, p[2]]; };
 
       // temperature + phase reporting
@@ -162,7 +162,7 @@ export default function SimCanvas({ result, runId, playing, speed = 1, ambient =
         if (!byMol.has(molKey)) byMol.set(molKey, []);
         byMol.get(molKey).push(drawnAll[i]);
       });
-      ctx.strokeStyle = "rgba(226,232,240,0.5)";
+      ctx.strokeStyle = light ? "rgba(30,41,59,0.42)" : "rgba(226,232,240,0.5)";
       byMol.forEach((arr) => {
         if (arr.length < 2) return;
         const hub = arr[0];
@@ -186,7 +186,7 @@ export default function SimCanvas({ result, runId, playing, speed = 1, ambient =
         const [x, y, s] = a.pr;
         const el = EL[a.sym];
         const col = el?.col || "#cbd5e1";
-        const r = Math.max(9, s * (0.42 + Math.min(0.5, (el?.mass || 12) / 130)));
+        const r = Math.max(11, s * (0.52 + Math.min(0.55, (el?.mass || 12) / 120)));
         ctx.globalAlpha = a.alpha;
         const g = ctx.createRadialGradient(x - r * 0.35, y - r * 0.4, r * 0.15, x, y, r);
         g.addColorStop(0, "#ffffff"); g.addColorStop(0.25, col); g.addColorStop(1, shade(col));
