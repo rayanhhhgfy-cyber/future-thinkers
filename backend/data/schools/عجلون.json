@@ -1,1 +1,9 @@
-{"directorates":[{"name":"عجلون","governorate":"عجلون","schools":[]}]}
+{
+ "directorates": [
+  {
+   "name": "عجلون",
+   "governorate": "عجلون",
+   "schools": []
+  }
+ ]
+}
