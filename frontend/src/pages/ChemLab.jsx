@@ -7,6 +7,7 @@ import {
   Camera, Maximize2, Type, Orbit, GaugeCircle, Share2, Copy, Check, Trophy, ShieldAlert, Scale, Swords,
 } from "lucide-react";
 import { Layout } from "@/components/Layout";
+import api from "@/lib/api";
 import { ELEMENTS, EL, CATS, COMPOUNDS, shells, parseFormula } from "@/components/lab/chemData";
 import { predict, compoundInfo, COND_LIST } from "@/components/lab/reactions";
 import SimCanvas from "@/components/lab/SimCanvas";
@@ -43,6 +44,8 @@ const eqText = (eq) => {
   const side = (arr) => arr.map(({ f, n }) => `${n > 1 ? n : ""}${plainFx(f)}(${stateOf(f)})`).join(" + ");
   return `${side(eq.reactants)} ⟶ ${side(eq.products)}`;
 };
+const CODEX_UNIVERSE = [...new Set([...COMPOUNDS.map((c) => c.f),
+  "CH3COONa", "KNO3", "NaNO3", "AgCl", "BaSO4", "PbI2", "ZnCl2", "FeCl2", "FeCl3", "MgO", "CuSO4", "ZnSO4"])];
 const MISSIONS = [
   { id: "water", icon: "💧", title: "صانع الماء", desc: "كوّن جزيئات ماء من تفاعل حقيقي", test: (r) => r.reacts && r.eq.products.some((p) => p.f === "H2O") && r.eq.reactants.some((p) => p.f === "O2") },
   { id: "volcano", icon: "🌋", title: "بركان الغاز", desc: "ولّد غاز ثاني أكسيد الكربون ولاحظ الفوران", test: (r) => r.reacts && r.eq.products.some((p) => p.f === "CO2") },
@@ -126,36 +129,48 @@ export default function ChemLab() {
   const [result, setResult] = useState(null);
   const [runId, setRunId] = useState(0);
   const [playing, setPlaying] = useState(true);
-  const [tab, setTab] = useState("table"); // table (top) | compounds (under it)
   const [elModal, setElModal] = useState(null);
   const [temp, setTemp] = useState(25);
   const [phase, setPhase] = useState("idle");
-  const [query, setQuery] = useState("");
   const [speed, setSpeed] = useState(1);
   const [labels, setLabels] = useState(true);
   const [autoRot, setAutoRot] = useState(true);
   const zoomRef = useRef({ v: 1 });
   const stageCardRef = useRef(null);
-  const [elQuery, setElQuery] = useState("");
-  const [catFilter, setCatFilter] = useState(null);
-  const [compType, setCompType] = useState("الكل");
   const stageRef = useRef(null);
   const [progress, setProgress] = useState(0);
   const seekRef = useRef({ scrubbing: false, v: 0 });
   const [copied, setCopied] = useState(false);
   const [missions, setMissions] = useState(() => { try { return JSON.parse(localStorage.getItem("ft-lab-missions") || "[]"); } catch { return []; } });
+  const [me, setMe] = useState(null);
+  const [board, setBoard] = useState([]);
+  const [toast, setToast] = useState(null);
 
-  const addItem = (f) => {
+  const addItem = React.useCallback((f) => {
     setTray((t) => (t.some((x) => x.f === f) || t.length >= 3 ? t : [...t, { f }]));
     setResult(null);
-  };
-  const addElement = (el) => addItem(DIATOMIC[el.sym] || el.sym);
-  const removeItem = (f) => { setTray((t) => t.filter((x) => x.f !== f)); setResult(null); };
+  }, []);
+  const addElement = React.useCallback((el) => addItem(DIATOMIC[el.sym] || el.sym), [addItem]);
+  const removeItem = React.useCallback((f) => { setTray((t) => t.filter((x) => x.f !== f)); setResult(null); }, []);
+  const clearTray = React.useCallback(() => { setTray([]); setResult(null); }, []);
 
   const run = (items = tray, c = cond) => {
     if (!items.length) return;
     const r = predict(items, c);
     setResult(r); setRunId((x) => x + 1); setPlaying(true); setTemp(25); setPhase("approach"); setProgress(0);
+    if (r.reacts && r.eq) {
+      const speciesEls = [...new Set([...r.eq.reactants, ...r.eq.products].flatMap(({ f }) => Object.keys(parseFormula(f))))];
+      api.post("/lab/run", {
+        reactants: items.map((x) => x.f),
+        products: r.eq.products.map((p) => p.f),
+        elements: speciesEls,
+      }).then(({ data }) => {
+        setMe(data.me);
+        setToast({ gained: data.gained, species: data.new_species || [], badges: data.new_badges || [], daily: data.daily_done && data.gained >= 120 });
+        setTimeout(() => setToast(null), 4200);
+        api.get("/lab/leaderboard").then(({ data: b }) => setBoard(b.items || [])).catch(() => {});
+      }).catch(() => {});
+    }
     if (r.reacts) {
       setMissions((prev) => {
         const won = MISSIONS.filter((m) => m.test(r) && !prev.includes(m.id)).map((m) => m.id);
@@ -172,6 +187,13 @@ export default function ChemLab() {
     setTray(items); setCond(p.cond); run(items, p.cond);
   };
   const surprise = () => applyPreset(PRESETS[Math.floor(Math.random() * PRESETS.length)]);
+  const runCb = React.useCallback(() => run(), [tray, cond]); // eslint-disable-line react-hooks/exhaustive-deps
+  const surpriseCb = React.useCallback(() => surprise(), []); // eslint-disable-line react-hooks/exhaustive-deps
+  React.useEffect(() => {
+    api.get("/lab/me").then(({ data }) => setMe(data)).catch(() => {});
+    api.get("/lab/leaderboard").then(({ data }) => setBoard(data.items || [])).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const atomCount = useMemo(() => {
     if (!result?.eq) return 0;
@@ -190,19 +212,11 @@ export default function ChemLab() {
     return [...set].map((s) => EL[s]).filter(Boolean);
   }, [result]);
 
-  const COMP_TYPES = ["الكل", ...new Set(COMPOUNDS.map((c) => c.type))];
-  const shownCompounds = COMPOUNDS.filter((c) => (compType === "الكل" || c.type === compType) && (!query || c.ar.includes(query) || c.f.toLowerCase().includes(query.toLowerCase())));
-  const elDim = (el) => {
-    const q = elQuery.trim().toLowerCase();
-    const hitQ = !q || el.ar.includes(elQuery.trim()) || el.sym.toLowerCase() === q || String(el.z) === q || el.enName.toLowerCase().includes(q);
-    const hitC = !catFilter || el.cat === catFilter;
-    return !(hitQ && hitC);
-  };
   const trayName = (f) => COMPOUNDS.find((c) => c.f === f)?.ar || (EL[f] ? EL[f].ar : (DIATOMIC_REV[f] ? EL[DIATOMIC_REV[f]]?.ar : ""));
 
   return (
     <Layout>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 pb-24" dir="rtl">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-5 sm:py-8 pb-24 overflow-x-clip" dir="rtl">
         {/* ===== hero · same design language as the site ===== */}
         <div className="ft-navy-gradient grain relative overflow-hidden rounded-[1.75rem] sm:rounded-3xl p-5 sm:p-8 lg:p-10 text-white ft-shadow-lg">
           <div className="absolute -top-20 -left-20 w-72 h-72 rounded-full bg-cyan-400/20 blur-3xl" />
@@ -217,170 +231,49 @@ export default function ChemLab() {
                 <h1 className="font-head text-4xl sm:text-5xl lg:text-6xl font-black mt-3 leading-tight">محاكي التفاعلات <span className="text-transparent bg-clip-text bg-gradient-to-l from-cyan-300 to-emerald-300">الكيميائية</span></h1>
                 <p className="text-slate-300 text-sm sm:text-base mt-2 max-w-xl leading-relaxed">اختر أي عنصر أو مركب · وشاهد التفاعل يحدث أمامك ثلاثي الأبعاد ذرّةً ذرّة، مع المعادلة والطاقة والحرارة وتفاصيل كل مادة</p>
               </div>
-              <div className="flex gap-2 sm:gap-3 shrink-0">
-                <div className="text-center px-4 sm:px-5 py-3 rounded-2xl bg-white/10 ring-1 ring-white/10">
+              <div className="grid grid-cols-3 gap-2 sm:flex sm:gap-3 shrink-0 w-full lg:w-auto">
+                <div className="text-center px-3 sm:px-5 py-3 rounded-2xl bg-white/10 ring-1 ring-white/10">
                   <div className="text-xl sm:text-2xl font-black font-head">118</div>
                   <div className="text-[10px] text-slate-300 font-bold mt-0.5">عنصراً</div>
                 </div>
-                <div className="text-center px-4 sm:px-5 py-3 rounded-2xl bg-white/10 ring-1 ring-white/10">
+                <div className="text-center px-3 sm:px-5 py-3 rounded-2xl bg-white/10 ring-1 ring-white/10">
                   <div className="text-xl sm:text-2xl font-black font-head">40+</div>
                   <div className="text-[10px] text-slate-300 font-bold mt-0.5">مركباً شائعاً</div>
                 </div>
-                <div className="text-center px-4 sm:px-5 py-3 rounded-2xl bg-white/10 ring-1 ring-white/10">
+                <div className="text-center px-3 sm:px-5 py-3 rounded-2xl bg-white/10 ring-1 ring-white/10">
                   <div className="text-xl sm:text-2xl font-black font-head">3D</div>
                   <div className="text-[10px] text-slate-300 font-bold mt-0.5">محاكاة ذرية</div>
                 </div>
               </div>
             </div>
-            <div className="flex flex-wrap gap-2 mt-6">
+            {me && (
+              <div className="flex flex-wrap items-center gap-2 mt-6">
+                <span className="inline-flex items-center gap-2 px-3.5 py-2 rounded-full bg-amber-400 text-slate-950 text-[12.5px] font-black ft-shadow" data-testid="lab-daily">
+                  📅 تحدي اليوم: {me.daily.title} {me.daily.done ? "· أُنجز 🏆" : ""}
+                </span>
+                <span className="inline-flex items-center gap-2 px-3.5 py-2 rounded-full bg-white/10 ring-1 ring-white/15 text-[12.5px] font-black">
+                  ⭐ {me.level_title} · {me.lab_xp} خبرة مختبر
+                </span>
+                {me.next_level_at && (
+                  <span className="inline-flex items-center gap-2 px-3 py-2 rounded-full bg-white/10 ring-1 ring-white/15">
+                    <span className="w-24 h-2 rounded-full bg-white/15 overflow-hidden" dir="ltr">
+                      <span className="block h-full bg-gradient-to-r from-amber-300 to-emerald-300 rounded-full transition-all" style={{ width: `${Math.min(100, (me.lab_xp / me.next_level_at) * 100)}%` }} />
+                    </span>
+                    <span className="text-[11px] font-bold text-slate-200">للمستوى التالي {me.next_level_at}</span>
+                  </span>
+                )}
+              </div>
+            )}
+            <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 mt-4">
               {PRESETS.map((p) => (
                 <button key={p.label} onClick={() => applyPreset(p)} data-testid={`preset-${p.items.join("-")}`}
-                  className="pressable px-3.5 py-2 rounded-full bg-white/10 ring-1 ring-white/15 text-[13px] font-bold hover:bg-white/20 active:scale-95 transition">{p.label}</button>
+                  className="pressable px-3 py-2.5 sm:px-3.5 rounded-2xl sm:rounded-full bg-white/10 ring-1 ring-white/15 text-[12.5px] sm:text-[13px] font-bold hover:bg-white/20 active:scale-95 transition text-center">{p.label}</button>
               ))}
             </div>
           </div>
         </div>
 
-        {/* ===== منصّة اختيار المواد · الجدول الدوري والمركبات فوق المسرح ===== */}
-        <div className="mt-6 bg-white rounded-[1.75rem] sm:rounded-3xl border border-slate-100 ft-shadow-lg overflow-hidden">
-          <div className="h-1.5 bg-gradient-to-l from-emerald-400 via-cyan-400 to-violet-400" />
-          <div className="p-4 sm:p-6 pb-0">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <div className="font-head font-black text-xl sm:text-2xl text-slate-900 flex items-center gap-2">
-                  <MousePointerClick className="w-6 h-6 text-emerald-600" /> اختر موادّك
-                </div>
-                <p className="text-[13px] text-slate-500 font-semibold mt-1">حتى 3 مواد من الجدول الدوري أو المركبات · زر ⓘ يفتح ملف العنصر الكامل</p>
-              </div>
-              <div className="bg-slate-50 rounded-2xl ring-1 ring-slate-200/80 p-1.5 flex gap-1">
-                <button onClick={() => setTab("table")} data-testid="tab-table"
-                  className={`pressable shrink-0 px-4 sm:px-6 py-2.5 rounded-xl text-sm font-black transition-all ${tab === "table" ? "text-white ft-shadow scale-[1.02] bg-gradient-to-l from-emerald-500 to-teal-600" : "text-slate-500 hover:text-slate-900 hover:bg-white"}`}>
-                  <Atom className="w-4 h-4 inline-block ml-1.5 -mt-0.5" /> الجدول الدوري · 118
-                </button>
-                <button onClick={() => setTab("compounds")} data-testid="tab-compounds"
-                  className={`pressable shrink-0 px-4 sm:px-6 py-2.5 rounded-xl text-sm font-black transition-all ${tab === "compounds" ? "text-white ft-shadow scale-[1.02] bg-gradient-to-l from-emerald-500 to-teal-600" : "text-slate-500 hover:text-slate-900 hover:bg-white"}`}>
-                  <Beaker className="w-4 h-4 inline-block ml-1.5 -mt-0.5" /> المركبات الشائعة · 40+
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {tab === "table" ? (
-            <div className="p-4 sm:p-6">
-              <div className="flex flex-col xl:flex-row xl:items-center gap-3 mb-4">
-                <label className="relative block w-full xl:w-80 shrink-0">
-                  <Search className="w-4 h-4 absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                  <input value={elQuery} onChange={(e) => setElQuery(e.target.value)} placeholder="ابحث: حديد · Fe · 26"
-                    className="w-full pr-10 pl-4 py-2.5 rounded-2xl bg-slate-50 ring-1 ring-slate-200 text-sm font-semibold text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-emerald-300 focus:bg-white transition" />
-                </label>
-                <div className="flex gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                  <button onClick={() => setCatFilter(null)}
-                    className={`pressable shrink-0 px-3 py-2 rounded-xl text-[12px] font-black transition ${!catFilter ? "bg-slate-900 text-white ft-shadow" : "bg-slate-50 ring-1 ring-slate-200 text-slate-500 hover:bg-slate-100"}`}>كل الفئات</button>
-                  {Object.entries(CATS).map(([k, v]) => (
-                    <button key={k} onClick={() => setCatFilter(catFilter === k ? null : k)} data-testid={`cat-${k}`}
-                      className={`pressable shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-[12px] font-black transition ${catFilter === k ? "text-slate-900 ft-shadow scale-[1.03]" : "bg-slate-50 ring-1 ring-slate-200 text-slate-500 hover:bg-slate-100"}`}
-                      style={catFilter === k ? { background: v.color } : undefined}>
-                      <span className="w-2.5 h-2.5 rounded ring-1 ring-black/10" style={{ background: v.color }} /> {v.ar}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div className="rounded-3xl bg-slate-50/70 ring-1 ring-slate-100 p-3 sm:p-4 overflow-x-auto">
-                <div className="min-w-[820px]">
-                  <div className="grid gap-[3px]" style={{ gridTemplateColumns: "repeat(18, minmax(0,1fr))" }} dir="ltr">
-                    {ELEMENTS.filter((e) => e.g > 0).sort((a, b) => a.p - b.p || a.g - b.g).map((el) => (
-                      <ElementTile key={el.z} el={el} tray={tray} onAdd={addElement} onInfo={setElModal} dim={elDim(el)} />
-                    ))}
-                  </div>
-                  <div className="grid gap-[3px] mt-3" style={{ gridTemplateColumns: "repeat(15, minmax(0,1fr))" }} dir="ltr">
-                    {ELEMENTS.filter((e) => e.g === 0 && e.z < 89).map((el) => <ElementTile key={el.z} el={el} tray={tray} onAdd={addElement} onInfo={setElModal} fBlock dim={elDim(el)} />)}
-                    {ELEMENTS.filter((e) => e.g === 0 && e.z >= 89).map((el) => <ElementTile key={el.z} el={el} tray={tray} onAdd={addElement} onInfo={setElModal} fBlock dim={elDim(el)} />)}
-                  </div>
-                </div>
-              </div>
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mt-3 text-[11px] font-bold text-slate-400">
-                <span>الألوان حسب فئة العنصر الكيميائية · اضغط الفئة بالأعلى لعزلها</span>
-                <span className="mr-auto" dir="ltr">{ELEMENTS.filter((e) => !elDim(e)).length} / 118</span>
-              </div>
-            </div>
-          ) : (
-            <div className="p-4 sm:p-6">
-              <div className="flex flex-col xl:flex-row xl:items-center gap-3 mb-4">
-                <label className="relative block w-full xl:w-80 shrink-0">
-                  <Search className="w-4 h-4 absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                  <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="ابحث عن مركب… (ماء · حمض · ملح)"
-                    className="w-full pr-10 pl-4 py-2.5 rounded-2xl bg-slate-50 ring-1 ring-slate-200 text-sm font-semibold text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-emerald-300 focus:bg-white transition" />
-                </label>
-                <div className="flex gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                  {COMP_TYPES.map((t) => (
-                    <button key={t} onClick={() => setCompType(t)}
-                      className={`pressable shrink-0 px-3.5 py-2 rounded-xl text-[12px] font-black transition ${compType === t ? "bg-slate-900 text-white ft-shadow scale-[1.03]" : "bg-slate-50 ring-1 ring-slate-200 text-slate-500 hover:bg-slate-100"}`}>{t}</button>
-                  ))}
-                </div>
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-                {shownCompounds.map((c) => {
-                  const info = compoundInfo(c.f);
-                  const inTray = tray.some((x) => x.f === c.f);
-                  return (
-                    <button key={c.f} onClick={() => addItem(c.f)} data-testid={`comp-${c.f}`}
-                      className={`pressable text-right rounded-3xl ring-1 p-4 transition hover:-translate-y-1 active:scale-95 ${inTray ? "bg-emerald-50 ring-emerald-300 ft-shadow" : "bg-white ring-slate-100 ft-shadow hover:ring-emerald-200"}`}>
-                      <div className="flex items-start justify-between">
-                        <Fx f={c.f} className="text-xl text-slate-900" />
-                        <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-violet-50 text-violet-600 ring-1 ring-violet-100">{c.type}</span>
-                      </div>
-                      <div className="font-bold text-sm text-slate-800 mt-1.5 leading-snug">{c.ar}</div>
-                      <p className="text-[11px] text-slate-400 leading-relaxed mt-1 line-clamp-2">{c.desc}</p>
-                      <div className="text-[11px] text-slate-400 font-bold mt-1.5" dir="ltr">{info.molar} g/mol</div>
-                      <div className="flex gap-1 mt-2" dir="ltr">
-                        {info.parts.map((p) => <span key={p.sym} className="w-5 h-5 rounded-md grid place-items-center text-[8px] font-black text-slate-900 ring-1 ring-black/5" style={{ background: p.el?.col || "#94a3b8" }}>{p.sym}</span>)}
-                      </div>
-                    </button>
-                  );
-                })}
-                {shownCompounds.length === 0 && <div className="col-span-full text-center text-slate-400 font-bold text-sm py-8">لا مركبات مطابقة · جرّب كلمة أخرى</div>}
-              </div>
-            </div>
-          )}
-
-          {/* control bar: tray + condition + run */}
-          <div className="border-t border-slate-100 bg-slate-50/80 px-4 sm:px-6 py-4">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 text-[12px] font-black text-slate-500 ml-1"><Beaker className="w-4 h-4 text-emerald-600" /> المفاعلات</span>
-              <AnimatePresence>
-                {tray.map(({ f }) => (
-                  <motion.span key={f} initial={{ scale: 0.7, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.7, opacity: 0 }}
-                    className="inline-flex items-center gap-2 pl-2 pr-3.5 py-2 rounded-2xl bg-white ring-1 ring-emerald-300 ft-shadow">
-                    <Fx f={f} className="text-emerald-800" />
-                    <span className="text-xs font-bold text-slate-500">{trayName(f) || ""}</span>
-                    <button onClick={() => removeItem(f)} className="w-5 h-5 grid place-items-center rounded-full bg-slate-50 ring-1 ring-slate-200 text-slate-500 hover:bg-rose-500 hover:text-white transition"><X className="w-3 h-3" /></button>
-                  </motion.span>
-                ))}
-              </AnimatePresence>
-              {tray.length === 0 && <span className="text-slate-400 text-[13px] font-semibold">لم تختر شيئاً بعد · اضغط أي عنصر أو مركب بالأعلى</span>}
-              {tray.length > 0 && <button onClick={() => { setTray([]); setResult(null); }} className="text-xs font-bold text-rose-500 hover:text-rose-600 transition mr-1">مسح الكل</button>}
-            </div>
-            <div className="flex flex-wrap items-center gap-2 mt-3.5">
-              <span className="inline-flex items-center gap-1.5 text-[12px] font-black text-slate-500 ml-1"><Zap className="w-4 h-4 text-amber-500" /> شرط البدء</span>
-              {COND_LIST.map((c) => (
-                <button key={String(c.id)} onClick={() => setCond(c.id)} data-testid={`cond-${c.id || "none"}`}
-                  className={`pressable px-3 py-2 rounded-xl text-[12.5px] font-black transition ${cond === c.id ? "bg-amber-400 text-slate-950 ft-shadow scale-[1.04]" : "bg-white ring-1 ring-slate-200 text-slate-600 hover:bg-slate-100"}`}>
-                  {c.icon} {c.ar}
-                </button>
-              ))}
-              <div className="flex gap-2 mr-auto">
-                <button onClick={surprise} data-testid="lab-surprise"
-                  className="pressable flex items-center gap-2 px-4 py-3 rounded-2xl bg-white ring-1 ring-violet-200 text-violet-700 font-head font-black text-sm ft-shadow hover:scale-[1.03] active:scale-95 transition">
-                  <Dices className="w-5 h-5" /> فاجئني
-                </button>
-                <button onClick={() => run()} data-testid="lab-run"
-                  className="pressable flex items-center gap-2 px-6 lg:px-8 py-3 rounded-2xl bg-gradient-to-l from-emerald-500 to-teal-600 font-head font-black text-white ft-shadow hover:scale-[1.03] active:scale-95 transition disabled:opacity-40" disabled={!tray.length}>
-                  <Play className="w-5 h-5" /> شغّل التفاعل
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <div className="mt-6"><PickerDeck tray={tray} cond={cond} onCond={setCond} onAddItem={addItem} onAddElement={addElement} onRemove={removeItem} onClear={clearTray} onRun={runCb} onSurprise={surpriseCb} onInfo={setElModal} /></div>
 
         {/* ===== مسرح المحاكاة ===== */}
         <div ref={(n) => { stageRef.current = n; stageCardRef.current = n; }} className="relative mt-6 bg-white rounded-[1.75rem] sm:rounded-3xl border border-slate-100 ft-shadow-lg overflow-hidden ring-1 ring-slate-100">
@@ -408,10 +301,10 @@ export default function ChemLab() {
             </div>
           )}
           <div className="relative border-t border-slate-100 bg-white px-3 py-3 lg:px-5 flex flex-wrap items-center gap-2 lg:gap-3">
-            <button onClick={() => setPlaying((p) => !p)} className="pressable w-11 h-11 grid place-items-center rounded-2xl bg-slate-50 ring-1 ring-slate-200 text-slate-600 hover:bg-slate-100 transition" title={playing ? "إيقاف" : "تشغيل"}>
+            <button onClick={() => setPlaying((p) => !p)} className="pressable w-10 h-10 sm:w-11 sm:h-11 grid place-items-center rounded-2xl bg-slate-50 ring-1 ring-slate-200 text-slate-600 hover:bg-slate-100 transition" title={playing ? "إيقاف" : "تشغيل"}>
               {playing ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
             </button>
-            <button onClick={() => { setRunId((x) => x + 1); setPlaying(true); }} className="pressable w-11 h-11 grid place-items-center rounded-2xl bg-slate-50 ring-1 ring-slate-200 text-slate-600 hover:bg-slate-100 transition" title="إعادة">
+            <button onClick={() => { setRunId((x) => x + 1); setPlaying(true); }} className="pressable w-10 h-10 sm:w-11 sm:h-11 grid place-items-center rounded-2xl bg-slate-50 ring-1 ring-slate-200 text-slate-600 hover:bg-slate-100 transition" title="إعادة">
               <RotateCcw className="w-5 h-5" />
             </button>
             <div className="flex items-center gap-1 rounded-2xl bg-slate-50 ring-1 ring-slate-200 p-1" role="group" aria-label="سرعة المحاكاة">
@@ -421,19 +314,19 @@ export default function ChemLab() {
               ))}
             </div>
             <button onClick={() => setLabels((v) => !v)} data-testid="toggle-labels" title="رموز الذرات"
-              className={`pressable w-11 h-11 grid place-items-center rounded-2xl ring-1 transition ${labels ? "bg-cyan-50 ring-cyan-200 text-cyan-700" : "bg-slate-50 ring-slate-200 text-slate-400"}`}>
+              className={`pressable w-10 h-10 sm:w-11 sm:h-11 grid place-items-center rounded-2xl ring-1 transition ${labels ? "bg-cyan-50 ring-cyan-200 text-cyan-700" : "bg-slate-50 ring-slate-200 text-slate-400"}`}>
               <Type className="w-5 h-5" />
             </button>
             <button onClick={() => setAutoRot((v) => !v)} data-testid="toggle-rotate" title="دوران تلقائي"
-              className={`pressable w-11 h-11 grid place-items-center rounded-2xl ring-1 transition ${autoRot ? "bg-violet-50 ring-violet-200 text-violet-700" : "bg-slate-50 ring-slate-200 text-slate-400"}`}>
+              className={`pressable w-10 h-10 sm:w-11 sm:h-11 grid place-items-center rounded-2xl ring-1 transition ${autoRot ? "bg-violet-50 ring-violet-200 text-violet-700" : "bg-slate-50 ring-slate-200 text-slate-400"}`}>
               <Orbit className="w-5 h-5" />
             </button>
             <button onClick={() => { const cv = stageCardRef.current?.querySelector("canvas"); if (!cv) return; cv.toBlob((b) => { const a = document.createElement("a"); a.href = URL.createObjectURL(b); a.download = "future-thinkers-chem.png"; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); }); }} data-testid="stage-snapshot" title="احفظ لقطة من المحاكاة"
-              className="pressable w-11 h-11 grid place-items-center rounded-2xl bg-slate-50 ring-1 ring-slate-200 text-slate-600 hover:bg-slate-100 transition">
+              className="pressable w-10 h-10 sm:w-11 sm:h-11 grid place-items-center rounded-2xl bg-slate-50 ring-1 ring-slate-200 text-slate-600 hover:bg-slate-100 transition">
               <Camera className="w-5 h-5" />
             </button>
             <button onClick={() => { const el = stageCardRef.current; if (!el) return; if (document.fullscreenElement) document.exitFullscreen(); else el.requestFullscreen?.(); }} data-testid="stage-full" title="ملء الشاشة"
-              className="pressable w-11 h-11 grid place-items-center rounded-2xl bg-slate-50 ring-1 ring-slate-200 text-slate-600 hover:bg-slate-100 transition">
+              className="pressable w-10 h-10 sm:w-11 sm:h-11 grid place-items-center rounded-2xl bg-slate-50 ring-1 ring-slate-200 text-slate-600 hover:bg-slate-100 transition">
               <Maximize2 className="w-5 h-5" />
             </button>
             <span className="text-[11px] text-slate-400 font-bold mr-auto hidden md:block">اسحب للتدوير · عجلة الفأرة أو إصبعان للتقريب 🖱️</span>
@@ -506,12 +399,12 @@ export default function ChemLab() {
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-4">
                     <div className="rounded-3xl bg-slate-50 ring-1 ring-slate-100 p-4">
                       <div className="flex items-center gap-1.5 text-[11px] font-black text-slate-500"><Zap className="w-3.5 h-3.5 text-amber-500" /> طاقة التفاعل ΔH</div>
-                      <div className="text-2xl font-black font-head mt-1.5 text-slate-900" dir="ltr">{result.dH != null ? `${result.dH > 0 ? "+" : ""}${result.dH}` : "—"} <span className="text-xs text-slate-400">kJ/mol</span></div>
+                      <div className="text-xl sm:text-2xl font-black font-head mt-1.5 text-slate-900" dir="ltr">{result.dH != null ? `${result.dH > 0 ? "+" : ""}${result.dH}` : "—"} <span className="text-xs text-slate-400">kJ/mol</span></div>
                       <div className={`text-xs font-black mt-1 ${result.dH < 0 ? "text-orange-600" : "text-sky-600"}`}>{result.dH != null ? (result.dH < 0 ? "طارد للحرارة · يطلق طاقة 🔥" : "ماصّ للحرارة · يبتلع طاقة ❄️") : "قيمة غير مقاسة"}</div>
                     </div>
                     <div className="rounded-3xl bg-slate-50 ring-1 ring-slate-100 p-4">
                       <div className="flex items-center gap-1.5 text-[11px] font-black text-slate-500"><Thermometer className="w-3.5 h-3.5 text-red-500" /> حرارة قصوى تقريبية</div>
-                      <div className="text-2xl font-black font-head mt-1.5 text-slate-900" dir="ltr">{result.peak ? `${result.peak}°C` : "حرارة الغرفة"}</div>
+                      <div className="text-xl sm:text-2xl font-black font-head mt-1.5 text-slate-900" dir="ltr">{result.peak ? `${result.peak}°C` : "حرارة الغرفة"}</div>
                       <div className="text-xs font-bold text-slate-400 mt-1">{result.peak ? "حرارة اللهب/التفاعل عملياً" : "لا لهب في هذا التفاعل"}</div>
                     </div>
                     <div className="rounded-3xl bg-slate-50 ring-1 ring-slate-100 p-4">
@@ -641,6 +534,86 @@ export default function ChemLab() {
           )}
         </AnimatePresence>
 
+        {/* ===== أبطال المختبر: صدارة واكتشافات وأوسمة ===== */}
+        <div className="mt-8">
+          <div className="flex items-center gap-2.5 mb-4">
+            <span className="w-10 h-10 rounded-2xl bg-gradient-to-b from-amber-400 to-orange-500 grid place-items-center ft-shadow"><Trophy className="w-5 h-5 text-white" /></span>
+            <div>
+              <div className="font-head font-black text-xl text-slate-900">أبطال المختبر</div>
+              <div className="text-[12px] text-slate-400 font-bold">كل تفاعل يرفع خبرتك هنا وبمنصة المنصة كاملة · ويقرّب مدرستك من كأس الموسم</div>
+            </div>
+          </div>
+          <div className="grid lg:grid-cols-3 gap-4">
+            <div className="bg-white rounded-3xl border border-slate-100 ft-shadow p-5" data-testid="lab-board">
+              <div className="font-head font-black text-slate-900 mb-3">🏅 لوحة صدارة الكيميائيين</div>
+              <div className="space-y-2">
+                {board.slice(0, 10).map((u) => (
+                  <div key={u.id} className={`flex items-center gap-2.5 rounded-2xl px-3 py-2 ring-1 ${u.me ? "bg-emerald-50 ring-emerald-300" : u.rank <= 3 ? "bg-amber-50/70 ring-amber-100" : "bg-slate-50/60 ring-slate-100"}`}>
+                    <span className={`w-7 h-7 grid place-items-center rounded-full text-[11px] font-black shrink-0 ${u.rank === 1 ? "bg-amber-400 text-slate-950" : u.rank === 2 ? "bg-slate-300 text-slate-800" : u.rank === 3 ? "bg-orange-300 text-slate-900" : "bg-white ring-1 ring-slate-200 text-slate-500"}`}>{u.rank}</span>
+                    <span className="min-w-0">
+                      <span className="block text-[13px] font-black text-slate-800 truncate">{u.name} {u.me && <span className="text-emerald-600">(أنت)</span>}</span>
+                      <span className="block text-[10.5px] text-slate-400 font-bold truncate">{u.school_name || u.level_title}</span>
+                    </span>
+                    <span className="mr-auto text-left shrink-0">
+                      <span className="block text-[13px] font-black text-slate-900" dir="ltr">{u.lab_xp} XP</span>
+                      <span className="block text-[10px] text-slate-400 font-bold">{u.discoveries} مادة · {u.runs} تجربة</span>
+                    </span>
+                  </div>
+                ))}
+                {board.length === 0 && <p className="text-[13px] text-slate-400 font-bold text-center py-4">كن أول كيميائي على اللوحة · شغّل تفاعلك الأول 🧪</p>}
+              </div>
+            </div>
+            <div className="bg-white rounded-3xl border border-slate-100 ft-shadow p-5" data-testid="lab-codex">
+              <div className="flex items-center justify-between mb-1">
+                <div className="font-head font-black text-slate-900">📖 دفتر الاكتشافات</div>
+                <span className="text-[11px] font-black text-slate-400">{(me?.discoveries || []).length}/{CODEX_UNIVERSE.length} مادة</span>
+              </div>
+              <div className="h-2 rounded-full bg-slate-100 overflow-hidden mb-3" dir="ltr">
+                <div className="h-full bg-gradient-to-r from-emerald-400 to-cyan-500 rounded-full transition-all" style={{ width: `${((me?.discoveries || []).length / CODEX_UNIVERSE.length) * 100}%` }} />
+              </div>
+              <div className="flex flex-wrap gap-1.5 max-h-64 overflow-y-auto pr-0.5">
+                {CODEX_UNIVERSE.map((f) => {
+                  const found = (me?.discoveries || []).includes(f);
+                  return (
+                    <span key={f} className={`inline-flex items-center gap-1.5 pl-2 pr-1.5 py-1 rounded-xl text-[11px] font-black ring-1 ${found ? "bg-emerald-50 ring-emerald-200 text-emerald-800" : "bg-slate-50 ring-slate-100 text-slate-300"}`}>
+                      <Fx f={f} className={found ? "text-emerald-900" : "text-slate-300"} />{found ? "" : " ؟؟؟"}
+                    </span>
+                  );
+                })}
+              </div>
+              <p className="text-[11px] text-slate-400 font-semibold mt-3">كل مادة جديدة تكتشفها داخل تفاعل تساوي خبرة إضافية · العناصر المدروسة: {(me?.elements || []).length}</p>
+            </div>
+            <div className="bg-white rounded-3xl border border-slate-100 ft-shadow p-5" data-testid="lab-badges">
+              <div className="font-head font-black text-slate-900 mb-3">🎖️ أوسمة الكيميائي</div>
+              <div className="grid grid-cols-3 gap-2">
+                {(me?.badges || []).map((b) => (
+                  <div key={b.key} className={`rounded-2xl p-2.5 text-center ring-1 transition ${b.earned ? "bg-gradient-to-b from-amber-50 to-white ring-amber-200 ft-shadow" : "bg-slate-50/70 ring-slate-100 opacity-55"}`} title={b.desc}>
+                    <div className={`text-2xl ${b.earned ? "" : "grayscale"}`}>{b.icon}</div>
+                    <div className="text-[10.5px] font-black text-slate-700 leading-tight mt-1">{b.title}</div>
+                    <div className="text-[9px] text-slate-400 font-bold leading-snug mt-0.5">{b.desc}</div>
+                  </div>
+                ))}
+                {!me && <p className="col-span-3 text-[13px] text-slate-400 font-bold text-center py-3">جارٍ تحميل أوسمتك…</p>}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <AnimatePresence>
+          {toast && (
+            <motion.div initial={{ opacity: 0, y: 40, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 20 }}
+              className="fixed bottom-24 sm:bottom-8 left-1/2 -translate-x-1/2 z-[80] ft-navy-gradient text-white rounded-3xl ft-shadow-lg px-5 py-3.5 flex items-center gap-3 max-w-[92vw]" data-testid="xp-toast">
+              <span className="text-2xl">⭐</span>
+              <div className="text-[13px] font-bold leading-snug">
+                <span className="font-black text-amber-300">+{toast.gained} خبرة مختبر</span>
+                {toast.species?.length > 0 && <span className="block text-slate-200">اكتشاف جديد: {toast.species.slice(0, 3).join(" · ")}</span>}
+                {toast.badges?.map((b) => <span key={b.key} className="block text-slate-200">وسام جديد: {b.icon} {b.title}</span>)}
+                {toast.daily && <span className="block text-emerald-300 font-black">تحدي اليوم أُنجز 🏆</span>}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         <div className="mt-8 rounded-3xl bg-gradient-to-l from-emerald-50 via-white to-cyan-50 ring-1 ring-emerald-100 ft-shadow p-5 flex items-start gap-3">
           <Sparkles className="w-6 h-6 text-amber-500 shrink-0 mt-0.5" />
           <p className="text-sm text-slate-600 leading-relaxed">
@@ -671,3 +644,165 @@ function ElementTile({ el, tray, onAdd, onInfo, fBlock, dim }) {
     </div>
   );
 }
+
+const PickerDeck = React.memo(function PickerDeck({ tray, cond, onCond, onAddItem, onAddElement, onRemove, onClear, onRun, onSurprise, onInfo }) {
+  const [tab, setTab] = useState("table");
+  const [elQuery, setElQuery] = useState("");
+  const [catFilter, setCatFilter] = useState(null);
+  const [query, setQuery] = useState("");
+  const [compType, setCompType] = useState("الكل");
+  const COMP_TYPES = ["الكل", ...new Set(COMPOUNDS.map((c) => c.type))];
+  const shownCompounds = COMPOUNDS.filter((c) => (compType === "الكل" || c.type === compType) && (!query || c.ar.includes(query) || c.f.toLowerCase().includes(query.toLowerCase())));
+  const elDim = (el) => {
+    const q = elQuery.trim().toLowerCase();
+    const hitQ = !q || el.ar.includes(elQuery.trim()) || el.sym.toLowerCase() === q || String(el.z) === q || el.enName.toLowerCase().includes(q);
+    const hitC = !catFilter || el.cat === catFilter;
+    return !(hitQ && hitC);
+  };
+  const trayName = (f) => COMPOUNDS.find((c) => c.f === f)?.ar || (EL[f] ? EL[f].ar : (DIATOMIC_REV[f] ? EL[DIATOMIC_REV[f]]?.ar : ""));
+  const shownCount = ELEMENTS.filter((e) => !elDim(e)).length;
+  return (
+        <div className="bg-white rounded-[1.75rem] sm:rounded-3xl border border-slate-100 ft-shadow-lg overflow-hidden">
+          <div className="h-1.5 bg-gradient-to-l from-emerald-400 via-cyan-400 to-violet-400" />
+          <div className="p-4 sm:p-6 pb-0">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+              <div>
+                <div className="font-head font-black text-xl sm:text-2xl text-slate-900 flex items-center gap-2">
+                  <MousePointerClick className="w-6 h-6 text-emerald-600" /> اختر موادّك
+                </div>
+                <p className="text-[12.5px] sm:text-[13px] text-slate-500 font-semibold mt-1">حتى 3 مواد من الجدول الدوري أو المركبات · زر ⓘ يفتح ملف العنصر الكامل</p>
+              </div>
+              <div className="bg-slate-50 rounded-2xl ring-1 ring-slate-200/80 p-1.5 grid grid-cols-2 md:flex gap-1 w-full md:w-auto">
+                <button onClick={() => setTab("table")} data-testid="tab-table"
+                  className={`pressable min-h-[46px] px-3 sm:px-6 py-2.5 rounded-xl text-[13px] sm:text-sm font-black transition-all ${tab === "table" ? "text-white ft-shadow scale-[1.02] bg-gradient-to-l from-emerald-500 to-teal-600" : "text-slate-500 hover:text-slate-900 hover:bg-white"}`}>
+                  <Atom className="w-4 h-4 inline-block ml-1.5 -mt-0.5" /> الجدول الدوري · 118
+                </button>
+                <button onClick={() => setTab("compounds")} data-testid="tab-compounds"
+                  className={`pressable min-h-[46px] px-3 sm:px-6 py-2.5 rounded-xl text-[13px] sm:text-sm font-black transition-all ${tab === "compounds" ? "text-white ft-shadow scale-[1.02] bg-gradient-to-l from-emerald-500 to-teal-600" : "text-slate-500 hover:text-slate-900 hover:bg-white"}`}>
+                  <Beaker className="w-4 h-4 inline-block ml-1.5 -mt-0.5" /> المركبات الشائعة · 40+
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {tab === "table" ? (
+            <div className="p-4 sm:p-6">
+              <div className="flex flex-col xl:flex-row xl:items-center gap-3 mb-4">
+                <label className="relative block w-full xl:w-80 shrink-0">
+                  <Search className="w-4 h-4 absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input value={elQuery} onChange={(e) => setElQuery(e.target.value)} placeholder="ابحث: حديد · Fe · 26"
+                    className="w-full pr-10 pl-4 py-2.5 rounded-2xl bg-slate-50 ring-1 ring-slate-200 text-sm font-semibold text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-emerald-300 focus:bg-white transition" />
+                </label>
+                <div className="flex flex-wrap gap-1.5">
+                  <button onClick={() => setCatFilter(null)}
+                    className={`pressable shrink-0 px-3 py-2 rounded-xl text-[12px] font-black transition ${!catFilter ? "bg-slate-900 text-white ft-shadow" : "bg-slate-50 ring-1 ring-slate-200 text-slate-500 hover:bg-slate-100"}`}>كل الفئات</button>
+                  {Object.entries(CATS).map(([k, v]) => (
+                    <button key={k} onClick={() => setCatFilter(catFilter === k ? null : k)} data-testid={`cat-${k}`}
+                      className={`pressable shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-[12px] font-black transition ${catFilter === k ? "text-slate-900 ft-shadow scale-[1.03]" : "bg-slate-50 ring-1 ring-slate-200 text-slate-500 hover:bg-slate-100"}`}
+                      style={catFilter === k ? { background: v.color } : undefined}>
+                      <span className="w-2.5 h-2.5 rounded ring-1 ring-black/10" style={{ background: v.color }} /> {v.ar}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="rounded-3xl bg-slate-50/70 ring-1 ring-slate-100 p-3 sm:p-4 overflow-x-auto">
+                <div className="min-w-[640px] sm:min-w-[820px]">
+                  <div className="grid gap-[3px]" style={{ gridTemplateColumns: "repeat(18, minmax(0,1fr))" }} dir="ltr">
+                    {ELEMENTS.filter((e) => e.g > 0).sort((a, b) => a.p - b.p || a.g - b.g).map((el) => (
+                      <ElementTile key={el.z} el={el} tray={tray} onAdd={onAddElement} onInfo={onInfo} dim={elDim(el)} />
+                    ))}
+                  </div>
+                  <div className="grid gap-[3px] mt-3" style={{ gridTemplateColumns: "repeat(15, minmax(0,1fr))" }} dir="ltr">
+                    {ELEMENTS.filter((e) => e.g === 0 && e.z < 89).map((el) => <ElementTile key={el.z} el={el} tray={tray} onAdd={onAddElement} onInfo={onInfo} fBlock dim={elDim(el)} />)}
+                    {ELEMENTS.filter((e) => e.g === 0 && e.z >= 89).map((el) => <ElementTile key={el.z} el={el} tray={tray} onAdd={onAddElement} onInfo={onInfo} fBlock dim={elDim(el)} />)}
+                  </div>
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mt-3 text-[11px] font-bold text-slate-400">
+                <span>الألوان حسب فئة العنصر الكيميائية · اضغط الفئة بالأعلى لعزلها</span>
+                <span className="sm:hidden px-2 py-0.5 rounded-full bg-slate-900/[0.04] ring-1 ring-slate-200/70">مرّر الجدول أفقياً ↔</span>
+                <span className="mr-auto" dir="ltr">{ELEMENTS.filter((e) => !elDim(e)).length} / 118</span>
+              </div>
+            </div>
+          ) : (
+            <div className="p-4 sm:p-6">
+              <div className="flex flex-col xl:flex-row xl:items-center gap-3 mb-4">
+                <label className="relative block w-full xl:w-80 shrink-0">
+                  <Search className="w-4 h-4 absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="ابحث عن مركب… (ماء · حمض · ملح)"
+                    className="w-full pr-10 pl-4 py-2.5 rounded-2xl bg-slate-50 ring-1 ring-slate-200 text-sm font-semibold text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-emerald-300 focus:bg-white transition" />
+                </label>
+                <div className="flex flex-wrap gap-1.5">
+                  {COMP_TYPES.map((t) => (
+                    <button key={t} onClick={() => setCompType(t)}
+                      className={`pressable shrink-0 px-3.5 py-2 rounded-xl text-[12px] font-black transition ${compType === t ? "bg-slate-900 text-white ft-shadow scale-[1.03]" : "bg-slate-50 ring-1 ring-slate-200 text-slate-500 hover:bg-slate-100"}`}>{t}</button>
+                  ))}
+                </div>
+              </div>
+              <div className="grid grid-cols-[repeat(2,minmax(0,1fr))] sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2.5 sm:gap-3">
+                {shownCompounds.map((c) => {
+                  const info = compoundInfo(c.f);
+                  const inTray = tray.some((x) => x.f === c.f);
+                  return (
+                    <button key={c.f} onClick={() => onAddItem(c.f)} data-testid={`comp-${c.f}`}
+                      className={`pressable min-w-0 text-right rounded-3xl ring-1 p-3.5 sm:p-4 transition hover:-translate-y-1 active:scale-95 ${inTray ? "bg-emerald-50 ring-emerald-300 ft-shadow" : "bg-white ring-slate-100 ft-shadow hover:ring-emerald-200"}`}>
+                      <div className="flex items-start justify-between">
+                        <Fx f={c.f} className="text-xl text-slate-900" />
+                        <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-violet-50 text-violet-600 ring-1 ring-violet-100">{c.type}</span>
+                      </div>
+                      <div className="font-bold text-sm text-slate-800 mt-1.5 leading-snug">{c.ar}</div>
+                      <p className="text-[11px] text-slate-400 leading-relaxed mt-1 line-clamp-2">{c.desc}</p>
+                      <div className="text-[11px] text-slate-400 font-bold mt-1.5" dir="ltr">{info.molar} g/mol</div>
+                      <div className="flex gap-1 mt-2" dir="ltr">
+                        {info.parts.map((p) => <span key={p.sym} className="w-5 h-5 rounded-md grid place-items-center text-[8px] font-black text-slate-900 ring-1 ring-black/5" style={{ background: p.el?.col || "#94a3b8" }}>{p.sym}</span>)}
+                      </div>
+                    </button>
+                  );
+                })}
+                {shownCompounds.length === 0 && <div className="col-span-full text-center text-slate-400 font-bold text-sm py-8">لا مركبات مطابقة · جرّب كلمة أخرى</div>}
+              </div>
+            </div>
+          )}
+
+          {/* control bar: tray + condition + run */}
+          <div className="border-t border-slate-100 bg-slate-50/80 px-4 sm:px-6 py-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 text-[12px] font-black text-slate-500 ml-1"><Beaker className="w-4 h-4 text-emerald-600" /> المفاعلات</span>
+              <AnimatePresence>
+                {tray.map(({ f }) => (
+                  <motion.span key={f} initial={{ scale: 0.7, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.7, opacity: 0 }}
+                    className="inline-flex items-center gap-2 pl-2 pr-3.5 py-2 rounded-2xl bg-white ring-1 ring-emerald-300 ft-shadow">
+                    <Fx f={f} className="text-emerald-800" />
+                    <span className="text-xs font-bold text-slate-500">{trayName(f) || ""}</span>
+                    <button onClick={() => onRemove(f)} className="w-5 h-5 grid place-items-center rounded-full bg-slate-50 ring-1 ring-slate-200 text-slate-500 hover:bg-rose-500 hover:text-white transition"><X className="w-3 h-3" /></button>
+                  </motion.span>
+                ))}
+              </AnimatePresence>
+              {tray.length === 0 && <span className="text-slate-400 text-[13px] font-semibold">لم تختر شيئاً بعد · اضغط أي عنصر أو مركب بالأعلى</span>}
+              {tray.length > 0 && <button onClick={onClear} className="text-xs font-bold text-rose-500 hover:text-rose-600 transition mr-1">مسح الكل</button>}
+            </div>
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mt-3.5">
+              <span className="inline-flex items-center gap-1.5 text-[12px] font-black text-slate-500 ml-1 w-full sm:w-auto"><Zap className="w-4 h-4 text-amber-500" /> شرط البدء</span>
+              {COND_LIST.map((c) => (
+                <button key={String(c.id)} onClick={() => onCond(c.id)} data-testid={`cond-${c.id || "none"}`}
+                  className={`pressable px-3 py-2 rounded-xl text-[12.5px] font-black transition ${cond === c.id ? "bg-amber-400 text-slate-950 ft-shadow scale-[1.04]" : "bg-white ring-1 ring-slate-200 text-slate-600 hover:bg-slate-100"}`}>
+                  {c.icon} {c.ar}
+                </button>
+              ))}
+              <div className="grid grid-cols-[auto_1fr] sm:flex gap-2 w-full sm:w-auto sm:mr-auto mt-1 sm:mt-0">
+                <button onClick={onSurprise} data-testid="lab-surprise"
+                  className="pressable flex items-center justify-center gap-2 px-4 py-3.5 sm:py-3 rounded-2xl bg-white ring-1 ring-violet-200 text-violet-700 font-head font-black text-sm ft-shadow hover:scale-[1.03] active:scale-95 transition">
+                  <Dices className="w-5 h-5" /> فاجئني
+                </button>
+                <button onClick={onRun} data-testid="lab-run"
+                  className="pressable flex items-center justify-center gap-2 px-6 lg:px-8 py-3.5 sm:py-3 rounded-2xl bg-gradient-to-l from-emerald-500 to-teal-600 font-head font-black text-white ft-shadow hover:scale-[1.03] active:scale-95 transition disabled:opacity-40" disabled={!tray.length}>
+                  <Play className="w-5 h-5" /> شغّل التفاعل
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        
+  );
+});

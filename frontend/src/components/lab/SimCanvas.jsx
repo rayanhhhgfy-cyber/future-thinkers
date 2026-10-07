@@ -200,7 +200,7 @@ export default function SimCanvas({ result, runId, playing, speed = 1, ambient =
       const peakT = result?.peak ?? (result?.dH ? ambient + Math.min(900, Math.abs(result.dH) * (exo ? 0.9 : -0.35)) : ambient);
       const env = reacts ? (t < 0.36 ? 0 : t < 0.62 ? smooth((t - 0.36) / 0.26) : Math.max(0.25, 1 - (t - 0.62) / 0.9)) : 0;
       const temp = Math.round(ambient + (peakT - ambient) * Math.min(1, env) + Math.sin(now / 300) * (reacts && t < 1 ? 2 : 0));
-      if (onTemp && temp !== S.lastTemp) { S.lastTemp = temp; onTemp(temp); }
+      if (onTemp && temp !== S.lastTemp && (now - (S.lastTempAt || 0) > 130 || Math.abs(temp - (S.lastTemp || 0)) > 40)) { S.lastTemp = temp; S.lastTempAt = now; onTemp(temp); }
       const phase = !reacts ? "idle" : t < 0.3 ? "approach" : t < 0.45 ? "collide" : t < 0.72 ? "rearrange" : "products";
       if (onPhase && phase !== S.lastPhase) { S.lastPhase = phase; onPhase(phase); }
 
@@ -292,6 +292,55 @@ export default function SimCanvas({ result, runId, playing, speed = 1, ambient =
         };
         m.bonds.forEach(([i, j, o]) => { const A = at(i), B = at(j); if (A && B) bondStroke(A, B, o, blend, blend < 0.97); });
       });
+
+      /* ==== reaction-specific scene FX: specified per reaction kind ==== */
+      const FX = result?.fx;
+      if (!S.parts) S.parts = [];
+      const parts = S.parts;
+      if (t < 0.12 && parts.length) parts.length = 0;
+      if (FX && reacts) {
+        const cx = W / 2, cy = H / 2;
+        const spawn = (o) => { if (parts.length < 150) parts.push(o); };
+        if (FX === "rays") {
+          const pulse = 0.10 + 0.05 * Math.sin(now / 700);
+          for (let i = 0; i < 3; i++) {
+            ctx.beginPath();
+            const bx = W * (0.12 + i * 0.16);
+            ctx.moveTo(bx, -10); ctx.lineTo(bx + W * 0.10, -10); ctx.lineTo(bx + W * 0.34, H * 0.72); ctx.lineTo(bx + W * 0.16, H * 0.72);
+            ctx.closePath(); ctx.fillStyle = `rgba(250,204,21,${pulse})`; ctx.fill();
+          }
+        }
+        if (FX === "flame" && t > 0.42) for (let i = 0; i < 3; i++) spawn({ k: "flame", x: cx + (Math.random() - 0.5) * f * 1.6, y: cy + f * 0.55, vx: (Math.random() - 0.5) * 0.4, vy: -(0.9 + Math.random() * 1.6), life: 0, max: 26 + Math.random() * 22, sz: f * (0.16 + Math.random() * 0.22) });
+        if (FX === "bubbles" && t > 0.38) for (let i = 0; i < 2; i++) spawn({ k: "bub", x: cx + (Math.random() - 0.5) * f * 2.6, y: H * 0.88, vx: (Math.random() - 0.5) * 0.3, vy: -(0.7 + Math.random() * 1.1), life: 0, max: 120 + Math.random() * 80, sz: 2.5 + Math.random() * 5 });
+        if (FX === "foam" && t > 0.36) for (let i = 0; i < 3; i++) spawn({ k: "bub", x: cx + (Math.random() - 0.5) * f * 2.0, y: cy + f * 0.4, vx: (Math.random() - 0.5) * 0.5, vy: -(1.1 + Math.random() * 1.4), life: 0, max: 90 + Math.random() * 60, sz: 3.5 + Math.random() * 7 });
+        if (FX === "steam" && t > 0.5) for (let i = 0; i < 2; i++) spawn({ k: "steam", x: cx + (Math.random() - 0.5) * f * 1.8, y: cy - f * 0.2, vx: (Math.random() - 0.5) * 0.3, vy: -(0.5 + Math.random() * 0.6), life: 0, max: 70 + Math.random() * 40, sz: f * (0.14 + Math.random() * 0.16) });
+        if (FX === "precip" && t > 0.52) for (let i = 0; i < 2; i++) spawn({ k: "precip", x: cx + (Math.random() - 0.5) * f * 2.8, y: cy - f * 0.7, vx: (Math.random() - 0.5) * 0.2, vy: 0.35 + Math.random() * 0.5, life: 0, max: 400, sz: 2 + Math.random() * 3.2, floor: H * 0.845 + Math.random() * 6 });
+      }
+      for (let i = parts.length - 1; i >= 0; i--) {
+        const p = parts[i];
+        p.life++; p.x += p.vx + Math.sin((now + i * 40) / 260) * 0.3; p.y += p.vy;
+        const k = p.life / p.max;
+        if (p.k === "flame") {
+          const r = p.sz * (1 - k * 0.6);
+          const g2 = ctx.createRadialGradient(p.x, p.y, 1, p.x, p.y, r);
+          g2.addColorStop(0, `rgba(254,240,138,${0.75 * (1 - k)})`); g2.addColorStop(0.55, `rgba(249,115,22,${0.5 * (1 - k)})`); g2.addColorStop(1, "rgba(239,68,68,0)");
+          ctx.fillStyle = g2; ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2); ctx.fill();
+        } else if (p.k === "bub") {
+          ctx.strokeStyle = `rgba(14,116,233,${0.5 * (1 - k * 0.4)})`; ctx.lineWidth = 1.2;
+          ctx.beginPath(); ctx.arc(p.x, p.y, p.sz, 0, Math.PI * 2); ctx.stroke();
+          ctx.fillStyle = `rgba(186,230,253,${0.25 * (1 - k)})`; ctx.fill();
+        } else if (p.k === "steam") {
+          ctx.fillStyle = `rgba(226,232,240,${0.20 * (1 - k)})`;
+          ctx.beginPath(); ctx.arc(p.x, p.y, p.sz * (0.6 + k), 0, Math.PI * 2); ctx.fill();
+        } else if (p.k === "precip") {
+          if (p.y >= p.floor) { p.y = p.floor; p.vy = 0; }
+          ctx.fillStyle = "rgba(250,204,21,0.9)";
+          ctx.beginPath(); ctx.arc(p.x, p.y, p.sz, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = "rgba(255,255,255,0.5)"; ctx.fillRect(p.x - 0.6, p.y - 0.6, 1.2, 1.2);
+        }
+        if (p.life > p.max && !(p.k === "precip" && p.vy === 0 && t > 0.5)) parts.splice(i, 1);
+        else if (p.k === "precip" && t < 0.5) parts.splice(i, 1);
+      }
 
       // sparks during collision
       if (flash > 0.05) {

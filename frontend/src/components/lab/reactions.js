@@ -145,8 +145,19 @@ function curated(fs, cond) {
     return { reacts: false, needs: hit.cond, eq, hit,
       reason: `هذا التفاعل يحتاج ${COND_AR[hit.cond]} ليبدأ · فعّل الشرط المناسب من الأعلى وجرّب مجدداً.` };
   }
-  return { reacts: true, eq, name: hit.name, type: hit.type, dH: hit.dH, peak: hit.peak,
+  return { reacts: true, eq, name: hit.name, type: hit.type, dH: hit.dH, peak: hit.peak, fx: fxOf(hit),
            obs: hit.obs, fact: hit.fact, condUsed: hit.cond, approx: false };
+}
+
+function fxOf(hit) {
+  const t = (hit.type || "") + (hit.name || "");
+  if (t.includes("ترسيب")) return "precip";
+  if (t.includes("بناء ضوئي")) return "rays";
+  if (hit.cond === "electric") return "bubbles";
+  if (t.includes("بركان")) return "foam";
+  if (hit.cond === "light") return "rays";
+  if ((hit.dH ?? 0) <= -700) return "flame";
+  return null;
 }
 
 function patterns(fs, cond) {
@@ -158,7 +169,7 @@ function patterns(fs, cond) {
     if (isHydrocarbon(fuel)) {
       const eq = makeEq([fuel, "O2"], ["CO2", "H2O"]);
       const dhc = { CH4: -890, C2H6: -1560, C3H8: -2220, C4H10: -2878, C2H5OH: -1367, C6H12O6: -2805 }[fuel];
-      return { reacts: true, eq, name: "احتراق كامل", type: "احتراق", dH: dhc ?? null, peak: 1900,
+      return { reacts: true, eq, name: "احتراق كامل", type: "احتراق", dH: dhc ?? null, peak: 1900, fx: "flame",
         obs: ["لهب وحرارة وضوء", "يتصاعد بخار ماء وثاني أكسيد الكربون"], approx: !dhc,
         fact: "شرط الاحتراق الكامل: وفرة الأكسجين · بنقصه يتكون أول أكسيد الكربون السام." };
     }
@@ -181,7 +192,7 @@ function patterns(fs, cond) {
       if ((ACT[metal] ?? 0) <= ACT.H) return { reacts: false, reason: `${EL[metal].ar} أسفل الهيدروجين في سلسلة النشاط الكيميائي · لا يستطيع إحلاله من الحمض المخفف.`, tip: "جرّب الزنك أو المغنيسيوم أو الحديد بدلاً منه." };
       const salt = combine(metal, ACIDS[acid]);
       const eq = makeEq([metal, acid], [salt, "H2"]);
-      if (eq) return { reacts: true, eq, name: "فلز + حمض", type: "إحلال", dH: -120, peak: null, approx: true,
+      if (eq) return { reacts: true, eq, name: "فلز + حمض", type: "إحلال", dH: -120, peak: null, approx: true, fx: "bubbles",
         obs: ["فقاعات هيدروجين تفرقع قرب لهب", "يذوب الفلز تدريجياً"], fact: "كلما ارتفع الفلز في سلسلة النشاط كان التفاعل أعنف." };
     }
     // --- acid + base (hydroxide) ---
@@ -190,7 +201,7 @@ function patterns(fs, cond) {
       const cat = cationOf(base);
       const salt = combine(cat, ACIDS[acid]);
       const eq = makeEq([acid, base], [salt, "H2O"]);
-      if (eq) return { reacts: true, eq, name: "تعادل حمض وقاعدة", type: "تعادل", dH: -57, peak: null, approx: true,
+      if (eq) return { reacts: true, eq, name: "تعادل حمض وقاعدة", type: "تعادل", dH: -57, peak: null, approx: true, fx: "steam",
         obs: ["ترتفع حرارة المحلول قليلاً"], fact: "التعادل ينتج دائماً ملحاً + ماء." };
     }
     // --- acid + carbonate ---
@@ -199,7 +210,7 @@ function patterns(fs, cond) {
       const cat = cationOf(carb);
       const salt = combine(cat, ACIDS[acid]);
       const eq = makeEq([carb, acid], [salt, "CO2", "H2O"]);
-      if (eq) return { reacts: true, eq, name: "كربونات + حمض", type: "تحلل/غاز", dH: -20, peak: null, approx: true,
+      if (eq) return { reacts: true, eq, name: "كربونات + حمض", type: "تحلل/غاز", dH: -20, peak: null, approx: true, fx: "foam",
         obs: ["فوران وانطلاق ثاني أكسيد الكربون"], fact: "الغاز المنطلق يعكّر ماء الجير · اختبار الكربونات الأشهر." };
     }
     // --- acid + metal oxide ---
@@ -229,7 +240,7 @@ function patterns(fs, cond) {
       if (m && ACT[m] >= 8) {
         const hydrox = combine(m, "OH");
         const eq = makeEq([m, "H2O"], [hydrox, "H2"]);
-        if (eq) return { reacts: true, eq, name: "فلز قلوي + ماء", type: "إحلال عنيف", dH: -350, peak: null, approx: true,
+        if (eq) return { reacts: true, eq, name: "فلز قلوي + ماء", type: "إحلال عنيف", dH: -350, peak: null, approx: true, fx: "bubbles",
           obs: ["تفاعل عنيف قد يشتعل · خطر"], fact: "تُحفظ هذه الفلزات تحت الزيت لأن رطوبة الهواء قد تشعلها." };
       }
       if (m && ACT[m] === 7) return { reacts: false, reason: "المغنيسيوم يتفاعل ببطء شديد مع الماء البارد · يحتاج بخار ماء ساخناً جداً.", tip: "فعّل التسخين أو جرّب حمضاً بدل الماء." };
