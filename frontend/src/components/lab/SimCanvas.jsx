@@ -111,7 +111,7 @@ function slots(count, spread) {
   return out;
 }
 
-export default function SimCanvas({ result, runId, playing, speed = 1, ambient = 25, onTemp, onPhase, light = false, labels = true, autoRotate = true, zoomRef }) {
+export default function SimCanvas({ result, runId, playing, speed = 1, ambient = 25, onTemp, onPhase, light = false, labels = true, autoRotate = true, zoomRef, seekRef, onProgress }) {
   const ref = useRef(null);
   const stateRef = useRef({ yaw: 0.5, pitch: -0.25, drag: null, t: 0, lastTemp: null, lastPhase: "", ptrs: new Map(), pd: 0, visible: true });
   const liveRef = useRef({ labels: true, autoRotate: true });
@@ -177,6 +177,9 @@ export default function SimCanvas({ result, runId, playing, speed = 1, ambient =
     const draw = (now) => {
       const dt = Math.min(0.05, (now - last) / 1000); last = now;
       if (!S.visible || document.hidden) { raf = requestAnimationFrame(draw); return; }
+      if (seekRef?.current?.scrubbing) S.t = seekRef.current.v * maxT;
+      const prog = Math.max(0, Math.min(1, S.t / maxT));
+      if (onProgress && Math.abs(prog - (S.lastProg ?? -1)) > 0.008) { S.lastProg = prog; onProgress(prog); }
       if (playing) S.t = (S.t + dt * speed) % (maxT + 2.2);
       const t = S.t / maxT; // 0..1 run progress, >1 = hold on products
       const W = canvas.getBoundingClientRect().width, H = canvas.getBoundingClientRect().height;

@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   FlaskConical, Atom, Play, Pause, RotateCcw, Plus, X, Info, Thermometer,
   Zap, Sparkles, ArrowLeft, Beaker, Lightbulb, Ban, Gauge, ChevronLeft, Dices, Search, MousePointerClick,
-  Camera, Maximize2, Type, Orbit, GaugeCircle,
+  Camera, Maximize2, Type, Orbit, GaugeCircle, Share2, Copy, Check, Trophy, ShieldAlert, Scale, Swords,
 } from "lucide-react";
 import { Layout } from "@/components/Layout";
 import { ELEMENTS, EL, CATS, COMPOUNDS, shells, parseFormula } from "@/components/lab/chemData";
@@ -27,6 +27,27 @@ function Fx({ f, className = "" }) {
 }
 
 const PHASE_AR = { idle: "بانتظار التشغيل", approach: "المواد تقترب وتتحرك", collide: "التصادم وتكسير الروابط", rearrange: "الذرّات تعيد ترتيب نفسها", products: "النواتج تتكوّن" };
+const GAS_SET = new Set(["H2", "O2", "N2", "Cl2", "F2", "Br2g", "CO2", "CH4", "NH3", "SO2", "CO", "H2S", "C2H2", "C2H4", "C3H8"]);
+const LIQ_SET = new Set(["H2O", "H2O2", "Br2", "Hg", "C2H5OH"]);
+const AQ_SET = new Set(["HCl", "H2SO4", "HNO3", "NaOH", "KOH", "CH3COOH", "NaCl", "KCl", "Ca(OH)2", "Pb(NO3)2", "KI", "NaHCO3"]);
+const stateOf = (f) => (GAS_SET.has(f) ? "g" : LIQ_SET.has(f) ? "l" : AQ_SET.has(f) ? "aq" : "s");
+const HAZARD = {
+  HCl: "حمض آكل · تجنّب الاستنشاق والملامسة", H2SO4: "حمض شديد التآكل والحرارة عند التخفيف", HNO3: "حمض مؤكسد قوي وآكل",
+  NaOH: "قلوي آكل للجلد والعينين", KOH: "قلوي آكل · تعامل بحذر", Cl2: "غاز سام · خطر عند الاستنشاق",
+  Br2: "سائل سام ومتطاير", NH3: "غاز مهيّج للتنفس", H2O2: "مؤكسد · قد يهيّج الجلد",
+  "Pb(NO3)2": "ملح رصاصي سام · لا يُبتلع أبداً", PbI2: "مركب رصاصي سام", CH3COOH: "حمض عضوي · المركز منه آكل",
+};
+const SUBS = { 0: "₀", 1: "₁", 2: "₂", 3: "₃", 4: "₄", 5: "₅", 6: "₆", 7: "₇", 8: "₈", 9: "₉" };
+const plainFx = (f) => f.replace(/\d/g, (d) => SUBS[d]);
+const eqText = (eq) => {
+  const side = (arr) => arr.map(({ f, n }) => `${n > 1 ? n : ""}${plainFx(f)}(${stateOf(f)})`).join(" + ");
+  return `${side(eq.reactants)} ⟶ ${side(eq.products)}`;
+};
+const MISSIONS = [
+  { id: "water", icon: "💧", title: "صانع الماء", desc: "كوّن جزيئات ماء من تفاعل حقيقي", test: (r) => r.reacts && r.eq.products.some((p) => p.f === "H2O") && r.eq.reactants.some((p) => p.f === "O2") },
+  { id: "volcano", icon: "🌋", title: "بركان الغاز", desc: "ولّد غاز ثاني أكسيد الكربون ولاحظ الفوران", test: (r) => r.reacts && r.eq.products.some((p) => p.f === "CO2") },
+  { id: "metal", icon: "⚡", title: "معدن نشط", desc: "حرّر غاز الهيدروجين من معدن وحمض", test: (r) => r.reacts && r.eq.products.some((p) => p.f === "H2") && r.eq.reactants.some((p) => AQ_SET.has(p.f)) },
+];
 
 const PRESETS = [
   { label: "💥 تكوين الماء", items: ["H2", "O2"], cond: "spark" },
@@ -119,6 +140,10 @@ export default function ChemLab() {
   const [catFilter, setCatFilter] = useState(null);
   const [compType, setCompType] = useState("الكل");
   const stageRef = useRef(null);
+  const [progress, setProgress] = useState(0);
+  const seekRef = useRef({ scrubbing: false, v: 0 });
+  const [copied, setCopied] = useState(false);
+  const [missions, setMissions] = useState(() => { try { return JSON.parse(localStorage.getItem("ft-lab-missions") || "[]"); } catch { return []; } });
 
   const addItem = (f) => {
     setTray((t) => (t.some((x) => x.f === f) || t.length >= 3 ? t : [...t, { f }]));
@@ -130,7 +155,16 @@ export default function ChemLab() {
   const run = (items = tray, c = cond) => {
     if (!items.length) return;
     const r = predict(items, c);
-    setResult(r); setRunId((x) => x + 1); setPlaying(true); setTemp(25); setPhase("approach");
+    setResult(r); setRunId((x) => x + 1); setPlaying(true); setTemp(25); setPhase("approach"); setProgress(0);
+    if (r.reacts) {
+      setMissions((prev) => {
+        const won = MISSIONS.filter((m) => m.test(r) && !prev.includes(m.id)).map((m) => m.id);
+        if (!won.length) return prev;
+        const next = [...prev, ...won];
+        try { localStorage.setItem("ft-lab-missions", JSON.stringify(next)); } catch { /* private mode */ }
+        return next;
+      });
+    }
     stageRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
   };
   const applyPreset = (p) => {
@@ -142,6 +176,12 @@ export default function ChemLab() {
   const atomCount = useMemo(() => {
     if (!result?.eq) return 0;
     return result.eq.reactants.reduce((sum, { f, n }) => sum + n * Object.values(parseFormula(f)).reduce((a, b) => a + b, 0), 0);
+  }, [result]);
+  const ledger = useMemo(() => {
+    if (!result?.eq) return [];
+    const count = (arr) => { const m = {}; arr.forEach(({ f, n }) => { const c = parseFormula(f); for (const k in c) m[k] = (m[k] || 0) + c[k] * n; }); return m; };
+    const R = count(result.eq.reactants), P = count(result.eq.products);
+    return [...new Set([...Object.keys(R), ...Object.keys(P)])].map((sym) => ({ sym, r: R[sym] || 0, p: P[sym] || 0, el: EL[sym] })).filter((x) => x.el);
   }, [result]);
   const involvedElements = useMemo(() => {
     if (!result?.eq) return [];
@@ -360,7 +400,7 @@ export default function ChemLab() {
             </div>
           </div>
           <div className="relative h-[360px] sm:h-[470px] lg:h-[560px] bg-[radial-gradient(60%_90%_at_20%_0%,rgba(16,185,129,0.10),transparent_60%),radial-gradient(55%_90%_at_85%_10%,rgba(6,182,212,0.12),transparent_60%),radial-gradient(rgba(15,23,42,0.055)_1px,transparent_1.4px)] [background-size:auto,auto,22px_22px]">
-            <SimCanvas result={result} runId={runId} playing={playing} speed={speed} labels={labels} autoRotate={autoRot} zoomRef={zoomRef} onTemp={setTemp} onPhase={setPhase} light />
+            <SimCanvas result={result} runId={runId} playing={playing} speed={speed} labels={labels} autoRotate={autoRot} zoomRef={zoomRef} seekRef={seekRef} onProgress={setProgress} onTemp={setTemp} onPhase={setPhase} light />
           </div>
           {atomCount > 0 && (
             <div className="absolute bottom-16 sm:bottom-[76px] left-3 z-20 rounded-full bg-white/85 backdrop-blur ring-1 ring-slate-200/80 ft-shadow px-3 py-1.5 text-[11px] font-black text-slate-600 flex items-center gap-1.5">
@@ -398,6 +438,31 @@ export default function ChemLab() {
             </button>
             <span className="text-[11px] text-slate-400 font-bold mr-auto hidden md:block">اسحب للتدوير · عجلة الفأرة أو إصبعان للتقريب 🖱️</span>
           </div>
+          <div className="relative border-t border-slate-100 bg-slate-50/60 px-4 lg:px-6 py-3">
+            <div className="flex items-center gap-2 sm:gap-3">
+              {["approach", "collide", "rearrange", "products"].map((ph, i, arr) => {
+                const activeIdx = ["approach", "collide", "rearrange", "products"].indexOf(phase === "idle" ? "approach" : phase);
+                const on = result && i <= activeIdx;
+                return (
+                  <React.Fragment key={ph}>
+                    <span className={`inline-flex items-center gap-1.5 text-[10.5px] sm:text-[11px] font-black transition ${on ? "text-emerald-700" : "text-slate-400"}`}>
+                      <span className={`w-5 h-5 grid place-items-center rounded-full text-[10px] ${on ? "bg-emerald-500 text-white ft-shadow" : "bg-white ring-1 ring-slate-200"}`}>{i + 1}</span>
+                      <span className="hidden sm:inline">{PHASE_AR[ph]}</span>
+                    </span>
+                    {i < arr.length - 1 && <span className={`flex-1 h-1 rounded-full ${result && i < activeIdx ? "bg-emerald-400" : "bg-slate-200"}`} />}
+                  </React.Fragment>
+                );
+              })}
+            </div>
+            <div className="flex items-center gap-3 mt-2.5">
+              <span className="text-[10px] font-black text-slate-400" dir="ltr">{Math.round(progress * 100)}%</span>
+              <input type="range" min="0" max="100" value={Math.round(progress * 100)} data-testid="scrub"
+                onChange={(e) => { seekRef.current = { scrubbing: true, v: e.target.value / 100 }; setProgress(e.target.value / 100); setPlaying(false); }}
+                onPointerUp={() => { seekRef.current.scrubbing = false; }}
+                className="flex-1 accent-emerald-500 h-1.5 cursor-pointer" aria-label="الخط الزمني للتفاعل" />
+              <span className="text-[10px] font-bold text-slate-400 hidden sm:block">اسحب لتقديم وترجيع التفاعل</span>
+            </div>
+          </div>
         </div>
 
         {/* ===== results ===== */}
@@ -412,19 +477,29 @@ export default function ChemLab() {
                     <span className="px-3 py-1.5 rounded-full bg-violet-50 ring-1 ring-violet-200 text-violet-700 text-xs font-black">{result.type}</span>
                     {result.name && <span className="text-lg font-black font-head text-slate-900">{result.name}</span>}
                     {result.approx && <span className="text-[11px] text-slate-400 font-bold">قيم طاقة تقريبية تعليمية</span>}
+                    <span className="mr-auto flex gap-1.5">
+                      <button onClick={() => { navigator.clipboard?.writeText(eqText(result.eq)); setCopied(true); setTimeout(() => setCopied(false), 1600); }} data-testid="eq-copy"
+                        className="pressable inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-50 ring-1 ring-slate-200 text-[11px] font-black text-slate-600 hover:bg-slate-100 transition">
+                        {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />} {copied ? "نُسخت!" : "نسخ المعادلة"}
+                      </button>
+                      <button onClick={() => { const t = eqText(result.eq); if (navigator.share) navigator.share({ title: "تفاعل كيميائي · مفكرو المستقبل", text: t }).catch(() => {}); else { navigator.clipboard?.writeText(t); setCopied(true); setTimeout(() => setCopied(false), 1600); } }} data-testid="eq-share"
+                        className="pressable inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-50 ring-1 ring-slate-200 text-[11px] font-black text-slate-600 hover:bg-slate-100 transition">
+                        <Share2 className="w-3.5 h-3.5" /> مشاركة
+                      </button>
+                    </span>
                   </div>
                   <div className="ft-navy-gradient relative overflow-hidden rounded-3xl px-4 py-5 lg:py-7 flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-xl sm:text-2xl lg:text-[34px] ft-shadow" dir="ltr">
                     {result.eq.reactants.map(({ f, n }, i) => (
                       <span key={i} className="inline-flex items-baseline gap-1.5">
                         {i > 0 && <span className="text-slate-500 mx-1">+</span>}
-                        {n > 1 && <span className="text-cyan-300 font-black">{n}</span>}<Fx f={f} className="text-cyan-50" />
+                        {n > 1 && <span className="text-cyan-300 font-black">{n}</span>}<Fx f={f} className="text-cyan-50" /><sub className="text-[11px] font-bold text-cyan-300/80">({stateOf(f)})</sub>
                       </span>
                     ))}
                     <ArrowLeft className="w-7 h-7 text-amber-300 mx-1 rotate-180 shrink-0" />
                     {result.eq.products.map(({ f, n }, i) => (
                       <span key={i} className="inline-flex items-baseline gap-1.5">
                         {i > 0 && <span className="text-slate-500 mx-1">+</span>}
-                        {n > 1 && <span className="text-emerald-300 font-black">{n}</span>}<Fx f={f} className="text-emerald-50" />
+                        {n > 1 && <span className="text-emerald-300 font-black">{n}</span>}<Fx f={f} className="text-emerald-50" /><sub className="text-[11px] font-bold text-emerald-300/80">({stateOf(f)})</sub>
                       </span>
                     ))}
                   </div>
@@ -462,6 +537,44 @@ export default function ChemLab() {
                       <p className="text-sm text-slate-700 leading-relaxed">{result.fact}</p>
                     </div>
                   </div>
+                  <div className="grid lg:grid-cols-2 gap-3 mt-3">
+                    <div className="rounded-3xl bg-white ring-1 ring-slate-100 ft-shadow p-4">
+                      <div className="text-xs font-black text-slate-700 mb-3 flex items-center gap-1.5"><Scale className="w-4 h-4 text-cyan-600" /> سجلّ حفظ الذرّات · لا شيء يختفي</div>
+                      <div className="space-y-2">
+                        {ledger.map(({ sym, r, p, el }) => (
+                          <div key={sym} className="flex items-center gap-2.5">
+                            <span className="w-9 h-9 rounded-xl grid place-items-center text-[12px] font-black text-slate-900 ring-1 ring-black/5 shrink-0" style={{ background: CATS[el.cat].color }}>{sym}</span>
+                            <span className="text-xs font-bold text-slate-600 w-16 shrink-0">{el.ar}</span>
+                            <span className="text-xs font-black text-cyan-700" dir="ltr">{r}</span>
+                            <span className="flex-1 h-1.5 rounded-full bg-slate-100 relative overflow-hidden" dir="ltr">
+                              <span className="absolute inset-y-0 right-0 bg-emerald-400/80 rounded-full transition-all" style={{ width: `${Math.max(r, p) ? (p / Math.max(r, p)) * 100 : 0}%` }} />
+                            </span>
+                            <span className="text-xs font-black text-emerald-700" dir="ltr">{p}</span>
+                            <span className="text-[10px] font-black px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100">✓ محفوظة</span>
+                          </div>
+                        ))}
+                      </div>
+                      <p className="text-[11px] text-slate-400 font-semibold mt-3">عدد ذرات كل عنصر قبل التفاعل يساوي عدده بعده دائماً · هذا قانون حفظ الكتلة</p>
+                    </div>
+                    <div className="rounded-3xl bg-gradient-to-b from-violet-50/80 to-white ring-1 ring-violet-100 ft-shadow p-4">
+                      <div className="text-xs font-black text-violet-800 mb-3 flex items-center gap-1.5"><Trophy className="w-4 h-4 text-amber-500" /> تحديات المختبر <span className="mr-auto text-[11px] font-black text-slate-400">{missions.length}/3 منجزة</span></div>
+                      <div className="space-y-2">
+                        {MISSIONS.map((m) => {
+                          const done = missions.includes(m.id);
+                          return (
+                            <div key={m.id} className={`flex items-center gap-3 rounded-2xl px-3 py-2.5 ring-1 ${done ? "bg-emerald-50 ring-emerald-200" : "bg-white ring-slate-100"}`}>
+                              <span className="text-xl">{m.icon}</span>
+                              <div className="min-w-0">
+                                <div className="text-[13px] font-black text-slate-800">{m.title}</div>
+                                <div className="text-[11px] text-slate-400 font-semibold leading-snug">{m.desc}</div>
+                              </div>
+                              <span className={`mr-auto text-[10px] font-black px-2 py-1 rounded-full shrink-0 ${done ? "bg-emerald-500 text-white" : "bg-slate-50 ring-1 ring-slate-200 text-slate-400"}`}>{done ? "أُنجزت 🏆" : "بانتظارك"}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
                   <div className="mt-6">
                     <div className="font-head font-black text-slate-900 mb-3">بطاقات المواد بالتفصيل</div>
                     <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-3">
@@ -479,6 +592,7 @@ export default function ChemLab() {
                             </div>
                             <div className="text-xs text-slate-500 mt-1.5">الكتلة المولية <b className="text-slate-800" dir="ltr">{info.molar} g/mol</b>{info.meta ? ` · ${info.meta.type}` : ""}</div>
                             {info.meta?.desc && <p className="text-xs text-slate-500 leading-relaxed mt-1">{info.meta.desc}</p>}
+                            {HAZARD[f] && <p className="mt-2 flex items-start gap-1.5 text-[11px] font-bold text-amber-700 bg-amber-50 ring-1 ring-amber-100 rounded-xl px-2.5 py-1.5"><ShieldAlert className="w-3.5 h-3.5 shrink-0 mt-px" /> سلامة: {HAZARD[f]} · تجارب حقيقية فقط بإشراف معلّم</p>}
                             <div className="mt-3 space-y-1.5">
                               {info.parts.map((p) => (
                                 <button key={p.sym} onClick={() => p.el && setElModal(p.el)} className="w-full flex items-center gap-2 group text-right">
