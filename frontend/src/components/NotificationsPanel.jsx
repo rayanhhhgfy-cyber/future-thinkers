@@ -213,13 +213,49 @@ function PanelBody({ items, unread, markAll, openItem, onClose, sheet }) {
             {visible.map((n, i) => {
               const st = styleFor(n.type);
               const Icon = st.icon;
+              const isAch = ACHIEVEMENT_TYPES.has(n.type);
+              const read = n.read;
+              if (isAch) {
+                return (
+                  <motion.button
+                    key={n.id}
+                    initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -24 }}
+                    transition={{ duration: 0.3, delay: Math.min(i * 0.04, 0.3), ease: EASE }}
+                    onClick={() => openItem(n)}
+                    className={`group relative w-full text-right mx-3 my-2 rounded-[1.4rem] overflow-hidden transition-transform hover:scale-[1.012] active:scale-[0.99] ${read ? "opacity-90" : ""}`}
+                    style={{ width: "calc(100% - 1.5rem)" }}
+                  >
+                    {/* aurora glass backdrop: warm, no blue anywhere */}
+                    <span className="absolute inset-0 bg-gradient-to-l from-amber-300/50 via-rose-300/35 to-violet-300/45" />
+                    <span className="absolute -top-10 -left-6 w-36 h-36 rounded-full bg-amber-300/50 blur-2xl" />
+                    <span className="absolute -bottom-12 right-10 w-36 h-36 rounded-full bg-violet-300/45 blur-2xl" />
+                    <span className="absolute inset-0 backdrop-blur-xl bg-white/45" />
+                    <span className="absolute inset-0 ring-1 ring-inset ring-white/60 rounded-[1.4rem]" />
+                    <span className="absolute top-0 right-6 left-6 h-px bg-gradient-to-l from-transparent via-white/90 to-transparent" />
+                    <span className="relative flex gap-3 sm:gap-3.5 px-4 sm:px-5 py-4">
+                      <span className="relative w-11 h-11 sm:w-12 sm:h-12 rounded-2xl grid place-items-center shrink-0 bg-gradient-to-br from-amber-400 via-orange-500 to-rose-500 text-white shadow-lg shadow-orange-500/30 ring-1 ring-white/50 group-hover:rotate-6 group-hover:scale-105 transition-transform">
+                        <Icon className="w-5.5 h-5.5 sm:w-6 sm:h-6" style={{ width: 22, height: 22 }} />
+                        {!read && <span className="absolute -top-1 -left-1 w-3 h-3 rounded-full bg-amber-400 ring-2 ring-white animate-pulse" />}
+                      </span>
+                      <span className="flex-1 min-w-0">
+                        <span className="flex items-start justify-between gap-2">
+                          <span className="font-head font-black text-[13.5px] sm:text-sm text-slate-900 leading-snug">{n.title}</span>
+                          <span className="shrink-0 px-2 py-0.5 rounded-full bg-white/60 ring-1 ring-white/70 text-[9.5px] font-black text-amber-700 backdrop-blur">إنجاز 🏆</span>
+                        </span>
+                        {n.body && <span className="block text-[11.5px] sm:text-xs text-slate-600 mt-1 line-clamp-2 leading-relaxed font-medium">{n.body}</span>}
+                        <span className="block text-[10.5px] text-slate-500/90 mt-1.5 font-semibold">{timeAgo(n.created_at)}{!read && " · جديد ✨"}</span>
+                      </span>
+                    </span>
+                  </motion.button>
+                );
+              }
               return (
                 <motion.button
                   key={n.id}
                   initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -24 }}
                   transition={{ duration: 0.3, delay: Math.min(i * 0.04, 0.3), ease: EASE }}
                   onClick={() => openItem(n)}
-                  className={`w-full text-right px-5 py-3.5 border-b border-slate-50 flex gap-3.5 transition-colors hover:bg-slate-50 active:bg-slate-100 ${!n.read ? "bg-blue-50/60" : ""}`}
+                  className={`w-full text-right px-4 sm:px-5 py-3.5 border-b border-slate-50 flex gap-3.5 transition-colors hover:bg-slate-50 active:bg-slate-100 ${!n.read ? "bg-amber-50/70" : ""}`}
                 >
                   <span className={`w-10 h-10 rounded-2xl grid place-items-center shrink-0 ${st.bg} ${st.fg}`}>
                     <Icon className="w-5 h-5" />
@@ -227,7 +263,7 @@ function PanelBody({ items, unread, markAll, openItem, onClose, sheet }) {
                   <span className="flex-1 min-w-0">
                     <span className="flex items-start justify-between gap-2">
                       <span className="font-bold text-sm text-slate-800 leading-snug">{n.title}</span>
-                      {!n.read && <span className="w-2.5 h-2.5 rounded-full bg-blue-500 shrink-0 mt-1.5 animate-pulse" />}
+                      {!n.read && <span className="w-2.5 h-2.5 rounded-full bg-amber-500 shrink-0 mt-1.5 animate-pulse" />}
                     </span>
                     {n.body && <span className="block text-xs text-slate-500 mt-1 line-clamp-2 leading-relaxed">{n.body}</span>}
                     <span className="block text-[11px] text-slate-400 mt-1">{timeAgo(n.created_at)}</span>
