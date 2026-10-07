@@ -7,7 +7,7 @@ import {
 const BACKEND_URL = (process.env.REACT_APP_BACKEND_URL || "").replace(/\/$/, "");
 const API = `${BACKEND_URL}/api`;
 
-const api = axios.create({ baseURL: API, withCredentials: true });
+const api = axios.create({ baseURL: API, withCredentials: true, timeout: 20000 });
 
 /* Resolve the signable /api path for an axios config (no origin, no query). */
 function signablePath(config) {
@@ -111,6 +111,17 @@ api.interceptors.response.use(
     const original = error?.config;
     const status = error?.response?.status;
     const url = original?.url || "";
+    // Retry bookkeeping in a header: axios clones configs between retries
+    // and drops custom props, which once turned this into an endless
+    // sign-retry loop on the login request itself (permanent spinner).
+    // Headers survive every merge. Auth endpoints never retry at all.
+    const AUTH_PATH = /\/auth\/(login|register|refresh|me)(\?|$)/.test(url);
+    const retryCount = Number(original?.headers?.["x-ft-retry"] || 0);
+    const markRetry = (cfg) => {
+      cfg.headers = cfg.headers || {};
+      cfg.headers["x-ft-retry"] = String(retryCount + 1);
+      return cfg;
+    };
     // Signature rejected (stale/rotated session key): drop the key, fetch a
     // fresh one from /auth/me (signed with the public key), then retry once.
     // The resend passes the request interceptor again, so it is re-signed.
@@ -118,15 +129,14 @@ api.interceptors.response.use(
     if (
       status === 401 &&
       original &&
-      !original._sigRetry &&
+      !AUTH_PATH &&
+      retryCount < 1 &&
       typeof sigCode === "string" &&
-      sigCode.startsWith("SIG_") &&
-      !url.includes("/auth/me")
+      sigCode.startsWith("SIG_")
     ) {
-      original._sigRetry = true;
       clearSigKey();
       try { await api.get("/auth/me"); } catch {}
-      return api(original);
+      return api(markRetry(original));
     }
     // Silent refresh: the access token (7 days) may expire while the
     // refresh cookie (30 days) is still valid. Try the refresh endpoint once,
@@ -134,12 +144,9 @@ api.interceptors.response.use(
     if (
       status === 401 &&
       original &&
-      !original._retry &&
-      !url.includes("/auth/refresh") &&
-      !url.includes("/auth/login") &&
-      !url.includes("/auth/register")
+      !AUTH_PATH &&
+      retryCount < 2
     ) {
-      original._retry = true;
       try {
         const { data } = await api.post("/auth/refresh");
         if (data?.access_token) {
@@ -147,7 +154,7 @@ api.interceptors.response.use(
           original.headers = original.headers || {};
           original.headers.Authorization = `Bearer ${data.access_token}`;
         }
-        return api(original);
+        return api(markRetry(original));
       } catch {
         localStorage.removeItem("ft_token");
       }

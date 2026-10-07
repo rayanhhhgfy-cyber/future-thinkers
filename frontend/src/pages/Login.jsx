@@ -38,7 +38,13 @@ export default function Login() {
 
   const submit = async (e) => {
     e.preventDefault();
+    if (loading) return;
     setLoading(true);
+    // Watchdog: never let the button spin forever on a stuck connection.
+    const watchdog = setTimeout(() => {
+      setLoading(false);
+      toast.error("طال الاتصال أكثر من اللازم · تحقّق من الإنترنت وحاول مجدداً");
+    }, 15000);
     try {
       const data = await login(email, password);
       if (data && data.just_approved) {
@@ -50,7 +56,7 @@ export default function Login() {
       nav("/dashboard");
     } catch (err) {
       toast.error(apiErr(err));
-    } finally { setLoading(false); }
+    } finally { clearTimeout(watchdog); setLoading(false); }
   };
 
   const checkStatus = async () => {

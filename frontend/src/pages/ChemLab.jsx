@@ -663,14 +663,19 @@ export default function ChemLab() {
         <AnimatePresence>
           {toast && (
             <motion.div initial={{ opacity: 0, y: 40, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 20 }}
-              className="fixed bottom-24 sm:bottom-8 left-1/2 -translate-x-1/2 z-[80] ft-navy-gradient text-white rounded-3xl ft-shadow-lg px-5 py-3.5 flex items-center gap-3 max-w-[92vw]" data-testid="xp-toast">
-              <span className="text-2xl">⭐</span>
+              className="fixed bottom-[86px] sm:bottom-24 left-1/2 -translate-x-1/2 z-[80] w-[min(700px,calc(100vw-20px))] overflow-hidden rounded-[1.75rem] ft-shadow-lg" data-testid="xp-toast">
+              <span className="pointer-events-none absolute inset-0 bg-gradient-to-l from-amber-300/55 via-rose-300/40 to-violet-300/50" />
+              <span className="pointer-events-none absolute inset-0 backdrop-blur-2xl bg-white/55" />
+              <span className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-white/70 rounded-[1.75rem]" />
+              <span className="relative flex items-center gap-3 px-5 py-3.5 w-full">
+              <span className="text-2xl sm:text-3xl">⭐</span>
               <div className="text-[13px] font-bold leading-snug">
-                <span className="font-black text-amber-300">+{toast.gained} خبرة مختبر</span>
-                {toast.species?.length > 0 && <span className="block text-slate-200">اكتشاف جديد: {toast.species.slice(0, 3).join(" · ")}</span>}
+                <span className="font-black text-amber-700">+{toast.gained} خبرة مختبر</span>
+                {toast.species?.length > 0 && <span className="block text-slate-600">اكتشاف جديد: {toast.species.slice(0, 3).join(" · ")}</span>}
                 {toast.badges?.map((b) => <span key={b.key} className="block text-slate-200">وسام جديد: {b.icon} {b.title}</span>)}
-                {toast.daily && <span className="block text-emerald-300 font-black">تحدي اليوم أُنجز 🏆</span>}
+                {toast.daily && <span className="block text-emerald-700 font-black">تحدي اليوم أُنجز 🏆</span>}
               </div>
+              </span>
             </motion.div>
           )}
         </AnimatePresence>
