@@ -29,6 +29,8 @@ const Clubs = lazy(() => import("@/pages/Clubs"));
 const ClubDetail = lazy(() => import("@/pages/ClubDetail"));
 const ChemLab = lazy(() => import("@/pages/ChemLab"));
 const ScienceLabTools = lazy(() => import("@/pages/ScienceLabTools"));
+const PhysicsLab = lazy(() => import("@/pages/PhysicsLab"));
+const BiologyLab = lazy(() => import("@/pages/BiologyLab"));
 const DiscussionDetail = lazy(() => import("@/pages/DiscussionDetail"));
 const ChessGame = lazy(() => import("@/pages/ChessGame"));
 const ChessPractice = lazy(() => import("@/pages/ChessPractice"));
@@ -128,6 +130,8 @@ function AnimatedRoutes() {
       <Route path="/clubs" element={<Protected><SectionGate section="clubs"><Clubs /></SectionGate></Protected>} />
       <Route path="/clubs/science/lab" element={<Protected><SectionGate section="clubs"><ChemLab /></SectionGate></Protected>} />
       <Route path="/clubs/science/tools" element={<Protected><SectionGate section="clubs"><ScienceLabTools /></SectionGate></Protected>} />
+      <Route path="/clubs/science/physics" element={<Protected><SectionGate section="clubs"><PhysicsLab /></SectionGate></Protected>} />
+      <Route path="/clubs/science/biology" element={<Protected><SectionGate section="clubs"><BiologyLab /></SectionGate></Protected>} />
       <Route path="/clubs/:slug" element={<Protected><SectionGate section="clubs"><ClubDetail /></SectionGate></Protected>} />
       <Route path="/discussions/:id" element={<Protected><SectionGate section="community"><DiscussionDetail /></SectionGate></Protected>} />
       <Route path="/chess/practice" element={<Protected><ChessPractice /></Protected>} />
