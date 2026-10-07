@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import {
   MessageCircle, Send, Search, X, PenSquare, ArrowRight, Loader2, Inbox,
   Smile, SmilePlus, Check, CheckCheck, MoreVertical, Reply, Pencil, Trash2, Ban,
-  ShieldCheck, Lock,
+  ShieldCheck, Lock, Flag,
 } from "lucide-react";
 
 const QUICK_REACT = ["❤️", "😂", "😮", "👍", "🔥", "👏"];
@@ -437,6 +437,26 @@ export default function Messages() {
     }
   };
 
+  const [report, setReport] = useState(null); // {kind:"message",msg} | {kind:"user"}
+  const [reportReason, setReportReason] = useState("");
+  const [reportDetails, setReportDetails] = useState("");
+  const [reportBusy, setReportBusy] = useState(false);
+  const REPORT_REASONS = ["إساءة أو شتم", "تحرّش أو إزعاج", "محتوى غير لائق", "احتيال أو روابط مشبوهة", "أخرى"];
+  const submitReport = async () => {
+    if (!report || reportBusy) return;
+    if (!reportReason) { toast.error("اختر سبب البلاغ"); return; }
+    setReportBusy(true);
+    try {
+      const payload = { reason: reportReason, details: reportDetails.trim() };
+      if (report.kind === "message") payload.message_id = report.msg.id;
+      else payload.target_user_id = activeId;
+      await api.post("/dm/report", payload);
+      toast.success("وصل بلاغك لفريق المنصة · راح نراجع المحادثة");
+      setReport(null); setReportReason(""); setReportDetails("");
+    } catch (e) { toast.error(apiErr(e, "تعذّر إرسال البلاغ")); }
+    setReportBusy(false);
+  };
+
   const doBlock = async () => {
     setConfirmBlock(false);
     if (!activeId) return;
@@ -674,6 +694,12 @@ export default function Messages() {
               <button type="button" onClick={() => startReply(m)} className="flex w-full items-center gap-2 px-3.5 py-2.5 text-start text-[13px] font-semibold text-slate-600 transition hover:bg-slate-50">
                 <Reply className="h-4 w-4 -scale-x-100" /> ردّ
               </button>
+              {!mine && !m.deleted && (
+                <button type="button" onClick={() => { setMenuFor(null); setReport({ kind: "message", msg: m }); setReportReason(""); setReportDetails(""); }}
+                  className="flex w-full items-center gap-2 px-3.5 py-2.5 text-start text-[13px] font-semibold text-rose-500 transition hover:bg-rose-50">
+                  <Flag className="h-4 w-4" /> إبلاغ
+                </button>
+              )}
               {mine && (
                 <>
                   <button type="button" onClick={() => startEdit(m)} className="flex w-full items-center gap-2 px-3.5 py-2.5 text-start text-[13px] font-semibold text-slate-600 transition hover:bg-slate-50">
@@ -1014,6 +1040,13 @@ export default function Messages() {
                                 </Link>
                                 <button
                                   type="button"
+                                  onClick={() => { setHeaderMenu(false); setReport({ kind: "user" }); setReportReason(""); setReportDetails(""); }}
+                                  className="flex w-full items-center gap-2 px-3.5 py-2.5 text-start text-[13px] font-semibold text-rose-500 transition hover:bg-rose-50"
+                                >
+                                  <Flag className="h-4 w-4" /> إبلاغ عن المستخدم
+                                </button>
+                                <button
+                                  type="button"
                                   onClick={() => { setHeaderMenu(false); setConfirmBlock(true); }}
                                   className={`flex w-full items-center gap-2 px-3.5 py-2.5 text-start text-[13px] font-semibold transition ${blocked ? "text-slate-600 hover:bg-slate-50" : "text-rose-500 hover:bg-rose-50"}`}
                                 >
@@ -1250,6 +1283,50 @@ export default function Messages() {
             <div className="mt-6 flex gap-2.5">
               <button onClick={() => setConfirmDelete(null)} className="pressable min-h-[44px] flex-1 rounded-full bg-slate-100 text-sm font-bold text-slate-600 transition hover:bg-slate-200">إلغاء</button>
               <button onClick={doDelete} className="pressable min-h-[44px] flex-1 rounded-full bg-rose-500 text-sm font-bold text-white shadow-lg transition hover:bg-rose-600">حذف</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* report dialog · goes to the admin reports center with a snapshot */}
+      {report && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/60 p-4 backdrop-blur-sm" onClick={() => !reportBusy && setReport(null)}>
+          <div className="w-full max-w-md rounded-[26px] bg-white p-6 shadow-2xl animate-scale-in" onClick={(e) => e.stopPropagation()}>
+            <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-rose-50 text-rose-500">
+              <Flag className="h-7 w-7" />
+            </div>
+            <h3 className="mt-4 text-center font-head font-extrabold text-slate-800">
+              {report.kind === "message" ? "إبلاغ عن رسالة" : "إبلاغ عن مستخدم"}
+            </h3>
+            <p className="mt-1.5 text-center text-[13px] leading-relaxed text-slate-400">
+              بيصل البلاغ لفريق المنصة وبيقدروا يشوفوا المحادثة كاملة · هوية المُبلّغ بتضل سرية عن الطرف الثاني.
+            </p>
+            {report.kind === "message" && (
+              <div className="mt-4 rounded-2xl bg-slate-50 px-4 py-3 text-[13px] leading-relaxed text-slate-600 ring-1 ring-slate-100">
+                <span className="mb-1 block text-[11px] font-bold text-slate-400">{activeOther?.name || "رسالة"}</span>
+                {report.msg.body}
+              </div>
+            )}
+            <div className="mt-4 flex flex-wrap gap-1.5">
+              {REPORT_REASONS.map((r) => (
+                <button key={r} type="button" onClick={() => setReportReason(r)}
+                  className={`rounded-full px-3 py-2 text-xs font-bold transition ${reportReason === r ? "bg-rose-500 text-white shadow-md" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>
+                  {r}
+                </button>
+              ))}
+            </div>
+            <textarea value={reportDetails} onChange={(e) => setReportDetails(e.target.value)} rows={3} maxLength={500}
+              placeholder="تفاصيل إضافية (اختياري)…"
+              className="mt-3 w-full rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-700 ring-1 ring-slate-100 outline-none transition focus:ring-2 focus:ring-rose-300" />
+            <div className="mt-5 flex gap-2">
+              <button onClick={() => setReport(null)} disabled={reportBusy}
+                className="pressable min-h-[44px] flex-1 rounded-full bg-slate-100 text-sm font-bold text-slate-600 transition hover:bg-slate-200 disabled:opacity-50">
+                إلغاء
+              </button>
+              <button onClick={submitReport} disabled={reportBusy} data-testid="msg-report-send"
+                className="pressable min-h-[44px] flex-1 rounded-full bg-rose-500 text-sm font-bold text-white shadow-lg transition hover:bg-rose-600 disabled:opacity-60">
+                {reportBusy ? "جارٍ الإرسال…" : "إرسال البلاغ"}
+              </button>
             </div>
           </div>
         </div>
