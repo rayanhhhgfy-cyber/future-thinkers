@@ -10,20 +10,21 @@ GOVERNORATES = [
     "العقبة", "عجلون", "جرش", "المفرق", "الطفيلة", "مادبا",
 ]
 
-# governorate -> list of directorates
+# governorate -> list of directorates · official MoE structure (42 directorates,
+# moe.gov.jo navigation 2026-10). School lists come from data/jordan_schools.json.
 DIRECTORATES = {
-    "عمّان": ["مديرية لواء قصبة عمّان", "مديرية لواء الجامعة", "مديرية لواء ماركا", "مديرية قصبة عمّان الثانية", "مديرية لواء سحاب"],
-    "إربد": ["مديرية إربد الأولى", "مديرية إربد الثانية", "مديرية لواء الرمثا", "مديرية لواء بني كنانة"],
-    "الزرقاء": ["مديرية الزرقاء الأولى", "مديرية الزرقاء الثانية", "مديرية لواء الرصيفة"],
-    "البلقاء": ["مديرية قصبة السلط", "مديرية لواء عين الباشا", "مديرية لواء دير علا"],
-    "الكرك": ["مديرية قصبة الكرك", "مديرية لواء المزار الجنوبي"],
-    "معان": ["مديرية قصبة معان", "مديرية لواء البتراء"],
-    "العقبة": ["مديرية العقبة", "مديرية لواء القويرة"],
-    "عجلون": ["مديرية عجلون", "مديرية لواء كفرنجة"],
-    "جرش": ["مديرية جرش", "مديرية لواء برما"],
-    "المفرق": ["مديرية قصبة المفرق", "مديرية لواء البادية الشمالية الغربية"],
-    "الطفيلة": ["مديرية الطفيلة", "مديرية لواء بصيرا"],
-    "مادبا": ["مديرية مادبا", "مديرية لواء ذيبان"],
+    "عمّان": ["لواء الجامعة", "لواء الجيزة", "لواء القويسمة", "لواء الموقر", "لواء سحاب", "لواء قصبة عمّان", "لواء ماركا", "لواء ناعور", "لواء وادي السير"],
+    "إربد": ["الطيبة والوسطية", "لواء الأغوار الشمالية", "لواء الرمثا", "لواء الكورة", "لواء المزار الشمالي", "لواء بني عبيد", "لواء بني كنانة", "لواء قصبة إربد"],
+    "الزرقاء": ["منطقة الرصيفة", "منطقة الزرقاء الأولى", "منطقة الزرقاء الثانية"],
+    "البلقاء": ["قصبة السلط", "لواء دير علا", "لواء عين الباشا", "منطقة الشونة الجنوبية"],
+    "الكرك": ["لواء الأغوار الجنوبية", "لواء المزار الجنوبي", "منطقة القصر", "منطقة الكرك"],
+    "معان": ["قصبة معان", "لواء البتراء", "منطقة البادية الجنوبية", "منطقة الشوبك"],
+    "العقبة": ["منطقة العقبة"],
+    "عجلون": ["عجلون"],
+    "جرش": ["جرش"],
+    "المفرق": ["لواء قصبة المفرق", "منطقة البادية الشمالية الشرقية", "منطقة البادية الشمالية الغربية"],
+    "الطفيلة": ["لواء بصيرا", "لواء قصبة الطفيلة"],
+    "مادبا": ["لواء ذيبان", "لواء قصبة مادبا"],
 }
 
 # a few real-sounding schools per directorate (dev seed)
@@ -113,6 +114,7 @@ SKILL_BADGES = [
     {"key": "innovator", "name": "مبتكر", "description": "الابتكار والحلول الإبداعية", "criteria": "مشروع أو فكرة مبتكرة ضمن مبادرات النادي", "icon": "Lightbulb", "color": "#EA580C", "order": 6},
     {"key": "volunteer", "name": "متطوع معطاء", "description": "العمل التطوعي وخدمة المجتمع", "criteria": "مشاركة فعالة في أنشطة تطوعية", "icon": "HeartHandshake", "color": "#E11D48", "order": 7},
     {"key": "tech_pioneer", "name": "رائد تقني", "description": "المهارات الرقمية والذكاء الاصطناعي", "criteria": "مشروع برمجي أو استخدام مميز للذكاء الاصطناعي", "icon": "Cpu", "color": "#0891B2", "order": 8},
+    {"key": "reading-champion", "name": "بطل القراءة", "description": "إكمال تحدّي قراءة بنجاح", "criteria": "إكمال أي تحدّي قراءة (تُمنح تلقائياً)", "icon": "BookOpen", "color": "#B45309", "order": 9},
 ]
 
 POINTS_CONFIG = {
@@ -295,6 +297,33 @@ async def seed_all():
     await db.governorates.create_index("name", unique=True)
     await db.directorates.create_index([("governorate_id", 1), ("name", 1)], unique=True)
     await db.schools.create_index([("directorate_id", 1), ("name", 1)], unique=True)
+    # real Jordan school lists scraped from moe.gov.jo (per-directorate pages)
+    school_data = {}
+    try:
+        import json as _json
+        _dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "schools")
+        for _fn in sorted(os.listdir(_dir)):
+            if not _fn.endswith(".json"):
+                continue
+            with open(os.path.join(_dir, _fn), encoding="utf8") as _fh:
+                for _d in _json.load(_fh).get("directorates", []):
+                    school_data[_d["name"]] = _d.get("schools", [])
+    except Exception:
+        school_data = {}
+
+    # one-time cleanup of the old dev placeholder schools (only rows the old
+    # seed itself created: "SCHOOL_NAME - directorate" with no national_id and
+    # no user pointing at them) so real lists replace the fake ones in pickers
+    if school_data:
+        try:
+            _referenced = set(await db.users.distinct("school_id"))
+            async for _s in db.schools.find({"national_id": {"$exists": False}}):
+                _base = _s.get("name", "").split(" - ")[0]
+                if _base in SCHOOL_NAMES and str(_s["_id"]) not in _referenced:
+                    await db.schools.delete_one({"_id": _s["_id"]})
+        except Exception:
+            pass
+
     for gname in GOVERNORATES:
         g = await db.governorates.find_one_and_update(
             {"name": gname},
@@ -308,16 +337,67 @@ async def seed_all():
                                   "governorate_name": gname, "created_at": now_iso()}},
                 upsert=True, return_document=True)
             did = str(d["_id"])
-            for sname in SCHOOL_NAMES[:4]:
-                s_full = f"{sname} - {dname.replace('مديرية ', '')}"
-                await db.schools.update_one(
-                    {"directorate_id": did, "name": s_full},
-                    {"$setOnInsert": {
-                        "name": s_full,
-                        "directorate_id": did, "directorate_name": dname,
-                        "governorate_id": gid, "governorate_name": gname,
-                        "students_count": 0, "created_at": now_iso()}},
-                    upsert=True)
+            real = school_data.get(dname)
+            if real is not None:
+                for sch in real:
+                    await db.schools.update_one(
+                        {"directorate_id": did, "name": sch["name"]},
+                        {"$setOnInsert": {
+                            "name": sch["name"],
+                            "national_id": sch.get("national_id", ""),
+                            "sector": sch.get("sector", "حكومية"),
+                            "gender": sch.get("gender", "مختلطة"),
+                            "directorate_id": did, "directorate_name": dname,
+                            "governorate_id": gid, "governorate_name": gname,
+                            "students_count": 0, "created_at": now_iso()}},
+                        upsert=True)
+            else:
+                for sname in SCHOOL_NAMES[:4]:
+                    s_full = f"{sname} - {dname.replace('مديرية ', '')}"
+                    await db.schools.update_one(
+                        {"directorate_id": did, "name": s_full},
+                        {"$setOnInsert": {
+                            "name": s_full,
+                            "directorate_id": did, "directorate_name": dname,
+                            "governorate_id": gid, "governorate_name": gname,
+                            "students_count": 0, "created_at": now_iso()}},
+                        upsert=True)
+
+    # one-time merge: collapse pre-official directorate names (e.g. "مديرية
+    # إربد الأولى") into the official 42 when they share a distinctive name
+    # token within the same governorate · re-points schools and users first,
+    # mirroring _dedupe_geo; unmatched legacy rows are left untouched
+    try:
+        _STOP = {"مديرية", "لواء", "منطقة", "قصبة", "الأولى", "الثانية", "الاولى"}
+        def _tokens(name):
+            return {t for t in str(name).replace("ـ", "").split() if t not in _STOP}
+        _all_official = {d for ds in DIRECTORATES.values() for d in ds}
+        async for _d in db.directorates.find({}):
+            if _d["name"] in _all_official:
+                continue
+            _my = _tokens(_d["name"])
+            _best, _score = None, 0
+            async for _cand in db.directorates.find({"governorate_id": _d.get("governorate_id")}):
+                if _cand["name"] not in _all_official:
+                    continue
+                _sc = len(_my & _tokens(_cand["name"]))
+                if _sc > _score:
+                    _best, _score = _cand, _sc
+            if _best is None or _score == 0:
+                # safe fallback: the governorate has exactly one official
+                # directorate (e.g. القويرة -> العقبة, كفرنجة -> عجلون)
+                _same_gov = [c async for c in db.directorates.find(
+                    {"governorate_id": _d.get("governorate_id")}) if c["name"] in _all_official]
+                if len(_same_gov) != 1:
+                    continue
+                _best = _same_gov[0]
+            await db.schools.update_many({"directorate_id": str(_d["_id"])}, {"$set": {
+                "directorate_id": str(_best["_id"]), "directorate_name": _best["name"]}})
+            await db.users.update_many({"directorate_id": str(_d["_id"])}, {"$set": {
+                "directorate_id": str(_best["_id"]), "directorate_name": _best["name"]}})
+            await db.directorates.delete_one({"_id": _d["_id"]})
+    except Exception:
+        pass
 
     # admin / owner account
     # NOTE: the env values are the source of truth. On every deploy the

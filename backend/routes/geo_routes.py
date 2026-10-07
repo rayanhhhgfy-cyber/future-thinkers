@@ -30,6 +30,8 @@ async def schools(directorate_id: str | None = None, q: str | None = None, limit
     query = {}
     if directorate_id:
         query["directorate_id"] = directorate_id
+        limit = max(limit, 1000)  # a directorate can hold ~200 schools · pickers need them all
+    limit = min(limit, 1000)
     if q:
         query["name"] = {"$regex": q, "$options": "i"}
     docs = await db.schools.find(query).sort("name", 1).to_list(limit)
