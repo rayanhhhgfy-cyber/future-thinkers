@@ -9,7 +9,7 @@ import {
 import { Layout } from "@/components/Layout";
 import api from "@/lib/api";
 import { ELEMENTS, EL, CATS, COMPOUNDS, shells, parseFormula } from "@/components/lab/chemData";
-import { predict, compoundInfo, COND_LIST } from "@/components/lab/reactions";
+import { predict, compoundInfo, COND_LIST, familyOf, REACTION_COUNT } from "@/components/lab/reactions";
 import SimCanvas from "@/components/lab/SimCanvas";
 
 /* element symbols that react as diatomic molecules */
@@ -30,13 +30,17 @@ function Fx({ f, className = "" }) {
 const PHASE_AR = { idle: "بانتظار التشغيل", approach: "المواد تقترب وتتحرك", collide: "التصادم وتكسير الروابط", rearrange: "الذرّات تعيد ترتيب نفسها", products: "النواتج تتكوّن" };
 const GAS_SET = new Set(["H2", "O2", "N2", "Cl2", "F2", "Br2g", "CO2", "CH4", "NH3", "SO2", "CO", "H2S", "C2H2", "C2H4", "C3H8"]);
 const LIQ_SET = new Set(["H2O", "H2O2", "Br2", "Hg", "C2H5OH"]);
-const AQ_SET = new Set(["HCl", "H2SO4", "HNO3", "NaOH", "KOH", "CH3COOH", "NaCl", "KCl", "Ca(OH)2", "Pb(NO3)2", "KI", "NaHCO3"]);
+const AQ_SET = new Set(["HCl", "H2SO4", "HNO3", "NaOH", "KOH", "CH3COOH", "NaCl", "KCl", "Ca(OH)2", "Pb(NO3)2", "KI", "NaHCO3", "CuSO4", "ZnSO4", "FeSO4", "FeCl3", "CuCl2", "AgNO3", "BaCl2", "Na2SO4", "CaCl2", "KMnO4", "NH4Cl", "Cu(NO3)2", "KNO3", "NaNO3"]);
 const stateOf = (f) => (GAS_SET.has(f) ? "g" : LIQ_SET.has(f) ? "l" : AQ_SET.has(f) ? "aq" : "s");
 const HAZARD = {
   HCl: "حمض آكل · تجنّب الاستنشاق والملامسة", H2SO4: "حمض شديد التآكل والحرارة عند التخفيف", HNO3: "حمض مؤكسد قوي وآكل",
   NaOH: "قلوي آكل للجلد والعينين", KOH: "قلوي آكل · تعامل بحذر", Cl2: "غاز سام · خطر عند الاستنشاق",
   Br2: "سائل سام ومتطاير", NH3: "غاز مهيّج للتنفس", H2O2: "مؤكسد · قد يهيّج الجلد",
   "Pb(NO3)2": "ملح رصاصي سام · لا يُبتلع أبداً", PbI2: "مركب رصاصي سام", CH3COOH: "حمض عضوي · المركز منه آكل",
+  Cl2: "غاز سام خانق · لا يُستنشق أبداً", NH3: "غاز مهيّج · يُستخدم بتهوية جيدة فقط", HNO3: "حمض مؤكسد قوي وآكل",
+  KMnO4: "مؤكسد قوي · يصبغ الجلد ويهيّجه", "(NH4)2Cr2O7": "مركب كروم سام ومسرطن · للمعلّم فقط",
+  NH4NO3: "مؤكسد · يُحفظ بعيداً عن الحرارة والوقود", KClO3: "مؤكسد قوي · بعيداً عن المواد القابلة للاشتعال",
+  CaC2: "يولّد غازاً قابلاً للاشتعال مع الماء", "Fe2O3": "مسحوق قد يهيّج التنفس بغرقه", Al: "مسحوق الألمنيوم قابل للاشتعال",
 };
 const SUBS = { 0: "₀", 1: "₁", 2: "₂", 3: "₃", 4: "₄", 5: "₅", 6: "₆", 7: "₇", 8: "₈", 9: "₉" };
 const GAS_TEST = {
@@ -64,6 +68,8 @@ const PRESETS = [
   { label: "🔥 احتراق الغاز الطبيعي", items: ["CH4", "O2"], cond: "spark" },
   { label: "🔌 تحليل الماء كهربائياً", items: ["H2O"], cond: "electric" },
   { label: "🌱 البناء الضوئي", items: ["CO2", "H2O"], cond: "light" },
+  { label: "🌋 بركان ثنائي الكرومات", items: ["(NH4)2Cr2O7"], cond: "heat" },
+  { label: "🧊 التفاعل الذي يجمّد الكأس", items: ["NH4Cl", "Ba(OH)2"], cond: null },
 ];
 
 function ElementModal({ el, onClose, onAdd }) {
@@ -236,8 +242,11 @@ export default function ChemLab() {
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-5 sm:py-8 pb-24 overflow-x-clip" dir="rtl">
         {/* ===== hero · same design language as the site ===== */}
         <div className="ft-navy-gradient grain relative overflow-hidden rounded-[1.75rem] sm:rounded-3xl p-5 sm:p-8 lg:p-10 text-white ft-shadow-lg">
-          <div className="absolute -top-20 -left-20 w-72 h-72 rounded-full bg-cyan-400/20 blur-3xl" />
-          <div className="absolute -bottom-24 right-10 w-80 h-80 rounded-full bg-violet-500/20 blur-3xl" />
+          <div className="absolute -top-20 -left-20 w-72 h-72 rounded-full bg-cyan-400/25 blur-3xl" />
+          <div className="absolute -bottom-24 right-10 w-80 h-80 rounded-full bg-violet-500/25 blur-3xl" />
+          <div className="absolute top-1/3 left-1/3 w-64 h-64 rounded-full bg-emerald-400/15 blur-3xl" />
+          <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-l from-cyan-400 via-emerald-400 to-amber-400" />
+          <div className="pointer-events-none absolute inset-0 opacity-[0.35] bg-[radial-gradient(rgba(255,255,255,0.13)_1px,transparent_1.3px)] [background-size:24px_24px]" />
           <div className="relative">
             <Link to="/clubs/science" className="inline-flex items-center gap-1.5 text-cyan-200/80 hover:text-cyan-100 text-[13px] font-bold mb-4 transition"><ChevronLeft className="w-4 h-4 rotate-180" /> نادي العلوم</Link>
             <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
@@ -245,20 +254,24 @@ export default function ChemLab() {
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 ring-1 ring-white/15 px-3 py-1 text-[11px] font-black">
                   <FlaskConical className="w-3.5 h-3.5 text-amber-300" /> مختبر نادي العلوم التفاعلي
                 </span>
-                <h1 className="font-head text-4xl sm:text-5xl lg:text-6xl font-black mt-3 leading-tight">محاكي التفاعلات <span className="text-transparent bg-clip-text bg-gradient-to-l from-cyan-300 to-emerald-300">الكيميائية</span></h1>
+                <h1 className="font-head text-4xl sm:text-5xl lg:text-6xl font-black mt-3 leading-tight">محاكي التفاعلات <span className="text-transparent bg-clip-text bg-gradient-to-l from-cyan-300 via-emerald-300 to-amber-300">الكيميائية</span></h1>
                 <p className="text-slate-300 text-sm sm:text-base mt-2 max-w-xl leading-relaxed">اختر أي عنصر أو مركب · وشاهد التفاعل يحدث أمامك ثلاثي الأبعاد ذرّةً ذرّة، مع المعادلة والطاقة والحرارة وتفاصيل كل مادة</p>
               </div>
-              <div className="grid grid-cols-3 gap-2 sm:flex sm:gap-3 shrink-0 w-full lg:w-auto">
-                <div className="text-center px-3 sm:px-5 py-3 rounded-2xl bg-white/10 ring-1 ring-white/10">
-                  <div className="text-xl sm:text-2xl font-black font-head">118</div>
+              <div className="grid grid-cols-4 gap-2 sm:flex sm:gap-3 shrink-0 w-full lg:w-auto">
+                <div className="group text-center px-3 sm:px-5 py-3 rounded-2xl bg-white/[0.12] backdrop-blur ring-1 ring-white/25 ft-shadow hover:bg-white/20 hover:scale-[1.04] transition-all">
+                  <div className="text-xl sm:text-2xl font-black font-head text-cyan-200 drop-shadow">118</div>
                   <div className="text-[10px] text-slate-300 font-bold mt-0.5">عنصراً</div>
                 </div>
-                <div className="text-center px-3 sm:px-5 py-3 rounded-2xl bg-white/10 ring-1 ring-white/10">
-                  <div className="text-xl sm:text-2xl font-black font-head">40+</div>
+                <div className="group text-center px-3 sm:px-5 py-3 rounded-2xl bg-white/[0.12] backdrop-blur ring-1 ring-white/25 ft-shadow hover:bg-white/20 hover:scale-[1.04] transition-all">
+                  <div className="text-xl sm:text-2xl font-black font-head text-emerald-200 drop-shadow">{COMPOUNDS.length}+</div>
                   <div className="text-[10px] text-slate-300 font-bold mt-0.5">مركباً شائعاً</div>
                 </div>
-                <div className="text-center px-3 sm:px-5 py-3 rounded-2xl bg-white/10 ring-1 ring-white/10">
-                  <div className="text-xl sm:text-2xl font-black font-head">3D</div>
+                <div className="group text-center px-3 sm:px-5 py-3 rounded-2xl bg-white/[0.12] backdrop-blur ring-1 ring-white/25 ft-shadow hover:bg-white/20 hover:scale-[1.04] transition-all">
+                  <div className="text-xl sm:text-2xl font-black font-head text-violet-200 drop-shadow">{REACTION_COUNT}+</div>
+                  <div className="text-[10px] text-slate-300 font-bold mt-0.5">تفاعلاً موسوعياً</div>
+                </div>
+                <div className="group text-center px-3 sm:px-5 py-3 rounded-2xl bg-white/[0.12] backdrop-blur ring-1 ring-white/25 ft-shadow hover:bg-white/20 hover:scale-[1.04] transition-all">
+                  <div className="text-xl sm:text-2xl font-black font-head text-amber-200 drop-shadow">3D</div>
                   <div className="text-[10px] text-slate-300 font-bold mt-0.5">محاكاة ذرية</div>
                 </div>
               </div>
@@ -284,7 +297,7 @@ export default function ChemLab() {
             <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 mt-4">
               {PRESETS.map((p) => (
                 <button key={p.label} onClick={() => applyPreset(p)} data-testid={`preset-${p.items.join("-")}`}
-                  className="pressable px-3 py-2.5 sm:px-3.5 rounded-2xl sm:rounded-full bg-white/10 ring-1 ring-white/15 text-[12.5px] sm:text-[13px] font-bold hover:bg-white/20 active:scale-95 transition text-center">{p.label}</button>
+                  className="pressable px-3 py-2.5 sm:px-3.5 rounded-2xl sm:rounded-full bg-white/10 ring-1 ring-white/20 backdrop-blur text-[12.5px] sm:text-[13px] font-bold hover:bg-white/25 hover:scale-[1.04] hover:shadow-lg active:scale-95 transition text-center">{p.label}</button>
               ))}
             </div>
           </div>
@@ -294,6 +307,7 @@ export default function ChemLab() {
 
         {/* ===== مسرح المحاكاة ===== */}
         <div ref={(n) => { stageRef.current = n; stageCardRef.current = n; }} className="relative mt-6 bg-white rounded-[1.75rem] sm:rounded-3xl border border-slate-100 ft-shadow-lg overflow-hidden ring-1 ring-slate-100">
+          <div className="h-1.5 bg-gradient-to-l from-cyan-400 via-emerald-400 to-amber-400" />
           <div className="absolute top-3 right-3 z-20">
             <span className={`px-3 py-1.5 rounded-full text-[11px] font-black ring-1 backdrop-blur ${result?.reacts ? "bg-emerald-50/90 text-emerald-700 ring-emerald-200" : "bg-white/85 text-slate-500 ring-slate-200"}`}>
               {result ? PHASE_AR[phase] : "اختر المواد ثم شغّل التفاعل"}
@@ -309,7 +323,7 @@ export default function ChemLab() {
               <div className="h-full rounded-full bg-gradient-to-r from-cyan-400 via-amber-400 to-red-500 transition-all duration-300" style={{ width: `${Math.min(100, Math.max(3, (temp / 3000) * 100))}%` }} />
             </div>
           </div>
-          <div className="relative h-[360px] sm:h-[470px] lg:h-[560px] bg-[radial-gradient(60%_90%_at_20%_0%,rgba(16,185,129,0.10),transparent_60%),radial-gradient(55%_90%_at_85%_10%,rgba(6,182,212,0.12),transparent_60%),radial-gradient(rgba(15,23,42,0.055)_1px,transparent_1.4px)] [background-size:auto,auto,22px_22px]">
+          <div className="relative h-[360px] sm:h-[470px] lg:h-[560px] bg-[radial-gradient(60%_90%_at_20%_0%,rgba(16,185,129,0.13),transparent_60%),radial-gradient(55%_90%_at_85%_10%,rgba(6,182,212,0.15),transparent_60%),radial-gradient(40%_60%_at_50%_110%,rgba(167,139,250,0.10),transparent_65%),radial-gradient(rgba(15,23,42,0.055)_1px,transparent_1.4px)] [background-size:auto,auto,auto,22px_22px]">
             <SimCanvas result={result} runId={runId} playing={playing} speed={speed} labels={labels} autoRotate={autoRot} zoomRef={zoomRef} seekRef={seekRef} onProgress={setProgress} onTemp={setTemp} onPhase={setPhase} light />
           </div>
           {atomCount > 0 && (
@@ -317,7 +331,7 @@ export default function ChemLab() {
               <Atom className="w-3.5 h-3.5 text-violet-500" /> {atomCount} ذرّة في المشهد · لا تُخلق ولا تفنى
             </div>
           )}
-          <div className="relative border-t border-slate-100 bg-white px-3 py-3 lg:px-5 flex flex-wrap items-center gap-2 lg:gap-3">
+          <div className="relative border-t border-slate-100 bg-gradient-to-b from-white to-slate-50/80 px-3 py-3 lg:px-5 flex flex-wrap items-center gap-2 lg:gap-3">
             <button onClick={() => setPlaying((p) => !p)} className="pressable w-10 h-10 sm:w-11 sm:h-11 grid place-items-center rounded-2xl bg-slate-50 ring-1 ring-slate-200 text-slate-600 hover:bg-slate-100 transition" title={playing ? "إيقاف" : "تشغيل"}>
               {playing ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
             </button>
@@ -348,7 +362,7 @@ export default function ChemLab() {
             </button>
             <span className="text-[11px] text-slate-400 font-bold mr-auto hidden md:block">اسحب للتدوير · عجلة الفأرة أو إصبعان للتقريب 🖱️</span>
           </div>
-          <div className="relative border-t border-slate-100 bg-slate-50/60 px-4 lg:px-6 py-3">
+          <div className="relative border-t border-slate-100 bg-gradient-to-b from-slate-50/70 to-white px-4 lg:px-6 py-3">
             <div className="flex items-center gap-2 sm:gap-3">
               {["approach", "collide", "rearrange", "products"].map((ph, i, arr) => {
                 const activeIdx = ["approach", "collide", "rearrange", "products"].indexOf(phase === "idle" ? "approach" : phase);
@@ -398,7 +412,9 @@ export default function ChemLab() {
                       </button>
                     </span>
                   </div>
-                  <div className="ft-navy-gradient relative overflow-hidden rounded-3xl px-4 py-5 lg:py-7 flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-xl sm:text-2xl lg:text-[34px] ft-shadow" dir="ltr">
+                  <div className="ft-navy-gradient grain relative overflow-hidden rounded-3xl px-4 py-5 lg:py-7 flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-xl sm:text-2xl lg:text-[34px] ft-shadow" dir="ltr">
+                    <span className="pointer-events-none absolute -top-16 right-10 w-56 h-56 rounded-full bg-emerald-400/20 blur-3xl" />
+                    <span className="pointer-events-none absolute -bottom-20 left-10 w-56 h-56 rounded-full bg-cyan-400/20 blur-3xl" />
                     {result.eq.reactants.map(({ f, n }, i) => (
                       <span key={i} className="inline-flex items-baseline gap-1.5">
                         {i > 0 && <span className="text-slate-500 mx-1">+</span>}
@@ -414,35 +430,36 @@ export default function ChemLab() {
                     ))}
                   </div>
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-4">
-                    <div className="rounded-3xl bg-slate-50 ring-1 ring-slate-100 p-4">
-                      <div className="flex items-center gap-1.5 text-[11px] font-black text-slate-500"><Zap className="w-3.5 h-3.5 text-amber-500" /> طاقة التفاعل ΔH</div>
+                    <div className={`rounded-3xl ring-1 p-4 ft-shadow ${result.dH != null && result.dH < 0 ? "bg-gradient-to-b from-orange-50 to-white ring-orange-100" : "bg-gradient-to-b from-sky-50 to-white ring-sky-100"}`}>
+                      <div className="flex items-center gap-1.5 text-[11px] font-black text-slate-500"><span className={`w-6 h-6 rounded-lg grid place-items-center ${result.dH != null && result.dH < 0 ? "bg-orange-100" : "bg-sky-100"}`}><Zap className={`w-3.5 h-3.5 ${result.dH != null && result.dH < 0 ? "text-orange-500" : "text-sky-500"}`} /></span> طاقة التفاعل ΔH</div>
                       <div className="text-xl sm:text-2xl font-black font-head mt-1.5 text-slate-900" dir="ltr">{result.dH != null ? `${result.dH > 0 ? "+" : ""}${result.dH}` : "—"} <span className="text-xs text-slate-400">kJ/mol</span></div>
                       <div className={`text-xs font-black mt-1 ${result.dH < 0 ? "text-orange-600" : "text-sky-600"}`}>{result.dH != null ? (result.dH < 0 ? "طارد للحرارة · يطلق طاقة 🔥" : "ماصّ للحرارة · يبتلع طاقة ❄️") : "قيمة غير مقاسة"}</div>
                     </div>
-                    <div className="rounded-3xl bg-slate-50 ring-1 ring-slate-100 p-4">
-                      <div className="flex items-center gap-1.5 text-[11px] font-black text-slate-500"><Thermometer className="w-3.5 h-3.5 text-red-500" /> حرارة قصوى تقريبية</div>
+                    <div className="rounded-3xl bg-gradient-to-b from-rose-50 to-white ring-1 ring-rose-100 p-4 ft-shadow">
+                      <div className="flex items-center gap-1.5 text-[11px] font-black text-slate-500"><span className="w-6 h-6 rounded-lg grid place-items-center bg-rose-100"><Thermometer className="w-3.5 h-3.5 text-rose-500" /></span> حرارة قصوى تقريبية</div>
                       <div className="text-xl sm:text-2xl font-black font-head mt-1.5 text-slate-900" dir="ltr">{result.peak ? `${result.peak}°C` : "حرارة الغرفة"}</div>
                       <div className="text-xs font-bold text-slate-400 mt-1">{result.peak ? "حرارة اللهب/التفاعل عملياً" : "لا لهب في هذا التفاعل"}</div>
                     </div>
-                    <div className="rounded-3xl bg-slate-50 ring-1 ring-slate-100 p-4">
-                      <div className="flex items-center gap-1.5 text-[11px] font-black text-slate-500"><Gauge className="w-3.5 h-3.5 text-cyan-600" /> شرط البدء</div>
+                    <div className="rounded-3xl bg-gradient-to-b from-violet-50 to-white ring-1 ring-violet-100 p-4 ft-shadow">
+                      <div className="flex items-center gap-1.5 text-[11px] font-black text-slate-500"><span className="w-6 h-6 rounded-lg grid place-items-center bg-violet-100"><Gauge className="w-3.5 h-3.5 text-violet-600" /></span> شرط البدء</div>
                       <div className="text-lg font-black font-head mt-2 text-slate-900">{result.condUsed ? COND_LIST.find((c) => c.id === result.condUsed)?.ar : "يبدأ تلقائياً"}</div>
                       <div className="text-xs font-bold text-slate-400 mt-1">طاقة التنشيط اللازمة</div>
                     </div>
-                    <div className="rounded-3xl bg-slate-50 ring-1 ring-slate-100 p-4">
-                      <div className="flex items-center gap-1.5 text-[11px] font-black text-slate-500"><Atom className="w-3.5 h-3.5 text-violet-500" /> حفظ الذرّات</div>
+                    <div className="rounded-3xl bg-gradient-to-b from-emerald-50 to-white ring-1 ring-emerald-100 p-4 ft-shadow">
+                      <div className="flex items-center gap-1.5 text-[11px] font-black text-slate-500"><span className="w-6 h-6 rounded-lg grid place-items-center bg-emerald-100"><Atom className="w-3.5 h-3.5 text-emerald-600" /></span> حفظ الذرّات</div>
                       <div className="text-lg font-black font-head mt-2 text-slate-900">متوازن ✓</div>
                       <div className="text-xs font-bold text-slate-400 mt-1">عدد ذرات كل عنصر متساوٍ في الطرفين</div>
                     </div>
                   </div>
+                  <ReactionDossier result={result} />
                   <div className="grid lg:grid-cols-2 gap-3 mt-3">
-                    <div className="rounded-3xl bg-cyan-50/70 ring-1 ring-cyan-100 p-4">
+                    <div className="rounded-3xl bg-gradient-to-b from-cyan-50 to-white ring-1 ring-cyan-100 p-4 ft-shadow">
                       <div className="text-xs font-black text-cyan-800 mb-2">👀 ماذا ستلاحظ عملياً؟</div>
                       <ul className="space-y-1.5">
                         {result.obs?.map((o, i) => <li key={i} className="text-sm text-slate-700 leading-relaxed">· {o}</li>)}
                       </ul>
                     </div>
-                    <div className="rounded-3xl bg-amber-50/80 ring-1 ring-amber-100 p-4">
+                    <div className="rounded-3xl bg-gradient-to-b from-amber-50 to-white ring-1 ring-amber-100 p-4 ft-shadow">
                       <div className="text-xs font-black text-amber-800 mb-2 flex items-center gap-1"><Lightbulb className="w-4 h-4" /> حقيقة مبهرة</div>
                       <p className="text-sm text-slate-700 leading-relaxed">{result.fact}</p>
                     </div>
@@ -588,7 +605,7 @@ export default function ChemLab() {
             <div className="min-w-0 flex-1">
               <div className="text-[11px] font-black tracking-wide text-emerald-100/90">صفحة جديدة كاملة</div>
               <div className="text-xl sm:text-3xl font-black mt-0.5 leading-snug">المختبر العلمي الكبير · أدوات وتجارب</div>
-              <p className="text-emerald-50/85 text-[13px] sm:text-sm mt-1 leading-relaxed">الحموضة واللهب وبنّاء الذرة والمولات ومنحنى التسخين وسلسلة النشاط والاتجاهات الدورية ومكتبة تجارب كلاسيكية</p>
+              <p className="text-emerald-50/85 text-[13px] sm:text-sm mt-1 leading-relaxed">مستكشف الذرة والجدول الدوري · حاسبة كيمياء متكاملة بخطوات محلولة · مختبر الكشف عن المواد المجهولة · قاعة التجارب الأسطورية</p>
             </div>
             <span className="hidden sm:grid w-12 h-12 rounded-full bg-white text-emerald-700 place-items-center font-black text-lg shrink-0 shadow-lg group-hover:-translate-x-1 transition-transform">←</span>
           </div>
@@ -895,5 +912,170 @@ function GasTestCard({ f, runId }) {
         )}
       </AnimatePresence>
     </div>
+  );
+}
+
+/* ===== adaptive per-reaction dossier: the interface reshapes itself around the reaction family ===== */
+const FAM_LABEL = { combustion: "احتراق", precipitation: "ترسيب", electrolysis: "تحليل كهربائي", neutralization: "تعادل وامتصاص", displacement: "إحلال تنافسي", decomposition: "تفكك", gas: "إطلاق غاز", synthesis: "اتحاد وبناء", photosynthesis: "بناء ضوئي" };
+const ACT_LIST = ["K", "Na", "Ca", "Mg", "Al", "Zn", "Fe", "Pb", "H", "Cu", "Ag", "Au"];
+const ACID_SET = new Set(["HCl", "H2SO4", "HNO3", "CH3COOH", "H2CO3"]);
+
+function EnergyMap({ dH }) {
+  const exo = dH < 0;
+  const mag = Math.max(16, Math.min(58, Math.abs(dH) / 16));
+  const rY = exo ? 16 : 16 + mag, pY = exo ? 16 + mag : 16;
+  return (
+    <svg viewBox="0 0 340 118" className="w-full" dir="ltr" role="img" aria-label="خريطة طاقة التفاعل">
+      <motion.rect initial={{ y: 40, opacity: 0 }} animate={{ y: rY, opacity: 1 }} transition={{ type: "spring", stiffness: 90, damping: 16 }} x="18" width="112" height="11" rx="5.5" fill="#0891b2" />
+      <motion.rect initial={{ y: 40, opacity: 0 }} animate={{ y: pY, opacity: 1 }} transition={{ type: "spring", stiffness: 90, damping: 16, delay: 0.12 }} x="210" width="112" height="11" rx="5.5" fill="#059669" />
+      <line x1="132" y1={rY + 5.5} x2="208" y2={pY + 5.5} stroke="#cbd5e1" strokeWidth="1.6" strokeDasharray="4 4" />
+      <line x1="170" y1={rY + 5.5} x2="170" y2={pY + 5.5} stroke={exo ? "#ea580c" : "#0284c7"} strokeWidth="2.4" />
+      <path d={exo ? `M164 ${pY + 1} L170 ${pY + 9} L176 ${pY + 1}` : `M164 ${pY + 10} L170 ${pY + 2} L176 ${pY + 10}`} fill={exo ? "#ea580c" : "#0284c7"} />
+      <text x="74" y={rY - 5} textAnchor="middle" fontSize="10.5" fontWeight="800" fill="#475569">المتفاعلات</text>
+      <text x="266" y={pY - 5} textAnchor="middle" fontSize="10.5" fontWeight="800" fill="#475569">النواتج</text>
+      <text x="182" y={(rY + pY) / 2 + 4} fontSize="11" fontWeight="900" fill={exo ? "#ea580c" : "#0284c7"}>ΔH {dH > 0 ? "+" : ""}{dH}</text>
+      <text x="170" y="112" textAnchor="middle" fontSize="9" fontWeight="700" fill="#94a3b8">مستوى الطاقة</text>
+    </svg>
+  );
+}
+
+function ReactionDossier({ result }) {
+  const fam = familyOf(result);
+  if (!fam) return null;
+  const card = "rounded-3xl bg-gradient-to-b from-white to-slate-50/80 ring-1 ring-slate-100 ft-shadow p-4 sm:p-5";
+  const head = (icon, title, sub) => (
+    <div className="flex items-center gap-2 mb-3">
+      <span className="text-xl">{icon}</span>
+      <div>
+        <div className="font-head font-black text-slate-900 text-[15px] leading-tight">{title}</div>
+        {sub && <div className="text-[11px] text-slate-400 font-bold">{sub}</div>}
+      </div>
+    </div>
+  );
+  const acidIn = result.eq.reactants.some((x) => ACID_SET.has(x.f));
+  const productMetal = result.eq.products.find((x) => ACT_LIST.includes(x.f))?.f;
+  const reactantMetal = result.eq.reactants.find((x) => ACT_LIST.includes(x.f))?.f;
+  return (
+    <section data-testid="reaction-dossier" className="mt-4">
+      <div className="flex items-center gap-2 mb-3">
+        <span className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-gradient-to-l from-violet-600 via-fuchsia-500 to-cyan-600 text-white text-[12px] font-black ft-shadow ring-1 ring-white/40 shadow-violet-200">🔬 واجهة مخصصة لنوع: {FAM_LABEL[fam.fam] || result.type}</span>
+        <span className="text-[11px] text-slate-400 font-bold">تتغير اللوحات تلقائياً حسب طبيعة كل تفاعل</span>
+      </div>
+      <div className="grid lg:grid-cols-2 gap-3">
+        {result.dH != null && (
+          <div className={card}>
+            {head("⚡", "خريطة طاقة التفاعل", result.dH < 0 ? "النواتج أخفّ طاقة · الفرق انطلق للخارج" : "النواتج أعلى طاقة · سرقها من محيطه")}
+            <EnergyMap dH={result.dH} />
+            <p className="text-[12px] text-slate-500 leading-relaxed">{result.dH < 0
+              ? "المتفاعلات تحمل طاقة أعلى من النواتج · الفائض يخرج حرارةً وضوءاً وحركاً. كلما كبر الرقم كان الانفجار الطاقي أعنف."
+              : "النواتج تحتاج طاقة أكثر مما بدأت به · التفاعل يبتلع حرارة محيطه فيُبرّده، أو يسرقها من تيار كهربائي أو ضوء."}</p>
+          </div>
+        )}
+        {fam.fam === "combustion" && (
+          <div className={`${card} from-amber-50/90 to-white ring-amber-200/70 shadow-orange-100`}>
+            {head("🔥", "قلب الاحتراق", "لهب حقيقي اللون وحرارة قصوى")}
+            <div className="flex items-center gap-5">
+              <div className="relative w-24 h-32 shrink-0 grid place-items-end justify-items-center">
+                <motion.div animate={{ scale: [1, 1.1, 0.96, 1.05, 1], rotate: [0, -1.5, 1.5, -1, 0] }} transition={{ duration: 1.8, repeat: Infinity }}
+                  className="w-16 h-24 rounded-[50%_50%_50%_50%/60%_60%_40%_40%]"
+                  style={{ background: `radial-gradient(50% 62% at 50% 80%, #ffffff 0%, ${fam.flameHex || "#f59e0b"} 38%, ${fam.flameHex || "#f59e0b"}66 62%, transparent 76%)`, boxShadow: `0 0 44px 8px ${fam.flameHex || "#f59e0b"}44` }} />
+              </div>
+              <div className="min-w-0">
+                <div className="text-[11px] font-black text-slate-400">حرارة اللهب القصوى</div>
+                <div className="text-3xl font-black font-head text-slate-900" dir="ltr">{result.peak ? `${result.peak}°C` : "≈1900°C"}</div>
+                <p className="text-[12px] text-slate-500 leading-relaxed mt-1">اللهب الأزرق أكمل احتراقاً وأسخن من الأصفر المدخّن · ولون اللهب بصمة كيميائية لكل وقود ومعدن.</p>
+              </div>
+            </div>
+          </div>
+        )}
+        {fam.fam === "precipitation" && fam.pre && (
+          <div className={`${card} from-sky-50/90 to-white ring-sky-200/70 shadow-sky-100`} data-testid="dossier-precip">
+            {head("🧪", "الراسب المتكوّن", "المادة التي لا تذوب فتسقط لقاع الكأس")}
+            <div className="flex items-center gap-4">
+              <div className="relative w-20 h-28 shrink-0 rounded-b-[1.6rem] rounded-t-md border-2 border-t-0 border-sky-300/70 overflow-hidden bg-gradient-to-b from-sky-50/30 to-sky-100/70">
+                <div className="absolute inset-x-0 top-0 h-[58%] bg-sky-300/30" />
+                <motion.div initial={{ height: 0 }} animate={{ height: "34%" }} transition={{ duration: 1.1, ease: "easeOut" }} className="absolute bottom-0 inset-x-0 ring-1 ring-black/5" style={{ background: `linear-gradient(180deg, ${fam.pre.hex}, ${fam.pre.hex}dd)` }} />
+              </div>
+              <div className="min-w-0">
+                <Fx f={fam.pre.f} className="text-2xl text-slate-900" />
+                <div className="inline-block mt-1 px-2.5 py-1 rounded-full text-[11px] font-black ring-1 ring-black/5" style={{ background: fam.pre.hex }}>{fam.pre.name}</div>
+                <p className="text-[12px] text-slate-500 leading-relaxed mt-2">راسب لا يذوب في الماء · يترشح بورقة ترشيح ويُغسل ويُجفّف ليزن نقياً.</p>
+              </div>
+            </div>
+          </div>
+        )}
+        {fam.fam === "neutralization" && (
+          <div className={`${card} from-fuchsia-50/80 to-white ring-fuchsia-200/60 shadow-fuchsia-100`}>
+            {head("🌈", "رحلة الرقم الهيدروجيني pH", "من أحد الطرفين نحو الاعتدال")}
+            <div className="relative h-7 rounded-full ring-1 ring-slate-200 overflow-visible mt-6" dir="ltr" style={{ background: "linear-gradient(90deg,#ef4444,#f97316,#facc15,#4ade80,#22c55e,#2dd4bf,#818cf8,#d946ef)" }}>
+              <motion.span initial={{ left: acidIn ? "88%" : "8%" }} animate={{ left: acidIn ? "50%" : "68%" }} transition={{ duration: 1.6, ease: "easeInOut" }} className="absolute -top-2.5 w-6 h-6 -ml-3 rounded-full bg-slate-900 ring-2 ring-white ft-shadow grid place-items-center text-[9px] font-black text-white">pH</motion.span>
+            </div>
+            <div className="flex justify-between text-[10px] font-black text-slate-400 mt-2" dir="ltr"><span>0 حمض</span><span>7 متعادل</span><span>14 قاعدة</span></div>
+            <p className="text-[12px] text-slate-500 leading-relaxed mt-2">{acidIn ? "الحمض والقاعدة يلتهمان بعضهما حتى الاعتدال · ناتجهما الأبدي: ملح + ماء وحرارة خفيفة." : "المحلول القلوي يبتلع الغاز الحمضي ويهدأ تدريجياً نحو الاعتدال."}</p>
+          </div>
+        )}
+        {fam.fam === "displacement" && reactantMetal && productMetal && (
+          <div className={`${card} from-rose-50/80 to-white ring-rose-200/60 shadow-rose-100`}>
+            {head("⚔️", "معركة النشاط الكيميائي", "الأقوى يطرد الأضعف من مركّبه")}
+            <div className="relative h-3 rounded-full bg-gradient-to-l from-rose-200 via-amber-100 to-slate-200 mt-7 mb-2" dir="ltr">
+              {[reactantMetal, productMetal].map((m, i) => (
+                <span key={m} className="absolute -top-3.5 -translate-x-1/2 flex flex-col items-center" style={{ left: `${(ACT_LIST.indexOf(m) / (ACT_LIST.length - 1)) * 100}%` }}>
+                  <span className={`w-8 h-8 rounded-xl grid place-items-center text-[11px] font-black ring-2 ${i === 0 ? "bg-rose-500 text-white ring-rose-200" : "bg-slate-200 text-slate-600 ring-white"}`}>{m}</span>
+                </span>
+              ))}
+            </div>
+            <div className="flex justify-between text-[10px] font-black text-slate-400 mt-6" dir="ltr"><span>الأكثر نشاطاً</span><span>الأقل نشاطاً</span></div>
+            <p className="text-[12px] text-slate-500 leading-relaxed mt-1.5">«{EL[reactantMetal]?.ar || reactantMetal}» أعلى في سلسلة النشاط من «{EL[productMetal]?.ar || productMetal}» · لذلك انتزع مكانه في المركّب وطرده عنصراً حراً.</p>
+          </div>
+        )}
+        {fam.fam === "photosynthesis" && (
+          <div className={`${card} from-emerald-50/80 to-white ring-emerald-200/60 shadow-emerald-100`}>
+            {head("🌱", "مصنع الغذاء الأخضر", "المعادلة التي تُطعم الكوكب")}
+            <div className="flex flex-wrap items-center gap-2 text-[12px] font-black">
+              <span className="px-3 py-2 rounded-2xl bg-sky-50 ring-1 ring-sky-100">☀️ ضوء</span><span className="text-slate-300">+</span>
+              <span className="px-3 py-2 rounded-2xl bg-slate-50 ring-1 ring-slate-200">CO₂ + ماء</span><span className="text-slate-300">⟵</span>
+              <span className="px-3 py-2 rounded-2xl bg-emerald-50 ring-1 ring-emerald-200 text-emerald-700">سكر + أكسجين</span>
+            </div>
+            <p className="text-[12px] text-slate-500 leading-relaxed mt-2.5">النبات يخزّن طاقة الشمس روابط كيميائية · وكل أكسجين تتنفسه الآن خرج من ورقة خضراء.</p>
+          </div>
+        )}
+        {fam.fam === "decomposition" && (
+          <div className={`${card} from-teal-50/80 to-white ring-teal-200/60 shadow-teal-100`}>
+            {head("🔓", "تفكيك المركّب", "طاقة تكسر الروابط فتتحرر مواد أبسط")}
+            <p className="text-[12.5px] text-slate-500 leading-relaxed">المركّب الواحد ينقسم إلى مواد أبسط منه بالتسخين أو الكهرباء أو حفّاز · قانون ذهبي: نواتج التفكك تخبرك دائماً بمكوّنات الأصل.</p>
+            <div className="flex flex-wrap gap-1.5 mt-2">
+              {result.eq.products.map((x) => <span key={x.f} className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-emerald-50 ring-1 ring-emerald-100"><Fx f={x.f} className="text-emerald-900 text-[13px]" /></span>)}
+            </div>
+          </div>
+        )}
+        {fam.fam === "synthesis" && (
+          <div className={`${card} from-indigo-50/80 to-white ring-indigo-200/60 shadow-indigo-100`}>
+            {head("🧲", "اتحاد وبناء", "مواد بسيطة تلتحم لتصنع مركباً جديداً")}
+            <p className="text-[12.5px] text-slate-500 leading-relaxed">عناصر أو مواد بسيطة تتحد في مركّب واحد أعقد · البناء الكيميائي عكس التفكك تماماً، وكثير منه يطلق حرارة لحظة الالتحام.</p>
+          </div>
+        )}
+      </div>
+      {fam.gases.length > 0 && fam.fam !== "electrolysis" && (
+        <div className={`${card} mt-3`} data-testid="dossier-gases">
+          {head("🫧", "الغازات الناتجة وحجومها النسبية", "من معاملات المعادلة الموزونة نفسها")}
+          <div className="space-y-2">
+            {fam.gases.map(({ f, n }) => {
+              const mx = Math.max(...fam.gases.map((g) => g.n));
+              return (
+                <div key={f} className="flex items-center gap-3">
+                  <Fx f={f} className="text-slate-900 w-16 shrink-0" />
+                  <span className="flex-1 h-3.5 rounded-full bg-slate-100 overflow-hidden" dir="ltr">
+                    <motion.span initial={{ width: 0 }} animate={{ width: `${(n / mx) * 100}%` }} transition={{ duration: 0.9 }} className="block h-full rounded-full bg-gradient-to-r from-cyan-400 to-sky-500" />
+                  </span>
+                  <span className="text-[11px] font-black text-slate-500 w-20 shrink-0" dir="ltr">×{n} حجماً</span>
+                  <span className="text-[11px] font-bold text-slate-400 hidden sm:block">{COMPOUNDS.find((c) => c.f === f)?.ar || EL[f]?.ar || ""}</span>
+                </div>
+              );
+            })}
+          </div>
+          <p className="text-[11px] text-slate-400 font-semibold mt-2.5">قانون غاي-لوساك: حجوم الغازات في التفاعل الواحد بنسب أعداد صحيحة بسيطة · هي معاملات المعادلة نفسها.</p>
+        </div>
+      )}
+    </section>
   );
 }
