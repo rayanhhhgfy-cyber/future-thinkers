@@ -240,18 +240,32 @@ function ArticleEditor({ article, onClose, onSaved }) {
           className="w-full rounded-2xl border-2 border-slate-100 bg-slate-50/50 p-3 text-[13.5px] outline-none transition focus:border-blue-300 focus:bg-white" />
 
         {/* markdown toolbar */}
-        <div className="flex flex-wrap items-center gap-1.5 rounded-2xl bg-slate-50 p-2 ring-1 ring-slate-100">
-          {[
-            ["H1", "# ", ""], ["H2", "## ", ""], ["B", "**", "**"], ["•", "- ", ""],
-            ["كود", "`", "`"], ["بلوك بايثون", "\n```python\n", "\n```\n"], ["اقتباس", "> ", ""],
-          ].map(([l, b, a]) => (
-            <button key={l} onClick={() => insertMd(b, a)}
-              className="rounded-lg bg-white px-2.5 py-1.5 font-mono text-[11.5px] font-black text-slate-600 shadow-sm ring-1 ring-slate-200 transition hover:text-blue-600 hover:ring-blue-200" dir="ltr">{l}</button>
-          ))}
-          <button onClick={() => setPreview((v) => !v)}
-            className={`mr-auto inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12px] font-bold transition ${preview ? "bg-blue-600 text-white shadow" : "bg-white text-slate-600 ring-1 ring-slate-200"}`}>
-            <Eye className="h-3.5 w-3.5" /> {preview ? "المعاينة ظاهرة" : "إظهار المعاينة"}
-          </button>
+        <div className="rounded-2xl bg-slate-50 p-2 ring-1 ring-slate-100">
+          <div className="flex flex-wrap items-center gap-1.5">
+            {[
+              ["H1", "# ", ""], ["H2", "## ", ""], ["H3", "### ", ""],
+              ["B", "**", "**"], ["I", "*", "*"], ["S", "~~", "~~"],
+              ["•", "- ", ""], ["1.", "1. ", ""],
+              ["كود", "`", "`"], ["بلوك بايثون", "\n```python\n", "\n```\n"],
+              ["اقتباس", "> ", ""], ["فاصل", "\n---\n", ""],
+            ].map(([l, b, a]) => (
+              <button key={l} onClick={() => insertMd(b, a)}
+                className="rounded-lg bg-white px-2.5 py-1.5 font-mono text-[11.5px] font-black text-slate-600 shadow-sm ring-1 ring-slate-200 transition hover:text-blue-600 hover:ring-blue-200" dir="ltr">{l}</button>
+            ))}
+          </div>
+          <div className="mt-1.5 flex flex-wrap items-center gap-1.5 border-t border-slate-200/70 pt-1.5">
+            <button onClick={() => insertMd("\n| العمود 1 | العمود 2 |\n|---|---|\n| قيمة | قيمة |\n", "")}
+              className="rounded-lg bg-white px-2.5 py-1.5 text-[11.5px] font-black text-slate-600 shadow-sm ring-1 ring-slate-200 transition hover:text-blue-600">📊 جدول</button>
+            <button onClick={() => { const u = prompt("رابط URL:"); if (u) insertMd("[", `](${u})`); }}
+              className="rounded-lg bg-white px-2.5 py-1.5 text-[11.5px] font-black text-slate-600 shadow-sm ring-1 ring-slate-200 transition hover:text-blue-600">🔗 رابط</button>
+            <button onClick={() => setPreview((v) => !v)}
+              className={`mr-auto inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12px] font-bold transition ${preview ? "bg-blue-600 text-white shadow" : "bg-white text-slate-600 ring-1 ring-slate-200"}`}>
+              <Eye className="h-3.5 w-3.5" /> {preview ? "المعاينة ظاهرة" : "إظهار المعاينة"}
+            </button>
+          </div>
+          <div className="mt-1.5 rounded-lg bg-blue-50/70 px-2.5 py-1.5 text-[10.5px] leading-relaxed text-blue-700">
+            💡 انسخ أي نص من ChatGPT والصقه هنا مباشرة — التنسيق مدعوم: <b># عناوين</b> · <b>**عريض**</b> · <b>*مائل*</b> · <b>~~مشطوب~~</b> · <b>- نقاط</b> · <b>1. مرقّم</b> · <b>`كود`</b> · <b>```python</b> · <b>جداول</b> · <b>[روابط](url)</b>
+          </div>
         </div>
 
         <div className={`grid gap-3 ${preview ? "lg:grid-cols-2" : ""}`}>
