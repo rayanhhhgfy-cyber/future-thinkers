@@ -213,6 +213,11 @@ async def _dedupe_geo():
             keep_s[key] = s
 
 
+async def is_tombstoned(kind: str, slug: str) -> bool:
+    """Check if a seed item was explicitly deleted by an admin — never resurrect it."""
+    return await db.seed_tombstones.find_one({"kind": kind, "slug": slug}) is not None
+
+
 async def seed_all():
     # indexes
     await db.users.create_index("email", unique=True)
@@ -233,20 +238,28 @@ async def seed_all():
 
     # categories
     for c in CATEGORIES:
-        await db.categories.update_one({"slug": c["slug"]}, {"$set": c}, upsert=True)
+        if await is_tombstoned("category", c["slug"]):
+            continue
+        await db.categories.update_one({"slug": c["slug"]}, {"$setOnInsert": c}, upsert=True)
 
     # clubs
     for c in CLUBS:
+        if await is_tombstoned("club", c["slug"]):
+            continue
         await db.clubs.update_one({"slug": c["slug"]},
             {"$setOnInsert": {**c, "members_count": 0, "created_at": now_iso()}}, upsert=True)
 
     # achievements
     for a in ACHIEVEMENTS:
-        await db.achievements.update_one({"key": a["key"]}, {"$set": a}, upsert=True)
+        if await is_tombstoned("achievement", a["key"]):
+            continue
+        await db.achievements.update_one({"key": a["key"]}, {"$setOnInsert": a}, upsert=True)
 
     # skill badges
     for b in SKILL_BADGES:
-        await db.skill_badges.update_one({"key": b["key"]}, {"$set": b}, upsert=True)
+        if await is_tombstoned("skill_badge", b["key"]):
+            continue
+        await db.skill_badges.update_one({"key": b["key"]}, {"$setOnInsert": b}, upsert=True)
 
     # points config (CMS-editable)
     await db.settings.update_one({"key": "points_config"},
