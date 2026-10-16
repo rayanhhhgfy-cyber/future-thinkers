@@ -185,81 +185,81 @@ export default function AdminClubs() {
       )}
 
       <Dialog open={!!dialog} onOpenChange={(o) => !o && setDialog(null)}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto overscroll-contain
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto overscroll-contain overflow-x-hidden [&>*]:min-w-0
           max-sm:top-auto max-sm:bottom-0 max-sm:left-0 max-sm:right-0 max-sm:translate-x-0 max-sm:translate-y-0
-          max-sm:w-full max-sm:max-w-none max-sm:rounded-b-none max-sm:rounded-t-[1.75rem]
-          max-sm:p-4 max-sm:pt-3 max-sm:gap-3 max-sm:max-h-[94dvh]
+          max-sm:w-full max-sm:max-w-none max-sm:rounded-b-none max-sm:rounded-t-[1.4rem]
+          max-sm:p-3 max-sm:pt-2 max-sm:gap-2 max-sm:max-h-[94dvh]
           max-sm:data-[state=open]:slide-in-from-left-0 max-sm:data-[state=open]:slide-in-from-top-0 max-sm:data-[state=open]:slide-in-from-bottom-8">
-          <div className="sm:hidden mx-auto h-1.5 w-12 shrink-0 rounded-full bg-slate-200" aria-hidden />
+          <div className="sm:hidden mx-auto h-1 w-10 shrink-0 rounded-full bg-slate-200" aria-hidden />
           <DialogHeader className="max-sm:text-right">
-            <DialogTitle className="max-sm:text-lg max-sm:pr-10">{dialog?.mode === "create" ? "إنشاء نادٍ جديد" : `تعديل: ${dialog?.club?.name}`}</DialogTitle>
+            <DialogTitle className="max-sm:text-[15px] max-sm:pr-9">{dialog?.mode === "create" ? "إنشاء نادٍ جديد" : `تعديل: ${dialog?.club?.name}`}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 max-sm:space-y-3.5">
+          <div className="space-y-4 max-sm:space-y-2.5">
             <div>
-              <Label>اسم النادي *</Label>
-              <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="مثال: نادي القراءة" className="rounded-xl mt-1 h-11" />
+              <Label className="max-sm:text-[13px]">اسم النادي *</Label>
+              <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="مثال: نادي القراءة" className="rounded-xl mt-1 h-11 max-sm:h-10 max-sm:text-sm" />
               {dialog?.mode === "create" && form.name.trim().length >= 2 && (
-                <p className="mt-1.5 text-[11px] text-slate-400">المعرّف المقترح: <span className="font-mono font-bold text-emerald-700" dir="ltr">/{form.slug.trim() ? form.slug.trim().toLowerCase().replace(/[^a-z0-9-]/g, "") : slugPreview(form.name)}</span></p>
+                <p className="mt-1.5 text-[11px] text-slate-400">المعرّف المقترح: <span className="font-mono font-bold text-emerald-700 break-all" dir="ltr">/{form.slug.trim() ? form.slug.trim().toLowerCase().replace(/[^a-z0-9-]/g, "") : slugPreview(form.name)}</span></p>
               )}
             </div>
             {dialog?.mode === "create" ? (
               <div>
-                <Label>المعرّف (slug) <span className="text-slate-400 font-normal">· اختياري، يُولّد تلقائياً من الاسم بشكل مقروء</span></Label>
-                <Input value={form.slug} onChange={(e) => setForm({ ...form, slug: e.target.value })} placeholder="nadi-alqraa" className="rounded-xl mt-1 h-11" dir="ltr" />
+                <Label className="max-sm:text-[13px]">المعرّف (slug) <span className="text-slate-400 font-normal">· اختياري، يُولّد تلقائياً من الاسم بشكل مقروء</span></Label>
+                <Input value={form.slug} onChange={(e) => setForm({ ...form, slug: e.target.value })} placeholder="nadi-alqraa" className="rounded-xl mt-1 h-11 max-sm:h-10 max-sm:text-sm" dir="ltr" />
               </div>
             ) : (
               <div>
-                <Label>المعرّف (slug) <span className="text-slate-400 font-normal">· ثابت لا يمكن تغييره</span></Label>
-                <Input value={form.slug} disabled className="rounded-xl mt-1 bg-slate-50" dir="ltr" />
+                <Label className="max-sm:text-[13px]">المعرّف (slug) <span className="text-slate-400 font-normal">· ثابت لا يمكن تغييره</span></Label>
+                <Input value={form.slug} disabled className="rounded-xl mt-1 bg-slate-50 max-sm:h-10 max-sm:text-sm" dir="ltr" />
               </div>
             )}
-            <div><Label>الوصف</Label><Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="نبذة عن النادي وأنشطته..." className="rounded-xl mt-1" rows={3} /></div>
+            <div><Label className="max-sm:text-[13px]">الوصف</Label><Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="نبذة عن النادي وأنشطته..." className="rounded-xl mt-1 max-sm:text-sm max-sm:min-h-[52px]" rows={3} /></div>
             <div>
-              <Label>الأيقونة</Label>
-              <div className="grid grid-cols-6 min-[420px]:grid-cols-9 gap-1.5 sm:gap-2 mt-2">
+              <Label className="max-sm:text-[13px]">الأيقونة</Label>
+              <div className="grid grid-cols-6 min-[420px]:grid-cols-9 gap-1.5 max-sm:gap-1 mt-2">
                 {ICON_CHOICES.map((n) => {
                   const I = ICON_MAP[n];
                   return (
                     <button key={n} type="button" onClick={() => setForm({ ...form, icon: n })}
-                      className={`aspect-square min-h-[2.75rem] rounded-xl grid place-items-center border transition-all ${form.icon === n ? "border-emerald-500 bg-emerald-50 text-emerald-700 scale-105" : "border-slate-200 text-slate-500 hover:border-slate-300 active:scale-95"}`}>
-                      <I className="w-5 h-5" />
+                      className={`aspect-square min-h-[2.75rem] max-sm:min-h-[2.5rem] rounded-xl grid place-items-center border transition-all ${form.icon === n ? "border-emerald-500 bg-emerald-50 text-emerald-700 scale-105" : "border-slate-200 text-slate-500 hover:border-slate-300 active:scale-95"}`}>
+                      <I className="w-5 h-5 max-sm:w-[1.1rem] max-sm:h-[1.1rem]" />
                     </button>
                   );
                 })}
               </div>
             </div>
             <div>
-              <Label>اللون</Label>
-              <div className="flex gap-2 mt-2 flex-wrap">
+              <Label className="max-sm:text-[13px]">اللون</Label>
+              <div className="flex gap-2 max-sm:gap-1.5 mt-2 flex-wrap">
                 {COLOR_CHOICES.map((c) => (
                   <button key={c} type="button" onClick={() => setForm({ ...form, color: c })}
-                    className={`w-9 h-9 rounded-full transition-all ${form.color === c ? "ring-2 ring-offset-2 ring-slate-400 scale-110" : "hover:scale-105"}`}
+                    className={`w-9 h-9 max-sm:w-8 max-sm:h-8 rounded-full transition-all ${form.color === c ? "ring-2 ring-offset-2 ring-slate-400 scale-110" : "hover:scale-105"}`}
                     style={{ background: c }} aria-label={c} />
                 ))}
               </div>
             </div>
             {/* إخفاء / إظهار */}
             <button type="button" onClick={() => setForm({ ...form, is_hidden: !form.is_hidden })}
-              className={`w-full flex items-center justify-between gap-3 rounded-2xl border p-3 sm:p-3.5 text-right transition active:scale-[0.99] ${form.is_hidden ? "border-slate-700 bg-slate-900 text-white" : "border-slate-200 bg-white hover:border-slate-300"}`}>
-              <span className="flex items-center gap-3 min-w-0">
-                <span className={`w-10 h-10 rounded-xl grid place-items-center shrink-0 ${form.is_hidden ? "bg-white/10 text-amber-300" : "bg-slate-100 text-slate-500"}`}>
-                  {form.is_hidden ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+              className={`w-full flex items-center justify-between gap-3 rounded-2xl border p-3 sm:p-3.5 max-sm:p-2.5 max-sm:gap-2 text-right transition active:scale-[0.99] ${form.is_hidden ? "border-slate-700 bg-slate-900 text-white" : "border-slate-200 bg-white hover:border-slate-300"}`}>
+              <span className="flex items-center gap-3 max-sm:gap-2.5 min-w-0">
+                <span className={`w-10 h-10 max-sm:w-9 max-sm:h-9 rounded-xl grid place-items-center shrink-0 ${form.is_hidden ? "bg-white/10 text-amber-300" : "bg-slate-100 text-slate-500"}`}>
+                  {form.is_hidden ? <EyeOff className="w-5 h-5 max-sm:w-[1.1rem] max-sm:h-[1.1rem]" /> : <Eye className="w-5 h-5 max-sm:w-[1.1rem] max-sm:h-[1.1rem]" />}
                 </span>
                 <span className="min-w-0">
-                  <span className="block text-sm font-bold">{form.is_hidden ? "النادي مخفي 🙈" : "إخفاء النادي"}</span>
-                  <span className={`block text-[11px] mt-0.5 leading-relaxed ${form.is_hidden ? "text-slate-300" : "text-slate-400"}`}>لن يظهر في صفحة الأندية · يبقى ظاهراً للمشرفين فقط</span>
+                  <span className="block text-sm max-sm:text-[13px] font-bold">{form.is_hidden ? "النادي مخفي 🙈" : "إخفاء النادي"}</span>
+                  <span className={`block text-[11px] max-sm:text-[10px] mt-0.5 leading-relaxed ${form.is_hidden ? "text-slate-300" : "text-slate-400"}`}>لن يظهر في صفحة الأندية · يبقى ظاهراً للمشرفين فقط</span>
                 </span>
               </span>
-              <span className={`relative w-11 h-6 shrink-0 rounded-full transition-colors ${form.is_hidden ? "bg-emerald-500" : "bg-slate-200"}`} aria-hidden>
-                <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${form.is_hidden ? "right-0.5" : "left-0.5"}`} />
+              <span className={`relative w-11 h-6 max-sm:w-10 max-sm:h-[1.35rem] shrink-0 rounded-full transition-colors ${form.is_hidden ? "bg-emerald-500" : "bg-slate-200"}`} aria-hidden>
+                <span className={`absolute top-0.5 h-5 w-5 max-sm:h-4 max-sm:w-4 rounded-full bg-white shadow transition-all ${form.is_hidden ? "right-0.5" : "left-0.5"}`} />
               </span>
             </button>
             {/* معاينة حية */}
             <div className="rounded-2xl overflow-hidden border border-slate-100">
-              <div className="h-12" style={{ background: `linear-gradient(135deg, ${form.color}, ${form.color}99)` }} />
-              <div className="flex items-center gap-3 px-3.5 pb-3.5 bg-slate-50">
-                <div className="w-12 h-12 -mt-6 rounded-xl grid place-items-center text-white shrink-0 ring-4 ring-slate-50 shadow" style={{ background: form.color }}>
-                  {React.createElement(ICON_MAP[form.icon] || Users, { className: "w-6 h-6" })}
+              <div className="h-12 max-sm:h-9" style={{ background: `linear-gradient(135deg, ${form.color}, ${form.color}99)` }} />
+              <div className="flex items-center gap-3 max-sm:gap-2.5 px-3.5 pb-3.5 max-sm:px-3 max-sm:pb-3 bg-slate-50">
+                <div className="w-12 h-12 max-sm:w-10 max-sm:h-10 -mt-6 max-sm:-mt-5 rounded-xl grid place-items-center text-white shrink-0 ring-4 ring-slate-50 shadow" style={{ background: form.color }}>
+                  {React.createElement(ICON_MAP[form.icon] || Users, { className: "w-6 h-6 max-sm:w-5 max-sm:h-5" })}
                 </div>
                 <div className="min-w-0 pt-1">
                   <div className="font-bold text-slate-800 truncate">{form.name || "اسم النادي"}</div>
@@ -268,11 +268,11 @@ export default function AdminClubs() {
               </div>
             </div>
           </div>
-          <DialogFooter className="gap-2 mt-2 max-sm:flex-col-reverse max-sm:items-stretch">
-            <Button variant="outline" onClick={() => setDialog(null)} className="rounded-xl max-sm:w-full max-sm:h-12">
+          <DialogFooter className="gap-2 mt-2 max-sm:gap-1.5 max-sm:mt-1 max-sm:flex-col-reverse max-sm:items-stretch">
+            <Button variant="outline" onClick={() => setDialog(null)} className="rounded-xl max-sm:w-full max-sm:h-10 max-sm:text-sm">
               <X className="w-4 h-4 ml-1" /> إلغاء
             </Button>
-            <Button onClick={save} disabled={saving} className="rounded-xl bg-emerald-600 hover:bg-emerald-700 max-sm:w-full max-sm:h-12">
+            <Button onClick={save} disabled={saving} className="rounded-xl bg-emerald-600 hover:bg-emerald-700 max-sm:w-full max-sm:h-10 max-sm:text-sm">
               {saving ? "جارٍ الحفظ..." : dialog?.mode === "create" ? "إنشاء النادي" : "حفظ التعديلات"}
             </Button>
           </DialogFooter>
