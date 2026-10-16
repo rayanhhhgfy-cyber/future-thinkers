@@ -583,104 +583,284 @@ export function CircuitLab() {
   );
 }
 
-/* ============ FEATURE 4 · waves & sound studio ============ */
+/* ============ FEATURE 4 · deep wave & sound laboratory ============ */
 export function WaveStudio() {
   const { recordExperiment, award } = usePhys();
+  const [view, setView] = useState("trans");
   const [lam, setLam] = useState(2);
+  const [ampM, setAmpM] = useState(0.4);
   const [medium, setMedium] = useState(343);
-  const [amp, setAmp] = useState(30);
-  const [standing, setStanding] = useState(false);
+  const [doppV, setDoppV] = useState(0.5);
   const [playing, setPlaying] = useState(false);
   const audioRef = useRef(null);
   const f = medium / lam;
+  const T = 1 / f;
   const P = useRef({});
-  P.current = { lam, amp, standing, medium };
+  P.current = { lam, ampM, medium, view, doppV };
+  const VIEWS = [
+    ["trans", "〰️ مستعرضة"],
+    ["long", "🔊 طولية (الصوت)"],
+    ["front", "⭕ الجبهات"],
+    ["stand", "🎻 مستقرة"],
+    ["interf", "🌊 تداخل"],
+    ["doppler", "🚗 دوبلر"],
+  ];
   const waveBand = f < 20 ? { ar: "تحت صوتية · Infrasound", cls: "bg-slate-700 text-white ring-slate-600" } : f <= 20000 ? { ar: "مسموعة · Audible", cls: "bg-emerald-500 text-white ring-emerald-400" } : { ar: "فوق صوتية · Ultrasound", cls: "bg-fuchsia-600 text-white ring-fuchsia-500" };
+  // visual time is slowed honestly: show the factor
+  const SLOW = Math.max(1, Math.round(f / 0.6));
   const [canvasRef] = useSimCanvas(
-    () => ({ t: 0 }),
+    () => ({ t: 0, rings: [], doppRings: [] }),
     (ctx, w, h, dt, W) => {
       const p = P.current;
       W.t += dt;
-      const isWater = p.medium === 1480;
-      const sky = ctx.createLinearGradient(0, 0, 0, h);
-      if (isWater) { sky.addColorStop(0, "#a5f3fc"); sky.addColorStop(0.45, "#e0f2fe"); sky.addColorStop(1, "#bae6fd"); }
-      else { sky.addColorStop(0, "#eef2ff"); sky.addColorStop(1, "#fdf4ff"); }
-      ctx.fillStyle = sky; ctx.fillRect(0, 0, w, h);
-      if (isWater) {
-        ctx.strokeStyle = "rgba(255,255,255,0.6)"; ctx.lineWidth = 1.5;
-        for (let i = 0; i < 6; i++) {
-          const yy = 18 + i * ((h - 36) / 6);
-          ctx.beginPath();
-          for (let x = 0; x <= w; x += 14) {
-            const y2 = yy + Math.sin(x * 0.045 + W.t * 2.1 + i * 1.6) * 2.4;
-            if (x === 0) ctx.moveTo(x, y2); else ctx.lineTo(x, y2);
-          }
-          ctx.globalAlpha = 0.32; ctx.stroke(); ctx.globalAlpha = 1;
-        }
-        ctx.fillStyle = "rgba(14,116,144,0.55)"; ctx.font = "900 10px sans-serif"; ctx.textAlign = "right";
-        ctx.fillText("وسط مائي · الصوت أسرع هنا", w - 14, 18);
-      } else {
-        ctx.fillStyle = "rgba(167,139,250,0.12)";
-        for (let gx = 0; gx < w; gx += 22) for (let gy = 8; gy < h; gy += 22) ctx.fillRect(gx, gy, 1.6, 1.6);
-      }
-      const midY = h / 2, x0 = 18, x1 = w - 18;
-      const wavesShown = 2.4;
-      const lamPx = (x1 - x0) / wavesShown;
+      const PPM = 30; // px per meter — FIXED so λ draws to true scale
+      const lamPx = p.lam * PPM;
+      const ampPx = Math.min(64, p.ampM * PPM);
       const k = (Math.PI * 2) / lamPx;
-      ctx.strokeStyle = "#e2e8f0"; ctx.lineWidth = 1.6; ctx.setLineDash([4, 5]);
-      ctx.beginPath(); ctx.moveTo(x0, midY); ctx.lineTo(x1, midY); ctx.stroke(); ctx.setLineDash([]);
-      const wave = (fn, col, width, glow) => {
-        ctx.strokeStyle = col; ctx.lineWidth = width; ctx.lineJoin = "round";
-        if (glow) { ctx.shadowColor = col; ctx.shadowBlur = 10; }
+      const wVis = (Math.PI * 2 * 0.6); // visual angular speed (0.6 Hz)
+      // background
+      const bg = ctx.createLinearGradient(0, 0, 0, h);
+      bg.addColorStop(0, "#eef2ff"); bg.addColorStop(1, "#fdf4ff");
+      ctx.fillStyle = bg; ctx.fillRect(0, 0, w, h);
+      ctx.fillStyle = "rgba(99,102,241,0.08)";
+      for (let gx = 0; gx < w; gx += 24) for (let gy = 8; gy < h; gy += 24) ctx.fillRect(gx, gy, 1.5, 1.5);
+      const x0 = 24, x1 = w - 24, midY = h / 2;
+      const phase = (x) => k * (x - x0) - wVis * W.t;
+
+      const drawScaleBar = () => {
+        // honest 1-meter scale bar
+        ctx.strokeStyle = "#64748b"; ctx.lineWidth = 2;
+        const bx = x0, by = h - 14;
+        ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(bx + PPM, by); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(bx, by - 4); ctx.lineTo(bx, by + 4); ctx.moveTo(bx + PPM, by - 4); ctx.lineTo(bx + PPM, by + 4); ctx.stroke();
+        ctx.fillStyle = "#475569"; ctx.font = "900 10px sans-serif"; ctx.textAlign = "left";
+        ctx.fillText("مقياس: 1 m", bx + PPM + 6, by + 3);
+      };
+
+      if (p.view === "trans") {
+        // ===== transverse: y = A sin(kx − ωt), λ drawn to TRUE scale =====
+        ctx.strokeStyle = "#e2e8f0"; ctx.lineWidth = 1.5; ctx.setLineDash([5, 5]);
+        ctx.beginPath(); ctx.moveTo(x0, midY); ctx.lineTo(x1, midY); ctx.stroke(); ctx.setLineDash([]);
+        // fill under wave
         ctx.beginPath();
         for (let x = x0; x <= x1; x += 3) {
-          const y = midY + fn(x - x0);
+          const y = midY + ampPx * Math.sin(phase(x));
+          if (x === x0) ctx.moveTo(x, midY); ctx.lineTo(x, y);
+        }
+        ctx.lineTo(x1, midY); ctx.closePath();
+        const fg = ctx.createLinearGradient(0, midY - ampPx, 0, midY + ampPx);
+        fg.addColorStop(0, "rgba(124,58,237,0.25)"); fg.addColorStop(1, "rgba(124,58,237,0.03)");
+        ctx.fillStyle = fg; ctx.fill();
+        // the wave itself
+        ctx.strokeStyle = "#7c3aed"; ctx.lineWidth = 3.4; ctx.lineJoin = "round";
+        ctx.shadowColor = "#7c3aed"; ctx.shadowBlur = 8;
+        ctx.beginPath();
+        for (let x = x0; x <= x1; x += 3) {
+          const y = midY + ampPx * Math.sin(phase(x));
           if (x === x0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
         }
         ctx.stroke(); ctx.shadowBlur = 0;
-      };
-      if (p.standing) {
-        wave((dx) => p.amp * Math.sin(k * dx) * Math.cos(W.t * 3.2) * 0.9, "#a855f7", 3, true);
-        wave((dx) => p.amp * Math.sin(k * dx), "rgba(168,85,247,0.25)", 1.6, false);
-        wave((dx) => -p.amp * Math.sin(k * dx), "rgba(168,85,247,0.25)", 1.6, false);
-        // nodes stay frozen at multiples of λ/2, antinodes swing widest between them
-        const segments = Math.round(wavesShown * 2);
-        for (let nIdx = 0; nIdx <= segments; nIdx++) {
-          const nx = x0 + (nIdx * lamPx) / 2;
-          ctx.fillStyle = "#dc2626";
-          ctx.beginPath(); ctx.arc(nx, midY, 4, 0, Math.PI * 2); ctx.fill();
-          ctx.strokeStyle = "rgba(220,38,38,0.4)"; ctx.lineWidth = 1.3; ctx.setLineDash([3, 4]);
-          ctx.beginPath(); ctx.moveTo(nx, midY - p.amp - 4); ctx.lineTo(nx, midY + p.amp + 4); ctx.stroke(); ctx.setLineDash([]);
-          ctx.fillStyle = "#b91c1c"; ctx.font = "900 9.5px sans-serif"; ctx.textAlign = "center";
-          if (nIdx % 2 === 0) ctx.fillText("عقدة", nx, midY + p.amp + 52);
-          if (nIdx < segments) {
-            const ax = nx + lamPx / 4;
-            ctx.fillStyle = "#059669";
-            ctx.beginPath(); ctx.arc(ax, midY, 5, 0, Math.PI * 2); ctx.fill();
-            ctx.fillStyle = "#047857";
-            if (nIdx % 2 === 0) ctx.fillText("بطن", ax, midY - p.amp - 10);
+        // medium particles riding the wave (transverse motion up/down)
+        for (let i = 0; i <= 20; i++) {
+          const px = x0 + (i / 20) * (x1 - x0);
+          const py = midY + ampPx * Math.sin(phase(px));
+          ctx.fillStyle = "#a78bfa";
+          ctx.beginPath(); ctx.arc(px, py, 3.2, 0, 7); ctx.fill();
+          ctx.strokeStyle = "rgba(124,58,237,0.3)"; ctx.lineWidth = 1;
+          ctx.beginPath(); ctx.moveTo(px, midY); ctx.lineTo(px, py); ctx.stroke();
+        }
+        // λ bracket spanning exactly one drawn wavelength
+        const lx = x0 + 30;
+        ctx.strokeStyle = "#0891b2"; ctx.lineWidth = 2.5;
+        const ly = midY + ampPx + 26;
+        ctx.beginPath(); ctx.moveTo(lx, ly); ctx.lineTo(lx + lamPx, ly); ctx.stroke();
+        arrow(ctx, lx, ly, lx + 9, ly, "#0891b2", 2.5); arrow(ctx, lx + lamPx, ly, lx + lamPx - 9, ly, "#0891b2", 2.5);
+        ctx.fillStyle = "#0e7490"; ctx.font = "900 12px sans-serif"; ctx.textAlign = "center";
+        ctx.fillText(`λ = ${fmt(p.lam)} m (مرسوم بمقياس حقيقي)`, lx + lamPx / 2, ly + 16);
+        // amplitude bracket
+        const ax = x1 - 14;
+        ctx.strokeStyle = "#db2777"; ctx.lineWidth = 2.5;
+        ctx.beginPath(); ctx.moveTo(ax, midY - ampPx); ctx.lineTo(ax, midY + ampPx); ctx.stroke();
+        arrow(ctx, ax, midY - ampPx, ax, midY - ampPx + 9, "#db2777", 2.5); arrow(ctx, ax, midY + ampPx, ax, midY + ampPx - 9, "#db2777", 2.5);
+        ctx.fillStyle = "#be185d"; ctx.textAlign = "right";
+        ctx.fillText(`A = ${fmt(p.ampM)} m`, ax - 6, midY);
+        drawScaleBar();
+      } else if (p.view === "long") {
+        // ===== LONGITUDINAL (sound): particles oscillate ALONG propagation =====
+        // displacement ξ = A sin(kx − ωt); density shown by color + spacing
+        const rows = 5, rowGap = Math.min(34, (h - 70) / rows);
+        const yTop = midY - ((rows - 1) / 2) * rowGap;
+        // compression/rarefaction shading behind
+        for (let x = x0; x <= x1; x += 6) {
+          const dens = Math.cos(phase(x)); // +1 = compression
+          if (dens > 0.25) {
+            ctx.fillStyle = `rgba(249,115,22,${0.10 + dens * 0.16})`;
+            ctx.fillRect(x, yTop - rowGap / 2, 6, rows * rowGap);
+          } else if (dens < -0.25) {
+            ctx.fillStyle = `rgba(59,130,246,${0.06 - dens * 0.08})`;
+            ctx.fillRect(x, yTop - rowGap / 2, 6, rows * rowGap);
           }
         }
-      } else {
-        wave((dx) => p.amp * Math.sin(k * dx - W.t * 3.4), "#7c3aed", 3.2, true);
-      }
-      // wavelength marker
-      const mx = x0 + lamPx * 0.24;
-      ctx.strokeStyle = "#0891b2"; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.moveTo(mx, midY + p.amp + 16); ctx.lineTo(mx + lamPx, midY + p.amp + 16); ctx.stroke();
-      arrow(ctx, mx, midY + p.amp + 16, mx + 8, midY + p.amp + 16, "#0891b2", 2);
-      arrow(ctx, mx + lamPx, midY + p.amp + 16, mx + lamPx - 8, midY + p.amp + 16, "#0891b2", 2);
-      ctx.fillStyle = "#0e7490"; ctx.font = "900 11px sans-serif"; ctx.textAlign = "center";
-      ctx.fillText("λ = " + fmt(p.lam) + " m", mx + lamPx / 2, midY + p.amp + 34);
-      // particles for sound feel
-      if (!p.standing) {
-        ctx.fillStyle = "rgba(124,58,237,0.5)";
-        for (let i = 0; i < 26; i++) {
-          const baseX = x0 + ((i / 26) * (x1 - x0));
-          const off = Math.sin(k * (baseX - x0) - W.t * 3.4) * 12;
-          ctx.beginPath(); ctx.arc(baseX + off, h - 24, 2.4, 0, Math.PI * 2); ctx.fill();
+        for (let rI = 0; rI < rows; rI++) {
+          const ry = yTop + rI * rowGap;
+          const n = Math.floor((x1 - x0) / 9);
+          for (let i = 0; i <= n; i++) {
+            const bx = x0 + (i / n) * (x1 - x0);
+            const dx = ampPx * 0.9 * Math.sin(phase(bx));
+            const dens = Math.cos(phase(bx));
+            ctx.fillStyle = dens > 0.3 ? "#ea580c" : dens < -0.3 ? "#3b82f6" : "#94a3b8";
+            ctx.beginPath(); ctx.arc(bx + dx, ry, 2.6, 0, 7); ctx.fill();
+          }
         }
+        // traveling direction arrow
+        ctx.fillStyle = "#475569"; ctx.font = "900 12px sans-serif"; ctx.textAlign = "center";
+        arrow(ctx, x0 + 10, yTop - rowGap / 2 - 18, x0 + 70, yTop - rowGap / 2 - 18, "#475569", 2.5);
+        ctx.fillText("اتجاه انتشار الصوت", x0 + 40, yTop - rowGap / 2 - 24);
+        // legend
+        ctx.textAlign = "right";
+        ctx.fillStyle = "#ea580c"; ctx.beginPath(); ctx.arc(x1 - 8, 20, 5, 0, 7); ctx.fill();
+        ctx.fillStyle = "#7c2d12"; ctx.fillText("تضاغط (ضغط عالٍ)", x1 - 18, 24);
+        ctx.fillStyle = "#3b82f6"; ctx.beginPath(); ctx.arc(x1 - 8, 42, 5, 0, 7); ctx.fill();
+        ctx.fillStyle = "#1e3a8a"; ctx.fillText("تخلخل (ضغط منخفض)", x1 - 18, 46);
+        ctx.fillStyle = "#475569";
+        ctx.fillText("جزيئات الهواء تهتز ذهاباً وإياباً حول مواضعها — لا تنتقل مع الموجة!", x1 - 8, h - 30);
+        drawScaleBar();
+      } else if (p.view === "front") {
+        // ===== wavefronts: rings expand at v (scaled), spacing = λ =====
+        const sx = x0 + 40, sy = midY;
+        const vPx = (p.medium * PPM) / SLOW; // px per second, slowed honestly
+        // emit a ring every visual period
+        W.ringT = (W.ringT || 0) + dt;
+        const visT = 1 / 0.6;
+        if (W.ringT >= visT) { W.ringT = 0; W.rings.push(0); }
+        W.rings = W.rings.map((r) => r + vPx * dt).filter((r) => r < Math.max(w, h) * 1.2);
+        // source
+        const sg = ctx.createRadialGradient(sx, sy, 2, sx, sy, 26);
+        sg.addColorStop(0, "#f97316"); sg.addColorStop(1, "rgba(249,115,22,0)");
+        ctx.fillStyle = sg; ctx.beginPath(); ctx.arc(sx, sy, 26, 0, 7); ctx.fill();
+        ctx.fillStyle = "#ea580c"; ctx.beginPath(); ctx.arc(sx, sy, 7, 0, 7); ctx.fill();
+        ctx.fillStyle = "#7c2d12"; ctx.font = "900 11px sans-serif"; ctx.textAlign = "center";
+        ctx.fillText("مصدر الصوت", sx, sy + 34);
+        W.rings.forEach((r, i) => {
+          const alpha = Math.max(0.08, 0.75 - (r / (w * 1.1)) * 0.6);
+          ctx.strokeStyle = `rgba(124,58,237,${alpha.toFixed(2)})`;
+          ctx.lineWidth = i === W.rings.length - 1 ? 3 : 2;
+          ctx.beginPath(); ctx.arc(sx, sy, r, 0, 7); ctx.stroke();
+        });
+        // measure spacing between first two rings = λ
+        if (W.rings.length >= 2) {
+          const r1 = W.rings[W.rings.length - 1], r2 = W.rings[W.rings.length - 2];
+          const mx = sx + r1, my = sy - r1 * 0.7;
+          ctx.strokeStyle = "#0891b2"; ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.moveTo(mx, my); ctx.lineTo(sx + r2, sy - r2 * 0.7); ctx.stroke();
+          ctx.fillStyle = "#0e7490"; ctx.font = "900 11px sans-serif";
+          ctx.fillText(`المسافة بين جبهتين = λ = ${fmt(p.lam)} m`, (mx + sx + r2) / 2, my - 8);
+        }
+        ctx.fillStyle = "#475569"; ctx.font = "900 11px sans-serif"; ctx.textAlign = "right";
+        ctx.fillText(`الجبهات تتوسع بسرعة v = ${fmt(p.medium, 0)} m/s (عرض مبطّأ ×${SLOW})`, x1 - 4, 22);
+        drawScaleBar();
+      } else if (p.view === "stand") {
+        // ===== standing wave: y = 2A sin(kx)cos(ωt) — nodes truly frozen =====
+        ctx.strokeStyle = "#e2e8f0"; ctx.lineWidth = 1.5; ctx.setLineDash([5, 5]);
+        ctx.beginPath(); ctx.moveTo(x0, midY); ctx.lineTo(x1, midY); ctx.stroke(); ctx.setLineDash([]);
+        const env = (dx) => Math.abs(2 * ampPx * 0.5 * Math.sin(k * dx));
+        // envelope
+        ctx.strokeStyle = "rgba(168,85,247,0.3)"; ctx.lineWidth = 1.6;
+        for (const sgn of [1, -1]) {
+          ctx.beginPath();
+          for (let x = x0; x <= x1; x += 3) { const y = midY + sgn * env(x - x0); if (x === x0) ctx.moveTo(x, y); else ctx.lineTo(x, y); }
+          ctx.stroke();
+        }
+        // live string
+        ctx.strokeStyle = "#a855f7"; ctx.lineWidth = 3.4; ctx.lineJoin = "round";
+        ctx.shadowColor = "#a855f7"; ctx.shadowBlur = 8;
+        ctx.beginPath();
+        for (let x = x0; x <= x1; x += 3) {
+          const y = midY + 2 * ampPx * 0.5 * Math.sin(k * (x - x0)) * Math.cos(wVis * W.t);
+          if (x === x0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        }
+        ctx.stroke(); ctx.shadowBlur = 0;
+        // nodes & antinodes
+        const segs = Math.max(2, Math.round(((x1 - x0) / lamPx) * 2));
+        for (let nI = 0; nI <= segs; nI++) {
+          const nx = x0 + (nI * lamPx) / 2;
+          if (nx > x1 + 4) break;
+          ctx.fillStyle = "#dc2626"; ctx.beginPath(); ctx.arc(nx, midY, 4.5, 0, 7); ctx.fill();
+          ctx.strokeStyle = "rgba(220,38,38,0.35)"; ctx.lineWidth = 1.2; ctx.setLineDash([3, 4]);
+          ctx.beginPath(); ctx.moveTo(nx, midY - ampPx - 6); ctx.lineTo(nx, midY + ampPx + 6); ctx.stroke(); ctx.setLineDash([]);
+          if (nI < segs) {
+            const ax = nx + lamPx / 4;
+            if (ax < x1) {
+              ctx.fillStyle = "#059669"; ctx.beginPath(); ctx.arc(ax, midY, 5, 0, 7); ctx.fill();
+            }
+          }
+        }
+        ctx.font = "900 11px sans-serif"; ctx.textAlign = "center";
+        ctx.fillStyle = "#b91c1c"; ctx.fillText("🔴 عقدة: سكون دائم (فاصل λ/2)", x0 + 110, midY + ampPx + 30);
+        ctx.fillStyle = "#047857"; ctx.fillText("🟢 بطن: أقصى اهتزاز", x0 + 110, midY + ampPx + 48);
+        ctx.fillStyle = "#475569";
+        ctx.fillText("هكذا تهتز أوتار العود والغيتار — انعكاس الموجة على نفسها", w / 2, 22);
+        drawScaleBar();
+      } else if (p.view === "interf") {
+        // ===== two-source interference =====
+        const s1 = { x: x0 + 60, y: midY - 52 }, s2 = { x: x0 + 60, y: midY + 52 };
+        const vPx = (p.medium * PPM) / SLOW;
+        W.ringT = (W.ringT || 0) + dt;
+        if (W.ringT >= 1 / 0.6) { W.ringT = 0; W.rings.push(0); }
+        W.rings = W.rings.map((r) => r + vPx * dt).filter((r) => r < w * 1.2);
+        for (const s of [s1, s2]) {
+          W.rings.forEach((r) => {
+            ctx.strokeStyle = "rgba(124,58,237,0.4)"; ctx.lineWidth = 1.6;
+            ctx.beginPath(); ctx.arc(s.x, s.y, r, -1.1, 1.1); ctx.stroke();
+          });
+          ctx.fillStyle = "#7c3aed"; ctx.beginPath(); ctx.arc(s.x, s.y, 6, 0, 7); ctx.fill();
+        }
+        // central constructive line
+        ctx.strokeStyle = "rgba(5,150,105,0.75)"; ctx.lineWidth = 3; ctx.setLineDash([8, 5]);
+        ctx.beginPath(); ctx.moveTo(s1.x + 10, midY); ctx.lineTo(x1, midY); ctx.stroke(); ctx.setLineDash([]);
+        ctx.fillStyle = "#047857"; ctx.font = "900 11px sans-serif"; ctx.textAlign = "center";
+        ctx.fillText("تداخل بنّاء على هذا الخط: القمم تلتقي القمم 🔊🔊", (s1.x + x1) / 2, midY - 12);
+        ctx.fillStyle = "#475569";
+        ctx.fillText("مصدران متوافقان: حيث تلتقي قمة بقمة يتعاظم الصوت، وقمة بقاع يخفت", w / 2, 22);
+        drawScaleBar();
+      } else {
+        // ===== doppler: moving source, wavefronts bunch ahead =====
+        const vs = p.doppV * p.medium; // source speed m/s
+        const vsPx = (vs * PPM) / SLOW;
+        const vPx = (p.medium * PPM) / SLOW;
+        W.srcX = W.srcX === undefined ? x0 + 40 : W.srcX + vsPx * dt;
+        if (W.srcX > x1 - 30) { W.srcX = x0 + 40; W.doppRings = []; }
+        W.ringT = (W.ringT || 0) + dt;
+        if (W.ringT >= 1 / 0.6) { W.ringT = 0; W.doppRings.push({ x: W.srcX, r: 2 }); }
+        W.doppRings = W.doppRings.map((o) => ({ x: o.x, r: o.r + vPx * dt })).filter((o) => o.r < w * 1.1);
+        // road
+        ctx.fillStyle = "#e2e8f0"; ctx.fillRect(0, midY + 44, w, 10);
+        for (const o of W.doppRings) {
+          ctx.strokeStyle = "rgba(124,58,237,0.5)"; ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.arc(o.x, midY, o.r, 0, 7); ctx.stroke();
+        }
+        // car source
+        const cx = W.srcX;
+        ctx.fillStyle = "#ef4444";
+        ctx.beginPath(); ctx.roundRect ? ctx.roundRect(cx - 22, midY + 18, 44, 20, 6) : ctx.rect(cx - 22, midY + 18, 44, 20);
+        ctx.fill();
+        ctx.fillStyle = "#1f2937";
+        ctx.beginPath(); ctx.arc(cx - 12, midY + 40, 6, 0, 7); ctx.arc(cx + 12, midY + 40, 6, 0, 7); ctx.fill();
+        ctx.fillStyle = "#7f1d1d"; ctx.font = "900 10px sans-serif"; ctx.textAlign = "center";
+        ctx.fillText("📢", cx, midY + 33);
+        arrow(ctx, cx - 30, midY + 28, cx - 52, midY + 28, "#475569", 2.5);
+        ctx.fillStyle = "#475569"; ctx.font = "900 11px sans-serif";
+        ctx.fillText("أمام السيارة: الجبهات متقاربة → λ أقصر → صوت أعلى حدة", w / 2, 24);
+        ctx.fillText("خلفها: متباعدة → صوت أخفت حدة (كسيارة الإسعاف المارة 🚑)", w / 2, 42);
+        drawScaleBar();
       }
+      // slow-motion honesty badge
+      ctx.fillStyle = "rgba(15,23,42,0.75)";
+      const bw = 150;
+      ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x1 - bw, 8, bw, 22, 11) : ctx.rect(x1 - bw, 8, bw, 22);
+      ctx.fill();
+      ctx.fillStyle = "#fff"; ctx.font = "900 10.5px sans-serif"; ctx.textAlign = "center";
+      ctx.fillText(`عرض مبطّأ ×${SLOW} (الزمن الحقيقي أسرع)`, x1 - bw / 2, 23);
     }
   );
   useEffect(() => () => { if (audioRef.current) { try { audioRef.current.osc.stop(); audioRef.current.ctx.close(); } catch { /* done */ } audioRef.current = null; } }, []);
@@ -706,14 +886,22 @@ export function WaveStudio() {
   };
   return (
     <div className={cardCls} data-testid="phys-waves">
-      {head3("🌊", "استوديو الموجات والصوت", "ارسم الموجة بيدك ثم اسمع صوتها الحقيقي من سماعتك")}
-      <div className="relative rounded-3xl overflow-hidden ring-1 ring-indigo-100 ft-shadow bg-white">
+      {head3("🌊", "مختبر الموجات والصوت العميق", "ستة مشاهد فيزيائية صحيحة · كل طول موجي مرسوم بمقياس حقيقي")}
+      <div className="flex gap-1.5 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="tablist" aria-label="مشاهد الموجات">
+        {VIEWS.map(([id, ar]) => (
+          <button key={id} onClick={() => setView(id)} role="tab" aria-selected={view === id}
+            className={`pressable shrink-0 px-3.5 py-2.5 rounded-2xl text-[12.5px] font-black transition min-h-[44px] ${view === id ? "text-white ft-shadow bg-gradient-to-l from-violet-600 to-indigo-600" : "bg-white ring-1 ring-slate-200 text-slate-600 hover:ring-violet-200"}`}>
+            {ar}
+          </button>
+        ))}
+      </div>
+      <div className="relative rounded-3xl overflow-hidden ring-1 ring-indigo-100 ft-shadow bg-white mt-2">
         <div className="h-1.5 bg-gradient-to-l from-fuchsia-400 via-violet-400 to-cyan-400" />
-        <canvas ref={canvasRef} className="w-full h-[240px] sm:h-[280px] block" />
+        <canvas ref={canvasRef} className="w-full h-[300px] sm:h-[340px] block" />
       </div>
       <div className="grid sm:grid-cols-3 gap-3 mt-3">
-        <Slider label="الطول الموجي λ" value={lam} set={setLam} min={0.3} max={15} step={0.1} unit="m" />
-        <Slider label="السعة (ارتفاع الموجة)" value={amp} set={setAmp} min={8} max={46} unit="px" tone="accent-fuchsia-500" />
+        <Slider label="الطول الموجي λ" value={lam} set={setLam} min={0.5} max={8} step={0.1} unit="m" />
+        <Slider label="السعة A" value={ampM} set={setAmpM} min={0.1} max={1.2} step={0.05} unit="m" tone="accent-fuchsia-500" />
         <label className="block">
           <span className="block text-[12px] font-black text-slate-600 mb-1">وسط الانتشار</span>
           <select value={medium} onChange={(e) => setMedium(+e.target.value)} className={selIn}>
@@ -723,6 +911,9 @@ export function WaveStudio() {
           </select>
         </label>
       </div>
+      {view === "doppler" && (
+        <div className="mt-3"><Slider label="سرعة المصدر (نسبة من سرعة الصوت)" value={doppV} set={setDoppV} min={0.1} max={0.9} step={0.05} unit="×v" tone="accent-red-500" /></div>
+      )}
       <div className="grid grid-cols-3 gap-2 mt-3">
         <Stat label="السرعة v" value={fmt(medium, 0)} unit="m/s" />
         <Stat label="التردد f = v ÷ λ" value={fmt(f, 1)} unit="Hz" tone="from-fuchsia-50 ring-fuchsia-100" />
@@ -746,12 +937,12 @@ export function WaveStudio() {
         <button onClick={toggleTone} className={playing ? ghostBtn : gradBtn}>
           {playing ? <><VolumeX className="w-4 h-4" /> إيقاف النغمة</> : <><Volume2 className="w-4 h-4" /> اسمع التردد {fmt(Math.max(30, Math.min(4000, f)), 0)} Hz</>}
         </button>
-        <button onClick={() => { setStanding((s) => !s); recordExperiment("waves-standing"); }} className={chips(standing)}>الموجة المستقرة (انعكاس)</button>
       </div>
-      <p className="text-[12px] text-slate-400 font-semibold leading-relaxed mt-3">سرعة الموجة = التردد × الطول الموجي · الصوت أسرع بالماء منه بالهواء بنحو 4 مرات، وبالحديد 17 مرة · والموجة المستقرة تظهر على أوتار العود والغيتار · اخفض الصوت إن كان التردد عالياً.</p>
+      <p className="text-[12px] text-slate-400 font-semibold leading-relaxed mt-3">الصوت موجة <b>طولية</b>: جزيئات الهواء تهتز على خط الانتشار مكونة تضاغطات وتخلخلات · v = fλ دائماً · اخفض الصوت إن كان التردد عالياً.</p>
     </div>
   );
 }
+
 
 /* ============ FEATURE 5 · optics bench ============ */
 export function OpticsBench() {
