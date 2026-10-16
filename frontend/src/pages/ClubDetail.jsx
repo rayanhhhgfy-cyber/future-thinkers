@@ -350,6 +350,7 @@ export default function ClubDetail() {
   const defaultTab = tabs[0][0];
   const activeTab = tab === "main" && slug !== "chess" ? defaultTab : (tab === "main" ? "main" : tab);
   const arenaWide = slug === "chess" && activeTab === "main";
+  const isPythonPath = slug === "programming" && activeTab === "python";
 
   return (
     <Layout>
@@ -383,14 +384,16 @@ export default function ClubDetail() {
         <div className="h-px bg-gradient-to-l from-transparent via-white/30 to-transparent relative" />
       </div>
 
-      <div className="max-w-7xl xl:max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+      <div className={isPythonPath ? "py-6 sm:py-8" : "max-w-7xl xl:max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8"}>
+        <div className={isPythonPath ? "max-w-7xl xl:max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8" : ""}>
         <div className="relative bg-white/90 backdrop-blur-md rounded-2xl sm:rounded-[1.4rem] border border-slate-100 ft-shadow p-1.5 mb-6 flex gap-1 overflow-x-auto whitespace-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {tabs.map(([v, l]) => (
             <button key={v} data-testid={`club-tab-${v}`} onClick={() => setTab(v)} className={`pressable shrink-0 min-h-[44px] px-4 sm:px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === v ? "text-white shadow-lg scale-[1.02]" : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"}`} style={activeTab === v ? { background: `linear-gradient(135deg, ${club.color}, ${club.color}B3)`, boxShadow: `0 8px 20px -8px ${club.color}` } : undefined}>{l}</button>
           ))}
         </div>
+        </div>
 
-        <div className={arenaWide ? "items-start" : "lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-6 xl:gap-8 items-start"}>
+        <div className={arenaWide || isPythonPath ? "items-start" : "lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-6 xl:gap-8 items-start"}>
           <div className="min-w-0">
             {slug === "science" && (
               <Link to="/clubs/science/lab" data-testid="science-lab-card"
@@ -428,7 +431,7 @@ export default function ClubDetail() {
             
             <ClubAnnouncements slug={slug} club={club} color={club.color} />
             {slug === "chess" && activeTab === "main" && <ChessArena />}
-            {activeTab === "python" && <Suspense fallback={<PageLoader />}><PythonJourney /></Suspense>}
+            {activeTab === "python" && <Suspense fallback={<PageLoader />}><PythonJourney embedded /></Suspense>}
             {activeTab === "coding" && <CodingPanel />}
             {activeTab === "projects" && <ProjectsPanel />}
             {activeTab === "debates" && <DebatesPanel />}
@@ -438,7 +441,7 @@ export default function ClubDetail() {
             {activeTab === "leaders" && <ClubLeaders slug={slug} color={club.color} />}
           </div>
 
-          {!arenaWide && (
+          {!arenaWide && !isPythonPath && (
           <aside className="hidden lg:block space-y-4">
             <div className="overflow-hidden rounded-[1.75rem] border border-slate-100 bg-white ft-shadow">
               <div className="relative px-5 pb-5 pt-6 text-white" style={{ background: `linear-gradient(135deg, ${club.color}, #0A192F)` }}>
