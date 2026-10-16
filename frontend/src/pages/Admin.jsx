@@ -24,6 +24,7 @@ import AdminExports from "@/components/admin/AdminExports";
 import AdminEventsCompetitions from "@/components/admin/AdminEventsCompetitions";
 import AdminCalendar from "@/components/admin/AdminCalendar";
 import AdminCoding from "@/components/admin/AdminCoding";
+import AdminPython from "@/components/admin/AdminPython";
 import AdminPaths from "@/components/admin/AdminPaths";
 import AdminClubs from "@/components/admin/AdminClubs";
 import AdminTheme from "@/components/admin/AdminTheme";
@@ -36,7 +37,7 @@ import AdminPoints from "@/components/admin/AdminPoints";
 import AdminAudit from "@/components/admin/AdminAudit";
 import { toast } from "sonner";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area, CartesianGrid } from "recharts";
-import { Gamepad2, LayoutDashboard, ShieldCheck, Users, BookOpen, Calendar, Trophy, Newspaper, Settings, ScrollText, Plus, Check, X, Megaphone, PenLine, Medal, Award, Upload, Trash2, Search, MessageSquare, MessagesSquare, Activity, Smartphone, UserPlus, FileCheck, Rocket, Zap, ArrowLeft, Star, Heart, ThumbsUp, Flag, CalendarCheck, Crown, Download, UserSearch, Link2, CalendarDays, Code2, FlaskConical, Terminal, Palette, Globe2, Route as RouteIcon, Bug, Copy, LayoutGrid, ChevronLeft, SlidersHorizontal, CloudDownload } from "lucide-react";
+import { Gamepad2, LayoutDashboard, ShieldCheck, Users, BookOpen, Calendar, Trophy, Newspaper, Settings, ScrollText, Plus, Check, X, Megaphone, PenLine, Medal, Award, Upload, Trash2, Search, MessageSquare, MessagesSquare, Activity, Smartphone, UserPlus, FileCheck, Rocket, Zap, ArrowLeft, Star, Heart, ThumbsUp, Flag, CalendarCheck, Crown, Download, UserSearch, Link2, CalendarDays, Code2, FileCode2, FlaskConical, Terminal, Palette, Globe2, Route as RouteIcon, Bug, Copy, LayoutGrid, ChevronLeft, SlidersHorizontal, CloudDownload } from "lucide-react";
 import { THEME_PRESETS, applyTheme } from "@/lib/theme";
 import { timeAgo } from "@/components/NotificationsPanel";
 import { motion, AnimatePresence } from "framer-motion";
@@ -68,6 +69,7 @@ const NAV = [
   { k: "landing", l: "صفحة الهبوط", icon: Globe2, perm: "cms.manage" },
   { k: "calendar", l: "التقويم", icon: CalendarDays, perm: "analytics.view" },
   { k: "coding", l: "تحديات البرمجة", icon: Code2, perm: "coding.manage" },
+  { k: "python", l: "رحلة بايثون", icon: FileCode2, perm: "coding.manage" },
   { k: "paths", l: "مسارات التعلم", icon: RouteIcon, perm: "cms.manage" },
   { k: "exports", l: "تصدير البيانات", icon: Download, perm: "user.view" },
   { k: "clubs", l: "الأندية", icon: Users, perm: ["club.create", "club.edit", "club.delete", "club.manage"] },
@@ -311,6 +313,7 @@ export default function Admin() {
             {tab === "landing" && <AdminLanding />}
             {tab === "calendar" && <AdminCalendar />}
             {tab === "coding" && <AdminCoding />}
+            {tab === "python" && <AdminPython />}
             {tab === "paths" && <AdminPaths />}
             {tab === "exports" && <AdminExports />}
             {tab === "clubs" && <AdminClubs />}
