@@ -5,7 +5,7 @@ from pydantic import BaseModel, EmailStr, Field
 from bson import ObjectId
 from db import db, ser, sers, now_iso
 from auth import (hash_password, verify_password, create_access_token, create_refresh_token,
-                  get_current_user, effective_permissions, get_secret)
+                  get_current_user, effective_permissions, get_secret, REFRESH_COOKIE_MAX_AGE)
 import jwt
 from services import audit_log
 
@@ -63,7 +63,7 @@ def _set_cookies(response: Response, access: str, refresh: str):
     response.set_cookie("access_token", access, httponly=True, secure=True,
                         samesite="none", max_age=7 * 24 * 3600, path="/")
     response.set_cookie("refresh_token", refresh, httponly=True, secure=True,
-                        samesite="none", max_age=30 * 24 * 3600, path="/")
+                        samesite="none", max_age=REFRESH_COOKIE_MAX_AGE, path="/")
 
 
 def _public_user(user: dict) -> dict:
@@ -279,9 +279,20 @@ async def refresh(request: Request, response: Response):
         if not user:
             raise HTTPException(status_code=401, detail="المستخدم غير موجود")
         access = create_access_token(uid, user["email"])
+        # Rotate the refresh token too (sliding 90-day window): every refresh
+        # hands out a fresh refresh token, so an active user never gets logged out.
+        new_refresh = create_refresh_token(uid)
         response.set_cookie("access_token", access, httponly=True, secure=True,
                             samesite="none", max_age=7 * 24 * 3600, path="/")
-        return {"access_token": access}
+        response.set_cookie("refresh_token", new_refresh, httponly=True, secure=True,
+                            samesite="none", max_age=REFRESH_COOKIE_MAX_AGE, path="/")
+        # IMPORTANT: also hand out a fresh request-signing key. The client caches
+        # the sig key in localStorage; without this it keeps signing with the key
+        # of the OLD access token and every request fails with SIG_BAD_SIG
+        # ("طلب غير موقّع") until cookies are cleared.
+        from security_signing import get_session_key
+        return {"access_token": access, "refresh_token": new_refresh,
+                "sig_key": await get_session_key(access)}
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=401, detail="رمز غير صالح")
 

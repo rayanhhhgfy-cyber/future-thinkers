@@ -14,8 +14,21 @@ export function AuthProvider({ children }) {
       setUser(data);
       return data;
     } catch {
-      setUser(false);
-      return false;
+      // The 7-day access token may have expired while the (90-day, rotating)
+      // refresh cookie is still alive — try one silent refresh before
+      // giving up on the session, so the user is never logged out suddenly.
+      try {
+        clearSigKey();
+        const { data } = await api.post("/auth/refresh");
+        if (data?.access_token) localStorage.setItem("ft_token", data.access_token);
+        const { data: me } = await api.get("/auth/me");
+        setUser(me);
+        return me;
+      } catch {
+        localStorage.removeItem("ft_token");
+        setUser(false);
+        return false;
+      }
     } finally {
       setReady(true);
     }

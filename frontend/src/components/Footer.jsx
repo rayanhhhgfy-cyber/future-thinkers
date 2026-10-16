@@ -1,5 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
+import { Heart } from "lucide-react";
 import { Logo, LogoMark } from "@/components/Logo";
 import ReportProblem from "@/components/ReportProblem";
 
@@ -76,14 +77,30 @@ export function Footer() {
           <Link to="/cookies" className="text-slate-300 hover:text-white transition-colors">سياسة ملفات الارتباط</Link>
         </nav>
       </div>
-      <div className="relative border-t border-white/10">
-        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-10 py-5 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-400">
-          <span>© {new Date().getFullYear()} منصة مفكري المستقبل · جميع الحقوق محفوظة</span>
-          <span className="inline-flex flex-wrap items-center gap-2.5" data-testid="footer-made-by">
-            <span className="inline-flex items-center gap-1.5">Made by <span className="text-slate-100 font-bold">ريان الجمل · أوس التميمي · طه عبابنه</span></span>
+      <div className="relative border-t border-white/10 overflow-hidden">
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-l from-transparent via-[color:color-mix(in_srgb,var(--ft-accent)_65%,transparent)] to-transparent" />
+        <div className="pointer-events-none absolute -bottom-20 left-1/2 -translate-x-1/2 w-[36rem] h-40 rounded-full bg-[color:color-mix(in_srgb,var(--ft-accent)_10%,transparent)] blur-3xl" />
+        <div className="relative max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-10 py-6 sm:py-8 flex flex-col items-center gap-4 sm:gap-5 text-center">
+          <div data-testid="footer-made-by" className="flex flex-col items-center gap-3 sm:gap-3.5">
+            <span className="inline-flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-[0.22em] text-slate-400">
+              <Heart className="w-3.5 h-3.5 text-rose-400 fill-rose-400" />
+              Made with love by
+              <Heart className="w-3.5 h-3.5 text-rose-400 fill-rose-400" />
+            </span>
+            <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-2.5">
+              {["ريان الجمل", "أوس التميمي", "طه عبابنه", "يمان عبابنة"].map((n) => (
+                <span key={n} className="inline-flex items-center gap-2 rounded-full bg-white/[0.07] border border-white/15 px-4 py-1.5 sm:py-2 text-[13px] sm:text-sm font-bold text-white backdrop-blur transition-all duration-300 hover:bg-white/[0.14] hover:border-white/30 hover:-translate-y-0.5 hover:shadow-lg">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[color:var(--ft-accent)] shadow-[0_0_8px_2px_color-mix(in_srgb,var(--ft-accent)_60%,transparent)]" />
+                  {n}
+                </span>
+              ))}
+            </div>
+          </div>
+          <p className="text-xs sm:text-[13px] text-slate-400">صُنعت بشغف لطلاب الأردن <span className="ft-text-accent-bright font-bold">· مفكرو المستقبل</span></p>
+          <div className="flex flex-col sm:flex-row flex-wrap items-center justify-center gap-x-6 gap-y-2.5 text-[11px] sm:text-xs text-slate-500">
+            <span>© {new Date().getFullYear()} منصة مفكري المستقبل · جميع الحقوق محفوظة</span>
             <ReportProblem />
-          </span>
-          <span className="inline-flex items-center gap-1.5">صُنعت بشغف لطلاب الأردن <span className="ft-text-accent-bright font-bold">· مفكرو المستقبل</span></span>
+          </div>
         </div>
       </div>
     </footer>

@@ -8,7 +8,10 @@ from db import db
 
 JWT_ALG = "HS256"
 ACCESS_TTL = timedelta(days=7)
-REFRESH_TTL = timedelta(days=30)
+# Refresh lives 90 days and is ROTATED on every use (sliding window):
+# any activity within 90 days keeps the session alive indefinitely.
+REFRESH_TTL = timedelta(days=90)
+REFRESH_COOKIE_MAX_AGE = 90 * 24 * 3600
 
 ROLES = [
     "student", "teacher", "school_admin", "directorate_admin",

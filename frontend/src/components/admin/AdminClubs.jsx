@@ -197,9 +197,9 @@ export default function AdminClubs() {
           max-sm:p-3 max-sm:pt-2 max-sm:gap-2 max-sm:max-h-[94dvh]
           max-sm:data-[state=open]:slide-in-from-left-0 max-sm:data-[state=open]:slide-in-from-top-0 max-sm:data-[state=open]:slide-in-from-bottom-8">
           <div className="sm:hidden mx-auto h-1 w-10 shrink-0 rounded-full bg-slate-200" aria-hidden />
-          <DialogHeader className="max-sm:text-right">
-            <div className="text-[11px] font-extrabold text-emerald-600">إدارة النادي · {dialog?.mode === "create" ? "إنشاء جديد" : "تعديل"}</div>
-            <DialogTitle className="max-sm:text-[15px] max-sm:pr-9 truncate">{dialog?.mode === "create" ? "إنشاء نادٍ جديد" : (dialog?.club?.name || "تعديل النادي")}</DialogTitle>
+          <DialogHeader className="max-sm:text-right max-sm:pt-1">
+            <div className="inline-flex items-center gap-1.5 text-[11px] font-extrabold text-emerald-700 bg-emerald-50 border border-emerald-100 px-2.5 py-1 rounded-full w-fit"><Sparkles className="w-3 h-3" /> إدارة النادي · {dialog?.mode === "create" ? "إنشاء جديد" : "تعديل"}</div>
+            <DialogTitle className="text-xl sm:text-2xl font-black text-slate-900 leading-snug line-clamp-2 max-sm:pr-9 max-sm:mt-1.5">{dialog?.mode === "create" ? "إنشاء نادٍ جديد" : (dialog?.club?.name || "تعديل النادي")}</DialogTitle>
           </DialogHeader>
 
           {/* بطاقة المعاينة الحية */}
@@ -212,12 +212,17 @@ export default function AdminClubs() {
                 <HeroIcon className="w-6 h-6 drop-shadow" />
               </div>
               <div className="min-w-0 flex-1">
-                <div className="font-extrabold truncate leading-snug">{form.name.trim() || "اسم النادي"}</div>
+                <div className="font-extrabold truncate leading-snug text-[17px]">{form.name.trim() || "اسم النادي"}</div>
                 <div className="text-[11px] text-white/85 font-mono truncate mt-0.5" dir="ltr">/{heroSlug || "…"}</div>
               </div>
-              {form.is_hidden && (
-                <span className="shrink-0 inline-flex items-center gap-1 text-[10px] font-bold bg-black/30 backdrop-blur px-2.5 py-1 rounded-full"><EyeOff className="w-3 h-3" /> مخفي</span>
-              )}
+              <span className="shrink-0 flex items-center gap-1.5">
+                {dialog?.mode === "edit" && dialog?.club?.members_count != null && (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-white/20 backdrop-blur px-2.5 py-1 rounded-full"><Users className="w-3 h-3" /> {dialog.club.members_count}</span>
+                )}
+                {form.is_hidden && (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-black/30 backdrop-blur px-2.5 py-1 rounded-full"><EyeOff className="w-3 h-3" /> مخفي</span>
+                )}
+              </span>
             </div>
             {!!form.description.trim() && (
               <p className="relative px-3.5 pb-3.5 -mt-1 text-[12px] leading-relaxed text-white/90 line-clamp-2">{form.description.trim()}</p>

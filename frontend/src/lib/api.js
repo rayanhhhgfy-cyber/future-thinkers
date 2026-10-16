@@ -117,6 +117,11 @@ api.interceptors.response.use(
     // Headers survive every merge. Auth endpoints never retry at all.
     const AUTH_PATH = /\/auth\/(login|register|refresh|me)(\?|$)/.test(url);
     const retryCount = Number(original?.headers?.["x-ft-retry"] || 0);
+    // Signature retries get their own counter: a SIG failure can legitimately
+    // follow a token refresh (the old cached signing key), and must not be
+    // blocked by the generic retry budget — otherwise the user gets stuck on
+    // "طلب غير موقّع" until they clear cookies.
+    const sigRetryCount = Number(original?.headers?.["x-ft-sigretry"] || 0);
     const markRetry = (cfg) => {
       cfg.headers = cfg.headers || {};
       cfg.headers["x-ft-retry"] = String(retryCount + 1);
@@ -130,13 +135,15 @@ api.interceptors.response.use(
       status === 401 &&
       original &&
       !AUTH_PATH &&
-      retryCount < 1 &&
+      sigRetryCount < 1 &&
       typeof sigCode === "string" &&
       sigCode.startsWith("SIG_")
     ) {
       clearSigKey();
       try { await api.get("/auth/me"); } catch {}
-      return api(markRetry(original));
+      original.headers = original.headers || {};
+      original.headers["x-ft-sigretry"] = "1";
+      return api(original);
     }
     // Silent refresh: the access token (7 days) may expire while the
     // refresh cookie (30 days) is still valid. Try the refresh endpoint once,
