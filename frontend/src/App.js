@@ -28,7 +28,6 @@ const UploadBook = lazy(() => import("@/pages/UploadBook"));
 const Clubs = lazy(() => import("@/pages/Clubs"));
 const ClubDetail = lazy(() => import("@/pages/ClubDetail"));
 const ChemLab = lazy(() => import("@/pages/ChemLab"));
-const ScienceLabTools = lazy(() => import("@/pages/ScienceLabTools"));
 const PhysicsLab = lazy(() => import("@/pages/PhysicsLab"));
 const DiscussionDetail = lazy(() => import("@/pages/DiscussionDetail"));
 const ChessGame = lazy(() => import("@/pages/ChessGame"));
@@ -58,6 +57,9 @@ const WordGame = lazy(() => import("@/pages/WordGame"));
 const MathSprint = lazy(() => import("@/pages/MathSprint"));
 const TypingRace = lazy(() => import("@/pages/TypingRace"));
 const Challenges = lazy(() => import("@/pages/Challenges"));
+const PythonJourney = lazy(() => import("@/pages/PythonJourney"));
+const PythonArticle = lazy(() => import("@/pages/PythonArticle"));
+const PythonExam = lazy(() => import("@/pages/PythonExam"));
 const Missions = lazy(() => import("@/pages/Missions"));
 const Stories = lazy(() => import("@/pages/Stories"));
 const StoryReaderPage = lazy(() => import("@/pages/Stories").then((m) => ({ default: m.StoryReader })));
@@ -128,7 +130,6 @@ function AnimatedRoutes() {
       <Route path="/upload-book" element={<Protected><UploadBook /></Protected>} />
       <Route path="/clubs" element={<Protected><SectionGate section="clubs"><Clubs /></SectionGate></Protected>} />
       <Route path="/clubs/science/lab" element={<Protected><SectionGate section="clubs"><ChemLab /></SectionGate></Protected>} />
-      <Route path="/clubs/science/tools" element={<Protected><SectionGate section="clubs"><ScienceLabTools /></SectionGate></Protected>} />
       <Route path="/clubs/science/physics" element={<Protected><SectionGate section="clubs"><PhysicsLab /></SectionGate></Protected>} />
       <Route path="/clubs/:slug" element={<Protected><SectionGate section="clubs"><ClubDetail /></SectionGate></Protected>} />
       <Route path="/discussions/:id" element={<Protected><SectionGate section="community"><DiscussionDetail /></SectionGate></Protected>} />
@@ -156,6 +157,10 @@ function AnimatedRoutes() {
       <Route path="/portfolio/:id" element={<Portfolio />} />
       <Route path="/portfolio/:id/print" element={<PortfolioPrint />} />
       <Route path="/paths" element={<Protected><Paths /></Protected>} />
+      <Route path="/python" element={<Protected><PythonJourney /></Protected>} />
+      <Route path="/python/placement" element={<Protected><PythonExam /></Protected>} />
+      <Route path="/python/:slug" element={<Protected><PythonArticle /></Protected>} />
+      <Route path="/python/:slug/exam" element={<Protected><PythonExam /></Protected>} />
       <Route path="/community" element={<Protected><SectionGate section="community"><Community /></SectionGate></Protected>} />
       <Route path="/calendar" element={<Protected><Calendar /></Protected>} />
       <Route path="/reading-challenges" element={<Protected><ReadingChallenges /></Protected>} />
