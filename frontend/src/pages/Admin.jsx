@@ -83,7 +83,7 @@ const NAV_GROUPS = [
   { l: "الرئيسية", icon: LayoutDashboard, keys: ["overview"] },
   { l: "المراجعة والمحتوى", icon: ShieldCheck, keys: ["moderation", "studio", "books", "importer", "news", "banners", "landing"] },
   { l: "الأعضاء والمجتمع", icon: Users, keys: ["users", "user360", "clubs", "notify"] },
-  { l: "البرامج والأنشطة", icon: Rocket, keys: ["content", "calendar", "coding", "paths", "badges", "certificates", "gamesradar", "control"] },
+  { l: "البرامج والأنشطة", icon: Rocket, keys: ["content", "calendar", "coding", "python", "paths", "badges", "certificates", "gamesradar", "control"] },
   { l: "النظام", icon: Settings, keys: ["theme", "points", "reports", "errors", "healthsys", "exports", "audit"] },
 ];
 
