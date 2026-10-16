@@ -216,6 +216,27 @@ function ArticleEditor({ article, onClose, onSaved }) {
     setTimeout(() => { ta.focus(); ta.setSelectionRange(s + before.length, e + before.length); }, 0);
   };
 
+  // Tab key inserts 2 spaces instead of losing focus
+  const onKeyDown = (e) => {
+    if (e.key === "Tab") {
+      e.preventDefault();
+      insertMd("  ");
+    }
+  };
+
+  // Fix common ChatGPT paste issues: ensure code fences are paired
+  const fixPasted = () => {
+    let fixed = content;
+    const count = (fixed.match(/```/g) || []).length;
+    if (count % 2 === 1) {
+      fixed = fixed.trimEnd() + "\n```\n";
+      setContent(fixed);
+      toast.success("تم إغلاق كتلة الكود المفتوحة ✓");
+    } else {
+      toast.info("كل كتل الكود مغلقة بشكل صحيح ✓");
+    }
+  };
+
   return (
     <div className="overflow-hidden rounded-[1.75rem] bg-white shadow-[0_20px_60px_-20px_rgba(15,23,42,0.2)] ring-1 ring-slate-100">
       <div className="relative overflow-hidden p-5 sm:p-6" style={{ background: `linear-gradient(135deg,${BLUE},${BLUE_D})` }}>
@@ -239,37 +260,47 @@ function ArticleEditor({ article, onClose, onSaved }) {
         <input value={summary} onChange={(e) => setSummary(e.target.value)} placeholder="ملخص قصير يظهر في بطاقة المرحلة…"
           className="w-full rounded-2xl border-2 border-slate-100 bg-slate-50/50 p-3 text-[13.5px] outline-none transition focus:border-blue-300 focus:bg-white" />
 
-        {/* markdown toolbar */}
-        <div className="rounded-2xl bg-slate-50 p-2 ring-1 ring-slate-100">
-          <div className="flex flex-wrap items-center gap-1.5">
+        {/* markdown toolbar — clear labeled buttons */}
+        <div className="rounded-2xl bg-slate-50 p-2.5 ring-1 ring-slate-100">
+          <div className="grid grid-cols-4 gap-1.5 sm:flex sm:flex-wrap sm:items-center">
             {[
-              ["H1", "# ", ""], ["H2", "## ", ""], ["H3", "### ", ""],
-              ["B", "**", "**"], ["I", "*", "*"], ["S", "~~", "~~"],
-              ["•", "- ", ""], ["1.", "1. ", ""],
-              ["كود", "`", "`"], ["بلوك بايثون", "\n```python\n", "\n```\n"],
-              ["اقتباس", "> ", ""], ["فاصل", "\n---\n", ""],
+              ["عنوان كبير", "# ", ""], ["عنوان", "## ", ""], ["عنوان صغير", "### ", ""],
+              ["عريض", "**", "**"], ["مائل", "*", "*"], ["مشطوب", "~~", "~~"],
+              ["نقاط", "- ", ""], ["ترقيم", "1. ", ""],
             ].map(([l, b, a]) => (
-              <button key={l} onClick={() => insertMd(b, a)}
-                className="rounded-lg bg-white px-2.5 py-1.5 font-mono text-[11.5px] font-black text-slate-600 shadow-sm ring-1 ring-slate-200 transition hover:text-blue-600 hover:ring-blue-200" dir="ltr">{l}</button>
+              <button key={l} onClick={() => insertMd(b, a)} title={`إدراج ${l}`}
+                className="rounded-xl bg-white px-2 py-2 text-[12px] font-extrabold text-slate-600 shadow-sm ring-1 ring-slate-200 transition hover:text-blue-600 hover:ring-blue-300 active:scale-95">{l}</button>
             ))}
           </div>
-          <div className="mt-1.5 flex flex-wrap items-center gap-1.5 border-t border-slate-200/70 pt-1.5">
+          <div className="mt-1.5 grid grid-cols-2 gap-1.5 sm:flex sm:flex-wrap sm:items-center">
+            <button onClick={() => insertMd("`", "`")}
+              className="rounded-xl bg-white px-3 py-2 text-[12px] font-extrabold text-slate-600 shadow-sm ring-1 ring-slate-200 transition hover:text-blue-600 active:scale-95">💻 كود قصير</button>
+            <button onClick={() => insertMd("\n```python\n", "\n```\n")}
+              className="rounded-xl bg-gradient-to-l from-blue-600 to-blue-700 px-3 py-2 text-[12px] font-extrabold text-white shadow transition hover:brightness-110 active:scale-95">🐍 بلوك بايثون</button>
+            <button onClick={() => insertMd("> ", "")}
+              className="rounded-xl bg-white px-3 py-2 text-[12px] font-extrabold text-slate-600 shadow-sm ring-1 ring-slate-200 transition hover:text-blue-600 active:scale-95">💬 اقتباس</button>
+            <button onClick={() => insertMd("\n---\n", "")}
+              className="rounded-xl bg-white px-3 py-2 text-[12px] font-extrabold text-slate-600 shadow-sm ring-1 ring-slate-200 transition hover:text-blue-600 active:scale-95">➖ فاصل</button>
+          </div>
+          <div className="mt-1.5 flex flex-wrap items-center gap-1.5 border-t border-slate-200/70 pt-2">
             <button onClick={() => insertMd("\n| العمود 1 | العمود 2 |\n|---|---|\n| قيمة | قيمة |\n", "")}
-              className="rounded-lg bg-white px-2.5 py-1.5 text-[11.5px] font-black text-slate-600 shadow-sm ring-1 ring-slate-200 transition hover:text-blue-600">📊 جدول</button>
+              className="rounded-xl bg-white px-3 py-2 text-[12px] font-extrabold text-slate-600 shadow-sm ring-1 ring-slate-200 transition hover:text-blue-600 active:scale-95">📊 جدول</button>
             <button onClick={() => { const u = prompt("رابط URL:"); if (u) insertMd("[", `](${u})`); }}
-              className="rounded-lg bg-white px-2.5 py-1.5 text-[11.5px] font-black text-slate-600 shadow-sm ring-1 ring-slate-200 transition hover:text-blue-600">🔗 رابط</button>
+              className="rounded-xl bg-white px-3 py-2 text-[12px] font-extrabold text-slate-600 shadow-sm ring-1 ring-slate-200 transition hover:text-blue-600 active:scale-95">🔗 رابط</button>
+            <button onClick={fixPasted} title="إصلاح كتل الكود غير المغلقة"
+              className="rounded-xl bg-amber-50 px-3 py-2 text-[12px] font-extrabold text-amber-700 ring-1 ring-amber-200 transition hover:bg-amber-100 active:scale-95">🔧 إصلاح الكود</button>
             <button onClick={() => setPreview((v) => !v)}
-              className={`mr-auto inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12px] font-bold transition ${preview ? "bg-blue-600 text-white shadow" : "bg-white text-slate-600 ring-1 ring-slate-200"}`}>
-              <Eye className="h-3.5 w-3.5" /> {preview ? "المعاينة ظاهرة" : "إظهار المعاينة"}
+              className={`mr-auto inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-[12px] font-extrabold transition active:scale-95 ${preview ? "bg-blue-600 text-white shadow" : "bg-white text-slate-600 ring-1 ring-slate-200"}`}>
+              <Eye className="h-3.5 w-3.5" /> {preview ? "إخفاء المعاينة" : "معاينة"}
             </button>
           </div>
-          <div className="mt-1.5 rounded-lg bg-blue-50/70 px-2.5 py-1.5 text-[10.5px] leading-relaxed text-blue-700">
-            💡 انسخ أي نص من ChatGPT والصقه هنا مباشرة — التنسيق مدعوم: <b># عناوين</b> · <b>**عريض**</b> · <b>*مائل*</b> · <b>~~مشطوب~~</b> · <b>- نقاط</b> · <b>1. مرقّم</b> · <b>`كود`</b> · <b>```python</b> · <b>جداول</b> · <b>[روابط](url)</b>
+          <div className="mt-2 rounded-xl bg-blue-50/70 px-3 py-2 text-[11px] leading-relaxed text-blue-700">
+            💡 <b>انسخ من ChatGPT والصق مباشرة</b> — كل التنسيق يعمل. زر <b>🔧 إصلاح الكود</b> يغلق أي بلوك نسيت إغلاقه. زر <b>Tab</b> في الكيبورد يضيف مسافة بدل ما يطلع من المربع.
           </div>
         </div>
 
         <div className={`grid gap-3 ${preview ? "lg:grid-cols-2" : ""}`}>
-          <textarea id="py-md-input" value={content} onChange={(e) => setContent(e.target.value)} rows={16} dir="auto"
+          <textarea id="py-md-input" value={content} onChange={(e) => setContent(e.target.value)} onKeyDown={onKeyDown} rows={16} dir="auto"
             placeholder={"اشرح هنا…\n\n## مثال\n\n```python\nname = \"أحمد\"\nprint(f\"مرحباً {name}\")\n```"}
             className="w-full rounded-2xl border-2 border-slate-100 bg-slate-50/50 p-4 font-mono text-[13px] leading-[1.9] outline-none transition focus:border-blue-300 focus:bg-white" />
           {preview && (
