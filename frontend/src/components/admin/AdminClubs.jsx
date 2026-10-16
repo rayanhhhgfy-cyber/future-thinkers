@@ -197,9 +197,16 @@ export default function AdminClubs() {
           max-sm:p-3 max-sm:pt-2 max-sm:gap-2 max-sm:max-h-[94dvh]
           max-sm:data-[state=open]:slide-in-from-left-0 max-sm:data-[state=open]:slide-in-from-top-0 max-sm:data-[state=open]:slide-in-from-bottom-8">
           <div className="sm:hidden mx-auto h-1 w-10 shrink-0 rounded-full bg-slate-200" aria-hidden />
-          <DialogHeader className="max-sm:text-right max-sm:pt-1">
-            <div className="inline-flex items-center gap-1.5 text-[11px] font-extrabold text-emerald-700 bg-emerald-50 border border-emerald-100 px-2.5 py-1 rounded-full w-fit"><Sparkles className="w-3 h-3" /> إدارة النادي · {dialog?.mode === "create" ? "إنشاء جديد" : "تعديل"}</div>
-            <DialogTitle className="text-xl sm:text-2xl font-black text-slate-900 leading-snug line-clamp-2 max-sm:pr-9 max-sm:mt-1.5">{dialog?.mode === "create" ? "إنشاء نادٍ جديد" : (dialog?.club?.name || "تعديل النادي")}</DialogTitle>
+          <DialogHeader className="max-sm:text-right">
+            <div className="pr-9">
+              <div className="inline-flex items-center gap-2.5 rounded-2xl border border-emerald-200/80 bg-gradient-to-l from-emerald-50 via-teal-50/60 to-emerald-50 pl-4 pr-2.5 py-1.5 shadow-[0_8px_20px_-10px_rgba(16,185,129,0.5)]">
+                <span className="grid place-items-center w-8 h-8 rounded-xl text-white shadow-md shrink-0" style={{ background: "linear-gradient(135deg,#10b981,#0d9488)" }}>
+                  <Sparkles className="w-4 h-4" />
+                </span>
+                <span className="text-[13px] sm:text-sm font-black text-emerald-900 whitespace-nowrap">إدارة النادي · {dialog?.mode === "create" ? "إنشاء جديد" : "تعديل"}</span>
+              </div>
+              <DialogTitle className="text-[1.45rem] sm:text-[1.8rem] font-black text-slate-900 leading-[1.4] line-clamp-2 mt-2.5">{dialog?.mode === "create" ? "إنشاء نادٍ جديد" : (dialog?.club?.name || "تعديل النادي")}</DialogTitle>
+            </div>
           </DialogHeader>
 
           {/* بطاقة المعاينة الحية */}
