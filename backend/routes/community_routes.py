@@ -3,8 +3,6 @@ from pydantic import BaseModel, Field
 from bson import ObjectId
 from datetime import datetime, timedelta, timezone
 import re
-import secrets
-import unicodedata
 from db import db, ser, sers, oid, now_iso
 from auth import get_current_user, get_optional_user, require_permission, effective_permissions
 from services import award_xp, bump_stat, create_notification, audit_log
@@ -18,10 +16,50 @@ except Exception:  # pragma: no cover - tzdata missing fallback
 router = APIRouter(prefix="/api")
 
 # ---------- Clubs ----------
+# تحويل الأسماء العربية إلى slug لاتيني مقروء (بدون رموز عشوائية)
+_AR_SLUG_MAP = {
+    "ا": "a", "أ": "a", "إ": "i", "آ": "aa", "ء": "", "ئ": "i", "ؤ": "u",
+    "ب": "b", "ت": "t", "ث": "th", "ج": "j", "ح": "h", "خ": "kh",
+    "د": "d", "ذ": "dh", "ر": "r", "ز": "z", "س": "s", "ش": "sh",
+    "ص": "s", "ض": "d", "ط": "t", "ظ": "z", "ع": "a", "غ": "gh",
+    "ف": "f", "ق": "q", "ك": "k", "ل": "l", "م": "m", "ن": "n",
+    "ه": "h", "ة": "a", "و": "u", "ي": "i", "ى": "a", "ـ": "",
+    "٠": "0", "١": "1", "٢": "2", "٣": "3", "٤": "4",
+    "٥": "5", "٦": "6", "٧": "7", "٨": "8", "٩": "9",
+}
+_TASHKEEL = re.compile(r"[\u064b-\u065f\u0670]")
+
+
 def _slugify(name: str) -> str:
-    s = unicodedata.normalize("NFKD", name).encode("ascii", "ignore").decode("ascii")
-    s = re.sub(r"[^a-z0-9]+", "-", s.lower()).strip("-")
-    return s or f"club-{secrets.token_hex(3)}"
+    """نادي القراءة ← nadi-alqraa · أحرف لاتينية صغيرة وشرطات فقط."""
+    s = _TASHKEEL.sub("", name or "")
+    out = []
+    for ch in s:
+        if ch in _AR_SLUG_MAP:
+            out.append(_AR_SLUG_MAP[ch])
+        elif ch.isascii() and (ch.isalpha() or ch.isdigit()):
+            out.append(ch.lower())
+        else:
+            out.append("-")
+    slug = re.sub(r"-{2,}", "-", "".join(out)).strip("-")
+    slug = re.sub(r"[^a-z0-9-]", "", slug)
+    return slug[:60].strip("-") or "nadi"
+
+
+async def _unique_slug(name: str) -> str:
+    """slug فريد مشتق من الاسم: nadi-alqraa ثم nadi-alqraa-2 عند التعارض."""
+    base = _slugify(name)
+    slug, i = base, 2
+    while await db.clubs.find_one({"slug": slug}):
+        slug, i = f"{base}-{i}", i + 1
+    return slug
+
+
+def _can_see_club(user: dict | None, club: dict) -> bool:
+    """النادي المخفي لا يراه إلا مديروه (مؤسسه أو إدارة المنصة)."""
+    if not club.get("is_hidden"):
+        return True
+    return _club_manager(user, club)
 
 
 class ClubBody(BaseModel):
@@ -30,6 +68,7 @@ class ClubBody(BaseModel):
     description: str = ""
     icon: str = "Users"
     color: str = "#2563EB"
+    is_hidden: bool = False
 
 
 class ClubPatchBody(BaseModel):
@@ -37,11 +76,12 @@ class ClubPatchBody(BaseModel):
     description: str | None = None
     icon: str | None = None
     color: str | None = None
+    is_hidden: bool | None = None
 
 
-async def _club_or_404(slug: str) -> dict:
+async def _club_or_404(slug: str, user: dict | None = None) -> dict:
     c = await db.clubs.find_one({"slug": slug})
-    if not c:
+    if not c or not _can_see_club(user, c):
         raise HTTPException(status_code=404, detail="النادي غير موجود")
     return c
 
@@ -91,8 +131,14 @@ async def _club_member_rows(slug: str):
     return rows
 @router.get("/clubs")
 async def list_clubs(request: Request):
-    docs = await db.clubs.find({}).to_list(50)
     user = await get_optional_user(request)
+    if user and "club.edit" in effective_permissions(user):
+        q = {}
+    elif user:
+        q = {"$or": [{"is_hidden": {"$ne": True}}, {"created_by": user["id"]}]}
+    else:
+        q = {"is_hidden": {"$ne": True}}
+    docs = await db.clubs.find(q).to_list(50)
     mine = set()
     if user:
         mems = await db.club_members.find({"user_id": user["id"]}).to_list(50)
@@ -108,7 +154,8 @@ async def list_clubs(request: Request):
 @router.get("/clubs/{slug}")
 async def get_club(slug: str, request: Request):
     c = await db.clubs.find_one({"slug": slug})
-    if not c:
+    user = await get_optional_user(request)
+    if not c or not _can_see_club(user, c):
         raise HTTPException(status_code=404, detail="النادي غير موجود")
     d = ser(c)
     d["members_count"] = await db.club_members.count_documents({"club_id": d["id"]})
@@ -120,13 +167,17 @@ async def get_club(slug: str, request: Request):
 
 @router.post("/clubs")
 async def create_club(body: ClubBody, request: Request, user: dict = Depends(require_permission("club.create"))):
-    slug = (body.slug or "").strip().lower() or _slugify(body.name)
-    if not re.fullmatch(r"[a-z0-9-]+", slug):
-        raise HTTPException(status_code=400, detail="المعرّف (slug) يجب أن يكون أحرفاً إنجليزية صغيرة أو أرقام أو شرطات")
-    if await db.clubs.find_one({"slug": slug}):
-        raise HTTPException(status_code=400, detail="هذا المعرّف مستخدم مسبقاً")
+    manual = (body.slug or "").strip().lower()
+    if manual:
+        if not re.fullmatch(r"[a-z0-9-]+", manual):
+            raise HTTPException(status_code=400, detail="المعرّف (slug) يجب أن يكون أحرفاً إنجليزية صغيرة أو أرقام أو شرطات")
+        if await db.clubs.find_one({"slug": manual}):
+            raise HTTPException(status_code=400, detail="هذا المعرّف مستخدم مسبقاً")
+        slug = manual
+    else:
+        slug = await _unique_slug(body.name)
     doc = {"slug": slug, "name": body.name.strip(), "description": body.description,
-           "icon": body.icon, "color": body.color,
+           "icon": body.icon, "color": body.color, "is_hidden": bool(body.is_hidden),
            "members_count": 0, "created_at": now_iso(), "created_by": user["id"]}
     res = await db.clubs.insert_one(doc)
     await audit_log(user, "club_create", "club", slug, {"name": body.name}, request)
@@ -160,9 +211,9 @@ async def delete_club(slug: str, request: Request, user: dict = Depends(require_
 
 
 @router.post("/clubs/{slug}/join")
-async def join_club(slug: str, user: dict = Depends(get_current_user)):
+async def join_club(slug: str, request: Request, user: dict = Depends(get_current_user)):
     c = await db.clubs.find_one({"slug": slug})
-    if not c:
+    if not c or not _can_see_club(user, c):
         raise HTTPException(status_code=404, detail="النادي غير موجود")
     cid = str(c["_id"])
     if await db.club_members.find_one({"club_id": cid, "user_id": user["id"]}):
@@ -184,14 +235,15 @@ async def leave_club(slug: str, user: dict = Depends(get_current_user)):
 
 
 @router.get("/clubs/{slug}/members")
-async def club_members(slug: str, limit: int = 50):
+async def club_members(slug: str, request: Request, limit: int = 50):
+    await _club_or_404(slug, await get_optional_user(request))
     rows = await _club_member_rows(slug)
     return rows[:limit]
 
 
 @router.get("/clubs/{slug}/leaders")
-async def club_leaders(slug: str, period: str = "all"):
-    await _club_or_404(slug)
+async def club_leaders(slug: str, request: Request, period: str = "all"):
+    await _club_or_404(slug, await get_optional_user(request))
     rows = await _club_member_rows(slug)
     field = "month_xp" if period == "month" else "xp"
     rows.sort(key=lambda r: -r[field])
@@ -207,8 +259,8 @@ class ClubAnnouncementBody(BaseModel):
 
 @router.get("/clubs/{slug}/announcements")
 async def list_club_announcements(slug: str, request: Request):
-    await _club_or_404(slug)
     user = await get_optional_user(request)
+    await _club_or_404(slug, user)
     docs = await db.club_announcements.find({"club_slug": slug}).sort("created_at", -1).to_list(100)
     out = []
     for a in docs:
@@ -221,7 +273,7 @@ async def list_club_announcements(slug: str, request: Request):
 @router.post("/clubs/{slug}/announcements")
 async def create_club_announcement(slug: str, body: ClubAnnouncementBody,
                                    user: dict = Depends(get_current_user)):
-    c = await _club_or_404(slug)
+    c = await _club_or_404(slug, user)
     if not _club_manager(user, c):
         raise HTTPException(status_code=403, detail="إعلانات النادي ينشرها مؤسس النادي أو الإدارة فقط")
     doc = {"club_slug": slug, "author_id": user["id"], "author_name": user["name"],
@@ -238,7 +290,7 @@ async def create_club_announcement(slug: str, body: ClubAnnouncementBody,
 
 @router.delete("/clubs/{slug}/announcements/{ann_id}")
 async def delete_club_announcement(slug: str, ann_id: str, user: dict = Depends(get_current_user)):
-    c = await _club_or_404(slug)
+    c = await _club_or_404(slug, user)
     a = await db.club_announcements.find_one({"_id": oid(ann_id), "club_slug": slug})
     if not a:
         raise HTTPException(status_code=404, detail="الإعلان غير موجود")
@@ -265,10 +317,13 @@ async def disc_categories():
 
 
 @router.get("/discussions")
-async def list_discussions(club_slug: str | None = None, category: str | None = None,
+async def list_discussions(request: Request, club_slug: str | None = None, category: str | None = None,
                            q: str | None = None, sort: str = "recent", page: int = 1, limit: int = 15):
     query = {}
     if club_slug:
+        c = await db.clubs.find_one({"slug": club_slug})
+        if c and not _can_see_club(await get_optional_user(request), c):
+            return {"items": [], "total": 0, "page": page}
         query["club_slug"] = club_slug
     if category:
         query["category"] = category
