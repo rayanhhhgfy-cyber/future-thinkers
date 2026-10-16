@@ -8,662 +8,152 @@ import {
 import { Layout } from "@/components/Layout";
 
 import { fmt, chips, cardCls, gradBtn, ghostBtn, head3, Stat, Slider, Steps, numIn, selIn, useSimCanvas, LazyMount, usePrefersReducedMotion, NOOP, roundRect, arrow, PLANETS, planetById, RANKS, rankOf, BADGES, SPECTRUM, QUIZ_BANK, FACTS, FACT_CATS, LS_KEY, blankStore, loadStore, PhysCtx, usePhys, todayStr, lamText, sciHz } from "@/components/lab/physCore";
-import { ProjectileSim, ProjectileLab, CollisionLab, CircuitLab, WaveStudio, OpticsBench, PendulumLab, OrbitLab, SpringLab, RampLab, ForcesLab } from "@/components/lab/physSims";
-function SpectrumLab() {
-  const [sel, setSel] = useState(SPECTRUM[3]);
-  const fHz = 3e8 / (sel.lamNm * 1e-9);
-  const eV = 1240 / sel.lamNm;
-  return (
-    <div className={cardCls} data-testid="phys-spectrum">
-      {head3("🌈", "الطيف الكهرومغناطيسي الكامل", "من موجات الراديو العملاقة إلى غاما الخارقة · كلها ضوء بسرعات مختلفة الأطوال")}
-      <div className="rounded-2xl overflow-hidden ring-1 ring-slate-200 ft-shadow" dir="ltr">
-        <div className="flex h-14 sm:h-16">
-          {SPECTRUM.map((b) => (
-            <button key={b.id} onClick={() => setSel(b)} aria-label={b.name}
-              className={`pressable relative transition-all ${sel.id === b.id ? "ring-2 ring-inset ring-slate-900 scale-y-110 z-10" : "opacity-85 hover:opacity-100"}`}
-              style={{ background: `linear-gradient(180deg, ${b.col}, ${b.col}88)`, flexGrow: Math.max(1, 12 - Math.abs(Math.log10(b.lamNm) - 2)) }}>
-              <span className="absolute inset-0 grid place-items-center text-[15px] sm:text-lg">{b.icon}</span>
-            </button>
-          ))}
-        </div>
-        <div className="flex justify-between px-2 py-1 bg-slate-900 text-[8.5px] sm:text-[9.5px] font-black text-slate-300">
-          <span>طول موجي أطول ←</span><span>طاقة أعلى · اختراق أعمق</span><span>→ طول أقصر</span>
-        </div>
-      </div>
-      <div className="flex flex-wrap gap-1.5 mt-3">
-        {SPECTRUM.map((b) => <button key={b.id} onClick={() => setSel(b)} className={chips(sel.id === b.id)}>{b.icon} {b.name}</button>)}
-      </div>
-      <AnimatePresence mode="wait">
-        <motion.div key={sel.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.2 }}>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 mt-3">
-            <Stat label="الطول الموجي λ" value={lamText(sel.lamNm)} />
-            <Stat label="التردد f" value={sciHz(fHz)} unit="Hz" tone="from-indigo-50 ring-indigo-100" />
-            <Stat label="طاقة الفوتون" value={sciHz(eV)} unit="eV" tone="from-fuchsia-50 ring-fuchsia-100" />
-            <Stat label="الخطورة" value={sel.dangerAr} tone="from-rose-50 ring-rose-100" />
-          </div>
-          <div className="rounded-2xl bg-gradient-to-b from-violet-50 to-white ring-1 ring-violet-100 p-4 mt-3">
-            <div className="font-black font-head text-slate-900">{sel.icon} {sel.name}</div>
-            <p className="text-[12.5px] text-slate-600 leading-relaxed mt-1">في حياتك: {sel.uses}</p>
-            <p className="text-[12px] text-slate-400 font-semibold leading-relaxed mt-1">{sel.note}</p>
-          </div>
-        </motion.div>
-      </AnimatePresence>
-    </div>
-  );
-}
-
-/* ============ FEATURE 12 · physics calculator ============ */
-const pf = (s) => { const v = parseFloat(s); return isNaN(v) ? null : v; };
-function CalcKinematics() {
-  const [v0, setV0] = useState("0"), [a, setA] = useState("2"), [t, setT] = useState("5");
-  const V0 = pf(v0), A = pf(a), T = pf(t);
-  const ok = V0 != null && A != null && T != null;
-  const v = ok ? V0 + A * T : null, x = ok ? V0 * T + 0.5 * A * T * T : null;
-  return (
-    <div>
-      <div className="grid grid-cols-3 gap-2">
-        {[["السرعة الابتدائية v0", v0, setV0], ["التسارع a", a, setA], ["الزمن t", t, setT]].map(([k, v, s]) => (
-          <label key={k} className="block"><span className="text-[11px] font-black text-slate-500">{k}</span><input type="number" value={v} onChange={(e) => s(e.target.value)} className={numIn + " mt-1"} dir="ltr" /></label>
-        ))}
-      </div>
-      {ok && (
-        <div>
-          <div className="grid grid-cols-2 gap-2 mt-3">
-            <Stat label="السرعة النهائية v" value={fmt(v)} unit="m/s" />
-            <Stat label="الإزاحة x" value={fmt(x)} unit="m" tone="from-indigo-50 ring-indigo-100" />
-          </div>
-          <Steps steps={[
-            `نختار معادلة السرعة: v = v0 + a·t لأن عندنا v0 و a و t`,
-            `نعوّض: v = ${V0} + ${A} × ${T} = ${fmt(v)} م/ثا`,
-            `ومعادلة الإزاحة: x = v0·t + ½·a·t² = ${V0}×${T} + 0.5×${A}×${T}² = ${fmt(x)} م`,
-            `تحقق سريع: متوسط السرعة × الزمن = (${fmt(V0)} + ${fmt(v)}) ÷ 2 × ${T} = ${fmt(((V0 + v) / 2) * T)} م ✓`,
-          ]} />
-        </div>
-      )}
-    </div>
-  );
-}
-function CalcNewton() {
-  const [F, setF] = useState(""), [m, setM] = useState("4"), [a, setA] = useState("3");
-  const Fn = pf(F), Mn = pf(m), An = pf(a);
-  let res = null;
-  if (Fn == null && Mn != null && An != null) res = { k: "القوة F", v: Mn * An, u: "N", steps: [`المجهول هو القوة · من قانون نيوتن الثاني: F = m × a`, `نعوّض: F = ${Mn} × ${An} = ${fmt(Mn * An)} نيوتن`] };
-  else if (An == null && Fn != null && Mn) res = { k: "التسارع a", v: Fn / Mn, u: "m/s²", steps: [`المجهول هو التسارع · نعيد ترتيب القانون: a = F ÷ m`, `نعوّض: a = ${Fn} ÷ ${Mn} = ${fmt(Fn / Mn)} م/ثا²`] };
-  else if (Mn == null && Fn != null && An) res = { k: "الكتلة m", v: Fn / An, u: "kg", steps: [`المجهول هو الكتلة · m = F ÷ a`, `نعوّض: m = ${Fn} ÷ ${An} = ${fmt(Fn / An)} كغ`] };
-  return (
-    <div>
-      <div className="grid grid-cols-3 gap-2">
-        {[["القوة F (اتركه فارغاً لحسابه)", F, setF], ["الكتلة m كغ", m, setM], ["التسارع a", a, setA]].map(([k, v, s]) => (
-          <label key={k} className="block"><span className="text-[11px] font-black text-slate-500">{k}</span><input type="number" value={v} onChange={(e) => s(e.target.value)} className={numIn + " mt-1"} dir="ltr" /></label>
-        ))}
-      </div>
-      {res ? (
-        <div><div className="mt-3"><Stat label={res.k} value={fmt(res.v)} unit={res.u} /></div><Steps steps={res.steps} /></div>
-      ) : <p className="text-[12px] text-slate-400 font-bold mt-3">اترك خانة واحدة فارغة (المجهول) واملأ الباقي · وسنختار المعادلة المناسبة</p>}
-    </div>
-  );
-}
-function CalcEnergy() {
-  const [m, setM] = useState("2"), [v, setV] = useState("6"), [hgt, setHgt] = useState("5"), [pw, setPw] = useState("");
-  const M = pf(m), V = pf(v), H = pf(hgt);
-  const KE = M != null && V != null ? 0.5 * M * V * V : null;
-  const PE = M != null && H != null ? M * 9.81 * H : null;
-  return (
-    <div>
-      <div className="grid grid-cols-3 gap-2">
-        {[["الكتلة m كغ", m, setM], ["السرعة v", v, setV], ["الارتفاع h م", hgt, setHgt]].map(([k, vv, s]) => (
-          <label key={k} className="block"><span className="text-[11px] font-black text-slate-500">{k}</span><input type="number" value={vv} onChange={(e) => s(e.target.value)} className={numIn + " mt-1"} dir="ltr" /></label>
-        ))}
-      </div>
-      <div className="grid grid-cols-2 gap-2 mt-3">
-        <Stat label="الطاقة الحركية ½mv²" value={KE != null ? fmt(KE, 1) : "-"} unit="J" tone="from-amber-50 ring-amber-100" />
-        <Stat label="طاقة الوضع mgh" value={PE != null ? fmt(PE, 1) : "-"} unit="J" tone="from-indigo-50 ring-indigo-100" />
-      </div>
-      {KE != null && PE != null && (
-        <Steps steps={[
-          `الطاقة الحركية: KE = ½ × ${M} × ${V}² = ${fmt(KE, 1)} جول`,
-          `طاقة الوضع: PE = ${M} × 9.81 × ${H} = ${fmt(PE, 1)} جول`,
-          `لو سقط الجسم من هذا الارتفاع لوصلت سرعته: v = √(2gh) = ${fmt(Math.sqrt(2 * 9.81 * H))} م/ثا وتتحول كل PE إلى KE`,
-        ]} />
-      )}
-      <label className="block mt-3"><span className="text-[11px] font-black text-slate-500">وللقدرة: ما الشغل (جول)؟</span><input type="number" value={pw} onChange={(e) => setPw(e.target.value)} placeholder="اختياري · ثم سنقسمه على الزمن بالأسفل" className={numIn + " mt-1"} dir="ltr" /></label>
-      {pf(pw) != null && <p className="text-[12px] text-slate-500 font-bold mt-2">لو أنجز هذا الشغل في 4 ثوانٍ فالقدرة = {fmt(pf(pw) / 4, 1)} واط · القدرة = الشغل ÷ الزمن</p>}
-    </div>
-  );
-}
-function CalcMomentum() {
-  const [m1, setM1] = useState("3"), [v1, setV1] = useState("6"), [m2, setM2] = useState("2"), [v2, setV2] = useState("-2"), [stick, setStick] = useState(true);
-  const M1 = pf(m1) || 0, V1 = pf(v1) || 0, M2 = pf(m2) || 0, V2 = pf(v2) || 0;
-  const p1 = M1 * V1, p2 = M2 * V2, pt = p1 + p2, vf = (M1 + M2) ? pt / (M1 + M2) : 0;
-  return (
-    <div>
-      <div className="grid grid-cols-4 gap-2">
-        {[["m1", m1, setM1], ["v1", v1, setV1], ["m2", m2, setM2], ["v2", v2, setV2]].map(([k, v, s]) => (
-          <label key={k} className="block"><span className="text-[11px] font-black text-slate-500">{k}</span><input type="number" value={v} onChange={(e) => s(e.target.value)} className={numIn + " mt-1"} dir="ltr" /></label>
-        ))}
-      </div>
-      <div className="flex gap-1.5 mt-2">
-        <button onClick={() => setStick(true)} className={chips(stick)}>يتصادمان ويلتصقان</button>
-        <button onClick={() => setStick(false)} className={chips(!stick)}>أحسب الزخم فقط</button>
-      </div>
-      <div className="grid grid-cols-3 gap-2 mt-3">
-        <Stat label="زخم الأول" value={fmt(p1, 1)} unit="kg·m/s" />
-        <Stat label="زخم الثاني" value={fmt(p2, 1)} unit="kg·m/s" tone="from-cyan-50 ring-cyan-100" />
-        <Stat label={stick ? "سرعتهما معاً بعد" : "الزخم الكلي"} value={stick ? fmt(vf) : fmt(pt, 1)} unit={stick ? "m/s" : "kg·m/s"} tone="from-emerald-50 ring-emerald-100" />
-      </div>
-      <Steps steps={[
-        `زخم كل جسم: p = m × v · الأول ${fmt(p1, 1)} والثاني ${fmt(p2, 1)} (الإشارة تعني الاتجاه)`,
-        `الزخم الكلي قبل التصادم = ${fmt(pt, 1)} · وهو نفسه بعد التصادم مهما حدث (حفظ الزخم)`,
-        ...(stick ? [`لأنهما التصقا: كتلتهما معاً ${M1 + M2} كغ · السرعة المشتركة = ${fmt(pt, 1)} ÷ ${M1 + M2} = ${fmt(vf)} م/ثا`] : [`الزخم كمية متجهة: لو كان المجموع صفراً فالجسمان يتوقفان تماماً لو التصقا`]),
-      ]} />
-    </div>
-  );
-}
-function CalcElectric() {
-  const [V, setV] = useState("12"), [I, setI] = useState(""), [R, setR] = useState("4");
-  const Vn = pf(V), In = pf(I), Rn = pf(R);
-  let res = null;
-  if (Vn != null && Rn) res = { I: Vn / Rn, V: Vn, R: Rn, sol: `التيار = الجهد ÷ المقاومة = ${Vn} ÷ ${Rn}` };
-  else if (In != null && Rn) res = { I: In, V: In * Rn, R: Rn, sol: `الجهد = التيار × المقاومة = ${In} × ${Rn}` };
-  else if (Vn != null && In) res = { I: In, V: Vn, R: Vn / In, sol: `المقاومة = الجهد ÷ التيار = ${Vn} ÷ ${In}` };
-  return (
-    <div>
-      <div className="grid grid-cols-3 gap-2">
-        {[["الجهد V", V, setV], ["التيار I (أو اتركه)", I, setI], ["المقاومة R", R, setR]].map(([k, v, s]) => (
-          <label key={k} className="block"><span className="text-[11px] font-black text-slate-500">{k}</span><input type="number" value={v} onChange={(e) => s(e.target.value)} className={numIn + " mt-1"} dir="ltr" /></label>
-        ))}
-      </div>
-      {res ? (
-        <div>
-          <div className="grid grid-cols-3 gap-2 mt-3">
-            <Stat label="الجهد" value={fmt(res.V, 2)} unit="V" />
-            <Stat label="التيار" value={fmt(res.I)} unit="A" tone="from-amber-50 ring-amber-100" />
-            <Stat label="القدرة P = V×I" value={fmt(res.V * res.I, 1)} unit="W" tone="from-emerald-50 ring-emerald-100" />
-          </div>
-          <Steps steps={[`من قانون أوم نبدأ: ${res.sol} = ${fmt(res.I, 2)} أمبير`, `القدرة الكهربائية: P = V × I = ${fmt(res.V, 1)} × ${fmt(res.I)} = ${fmt(res.V * res.I, 1)} واط · هذه حرارة وضوء جهازك كل ثانية`]} />
-        </div>
-      ) : <p className="text-[12px] text-slate-400 font-bold mt-3">املأ قيمتين من ثلاث وسنحسب الثالثة بقانون أوم</p>}
-    </div>
-  );
-}
-function CalcWave() {
-  const [v, setV] = useState("343"), [ fq, setFq ] = useState("440"), [lam, setLam] = useState("");
-  const Vn = pf(v), Fn = pf(fq), Ln = pf(lam);
-  let res = null;
-  if (Vn != null && Fn) res = { lam: Vn / Fn, txt: `الطول الموجي = السرعة ÷ التردد = ${Vn} ÷ ${Fn}` };
-  else if (Fn != null && Ln) res = { v2: Fn * Ln, txt: `السرعة = التردد × الطول الموجي = ${Fn} × ${Ln}` };
-  else if (Vn != null && Ln) res = { fq2: Vn / Ln, txt: `التردد = السرعة ÷ الطول الموجي = ${Vn} ÷ ${Ln}` };
-  return (
-    <div>
-      <div className="grid grid-cols-3 gap-2">
-        {[["السرعة v", v, setV], ["التردد f", fq, setFq], ["الطول الموجي λ", lam, setLam]].map(([k, vv, s]) => (
-          <label key={k} className="block"><span className="text-[11px] font-black text-slate-500">{k}</span><input type="number" value={vv} onChange={(e) => s(e.target.value)} className={numIn + " mt-1"} dir="ltr" /></label>
-        ))}
-      </div>
-      {res ? (
-        <div>
-          <div className="mt-3"><Stat label="الناتج" value={fmt(res.lam ?? res.v2 ?? res.fq2, 3)} tone="from-fuchsia-50 ring-fuchsia-100" /></div>
-          <Steps steps={[`علاقة الموجة الذهبية: v = f × λ تربط الثلاثة`, res.txt, `نغمة 440 هرتز (نوتة لا الموسيقية) طولها بالهواء نحو 0.78 م · كلما ارتفع التردد قصرت الموجة`]} />
-        </div>
-      ) : <p className="text-[12px] text-slate-400 font-bold mt-3">املأ قيمتين من ثلاث</p>}
-    </div>
-  );
-}
-const CALC_TABS = [["kin", "🏃 حركة بعجلة ثابتة"], ["newton", "🍎 قوة نيوتن"], ["energy", "⚡ شغل وطاقة وقدرة"], ["mom", "⚖️ زخم وتصادم"], ["elec", "🔌 كهرباء أوم"], ["wave", "🌊 موجات"]];
-function PhysicsCalculator() {
+import { ProjectileSim, ProjectileLab, CollisionLab, CircuitLab, WaveStudio, OpticsBench, PendulumLab, SpringLab, RampLab } from "@/components/lab/physSims";
+/* ============ حاسبة الفيزياء الاحترافية ============ */
+function PhysicsCalculatorPro() {
+  const MODES = [
+    { id: "kin", icon: "🚀", name: "الحركية" },
+    { id: "force", icon: "💪", name: "القوى" },
+    { id: "energy", icon: "⚡", name: "الطاقة والشغل" },
+    { id: "elec", icon: "🔌", name: "الكهرباء" },
+    { id: "wave", icon: "🌊", name: "الموجات" },
+    { id: "units", icon: "🔄", name: "محول الوحدات" },
+  ];
   const [mode, setMode] = useState("kin");
-  return (
-    <div className={cardCls} data-testid="phys-calculator">
-      {head3("🧮", "حاسبة الفيزياء الشاملة", "ست آلات متخصصة · كل واحدة تعرض خطوات الحل كما يكتبها معلمك")}
-      <div className="flex gap-1.5 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {CALC_TABS.map(([id, ar]) => <button key={id} onClick={() => setMode(id)} className={chips(mode === id) + " shrink-0"}>{ar}</button>)}
-      </div>
-      <AnimatePresence mode="wait">
-        <motion.div key={mode} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.18 }}>
-          {mode === "kin" && <CalcKinematics />}
-          {mode === "newton" && <CalcNewton />}
-          {mode === "energy" && <CalcEnergy />}
-          {mode === "mom" && <CalcMomentum />}
-          {mode === "elec" && <CalcElectric />}
-          {mode === "wave" && <CalcWave />}
-        </motion.div>
-      </AnimatePresence>
-    </div>
+  const [vals, setVals] = useState({});
+  const set = (k, v) => setVals((s) => ({ ...s, [k]: v }));
+  const N = (k) => { const v = parseFloat(vals[k]); return isNaN(v) ? null : v; };
+  const F = ({ k, label, unit, ph }) => (
+    <label className="block">
+      <span className="text-[12px] font-black text-slate-500">{label} {unit && <span className="text-slate-400 font-bold">({unit})</span>}</span>
+      <input value={vals[k] || ""} onChange={(e) => set(k, e.target.value)} placeholder={ph || "0"}
+        inputMode="decimal" dir="ltr"
+        className="mt-1 w-full rounded-2xl border-2 border-slate-100 bg-slate-50/60 px-4 py-3 text-center text-lg font-black text-slate-900 outline-none transition focus:border-violet-400 focus:bg-white" />
+    </label>
   );
-}
+  let out = null;
+  const R = (label, value, unit, steps) => { out = { label, value, unit, steps }; };
 
-/* ============ FEATURE 13 · unit converter ============ */
-const UNIT_CATS = [
-  { id: "len", name: "📏 الطول", units: [["مليمتر", 0.001], ["سنتيمتر", 0.01], ["متر", 1], ["كيلومتر", 1000], ["إنش", 0.0254], ["قدم", 0.3048], ["ميل", 1609.34]] },
-  { id: "speed", name: "🚗 السرعة", units: [["متر/ثانية", 1], ["كم/ساعة", 1 / 3.6], ["ميل/ساعة", 0.44704]] },
-  { id: "energy", name: "🔥 الطاقة", units: [["جول", 1], ["كيلوجول", 1000], ["سعرة حرارية", 4.184], ["كيلوواط·ساعة", 3600000]] },
-  { id: "power", name: "💪 القدرة", units: [["واط", 1], ["كيلوواط", 1000], ["حصان", 745.7]] },
-  { id: "pressure", name: "🌡️ الضغط", units: [["باسكال", 1], ["كيلوباسكال", 1000], ["بار", 100000], ["ضغط جوي", 101325]] },
-  { id: "temp", name: "🌡️ الحرارة", units: [["درجة مئوية °C", "c"], ["كلفن K", "k"], ["فهرنهايت °F", "fh"]] },
-];
-function UnitConverter() {
-  const [catId, setCatId] = useState("len");
-  const [from, setFrom] = useState(2), [to, setTo] = useState(3);
-  const [val, setVal] = useState("1");
-  const cat = UNIT_CATS.find((c) => c.id === catId);
-  const v = pf(val);
-  let result = null, steps = [];
-  if (v != null) {
-    if (catId === "temp") {
-      const toC = (x, u) => (u === "c" ? x : u === "k" ? x - 273.15 : (x - 32) * 5 / 9);
-      const fromC = (x, u) => (u === "c" ? x : u === "k" ? x + 273.15 : x * 9 / 5 + 32);
-      const c = toC(v, cat.units[from][1]);
-      result = fromC(c, cat.units[to][1]);
-      steps = [`الحرارة لا تضرب بمعامل · نحوّل أولاً للمئوية: النتيجة الوسيطة ${fmt(c)} °C`, `ثم نحوّل منها للوحدة المطلوبة: ${fmt(result)}`, `تذكر: صفر كلفن هو أبرد شيء بالكون (-273.15 مئوية) ولا يوجد أسفل منه`];
-    } else {
-      const base = v * cat.units[from][1];
-      result = base / cat.units[to][1];
-      steps = [`نحوّل للوحدة الأساسية أولاً: ${v} × ${cat.units[from][1]} = ${fmt(base, 6)}`, `ثم نقسم على معامل الوحدة الهدف: ${fmt(base, 6)} ÷ ${cat.units[to][1]} = ${fmt(result, 6)}`, `تحقق: التحويل العكسي يجب أن يعيدك لنفس الرقم تماماً`];
-    }
+  if (mode === "kin") {
+    const v0 = N("v0"), a = N("a"), t = N("t"), x = N("x"), v = N("v");
+    if (v !== null && v0 !== null && a !== null && a !== 0) R("الزمن t", fmt((v - v0) / a), "s", [`t = (v − v₀) / a`, `t = (${v} − ${v0}) / ${a}`]);
+    else if (v !== null && v0 !== null && t !== null && t !== 0) R("التسارع a", fmt((v - v0) / t), "m/s²", [`a = (v − v₀) / t`, `a = (${v} − ${v0}) / ${t}`]);
+    else if (v0 !== null && a !== null && t !== null) {
+      const vv = v0 + a * t, xx = v0 * t + 0.5 * a * t * t;
+      R("السرعة النهائية والمسافة", `${fmt(vv)} m/s · ${fmt(xx)} m`, "", [`v = v₀ + at = ${v0} + ${a}×${t}`, `x = v₀t + ½at² = ${v0}×${t} + ½×${a}×${t}²`]);
+    } else if (v !== null && v0 !== null && x !== null && x !== 0) R("التسارع a", fmt((v * v - v0 * v0) / (2 * x)), "m/s²", [`v² = v₀² + 2ax`, `a = (${v}² − ${v0}²) / (2×${x})`]);
+    else out = { hint: "أدخل 3 قيم على الأقل ليحسب الباقي" };
+  } else if (mode === "force") {
+    const m = N("m"), a = N("a"), f = N("f");
+    if (f !== null && m !== null && m !== 0) R("التسارع a", fmt(f / m), "m/s²", [`a = F / m`, `a = ${f} / ${m}`]);
+    else if (f !== null && a !== null && a !== 0) R("الكتلة m", fmt(f / a), "kg", [`m = F / a`, `m = ${f} / ${a}`]);
+    else if (m !== null && a !== null) {
+      const ff = m * a, wgt = m * 9.81;
+      R("القوة والوزن", `${fmt(ff)} N · الوزن ${fmt(wgt)} N`, "", [`F = ma = ${m} × ${a}`, `W = mg = ${m} × 9.81`]);
+    } else out = { hint: "أدخل قيمتين: الكتلة والقوة أو التسارع" };
+  } else if (mode === "energy") {
+    const m = N("m"), v = N("v"), h = N("h"), d = N("d"), f = N("f"), t = N("t");
+    const parts = [], steps = [];
+    if (m !== null && v !== null) { parts.push(`KE = ${fmt(0.5 * m * v * v)} J`); steps.push(`KE = ½mv² = ½×${m}×${v}²`); }
+    if (m !== null && h !== null) { parts.push(`PE = ${fmt(m * 9.81 * h)} J`); steps.push(`PE = mgh = ${m}×9.81×${h}`); }
+    if (f !== null && d !== null) { parts.push(`W = ${fmt(f * d)} J`); steps.push(`W = Fd = ${f}×${d}`); }
+    if (parts.length && t !== null && t !== 0) { const wj = (f || 0) * (d || 0); parts.push(`P = ${fmt(wj / t)} W`); steps.push(`P = W/t = ${fmt(wj)} / ${t}`); }
+    out = parts.length ? { label: "النتائج", value: parts.join(" · "), unit: "", steps } : { hint: "أدخل الكتلة والسرعة، أو القوة والمسافة" };
+  } else if (mode === "elec") {
+    const v = N("v"), i = N("i"), r = N("r");
+    if (v !== null && i !== null) R("المقاومة والقدرة", `R = ${fmt(v / i)} Ω · P = ${fmt(v * i)} W`, "", [`R = V/I = ${v}/${i}`, `P = VI = ${v}×${i}`]);
+    else if (v !== null && r !== null && r !== 0) R("التيار والقدرة", `I = ${fmt(v / r)} A · P = ${fmt((v * v) / r)} W`, "", [`I = V/R = ${v}/${r}`, `P = V²/R`]);
+    else if (i !== null && r !== null) R("الجهد والقدرة", `V = ${fmt(i * r)} V · P = ${fmt(i * i * r)} W`, "", [`V = IR = ${i}×${r}`, `P = I²R`]);
+    else out = { hint: "أدخل قيمتين من: الجهد V، التيار I، المقاومة R" };
+  } else if (mode === "wave") {
+    const f = N("f"), l = N("l"), v = N("v");
+    if (f !== null && l !== null) R("سرعة الموجة", fmt(f * l), "m/s", [`v = fλ = ${f} × ${l}`]);
+    else if (v !== null && f !== null && f !== 0) R("الطول الموجي λ", fmt(v / f), "m", [`λ = v/f = ${v} / ${f}`]);
+    else if (v !== null && l !== null && l !== 0) R("التردد f", fmt(v / l), "Hz", [`f = v/λ = ${v} / ${l}`]);
+    else out = { hint: "أدخل قيمتين من: التردد f، الطول الموجي λ، السرعة v" };
+  } else if (mode === "units") {
+    const val = N("uv"), from = vals.uf || "m", to = vals.ut || "km";
+    const toM = { m: 1, km: 1000, cm: 0.01, mm: 0.001, mi: 1609.34, ft: 0.3048 };
+    const toKg = { kg: 1, g: 0.001, t: 1000, lb: 0.453592 };
+    const toS = { s: 1, min: 60, h: 3600, day: 86400 };
+    const T = { m: toM, km: toM, cm: toM, mm: toM, mi: toM, ft: toM, kg: toKg, g: toKg, t: toKg, lb: toKg, s: toS, min: toS, h: toS, day: toS };
+    if (val !== null && T[from] && T[from] === T[to]) {
+      const res = (val * T[from][from]) / T[to][to];
+      R("النتيجة", fmt(res, 4), to, [`${val} ${from} = ${val} × ${T[from][from]} ${"mkg s".includes(from[0]) ? "" : ""}`, `= ${fmt(res, 4)} ${to}`]);
+    } else out = { hint: "اختر وحدتين من نفس النوع (طول / كتلة / زمن)" };
   }
-  return (
-    <div className={cardCls} data-testid="phys-units">
-      {head3("🔁", "محول الوحدات الشامل", "طول وسرعة وطاقة وقدرة وضغط وحرارة · بخطوات التحويل")}
-      <div className="flex gap-1.5 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {UNIT_CATS.map((c) => <button key={c.id} onClick={() => { setCatId(c.id); setFrom(0); setTo(1); }} className={chips(catId === c.id) + " shrink-0"}>{c.name}</button>)}
-      </div>
-      <div className="grid grid-cols-[1fr_auto_1fr] gap-2 items-end">
-        <label className="block"><span className="text-[11px] font-black text-slate-500">من</span>
-          <select value={from} onChange={(e) => setFrom(+e.target.value)} className={selIn + " mt-1"}>{cat.units.map((u, i) => <option key={u[0]} value={i}>{u[0]}</option>)}</select></label>
-        <span className="text-xl text-slate-300 font-black pb-2">←</span>
-        <label className="block"><span className="text-[11px] font-black text-slate-500">إلى</span>
-          <select value={to} onChange={(e) => setTo(+e.target.value)} className={selIn + " mt-1"}>{cat.units.map((u, i) => <option key={u[0]} value={i}>{u[0]}</option>)}</select></label>
-      </div>
-      <div className="grid grid-cols-2 gap-2 mt-2">
-        <label className="block"><span className="text-[11px] font-black text-slate-500">القيمة</span>
-          <input type="number" value={val} onChange={(e) => setVal(e.target.value)} className={numIn + " mt-1"} dir="ltr" /></label>
-        <div><span className="text-[11px] font-black text-slate-500">الناتج</span>
-          <div className="mt-1 rounded-2xl bg-gradient-to-b from-violet-600 to-indigo-700 text-white px-4 py-2.5 font-black font-head text-lg ft-shadow" dir="ltr">{result != null ? fmt(result, 6) : "-"}</div></div>
-      </div>
-      <Steps steps={steps} />
-    </div>
-  );
-}
 
-/* ============ FEATURE 14 · your weight on planets ============ */
-function PlanetWeight() {
-  const [pid, setPid] = useState("mars");
-  const [massStr, setMassStr] = useState("50");
-  const planet = planetById(pid);
-  const m = pf(massStr) || 0;
-  const W = m * planet.g;
-  const equiv = W / 9.81;
-  const jump = 0.45 * (9.81 / planet.g);
+  const unitOpts = { طول: ["m", "km", "cm", "mm", "mi", "ft"], كتلة: ["kg", "g", "t", "lb"], زمن: ["s", "min", "h", "day"] };
   return (
-    <div className={cardCls} data-testid="phys-planets">
-      {head3("🪐", "وزنك على الكواكب", "كتلتك لا تتغير أبداً · لكن وزنك يرقص مع جاذبية كل عالم")}
-      <div className="flex gap-1.5 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {PLANETS.map((p) => (
-          <button key={p.id} onClick={() => setPid(p.id)} className={chips(pid === p.id) + " shrink-0"}>
-            <span className="inline-block w-2.5 h-2.5 rounded-full ml-1 ring-1 ring-black/10" style={{ background: p.col }} />{p.name}
+    <div className={cardCls} data-testid="phys-calculator-pro">
+      {head3("🧮", "حاسبة الفيزياء الاحترافية", "ستة أقسام ذكية · نتائج فورية مع خطوات الحل كما يكتبها معلمك")}
+      <div className="flex gap-1.5 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="tablist" aria-label="أقسام الحاسبة">
+        {MODES.map((m) => (
+          <button key={m.id} onClick={() => { setMode(m.id); setVals({}); }} role="tab" aria-selected={mode === m.id}
+            className={`pressable shrink-0 px-4 py-2.5 rounded-2xl text-[13px] font-black transition min-h-[44px] ${mode === m.id ? "text-white ft-shadow bg-gradient-to-l from-violet-600 to-indigo-600" : "bg-slate-50 ring-1 ring-slate-200 text-slate-600 hover:ring-violet-200"}`}>
+            {m.icon} {m.name}
           </button>
         ))}
       </div>
-      <label className="block max-w-xs"><span className="text-[12px] font-black text-slate-600">كتلتك بالكيلوغرام</span>
-        <input type="number" value={massStr} onChange={(e) => setMassStr(e.target.value)} className={numIn + " mt-1"} dir="ltr" /></label>
-      <AnimatePresence mode="wait">
-        <motion.div key={pid} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.2 }}>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 mt-3">
-            <Stat label={`وزنك على ${planet.name}`} value={fmt(W, 0)} unit="N" />
-            <Stat label="يكافئ على الأرض" value={fmt(equiv, 1)} unit="kg" tone="from-indigo-50 ring-indigo-100" />
-            <Stat label="جاذبيته g" value={fmt(planet.g)} unit="m/s²" tone="from-cyan-50 ring-cyan-100" />
-            <Stat label="سرعة الهروب" value={fmt(planet.esc, 1)} unit="km/s" tone="from-fuchsia-50 ring-fuchsia-100" />
+      <div className="mt-4 rounded-3xl bg-gradient-to-b from-slate-50 to-white ring-1 ring-slate-100 p-4 sm:p-6">
+        {mode === "kin" && (<div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+          <F k="v0" label="السرعة الابتدائية v₀" unit="m/s" /><F k="v" label="السرعة النهائية v" unit="m/s" /><F k="a" label="التسارع a" unit="m/s²" /><F k="t" label="الزمن t" unit="s" /><F k="x" label="المسافة x" unit="m" />
+        </div>)}
+        {mode === "force" && (<div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <F k="m" label="الكتلة m" unit="kg" /><F k="a" label="التسارع a" unit="m/s²" /><F k="f" label="القوة F" unit="N" />
+        </div>)}
+        {mode === "energy" && (<div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+          <F k="m" label="الكتلة m" unit="kg" /><F k="v" label="السرعة v" unit="m/s" /><F k="h" label="الارتفاع h" unit="m" /><F k="f" label="القوة F" unit="N" /><F k="d" label="المسافة d" unit="m" /><F k="t" label="الزمن t" unit="s" />
+        </div>)}
+        {mode === "elec" && (<div className="grid grid-cols-3 gap-3">
+          <F k="v" label="الجهد V" unit="V" /><F k="i" label="التيار I" unit="A" /><F k="r" label="المقاومة R" unit="Ω" />
+        </div>)}
+        {mode === "wave" && (<div className="grid grid-cols-3 gap-3">
+          <F k="f" label="التردد f" unit="Hz" /><F k="l" label="الطول الموجي λ" unit="m" /><F k="v" label="السرعة v" unit="m/s" />
+        </div>)}
+        {mode === "units" && (
+          <div className="grid sm:grid-cols-3 gap-3 items-end">
+            <F k="uv" label="القيمة" ph="100" />
+            <label className="block"><span className="text-[12px] font-black text-slate-500">من</span>
+              <select value={vals.uf || "m"} onChange={(e) => set("uf", e.target.value)} className="mt-1 w-full rounded-2xl border-2 border-slate-100 bg-slate-50/60 px-4 py-3 font-black text-slate-900 outline-none focus:border-violet-400">
+                {Object.entries(unitOpts).map(([g, us]) => (<optgroup key={g} label={g}>{us.map((u) => <option key={u} value={u}>{u}</option>)}</optgroup>))}
+              </select></label>
+            <label className="block"><span className="text-[12px] font-black text-slate-500">إلى</span>
+              <select value={vals.ut || "km"} onChange={(e) => set("ut", e.target.value)} className="mt-1 w-full rounded-2xl border-2 border-slate-100 bg-slate-50/60 px-4 py-3 font-black text-slate-900 outline-none focus:border-violet-400">
+                {Object.entries(unitOpts).map(([g, us]) => (<optgroup key={g} label={g}>{us.map((u) => <option key={u} value={u}>{u}</option>)}</optgroup>))}
+              </select></label>
           </div>
-          <div className="grid sm:grid-cols-2 gap-2 mt-2">
-            <div className="rounded-2xl bg-gradient-to-b from-violet-50 to-white ring-1 ring-violet-100 p-3.5">
-              <div className="text-[12px] font-black text-violet-800">🏃 قفزتك هناك</div>
-              <p className="text-[12.5px] text-slate-600 leading-relaxed mt-1">لو قفزت 45 سم على الأرض، على {planet.name} ستقفز نحو <b>{fmt(jump)} م</b> بنفس قوة رجليك</p>
-            </div>
-            <div className="rounded-2xl bg-gradient-to-b from-indigo-50 to-white ring-1 ring-indigo-100 p-3.5">
-              <div className="text-[12px] font-black text-indigo-800">💡 حقيقة {planet.name}</div>
-              <p className="text-[12.5px] text-slate-600 leading-relaxed mt-1">{planet.fact}</p>
-            </div>
-          </div>
-        </motion.div>
-      </AnimatePresence>
-    </div>
-  );
-}
-
-/* ============ FEATURE 15 · target challenge ============ */
-function TargetChallenge() {
-  const { award, patchStore, store } = usePhys();
-  const [round, setRound] = useState(1);
-  const [target, setTarget] = useState(() => 80 + Math.floor(Math.random() * 120));
-  const [shots, setShots] = useState(5);
-  const [results, setResults] = useState([]);
-  const [done, setDone] = useState(false);
-  const newRound = () => {
-    setTarget(80 + Math.floor(Math.random() * 120));
-    setShots(5); setResults([]); setDone(false); setRound((r) => r + 1);
-  };
-  const onLand = useCallback((x) => {
-    if (done) return;
-    const err = Math.abs(x - target);
-    const pts = Math.max(0, Math.round(100 - err * 2.2));
-    const nr = [...results, { x, err, pts }];
-    setResults(nr);
-    const left = shots - 1;
-    setShots(left);
-    if (pts >= 90) award("sniper-hit-" + round, 30, "إصابة شبه مثالية", "sniper");
-    if (left <= 0 || pts >= 97) {
-      setDone(true);
-      const best = Math.max(...nr.map((r) => r.pts));
-      patchStore((s) => ({ ...s, records: { ...s.records, bestTarget: Math.max(s.records.bestTarget || 0, best) } }));
-      award("target-round-" + round, 12 + best, `أنهيت الجولة · أفضل إصابة ${best}`);
-    }
-  }, [done, results, shots, round, award, patchStore]);
-  return (
-    <div className={cardCls} data-testid="phys-target">
-      {head3("🎯", "تحدي إصابة الهدف", "هدف أحمر على بعد عشوائي · عندك 5 قذائف · كلما اقتربت كبرت نقاطك")}
-      <div className="flex flex-wrap items-center gap-2 mb-3">
-        <span className="px-3 py-1.5 rounded-full bg-rose-50 ring-1 ring-rose-200 text-rose-700 text-[12px] font-black">الهدف: {target} م</span>
-        <span className="px-3 py-1.5 rounded-full bg-violet-50 ring-1 ring-violet-200 text-violet-700 text-[12px] font-black">القذائف المتبقية: {"🎯".repeat(Math.max(0, shots)) || "انتهت"}</span>
-        <span className="px-3 py-1.5 rounded-full bg-amber-50 ring-1 ring-amber-200 text-amber-700 text-[12px] font-black">أفضل إصابة بتاريخك: {store.records.bestTarget || 0}</span>
-      </div>
-      <MProjectileSim challenge targetM={target} onLand={onLand} />
-      {results.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 mt-3">
-          {results.map((r, i) => (
-            <span key={i} className={`px-3 py-1.5 rounded-full text-[11.5px] font-black ring-1 ${r.pts >= 90 ? "bg-emerald-50 ring-emerald-200 text-emerald-700" : r.pts >= 60 ? "bg-amber-50 ring-amber-200 text-amber-700" : "bg-rose-50 ring-rose-200 text-rose-600"}`}>
-              قذيفة {i + 1}: {fmt(r.x)} م · خطأ {fmt(r.err)} م · {r.pts} نقطة
-            </span>
-          ))}
-        </div>
-      )}
-      {done && (
-        <div className="flex flex-wrap items-center gap-2 mt-3 rounded-2xl bg-gradient-to-l from-violet-600 to-indigo-700 text-white px-4 py-3 ft-shadow">
-          <span className="font-black text-[13px]">انتهت الجولة {round} · أفضل إصابة {Math.max(...results.map((r) => r.pts))} نقطة {Math.max(...results.map((r) => r.pts)) >= 90 ? "🏆 قنّاص حقيقي" : "· قرّب زاويتك من 45 وجرّب سرعات مختلفة"}</span>
-          <button onClick={newRound} className="pressable mr-auto px-4 py-2 rounded-xl bg-white text-indigo-800 text-[12px] font-head font-black active:scale-95 min-h-[40px]">جولة جديدة</button>
-        </div>
-      )}
-    </div>
-  );
-}
-
-/* ============ FEATURE 16 · circuit challenge ============ */
-function CircuitChallenge() {
-  const { award, patchStore, store } = usePhys();
-  const [targetI, setTargetI] = useState(() => Math.round((0.5 + Math.random() * 1.7) * 10) / 10);
-  const [volts, setVolts] = useState(9);
-  const [res, setRes] = useState(18);
-  const [tries, setTries] = useState(0);
-  const [won, setWon] = useState(false);
-  const I = volts / res;
-  const errPct = Math.abs(I - targetI) / targetI * 100;
-  const check = () => {
-    setTries((t) => t + 1);
-    if (errPct <= 5) {
-      setWon(true);
-      patchStore((s) => ({ ...s, records: { ...s.records, circuitWins: (s.records.circuitWins || 0) + 1 } }));
-      award("circuit-win-" + Date.now(), 30, "ضبطت التيار على الهدف", "circuit-master");
-    }
-  };
-  const reset = () => { setTargetI(Math.round((0.5 + Math.random() * 1.7) * 10) / 10); setTries(0); setWon(false); };
-  return (
-    <div className={cardCls} data-testid="phys-circuit-challenge">
-      {head3("🔌", "تحدي الدائرة", "المهندس يطلب تياراً محدداً · اضبط الجهد والمقاومة حتى تلمسه")}
-      <div className="flex flex-wrap items-center gap-2 mb-3">
-        <span className="px-3 py-1.5 rounded-full bg-cyan-50 ring-1 ring-cyan-200 text-cyan-800 text-[12px] font-black">التيار المطلوب: <span dir="ltr">{fmt(targetI)} A</span> (±5%)</span>
-        <span className="px-3 py-1.5 rounded-full bg-violet-50 ring-1 ring-violet-200 text-violet-700 text-[12px] font-black">انتصاراتك: {store.records.circuitWins || 0}</span>
-        <span className="px-3 py-1.5 rounded-full bg-slate-50 ring-1 ring-slate-200 text-slate-600 text-[12px] font-black">المحاولات: {tries}</span>
-      </div>
-      <div className="grid sm:grid-cols-2 gap-3">
-        <Slider label="جهد البطارية" value={volts} set={setVolts} min={2} max={24} step={0.5} unit="V" tone="accent-amber-500" />
-        <Slider label="المقاومة" value={res} set={setRes} min={4} max={60} unit="Ω" tone="accent-indigo-600" />
-      </div>
-      <div className="grid grid-cols-3 gap-2 mt-3">
-        <Stat label="التيار الحالي I = V ÷ R" value={fmt(I)} unit="A" tone="from-amber-50 ring-amber-100" />
-        <Stat label="الفرق عن الهدف" value={fmt(errPct, 1)} unit="%" tone="from-rose-50 ring-rose-100" />
-        <Stat label="القدرة" value={fmt(volts * I, 1)} unit="W" tone="from-emerald-50 ring-emerald-100" />
-      </div>
-      <div className="h-3.5 rounded-full bg-slate-100 overflow-hidden mt-3 relative" dir="ltr">
-        <motion.span animate={{ scaleX: Math.min(1, I / (targetI * 1.6)) }} className={`block h-full w-full origin-left rounded-full ${errPct <= 5 ? "bg-emerald-500" : "bg-gradient-to-r from-amber-300 to-orange-500"}`} />
-        <span className="absolute top-0 bottom-0 w-0.5 bg-slate-900" style={{ left: `${(1 / 1.6) * 100}%` }} />
-      </div>
-      <div className="flex flex-wrap gap-2 mt-3">
-        <button onClick={check} disabled={won} className={gradBtn + (won ? " opacity-50 pointer-events-none" : "")}><Check className="w-4 h-4" /> فحص التيار</button>
-        <button onClick={reset} className={ghostBtn}><RotateCcw className="w-4 h-4" /> هدف جديد</button>
-      </div>
-      {won && <p className="text-[13px] font-black text-emerald-700 mt-3 rounded-2xl bg-emerald-50 ring-1 ring-emerald-200 px-3.5 py-2.5">🎉 ضبطتها! {fmt(I)} أمبير ضمن الهامش · هكذا يصمم المهندسون دوائر الإضاءة الحقيقية</p>}
-      {!won && tries > 0 && <p className="text-[12px] font-bold text-slate-500 mt-3">تلميح: التيار المطلوب {fmt(targetI)} · جرّب قسمة الجهد على التيار لتخمين المقاومة المناسبة</p>}
-    </div>
-  );
-}
-
-/* ============ FEATURE 17 · daily physics quiz ============ */
-function dailyQuizSet() {
-  const s = todayStr();
-  let seed = 0;
-  for (const ch of s) seed += ch.charCodeAt(0);
-  const idx = [];
-  let i = 0;
-  while (idx.length < 5) {
-    const c = (seed + i * 3 + idx.length * 7) % QUIZ_BANK.length;
-    if (!idx.includes(c)) idx.push(c);
-    i++;
-  }
-  return idx.map((j) => QUIZ_BANK[j]);
-}
-function QuizLab() {
-  const { award, patchStore, store } = usePhys();
-  const quiz = useMemo(() => dailyQuizSet(), []);
-  const [qi, setQi] = useState(0);
-  const [picked, setPicked] = useState(null);
-  const [correct, setCorrect] = useState(0);
-  const [finished, setFinished] = useState(false);
-  const doneToday = store.daily.date === todayStr() && store.daily.quizDone;
-  const finish = (finalCorrect) => {
-    setFinished(true);
-    if (doneToday) return;
-    const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
-    patchStore((s) => ({
-      ...s,
-      daily: { date: todayStr(), quizDone: true },
-      records: {
-        ...s.records,
-        quizAnswered: (s.records.quizAnswered || 0) + 5,
-        quizCorrect: (s.records.quizCorrect || 0) + finalCorrect,
-        quizStreak: s.records.lastQuizDate === yesterday ? (s.records.quizStreak || 0) + 1 : 1,
-        lastQuizDate: todayStr(),
-      },
-    }));
-    award("quiz-" + todayStr(), 25 + finalCorrect * 5, `أنهيت اختبار اليوم · ${finalCorrect} من 5`, finalCorrect >= 4 ? "quiz-ace" : undefined);
-  };
-  const pick = (i) => {
-    if (picked !== null) return;
-    setPicked(i);
-    if (i === quiz[qi].a) setCorrect((c) => c + 1);
-  };
-  const next = () => {
-    if (qi + 1 >= quiz.length) { finish(correct); return; }
-    setQi(qi + 1); setPicked(null);
-  };
-  const q = quiz[qi];
-  return (
-    <div className={cardCls} data-testid="phys-quiz">
-      {head3("🧠", "اختبار الفيزياء اليومي", "خمسة أسئلة جديدة كل يوم · حافظ على سلسلتك اليومية")}
-      <div className="flex flex-wrap items-center gap-2 mb-3">
-        <span className="px-3 py-1.5 rounded-full bg-violet-50 ring-1 ring-violet-200 text-violet-700 text-[12px] font-black">السؤال {Math.min(qi + 1, 5)} من 5</span>
-        <span className="px-3 py-1.5 rounded-full bg-amber-50 ring-1 ring-amber-200 text-amber-700 text-[12px] font-black">🔥 سلسلتك: {store.records.quizStreak || 0} يوم</span>
-        {doneToday && !finished && <span className="px-3 py-1.5 rounded-full bg-emerald-50 ring-1 ring-emerald-200 text-emerald-700 text-[12px] font-black">أنجزت اختبار اليوم · اللعب الآن للتدريب فقط</span>}
-      </div>
-      {!finished ? (
-        <div>
-          <AnimatePresence mode="wait">
-            <motion.div key={qi} initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.2 }}>
-              <div className="rounded-2xl bg-gradient-to-b from-violet-600 to-indigo-700 text-white p-4 ft-shadow">
-                <div className="font-black font-head text-[15px] sm:text-base leading-relaxed">{q.q}</div>
+        )}
+        <div className="mt-5">
+          {out && out.hint ? (
+            <div className="rounded-2xl bg-amber-50 ring-1 ring-amber-200 px-4 py-3 text-[13px] font-bold text-amber-700">💡 {out.hint}</div>
+          ) : out ? (
+            <div>
+              <div className="rounded-3xl bg-gradient-to-l from-violet-600 via-indigo-600 to-indigo-700 p-5 sm:p-6 text-white ft-shadow">
+                <div className="text-[12px] font-black text-violet-200">{out.label}</div>
+                <div className="font-head text-2xl sm:text-4xl font-black mt-1 leading-tight" dir="auto">{out.value} {out.unit && <span className="text-lg text-violet-200">{out.unit}</span>}</div>
               </div>
-              <div className="grid sm:grid-cols-2 gap-2 mt-3">
-                {q.opts.map((op, i) => {
-                  const isRight = picked !== null && i === q.a;
-                  const isWrong = picked === i && i !== q.a;
-                  return (
-                    <button key={i} onClick={() => pick(i)}
-                      className={`pressable text-right px-4 py-3 rounded-2xl font-black text-[13px] ring-1 transition min-h-[48px] ${isRight ? "bg-emerald-500 text-white ring-emerald-300" : isWrong ? "bg-rose-500 text-white ring-rose-300" : "bg-white ring-slate-200 text-slate-700 hover:ring-indigo-300"}`}>
-                      {isRight ? "✓ " : isWrong ? "✗ " : ""}{op}
-                    </button>
-                  );
-                })}
-              </div>
-              <AnimatePresence>
-                {picked !== null && (
-                  <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="mt-3 rounded-2xl bg-cyan-50 ring-1 ring-cyan-100 px-4 py-3">
-                    <p className="text-[12.5px] text-slate-600 font-semibold leading-relaxed">💡 {q.why}</p>
-                    <button onClick={next} className={gradBtn + " mt-2"}>{qi + 1 >= quiz.length ? "إنهاء الاختبار" : "السؤال التالي"}</button>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </motion.div>
-          </AnimatePresence>
-        </div>
-      ) : (
-        <div className="text-center rounded-2xl bg-gradient-to-b from-violet-50 to-white ring-1 ring-violet-100 p-5">
-          <div className="text-4xl">{correct >= 4 ? "🏆" : correct >= 3 ? "⭐" : "💪"}</div>
-          <div className="font-black font-head text-xl text-slate-900 mt-2">أجبت {correct} من 5 صح</div>
-          <p className="text-[12.5px] text-slate-500 font-semibold mt-1">{doneToday ? "نقاط اليوم سجلت · عد غداً لأسئلة جديدة وحافظ على السلسلة" : correct >= 4 ? "مستوى عباقرة · وسام عبقري الفيزياء صار أقرب" : "راجع شروحات الأسئلة وارجع غداً أقوى"}</p>
-          <button onClick={() => { setQi(0); setPicked(null); setCorrect(0); setFinished(false); }} className={ghostBtn + " mt-3"}><RotateCcw className="w-4 h-4" /> تدريب إضافي (بلا نقاط)</button>
-        </div>
-      )}
-    </div>
-  );
-}
-
-/* ============ FEATURE 20 · physics facts wall ============ */
-function FactsWall() {
-  const [cat, setCat] = useState("الكل");
-  const [flipped, setFlipped] = useState({});
-  const shown = FACTS.map((f, i) => ({ ...f, i })).filter((f) => cat === "الكل" || f.cat === cat);
-  return (
-    <div className={cardCls} data-testid="phys-facts">
-      {head3("💡", "جدار حقائق الفيزياء", "اضغط أي بطاقة لتقلبها · حقائق تدهشك عن الحركة والكهرباء والضوء والفضاء")}
-      <div className="flex flex-wrap gap-1.5 mb-4">
-        {FACT_CATS.map((c) => <button key={c} onClick={() => setCat(c)} className={chips(cat === c)}>{c}</button>)}
-      </div>
-      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-        {shown.map((f) => {
-          const open = !!flipped[f.i];
-          return (
-            <button key={f.i} onClick={() => setFlipped((s) => ({ ...s, [f.i]: !s[f.i] }))}
-              className="pressable text-right rounded-3xl ring-1 overflow-hidden ft-shadow active:scale-[0.98] transition min-h-[150px]">
-              <AnimatePresence mode="wait">
-                {!open ? (
-                  <motion.div key="front" initial={{ opacity: 0, rotateX: 40 }} animate={{ opacity: 1, rotateX: 0 }} exit={{ opacity: 0, rotateX: -40 }} transition={{ duration: 0.22 }}
-                    className="h-full bg-gradient-to-b from-violet-600 via-indigo-600 to-indigo-800 text-white p-4 flex flex-col">
-                    <span className="text-3xl">{f.icon}</span>
-                    <span className="font-black font-head text-[15px] mt-2 leading-snug">{f.title}</span>
-                    <span className="mt-auto flex items-center justify-between">
-                      <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-white/15 ring-1 ring-white/25">{f.cat}</span>
-                      <span className="text-[10px] font-black text-cyan-200">اضغط للقلب ⟳</span>
-                    </span>
-                  </motion.div>
-                ) : (
-                  <motion.div key="back" initial={{ opacity: 0, rotateX: -40 }} animate={{ opacity: 1, rotateX: 0 }} exit={{ opacity: 0, rotateX: 40 }} transition={{ duration: 0.22 }}
-                    className="h-full bg-white p-4">
-                    <span className="text-[11px] font-black text-violet-600">{f.icon} {f.title}</span>
-                    <p className="text-[12.5px] text-slate-600 leading-relaxed mt-1.5">{f.text}</p>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-/* ============ FEATURE 18 · badges & ranks wall ============ */
-function BadgesWall() {
-  const { store } = usePhys();
-  const { rank, next } = rankOf(store.xp);
-  const pct = next ? Math.min(100, ((store.xp - rank.xp) / (next.xp - rank.xp)) * 100) : 100;
-  return (
-    <div className={cardCls} data-testid="phys-badges">
-      {head3("🏅", "أوسمة الفيزياء والرتب", "كل وسام قصة تجربة عشتها بيدك في هذا المختبر")}
-      <div className="rounded-2xl bg-gradient-to-l from-violet-600 via-indigo-600 to-indigo-800 text-white p-4 ft-shadow">
-        <div className="flex flex-wrap items-center gap-3">
-          <span className="w-12 h-12 rounded-2xl bg-white/15 ring-1 ring-white/30 grid place-items-center text-2xl">🎓</span>
-          <div className="min-w-0">
-            <div className="font-black font-head text-lg leading-tight">{rank.name}</div>
-            <div className="text-[11.5px] text-indigo-100 font-bold">{store.xp} نقطة خبرة فيزياء {next ? `· للرتبة التالية ${next.xp}` : "· أعلى رتبة 🏆"}</div>
-          </div>
-          <span className="mr-auto text-[12px] font-black px-3 py-1.5 rounded-full bg-white/15 ring-1 ring-white/25">{store.badges.length} / {BADGES.length} وساماً</span>
-        </div>
-        <div className="h-3 rounded-full bg-white/15 overflow-hidden mt-3" dir="ltr">
-          <motion.span animate={{ scaleX: pct / 100 }} transition={{ type: "spring", stiffness: 60, damping: 16 }} className="block h-full w-full origin-left rounded-full bg-gradient-to-r from-amber-300 via-yellow-300 to-cyan-300" />
-        </div>
-      </div>
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-2 mt-3">
-        {BADGES.map((b) => {
-          const got = store.badges.includes(b.id);
-          return (
-            <div key={b.id} className={`rounded-3xl p-3 text-center ring-1 transition ${got ? "bg-gradient-to-b from-amber-50 to-white ring-amber-200 ft-shadow" : "bg-slate-50/70 ring-slate-100 opacity-75"}`}>
-              <div className={`text-3xl ${got ? "" : "grayscale opacity-40"}`}>{b.icon}</div>
-              <div className={`text-[12px] font-black mt-1.5 ${got ? "text-slate-900" : "text-slate-400"}`}>{b.name}</div>
-              <div className="text-[10px] text-slate-400 font-bold leading-snug mt-0.5">{b.desc}</div>
-              <span className={`inline-block mt-2 px-2 py-0.5 rounded-full text-[9.5px] font-black ${got ? "bg-emerald-500 text-white" : "bg-slate-100 text-slate-400 ring-1 ring-slate-200"}`}>{got ? "مفتوح ✓" : "مقفل"}</span>
+              {out.steps && out.steps.length > 0 && (
+                <div className="mt-3 rounded-2xl bg-slate-50 ring-1 ring-slate-100 p-4">
+                  <div className="text-[12px] font-black text-slate-500 mb-2">📝 خطوات الحل</div>
+                  <Steps steps={out.steps} />
+                </div>
+              )}
             </div>
-          );
-        })}
+          ) : null}
+        </div>
       </div>
+      <p className="text-[12px] text-slate-400 font-semibold leading-relaxed mt-3">القيم تقريبية تعليمية · g = 9.81 m/s² · اترك الخانة التي تريد حسابها فارغة وستحسبها الحاسبة تلقائياً.</p>
     </div>
   );
 }
 
-/* ============ FEATURE 19 · personal lab record ============ */
-function RecordsCard() {
-  const { store, patchStore } = usePhys();
-  const [arm, setArm] = useState(false);
-  const r = store.records;
-  const acc = r.quizAnswered ? Math.round(((r.quizCorrect || 0) / r.quizAnswered) * 100) : 0;
-  const stats = [
-    ["🧪", "تجارب شغّلتها", r.experiments || 0],
-    ["🔭", "تجارب مختلفة جرّبتها", (r.sims || []).length],
-    ["🎯", "أفضل نتيجة هدف", (r.bestTarget || 0) + " نقطة"],
-    ["🔌", "انتصارات تحدي الدائرة", r.circuitWins || 0],
-    ["🧠", "أسئلة أجبتها", r.quizAnswered || 0],
-    ["✓", "إجابات صحيحة", (r.quizCorrect || 0) + " (" + acc + "%)"],
-    ["🔥", "أطول سلسلة يومية", (r.quizStreak || 0) + " يوم"],
-    ["⭐", "نقاط الخبرة الكلية", store.xp],
-  ];
-  return (
-    <div className={cardCls} data-testid="phys-records">
-      {head3("📓", "سجل المختبر الشخصي", "أرقامك محفوظة على جهازك · تكبر مع كل زيارة")}
-      <div className="grid grid-cols-2 gap-2">
-        {stats.map(([icon, label, v]) => (
-          <div key={label} className="rounded-2xl bg-white ring-1 ring-slate-100 p-3 flex items-center gap-2.5">
-            <span className="w-9 h-9 shrink-0 grid place-items-center rounded-xl bg-violet-50 ring-1 ring-violet-100 text-lg">{icon}</span>
-            <div className="min-w-0">
-              <div className="text-[15px] font-black font-head text-slate-900 leading-none" dir="ltr">{v}</div>
-              <div className="text-[9.5px] text-slate-400 font-black mt-1 leading-tight">{label}</div>
-            </div>
-          </div>
-        ))}
-      </div>
-      <button onClick={() => {
-        if (!arm) { setArm(true); setTimeout(() => setArm(false), 3500); return; }
-        patchStore(() => blankStore());
-        setArm(false);
-      }} className={`pressable mt-3 px-4 py-2.5 rounded-2xl text-[12px] font-black min-h-[44px] active:scale-95 transition ${arm ? "bg-rose-600 text-white ft-shadow" : "bg-white ring-1 ring-rose-200 text-rose-600 hover:bg-rose-50"}`}>
-        {arm ? "متأكد؟ اضغط مرة أخرى لمسح كل السجل والنقاط" : "تصفير السجل والنقاط"}
-      </button>
-      <p className="text-[11px] text-slate-400 font-semibold mt-2">التصفير يمسح النقاط والأوسمة والسجل من هذا الجهاز فقط · ولا يمكن التراجع عنه</p>
-    </div>
-  );
-}
 
 /* ================= main page ================= */
 const SIM_TABS = [
   ["projectile", "🚀 المقذوفات"], ["collision", "🚗 التصادمات"], ["circuit", "💡 الدوائر الكهربائية"],
   ["waves", "🌊 الموجات والصوت"], ["optics", "🔍 البصريات"], ["pendulum", "⏱️ البندول"],
-  ["orbit", "🛰️ المدارات"], ["spring", "🌀 النوابض"], ["ramp", "📐 المنحدر والاحتكاك"], ["forces", "🎯 مخطط القوى"],
+["spring", "🌀 النوابض"], ["ramp", "📐 المنحدر والاحتكاك"],
 ];
 function SectionHead({ icon, title, sub }) {
   return (
@@ -684,20 +174,9 @@ const MCircuitLab = React.memo(CircuitLab);
 const MWaveStudio = React.memo(WaveStudio);
 const MOpticsBench = React.memo(OpticsBench);
 const MPendulumLab = React.memo(PendulumLab);
-const MOrbitLab = React.memo(OrbitLab);
 const MSpringLab = React.memo(SpringLab);
 const MRampLab = React.memo(RampLab);
-const MForcesLab = React.memo(ForcesLab);
 const MProjectileSim = React.memo(ProjectileSim);
-const MSpectrumLab = React.memo(SpectrumLab);
-const MPhysicsCalculator = React.memo(PhysicsCalculator);
-const MUnitConverter = React.memo(UnitConverter);
-const MPlanetWeight = React.memo(PlanetWeight);
-const MTargetChallenge = React.memo(TargetChallenge);
-const MCircuitChallenge = React.memo(CircuitChallenge);
-const MQuizLab = React.memo(QuizLab);
-const MFactsWall = React.memo(FactsWall);
-const MBadgesWall = React.memo(BadgesWall);
 const MRecordsCard = React.memo(RecordsCard);
 
 export default function PhysicsLab() {
@@ -761,11 +240,11 @@ export default function PhysicsLab() {
                     <Atom className="w-3.5 h-3.5 text-cyan-300" /> مختبر نادي العلوم التفاعلي
                   </span>
                   <h1 className="font-head text-4xl sm:text-5xl lg:text-6xl font-black mt-3 leading-tight">مختبر <span className="text-transparent bg-clip-text bg-gradient-to-l from-violet-300 via-indigo-200 to-cyan-300">الفيزياء</span> المتقدم</h1>
-                  <p className="text-slate-300 text-sm sm:text-base mt-2 max-w-xl leading-relaxed">عشر محاكيات حيّة تراها بعينك: مقذوفات وتصادمات ودوائر وموجات ومدارات · وكل تجربة تشغّلها ترفع رتبتك من فيزيائي مبتدئ إلى أستاذ الفيزياء</p>
+                  <p className="text-slate-300 text-sm sm:text-base mt-2 max-w-xl leading-relaxed">ثماني محاكيات حيّة تراها بعينك: مقذوفات وتصادمات ودوائر وموجات · وكل تجربة تشغّلها ترفع رتبتك من فيزيائي مبتدئ إلى أستاذ الفيزياء</p>
                 </div>
                 <div className="grid grid-cols-4 gap-2 sm:flex sm:gap-3 shrink-0 w-full lg:w-auto">
                   <div className="text-center px-3 sm:px-5 py-3 rounded-2xl bg-white/[0.12] backdrop-blur ring-1 ring-white/25 ft-shadow hover:bg-white/20 hover:scale-[1.04] transition-all">
-                    <div className="text-xl sm:text-2xl font-black font-head text-cyan-200 drop-shadow">10</div>
+                    <div className="text-xl sm:text-2xl font-black font-head text-cyan-200 drop-shadow">8</div>
                     <div className="text-[10px] text-slate-300 font-bold mt-0.5">محاكيات حيّة</div>
                   </div>
                   <div className="text-center px-3 sm:px-5 py-3 rounded-2xl bg-white/[0.12] backdrop-blur ring-1 ring-white/25 ft-shadow hover:bg-white/20 hover:scale-[1.04] transition-all">
@@ -797,7 +276,7 @@ export default function PhysicsLab() {
           </div>
 
           {/* ===== simulator stage ===== */}
-          <SectionHead icon="🎛️" title="مسرح المحاكاة الحية" sub="عشر تجارب فيزيائية تتحرك أمامك · بدّل بينها وجرّب كل واحدة بيدك" />
+          <SectionHead icon="🎛️" title="مسرح المحاكاة الحية" sub="ثماني تجارب فيزيائية تتحرك أمامك · بدّل بينها وجرّب كل واحدة بيدك" />
           <div className="flex gap-1.5 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="tablist" aria-label="تجارب المسرح">
             {SIM_TABS.map(([id, ar]) => (
               <button key={id} onClick={() => setSim(id)} data-testid={`phys-tab-${id}`} role="tab" aria-selected={sim === id}
@@ -814,55 +293,17 @@ export default function PhysicsLab() {
               {sim === "waves" && <MWaveStudio />}
               {sim === "optics" && <MOpticsBench />}
               {sim === "pendulum" && <MPendulumLab />}
-              {sim === "orbit" && <MOrbitLab />}
               {sim === "spring" && <MSpringLab />}
               {sim === "ramp" && <MRampLab />}
-              {sim === "forces" && <MForcesLab />}
             </motion.div>
           </AnimatePresence>
 
-          {/* ===== explorers ===== */}
-          <SectionHead icon="🔭" title="المستكشفون والحاسبات" sub="طيف كامل وحاسبة بستة أوضاع ومحول وحدات وميزان كواكب" />
-          <LazyMount minH={430} icon="🌈" title="الطيف الكهرومغناطيسي الكامل"><MSpectrumLab /></LazyMount>
-          <div className="mt-4">
-            <LazyMount minH={560} icon="🧮" title="حاسبة الفيزياء الشاملة">
-              <div className="grid lg:grid-cols-2 gap-4">
-                <MPhysicsCalculator />
-                <MUnitConverter />
-              </div>
-            </LazyMount>
-          </div>
-          <div className="mt-4"><LazyMount minH={380} icon="🪐" title="وزنك على الكواكب"><MPlanetWeight /></LazyMount></div>
-
-          {/* ===== challenges ===== */}
-          <SectionHead icon="🏆" title="ساحة التحديات" sub="هنا تتحول الفيزياء إلى نقاط وأوسمة · ثلاث ساحات بانتظارك" />
-          <LazyMount minH={600} icon="🎯" title="تحدي إصابة الهدف"><MTargetChallenge /></LazyMount>
-          <div className="mt-4">
-            <LazyMount minH={560} icon="🔌" title="تحدي الدائرة">
-              <div className="grid lg:grid-cols-2 gap-4">
-                <MCircuitChallenge />
-                <MQuizLab />
-              </div>
-            </LazyMount>
-          </div>
-
-          {/* ===== progression ===== */}
-          <SectionHead icon="🎓" title="تقدمك ورتبك" sub="أوسمتك وسجلك الشخصي · محفوظة على جهازك وتكبر معك" />
-          <LazyMount minH={460} icon="🏅" title="أوسمة الفيزياء والرتب">
-            <div className="grid lg:grid-cols-2 gap-4">
-              <MBadgesWall />
-              <MRecordsCard />
-            </div>
+          {/* ===== physics calculator ===== */}
+          <SectionHead icon="🧮" title="حاسبة الفيزياء الاحترافية" sub="ستة أقسام ذكية · اكتب القيم واحصل على النتيجة مع خطوات الحل" />
+          <LazyMount minH={560} icon="🧮" title="حاسبة الفيزياء الاحترافية">
+            <PhysicsCalculatorPro />
           </LazyMount>
 
-          <div className="mt-4"><LazyMount minH={420} icon="💡" title="جدار حقائق الفيزياء"><MFactsWall /></LazyMount></div>
-
-          <div className="mt-8 rounded-3xl bg-gradient-to-l from-violet-50 via-white to-cyan-50 ring-1 ring-violet-100 ft-shadow p-5 flex items-start gap-3">
-            <span className="text-2xl shrink-0">⚛️</span>
-            <p className="text-sm text-slate-600 leading-relaxed">
-              <b className="text-slate-900 font-head">كيف تستفيد بذكاء؟</b> شغّل كل تجربة في المسرح مرة على الأقل لتفتح وسام مستكشف المختبر، ثم العب تحديات الهدف والدائرة، ولا تكسر سلسلة اختبار اليوم · قيم المحاكيات تقريبية تعليمية تهمل مقاومة الهواء والاحتكاك الداخلي ما لم يذكر غير ذلك.
-            </p>
-          </div>
         </div>
 
         {/* ===== XP toast ===== */}
