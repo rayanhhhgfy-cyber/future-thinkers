@@ -153,10 +153,12 @@ export default function AdminClubs() {
               <Item key={c.id || c.slug} className="bg-white rounded-3xl border border-slate-100 ft-shadow overflow-hidden flex flex-col hover-lift">
                 <div className="relative h-20 overflow-hidden" style={{ background: `linear-gradient(135deg, ${color}, ${color}99)` }}>
                   <span className="absolute -top-4 -left-4 w-20 h-20 rounded-full bg-white/15 blur-md" />
-                  <span className="absolute bottom-3 right-4 inline-flex items-center gap-1.5 text-[11px] font-bold text-white bg-black/25 backdrop-blur px-2.5 py-1 rounded-full"><Users className="w-3.5 h-3.5" />{c.members_count || 0} عضو</span>
-                  {c.is_hidden && (
-                    <span className="absolute bottom-3 left-4 inline-flex items-center gap-1 text-[11px] font-bold text-white bg-slate-900/60 backdrop-blur px-2.5 py-1 rounded-full"><EyeOff className="w-3.5 h-3.5" /> مخفي</span>
-                  )}
+                  <span className="absolute bottom-3 right-4 flex items-center gap-1.5">
+                    {c.is_hidden && (
+                      <span className="inline-flex items-center gap-1 text-[11px] font-bold text-white bg-slate-900/60 backdrop-blur px-2.5 py-1 rounded-full"><EyeOff className="w-3.5 h-3.5" /> مخفي</span>
+                    )}
+                    <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-white bg-black/25 backdrop-blur px-2.5 py-1 rounded-full"><Users className="w-3.5 h-3.5" />{c.members_count || 0} عضو</span>
+                  </span>
                   <span className="absolute top-3 left-3 flex gap-1.5">
                     {canEdit && (
                       <button onClick={() => toggleHide(c)} title={c.is_hidden ? "إظهار النادي" : "إخفاء النادي"}
