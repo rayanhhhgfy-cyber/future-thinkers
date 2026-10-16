@@ -65,27 +65,49 @@ export function highlightPython(code) {
 
 export function PythonCode({ code, title = "python" }) {
   const [copied, setCopied] = useState(false);
+  const lines = code.replace(/\n$/, "").split("\n");
   const copy = async () => {
     try { await navigator.clipboard.writeText(code); setCopied(true); setTimeout(() => setCopied(false), 1500); }
     catch { /* clipboard unavailable */ }
   };
   return (
-    <div dir="ltr" className="my-5 overflow-hidden rounded-2xl border border-white/10 bg-[#0d1117] shadow-[0_20px_50px_-20px_rgba(0,0,0,0.6)]">
-      <div className="flex items-center justify-between border-b border-white/10 bg-white/[0.03] px-4 py-2.5">
+    <div dir="ltr" className="group/code my-6 overflow-hidden rounded-[1.4rem] shadow-[0_24px_60px_-20px_rgba(13,17,23,0.55)] ring-1 ring-slate-900/20">
+      {/* header bar */}
+      <div className="flex items-center gap-3 bg-gradient-to-r from-[#161b22] via-[#1c2330] to-[#161b22] px-4 py-3">
         <div className="flex items-center gap-1.5" aria-hidden="true">
-          <span className="h-3 w-3 rounded-full bg-[#ff5f57]" />
-          <span className="h-3 w-3 rounded-full bg-[#febc2e]" />
-          <span className="h-3 w-3 rounded-full bg-[#28c840]" />
+          <span className="h-3 w-3 rounded-full bg-[#ff5f57] shadow-[0_0_8px_rgba(255,95,87,0.6)]" />
+          <span className="h-3 w-3 rounded-full bg-[#febc2e] shadow-[0_0_8px_rgba(254,188,46,0.6)]" />
+          <span className="h-3 w-3 rounded-full bg-[#28c840] shadow-[0_0_8px_rgba(40,200,64,0.6)]" />
         </div>
-        <span className="rounded-md bg-white/10 px-2.5 py-1 text-[11px] font-bold text-slate-300">{title}</span>
-        <button onClick={copy} className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11px] font-bold text-slate-400 transition hover:bg-white/10 hover:text-white">
-          {copied ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
-          {copied ? "تم النسخ" : "نسخ"}
+        <span className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-[#3776AB] to-[#255a85] px-3 py-1 text-[11px] font-black uppercase tracking-wider text-white shadow">
+          <span className="text-sm">🐍</span> {title}
+        </span>
+        <span className="hidden text-[11px] font-bold text-slate-500 sm:inline" dir="rtl">{lines.length} {lines.length === 1 ? "سطر" : "أسطر"}</span>
+        <button onClick={copy}
+          className={`mr-auto flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-[11.5px] font-extrabold transition-all active:scale-95 ${copied ? "bg-emerald-500/20 text-emerald-300" : "bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white"}`}>
+          {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+          {copied ? "تم النسخ ✓" : "نسخ الكود"}
         </button>
       </div>
-      <pre className="overflow-x-auto p-4 text-left text-[13px] leading-[1.75] sm:text-sm" style={{ fontFamily: "'JetBrains Mono','Fira Code',Consolas,monospace" }}>
-        <code>{highlightPython(code.replace(/\n$/, ""))}</code>
-      </pre>
+      {/* code body with line numbers */}
+      <div className="overflow-x-auto bg-[#0d1117] [scrollbar-width:thin]">
+        <table className="w-full border-collapse">
+          <tbody>
+            {lines.map((ln, i) => (
+              <tr key={i} className="transition-colors hover:bg-white/[0.04]">
+                <td className="w-12 select-none border-r border-white/5 bg-white/[0.02] px-3 py-0 text-right align-top font-mono text-[11px] leading-[1.9] text-slate-600">
+                  {i + 1}
+                </td>
+                <td className="px-4 py-0 align-top whitespace-pre font-mono text-[13px] leading-[1.9] sm:text-[13.5px]" style={{ fontFamily: "'JetBrains Mono','Fira Code',Consolas,monospace" }}>
+                  <code>{highlightPython(ln || " ")}</code>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {/* footer glow */}
+      <div className="h-1 bg-gradient-to-r from-[#3776AB] via-[#FFD43B] to-[#3776AB]" />
     </div>
   );
 }
@@ -116,17 +138,40 @@ function inline(text) {
 
 export function renderArticle(content) {
   const nodes = [];
-  // split out fenced code blocks first
-  const chunks = content.split(/```(\w*)\n?/);
-  // chunks: [text, lang, code, text, lang, code, ...]
   let k = 0;
-  for (let i = 0; i < chunks.length; i += 3) {
-    const text = chunks[i] || "";
-    const lang = chunks[i + 1];
-    const code = chunks[i + 2];
-    if (text.trim()) nodes.push(...renderText(text, k++));
-    if (code !== undefined) nodes.push(<PythonCode key={`c${k++}`} code={code} title={lang || "code"} />);
+  // Robust fenced-block parser: pairs ``` openers with closers sequentially.
+  // An unclosed opener renders everything after it as code (like ChatGPT does).
+  const fenceRe = /```(\w*)/g;
+  let lastIdx = 0, m;
+  const fences = [];
+  while ((m = fenceRe.exec(content))) fences.push({ idx: m.index, lang: m[1] || "", end: m.index + m[0].length });
+  let i = 0;
+  while (i < fences.length) {
+    const open = fences[i];
+    // text before opener
+    const before = content.slice(lastIdx, open.idx);
+    if (before.trim()) nodes.push(...renderText(before, k++));
+    // find closer: next fence whose line-start is a bare closer OR any next fence
+    let closeIdx = -1;
+    for (let j = i + 1; j < fences.length; j++) {
+      closeIdx = j;
+      break; // the very next fence closes this block
+    }
+    if (closeIdx === -1) {
+      // unclosed: rest of content is code
+      const code = content.slice(open.end).replace(/^\n/, "");
+      nodes.push(<PythonCode key={`c${k++}`} code={code} title={open.lang || "python"} />);
+      lastIdx = content.length;
+      break;
+    }
+    const close = fences[closeIdx];
+    const code = content.slice(open.end, close.idx).replace(/^\n/, "").replace(/\n$/, "");
+    nodes.push(<PythonCode key={`c${k++}`} code={code} title={open.lang || "python"} />);
+    lastIdx = close.end;
+    i = closeIdx + 1;
   }
+  const tail = content.slice(lastIdx);
+  if (tail.trim()) nodes.push(...renderText(tail, k++));
   return nodes;
 }
 
