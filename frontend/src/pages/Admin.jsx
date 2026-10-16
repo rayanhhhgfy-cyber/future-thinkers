@@ -69,7 +69,7 @@ const NAV = [
   { k: "landing", l: "صفحة الهبوط", icon: Globe2, perm: "cms.manage" },
   { k: "calendar", l: "التقويم", icon: CalendarDays, perm: "analytics.view" },
   { k: "coding", l: "تحديات البرمجة", icon: Code2, perm: "coding.manage" },
-  { k: "python", l: "رحلة بايثون", icon: FileCode2, perm: "coding.manage" },
+  { k: "python", l: "🐍 رحلة بايثون", icon: FileCode2 },
   { k: "paths", l: "مسارات التعلم", icon: RouteIcon, perm: "cms.manage" },
   { k: "exports", l: "تصدير البيانات", icon: Download, perm: "user.view" },
   { k: "clubs", l: "الأندية", icon: Users, perm: ["club.create", "club.edit", "club.delete", "club.manage"] },
@@ -91,7 +91,7 @@ export default function Admin() {
   const { hasPerm, user } = useAuth();
   const nav = useNavigate();
   const params = useParams();
-  const tabs = NAV.filter((n) => Array.isArray(n.perm) ? n.perm.some((p) => hasPerm(p)) : hasPerm(n.perm));
+  const tabs = NAV.filter((n) => !n.perm || (Array.isArray(n.perm) ? n.perm.some((p) => hasPerm(p)) : hasPerm(n.perm)));
   const urlTab = (params["*"] || "").split("/")[0];
   const validUrlTab = tabs.some((t) => t.k === urlTab) ? urlTab : null;
   const [tab, setTab] = useState(validUrlTab || tabs[0]?.k || "overview");
