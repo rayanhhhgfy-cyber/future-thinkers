@@ -213,6 +213,12 @@ async def delete_club(slug: str, request: Request, user: dict = Depends(require_
         await db.discussion_replies.delete_many({"discussion_id": {"$in": [str(i) for i in disc_ids]}})
         await db.discussion_replies.delete_many({"discussion_id": {"$in": disc_ids}})
     await db.discussions.delete_many({"club_slug": slug})
+    # Tombstone: never resurrect this club on future deploys/seeds
+    await db.seed_tombstones.update_one(
+        {"kind": "club", "slug": slug},
+        {"$set": {"kind": "club", "slug": slug, "deleted_at": now_iso(), "deleted_by": user["id"]}},
+        upsert=True,
+    )
     await audit_log(user, "club_delete", "club", slug, request=request)
     return {"ok": True}
 
