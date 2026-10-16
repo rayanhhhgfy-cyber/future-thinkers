@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, lazy, Suspense } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { Layout, PageLoader, EmptyState } from "@/components/Layout";
 import api, { apiErr } from "@/lib/api";
@@ -13,8 +13,9 @@ import * as Icons from "lucide-react";
 import { Users, MessageSquare, Heart, Plus, Crown, Trophy, Swords, ArrowRight, Megaphone, Pin, Trash2, Send, Flame } from "lucide-react";
 import { ChessArena } from "@/components/ChessArena";
 import { CodingPanel, ProjectsPanel, DebatesPanel } from "@/components/ClubPanels";
+const PythonJourney = lazy(() => import("@/pages/PythonJourney"));
 
-const SPECIAL_INIT = { chess: "main", programming: "coding", innovation: "projects", debate: "debates" };
+const SPECIAL_INIT = { chess: "main", programming: "python", innovation: "projects", debate: "debates" };
 
 function fmtWhen(d) {
   if (!d) return "";
@@ -340,7 +341,7 @@ export default function ClubDetail() {
 
   const SPECIAL = {
     chess: [["main", "الحلبة"], ["leaderboard", "التصنيف"], ["forum", "النقاشات"]],
-    programming: [["coding", "التحديات البرمجية"], ["leaderboard", "الصدارة"], ["forum", "النقاشات"]],
+    programming: [["python", "🐍 مسار بايثون"], ["coding", "التحديات البرمجية"], ["leaderboard", "الصدارة"], ["forum", "النقاشات"]],
     innovation: [["projects", "المشاريع"], ["forum", "النقاشات"], ["members", "الأعضاء"]],
     debate: [["debates", "المناظرات"], ["forum", "النقاشات"], ["members", "الأعضاء"]],
   };
@@ -427,6 +428,7 @@ export default function ClubDetail() {
             
             <ClubAnnouncements slug={slug} club={club} color={club.color} />
             {slug === "chess" && activeTab === "main" && <ChessArena />}
+            {activeTab === "python" && <Suspense fallback={<PageLoader />}><PythonJourney /></Suspense>}
             {activeTab === "coding" && <CodingPanel />}
             {activeTab === "projects" && <ProjectsPanel />}
             {activeTab === "debates" && <DebatesPanel />}
