@@ -52,7 +52,7 @@ export default function AdminClubs() {
   const [saving, setSaving] = useState(false);
 
   const load = async () => {
-    try { const { data } = await api.get("/clubs"); setClubs(data || []); }
+    try { const { data } = await api.get("/clubs?include_hidden=1"); setClubs(data || []); }
     catch { setClubs([]); }
   };
   useEffect(() => { load(); }, []);

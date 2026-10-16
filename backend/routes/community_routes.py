@@ -56,10 +56,8 @@ async def _unique_slug(name: str) -> str:
 
 
 def _can_see_club(user: dict | None, club: dict) -> bool:
-    """النادي المخفي لا يراه إلا مديروه (مؤسسه أو إدارة المنصة)."""
-    if not club.get("is_hidden"):
-        return True
-    return _club_manager(user, club)
+    """النادي المخفي لا يظهر في أي صفحة عامة لأي مستخدم — فقط لوحة الإدارة."""
+    return not club.get("is_hidden")
 
 
 class ClubBody(BaseModel):
@@ -132,10 +130,11 @@ async def _club_member_rows(slug: str):
 @router.get("/clubs")
 async def list_clubs(request: Request):
     user = await get_optional_user(request)
-    if user and "club.edit" in effective_permissions(user):
+    # Hidden clubs are invisible to EVERYONE on public pages — they appear only
+    # in the admin panel, which passes ?include_hidden=1 (permission-checked).
+    if (request.query_params.get("include_hidden") == "1"
+            and user and "club.edit" in effective_permissions(user)):
         q = {}
-    elif user:
-        q = {"$or": [{"is_hidden": {"$ne": True}}, {"created_by": user["id"]}]}
     else:
         q = {"is_hidden": {"$ne": True}}
     docs = await db.clubs.find(q).to_list(50)
@@ -204,8 +203,16 @@ async def delete_club(slug: str, request: Request, user: dict = Depends(require_
     c = await db.clubs.find_one({"slug": slug})
     if not c:
         raise HTTPException(status_code=404, detail="النادي غير موجود")
+    # Cascade 100%: remove every trace of the club from the database.
     await db.clubs.delete_one({"_id": c["_id"]})
     await db.club_members.delete_many({"club_slug": slug})
+    await db.club_members.delete_many({"club_id": str(c["_id"])})
+    await db.club_announcements.delete_many({"club_slug": slug})
+    disc_ids = [d["_id"] async for d in db.discussions.find({"club_slug": slug}, {"_id": 1})]
+    if disc_ids:
+        await db.discussion_replies.delete_many({"discussion_id": {"$in": [str(i) for i in disc_ids]}})
+        await db.discussion_replies.delete_many({"discussion_id": {"$in": disc_ids}})
+    await db.discussions.delete_many({"club_slug": slug})
     await audit_log(user, "club_delete", "club", slug, request=request)
     return {"ok": True}
 

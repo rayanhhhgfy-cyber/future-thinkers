@@ -248,7 +248,7 @@ async def get_suggestions(user: dict = Depends(get_current_user)):
         # Clubs the user hasn't joined, sorted by member count
         mems = await db.club_members.find({"user_id": user["id"]}).to_list(100)
         joined = {m.get("club_id") for m in mems}
-        clubs = await db.clubs.find({}).to_list(60)
+        clubs = await db.clubs.find({"is_hidden": {"$ne": True}}).to_list(60)
         scored = []
         for c in clubs:
             cid = str(c["_id"])
