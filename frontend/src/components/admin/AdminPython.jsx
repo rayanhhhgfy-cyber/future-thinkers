@@ -186,12 +186,12 @@ function ArticleEditor({ article, onClose, onSaved }) {
   const [summary, setSummary] = useState(article?.summary || "");
   const [content, setContent] = useState(article?.content || "");
   const [published, setPublished] = useState(article?.is_published ?? true);
-  const [preview, setPreview] = useState(true);
+  const [mode, setMode] = useState("split"); // write | split | preview
   const [saving, setSaving] = useState(false);
 
   const words = content.trim().split(/\s+/).filter(Boolean).length;
   const readMin = Math.max(1, Math.round(words / 200));
-  const codeBlocks = (content.match(/```python/g) || []).length;
+  const codeBlocks = (content.match(/```/g) || []).length / 2;
 
   const save = async () => {
     if (title.trim().length < 2) { toast.error("أدخل عنوان المقال"); return; }
@@ -216,115 +216,122 @@ function ArticleEditor({ article, onClose, onSaved }) {
     setTimeout(() => { ta.focus(); ta.setSelectionRange(s + before.length, e + before.length); }, 0);
   };
 
-  // Tab key inserts 2 spaces instead of losing focus
   const onKeyDown = (e) => {
-    if (e.key === "Tab") {
-      e.preventDefault();
-      insertMd("  ");
-    }
+    if (e.key === "Tab") { e.preventDefault(); insertMd("  "); }
   };
 
-  // Fix common ChatGPT paste issues: ensure code fences are paired
   const fixPasted = () => {
-    let fixed = content;
-    const count = (fixed.match(/```/g) || []).length;
+    const count = (content.match(/```/g) || []).length;
     if (count % 2 === 1) {
-      fixed = fixed.trimEnd() + "\n```\n";
-      setContent(fixed);
+      setContent(content.trimEnd() + "\n```\n");
       toast.success("تم إغلاق كتلة الكود المفتوحة ✓");
-    } else {
-      toast.info("كل كتل الكود مغلقة بشكل صحيح ✓");
-    }
+    } else toast.info("كل كتل الكود مغلقة ✓");
   };
+
+  // slim icon toolbar button
+  const TB = ({ title, onClick, children, active }) => (
+    <button title={title} onClick={onClick}
+      className={`grid h-9 w-9 place-items-center rounded-lg transition active:scale-90 ${active ? "bg-blue-100 text-blue-700" : "text-slate-500 hover:bg-slate-100 hover:text-slate-800"}`}>
+      {children}
+    </button>
+  );
+  const Sep = () => <div className="h-5 w-px bg-slate-200" />;
 
   return (
-    <div className="overflow-hidden rounded-[1.75rem] bg-white shadow-[0_20px_60px_-20px_rgba(15,23,42,0.2)] ring-1 ring-slate-100">
-      <div className="relative overflow-hidden p-5 sm:p-6" style={{ background: `linear-gradient(135deg,${BLUE},${BLUE_D})` }}>
-        <div className="pointer-events-none absolute -left-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
-        <div className="relative flex items-center justify-between gap-3">
-          <div>
-            <div className="font-head text-lg font-black text-white sm:text-xl">{article ? "تعديل المقال" : "✨ مقال جديد"}</div>
-            <div className="mt-1 flex flex-wrap items-center gap-2 text-[11.5px] font-bold text-blue-100">
-              <span className="inline-flex items-center gap-1"><FileText className="h-3.5 w-3.5" /> {words} كلمة</span>
-              <span className="inline-flex items-center gap-1"><Clock className="h-3.5 w-3.5" /> ~{readMin} دقائق قراءة</span>
-              <span className="inline-flex items-center gap-1"><Zap className="h-3.5 w-3.5" /> {codeBlocks} كتل كود</span>
-            </div>
-          </div>
-          <button onClick={onClose} className="shrink-0 rounded-xl bg-white/15 p-2 text-white transition hover:bg-white/25"><X className="h-5 w-5" /></button>
+    <div className="overflow-hidden rounded-[1.5rem] bg-white shadow-[0_24px_70px_-24px_rgba(15,23,42,0.25)] ring-1 ring-slate-200/80">
+      {/* ── top bar ── */}
+      <div className="flex items-center gap-2 border-b border-slate-100 px-3 py-2.5 sm:px-4">
+        <button onClick={onClose} title="رجوع"
+          className="grid h-9 w-9 shrink-0 place-items-center rounded-xl text-slate-400 transition hover:bg-slate-100 hover:text-slate-700">
+          <ChevronLeft className="h-5 w-5 rotate-180" />
+        </button>
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-[13px] font-extrabold text-slate-800">{article ? "تعديل المقال" : "مقال جديد"}</div>
+          <div className="text-[10.5px] font-bold text-slate-400">محرر Markdown احترافي</div>
         </div>
+        {/* mode tabs */}
+        <div className="flex shrink-0 rounded-xl bg-slate-100 p-1">
+          {[
+            ["write", "كتابة", <Pencil key="w" className="h-3.5 w-3.5" />],
+            ["split", "مقسّم", <Layers key="s" className="h-3.5 w-3.5" />],
+            ["preview", "معاينة", <Eye key="p" className="h-3.5 w-3.5" />],
+          ].map(([v, l, ic]) => (
+            <button key={v} onClick={() => setMode(v)}
+              className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11.5px] font-extrabold transition sm:px-3.5 ${mode === v ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>
+              {ic}<span className="hidden sm:inline">{l}</span>
+            </button>
+          ))}
+        </div>
+        <button onClick={save} disabled={saving}
+          className="flex shrink-0 items-center gap-1.5 rounded-xl bg-slate-900 px-4 py-2.5 text-[12.5px] font-extrabold text-white shadow transition hover:bg-slate-700 active:scale-95 disabled:opacity-60 sm:px-5">
+          <Save className="h-4 w-4" /><span className="hidden sm:inline">{saving ? "جارٍ الحفظ…" : "حفظ"}</span>
+        </button>
       </div>
 
-      <div className="space-y-3.5 p-4 sm:p-6">
-        <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="عنوان المقال — مثال: المتغيرات وأنواع البيانات"
-          className="w-full rounded-2xl border-2 border-slate-100 bg-slate-50/50 p-3.5 font-head text-[15px] font-extrabold outline-none transition focus:border-blue-300 focus:bg-white" />
-        <input value={summary} onChange={(e) => setSummary(e.target.value)} placeholder="ملخص قصير يظهر في بطاقة المرحلة…"
-          className="w-full rounded-2xl border-2 border-slate-100 bg-slate-50/50 p-3 text-[13.5px] outline-none transition focus:border-blue-300 focus:bg-white" />
+      {/* ── title (Notion-style, borderless) ── */}
+      <div className="border-b border-slate-100 px-4 pb-1 pt-4 sm:px-8 sm:pt-6">
+        <input value={title} onChange={(e) => setTitle(e.target.value)}
+          placeholder="عنوان المقال…"
+          className="w-full bg-transparent font-head text-2xl font-black text-slate-900 outline-none placeholder:text-slate-300 sm:text-[1.9rem]" />
+        <input value={summary} onChange={(e) => setSummary(e.target.value)}
+          placeholder="ملخص قصير يظهر في بطاقة المرحلة…"
+          className="mt-1.5 w-full bg-transparent text-[13.5px] text-slate-500 outline-none placeholder:text-slate-300" />
+      </div>
 
-        {/* markdown toolbar — clear labeled buttons */}
-        <div className="rounded-2xl bg-slate-50 p-2.5 ring-1 ring-slate-100">
-          <div className="grid grid-cols-4 gap-1.5 sm:flex sm:flex-wrap sm:items-center">
-            {[
-              ["عنوان كبير", "# ", ""], ["عنوان", "## ", ""], ["عنوان صغير", "### ", ""],
-              ["عريض", "**", "**"], ["مائل", "*", "*"], ["مشطوب", "~~", "~~"],
-              ["نقاط", "- ", ""], ["ترقيم", "1. ", ""],
-            ].map(([l, b, a]) => (
-              <button key={l} onClick={() => insertMd(b, a)} title={`إدراج ${l}`}
-                className="rounded-xl bg-white px-2 py-2 text-[12px] font-extrabold text-slate-600 shadow-sm ring-1 ring-slate-200 transition hover:text-blue-600 hover:ring-blue-300 active:scale-95">{l}</button>
-            ))}
-          </div>
-          <div className="mt-1.5 grid grid-cols-2 gap-1.5 sm:flex sm:flex-wrap sm:items-center">
-            <button onClick={() => insertMd("`", "`")}
-              className="rounded-xl bg-white px-3 py-2 text-[12px] font-extrabold text-slate-600 shadow-sm ring-1 ring-slate-200 transition hover:text-blue-600 active:scale-95">💻 كود قصير</button>
-            <button onClick={() => insertMd("\n```python\n", "\n```\n")}
-              className="rounded-xl bg-gradient-to-l from-blue-600 to-blue-700 px-3 py-2 text-[12px] font-extrabold text-white shadow transition hover:brightness-110 active:scale-95">🐍 بلوك بايثون</button>
-            <button onClick={() => insertMd("> ", "")}
-              className="rounded-xl bg-white px-3 py-2 text-[12px] font-extrabold text-slate-600 shadow-sm ring-1 ring-slate-200 transition hover:text-blue-600 active:scale-95">💬 اقتباس</button>
-            <button onClick={() => insertMd("\n---\n", "")}
-              className="rounded-xl bg-white px-3 py-2 text-[12px] font-extrabold text-slate-600 shadow-sm ring-1 ring-slate-200 transition hover:text-blue-600 active:scale-95">➖ فاصل</button>
-          </div>
-          <div className="mt-1.5 flex flex-wrap items-center gap-1.5 border-t border-slate-200/70 pt-2">
-            <button onClick={() => insertMd("\n| العمود 1 | العمود 2 |\n|---|---|\n| قيمة | قيمة |\n", "")}
-              className="rounded-xl bg-white px-3 py-2 text-[12px] font-extrabold text-slate-600 shadow-sm ring-1 ring-slate-200 transition hover:text-blue-600 active:scale-95">📊 جدول</button>
-            <button onClick={() => { const u = prompt("رابط URL:"); if (u) insertMd("[", `](${u})`); }}
-              className="rounded-xl bg-white px-3 py-2 text-[12px] font-extrabold text-slate-600 shadow-sm ring-1 ring-slate-200 transition hover:text-blue-600 active:scale-95">🔗 رابط</button>
-            <button onClick={fixPasted} title="إصلاح كتل الكود غير المغلقة"
-              className="rounded-xl bg-amber-50 px-3 py-2 text-[12px] font-extrabold text-amber-700 ring-1 ring-amber-200 transition hover:bg-amber-100 active:scale-95">🔧 إصلاح الكود</button>
-            <button onClick={() => setPreview((v) => !v)}
-              className={`mr-auto inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-[12px] font-extrabold transition active:scale-95 ${preview ? "bg-blue-600 text-white shadow" : "bg-white text-slate-600 ring-1 ring-slate-200"}`}>
-              <Eye className="h-3.5 w-3.5" /> {preview ? "إخفاء المعاينة" : "معاينة"}
-            </button>
-          </div>
-          <div className="mt-2 rounded-xl bg-blue-50/70 px-3 py-2 text-[11px] leading-relaxed text-blue-700">
-            💡 <b>انسخ من ChatGPT والصق مباشرة</b> — كل التنسيق يعمل. زر <b>🔧 إصلاح الكود</b> يغلق أي بلوك نسيت إغلاقه. زر <b>Tab</b> في الكيبورد يضيف مسافة بدل ما يطلع من المربع.
-          </div>
+      {/* ── slim toolbar ── */}
+      {(mode !== "preview") && (
+        <div className="sticky top-0 z-10 flex items-center gap-0.5 overflow-x-auto border-b border-slate-100 bg-white/95 px-2 py-1.5 backdrop-blur sm:px-4">
+          <TB title="عنوان كبير" onClick={() => insertMd("# ", "")}><span className="font-black" dir="ltr">H1</span></TB>
+          <TB title="عنوان متوسط" onClick={() => insertMd("## ", "")}><span className="font-black" dir="ltr">H2</span></TB>
+          <TB title="عنوان صغير" onClick={() => insertMd("### ", "")}><span className="font-black" dir="ltr">H3</span></TB>
+          <Sep />
+          <TB title="عريض" onClick={() => insertMd("**", "**")}><span className="font-black" dir="ltr">B</span></TB>
+          <TB title="مائل" onClick={() => insertMd("*", "*")}><span className="font-black italic" dir="ltr">I</span></TB>
+          <TB title="مشطوب" onClick={() => insertMd("~~", "~~")}><span className="font-black line-through" dir="ltr">S</span></TB>
+          <TB title="كود قصير" onClick={() => insertMd("`", "`")}><span className="font-mono font-black" dir="ltr">&lt;/&gt;</span></TB>
+          <Sep />
+          <TB title="قائمة نقطية" onClick={() => insertMd("- ", "")}><span className="text-lg leading-none">•</span></TB>
+          <TB title="قائمة مرقمة" onClick={() => insertMd("1. ", "")}><span className="font-black" dir="ltr">1.</span></TB>
+          <TB title="اقتباس" onClick={() => insertMd("> ", "")}><span className="font-black text-amber-500" dir="ltr">”</span></TB>
+          <TB title="فاصل" onClick={() => insertMd("\n---\n", "")}><span className="font-black text-slate-400" dir="ltr">―</span></TB>
+          <Sep />
+          <TB title="بلوك بايثون 🐍" onClick={() => insertMd("\n```python\n", "\n```\n")}><span className="text-base">🐍</span></TB>
+          <TB title="جدول" onClick={() => insertMd("\n| العمود 1 | العمود 2 |\n|---|---|\n| قيمة | قيمة |\n", "")}><span className="text-base">📊</span></TB>
+          <TB title="رابط" onClick={() => { const u = prompt("رابط URL:"); if (u) insertMd("[", `](${u})`); }}><span className="text-base">🔗</span></TB>
+          <Sep />
+          <TB title="إصلاح كتل الكود المفتوحة" onClick={fixPasted}><span className="text-base">🔧</span></TB>
         </div>
+      )}
 
-        <div className={`grid gap-3 ${preview ? "lg:grid-cols-2" : ""}`}>
-          <textarea id="py-md-input" value={content} onChange={(e) => setContent(e.target.value)} onKeyDown={onKeyDown} rows={16} dir="auto"
-            placeholder={"اشرح هنا…\n\n## مثال\n\n```python\nname = \"أحمد\"\nprint(f\"مرحباً {name}\")\n```"}
-            className="w-full rounded-2xl border-2 border-slate-100 bg-slate-50/50 p-4 font-mono text-[13px] leading-[1.9] outline-none transition focus:border-blue-300 focus:bg-white" />
-          {preview && (
-            <div className="max-h-[520px] overflow-y-auto rounded-2xl border-2 border-blue-100 bg-[#faf8f4] p-4 sm:p-6">
-              <div className="mb-3 inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-2.5 py-1 text-[11px] font-extrabold text-white">
-                <Eye className="h-3.5 w-3.5" /> معاينة المتعلم الحية
-              </div>
-              {renderArticle(content || "_ابدأ الكتابة لترى المعاينة…_")}
+      {/* ── editor / preview ── */}
+      <div className={`grid ${mode === "split" ? "lg:grid-cols-2" : ""}`}>
+        {mode !== "preview" && (
+          <div className={mode === "split" ? "border-b border-slate-100 lg:border-b-0 lg:border-l" : ""}>
+            <textarea id="py-md-input" value={content} onChange={(e) => setContent(e.target.value)} onKeyDown={onKeyDown}
+              dir="auto" placeholder={"ابدأ الكتابة هنا…\n\nانسخ أي نص من ChatGPT والصقه مباشرة — كل التنسيق يعمل تلقائياً.\n\n## مثال على عنوان\n\n```python\nname = \"أحمد\"\nprint(f\"مرحباً {name}\")\n```"}
+              className="min-h-[420px] w-full resize-y bg-white p-4 font-mono text-[13.5px] leading-[2] text-slate-800 outline-none placeholder:text-slate-300 sm:p-8 lg:min-h-[540px]" />
+          </div>
+        )}
+        {mode !== "write" && (
+          <div className="max-h-[560px] min-h-[300px] overflow-y-auto bg-[#fbfaf8] p-4 sm:p-8 lg:max-h-[640px]">
+            <div className="mb-4 inline-flex items-center gap-1.5 rounded-full bg-blue-600 px-3 py-1 text-[10.5px] font-extrabold text-white shadow">
+              <Eye className="h-3 w-3" /> معاينة حية — كما يراها المتعلم
             </div>
-          )}
-        </div>
+            {content.trim() ? renderArticle(content) : <div className="py-16 text-center text-[13px] text-slate-400">ابدأ الكتابة لترى المعاينة الحية هنا ✨</div>}
+          </div>
+        )}
+      </div>
 
-        <div className="flex flex-wrap items-center gap-3">
-          <button onClick={() => setPublished((v) => !v)}
-            className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-[13px] font-extrabold transition ${published ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200" : "bg-slate-100 text-slate-500 ring-1 ring-slate-200"}`}>
-            {published ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-            {published ? "منشور — يظهر للمتعلمين" : "مسودة — مخفي عن المتعلمين"}
-          </button>
-          <button onClick={save} disabled={saving}
-            className="mr-auto inline-flex items-center gap-1.5 rounded-xl px-8 py-3 text-[15px] font-extrabold text-white shadow-md transition hover:brightness-110 active:scale-95 disabled:opacity-60"
-            style={{ background: `linear-gradient(135deg,${BLUE},${BLUE_D})` }}>
-            <Save className="h-5 w-5" /> {saving ? "جارٍ الحفظ…" : "حفظ المقال"}
-          </button>
-        </div>
+      {/* ── status bar ── */}
+      <div className="flex items-center gap-3 border-t border-slate-100 bg-slate-50/70 px-4 py-2.5 text-[11px] font-bold text-slate-500 sm:px-6">
+        <span className="inline-flex items-center gap-1"><FileText className="h-3.5 w-3.5" /> <span dir="ltr">{words}</span> كلمة</span>
+        <span className="inline-flex items-center gap-1"><Clock className="h-3.5 w-3.5" /> ~<span dir="ltr">{readMin}</span> دقائق</span>
+        <span className="inline-flex items-center gap-1"><Zap className="h-3.5 w-3.5" /> <span dir="ltr">{codeBlocks}</span> بلوك كود</span>
+        <button onClick={() => setPublished((v) => !v)}
+          className={`mr-auto inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-extrabold transition active:scale-95 ${published ? "bg-emerald-100 text-emerald-700" : "bg-slate-200 text-slate-500"}`}>
+          <span className={`h-2 w-2 rounded-full ${published ? "bg-emerald-500" : "bg-slate-400"}`} />
+          {published ? "منشور" : "مسودة"}
+        </button>
       </div>
     </div>
   );
