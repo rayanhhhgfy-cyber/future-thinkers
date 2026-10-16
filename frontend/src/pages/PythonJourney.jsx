@@ -31,7 +31,7 @@ function NodeIcon({ st }) {
   );
 }
 
-export default function PythonJourney() {
+export default function PythonJourney({ embedded = false } = {}) {
   const nav = useNavigate();
   const [data, setData] = useState(null);
   const [placeN, setPlaceN] = useState(5);
@@ -55,23 +55,24 @@ export default function PythonJourney() {
     }
   };
 
-  if (!data) return <Layout><PageLoader /></Layout>;
+  if (!data) return embedded ? <PageLoader /> : <Layout><PageLoader /></Layout>;
   const { articles = [], passed_count = 0, total = 0 } = data;
   const pct = total ? Math.round((passed_count / total) * 100) : 0;
   const next = articles.find((a) => a.unlocked && !a.passed);
 
-  return (
-    <Layout>
-      <div dir="rtl" className="relative min-h-screen overflow-hidden text-white" style={{ background: BG }}>
+  const inner = (
+      <div dir="rtl" className={`relative ${embedded ? "" : "min-h-screen "}overflow-hidden text-white`} style={{ background: BG }}>
         {/* ambient */}
         <div className="pointer-events-none absolute -top-40 right-[10%] h-[28rem] w-[28rem] rounded-full blur-3xl opacity-25" style={{ background: "radial-gradient(circle,#3776AB,transparent 65%)" }} />
         <div className="pointer-events-none absolute top-1/3 -left-40 h-[24rem] w-[24rem] rounded-full blur-3xl opacity-20" style={{ background: "radial-gradient(circle,#FFD43B,transparent 65%)" }} />
         <div className="pointer-events-none absolute inset-0 opacity-[0.05]" style={{ backgroundImage: "linear-gradient(rgba(255,255,255,0.7) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.7) 1px,transparent 1px)", backgroundSize: "44px 44px" }} />
 
         <div className="relative mx-auto max-w-3xl px-4 pb-20 pt-10 sm:px-6 sm:pt-14">
-          <Link to="/clubs/nadi-albrmja" className="inline-flex items-center gap-1.5 text-[13px] font-bold text-slate-400 transition hover:text-white">
-            <ArrowRight className="h-4 w-4" /> نادي البرمجة
-          </Link>
+          {!embedded && (
+            <Link to="/clubs/nadi-albrmja" className="inline-flex items-center gap-1.5 text-[13px] font-bold text-slate-400 transition hover:text-white">
+              <ArrowRight className="h-4 w-4" /> نادي البرمجة
+            </Link>
+          )}
 
           <div className="mt-6 text-center">
             <div className="inline-flex items-center gap-2 rounded-full border border-[#FFD43B]/30 bg-[#FFD43B]/10 px-4 py-1.5 text-[12px] font-extrabold text-[#FFD43B]">
@@ -183,6 +184,6 @@ export default function PythonJourney() {
           </div>
         </div>
       </div>
-    </Layout>
   );
+  return embedded ? inner : <Layout>{inner}</Layout>;
 }
