@@ -90,15 +90,23 @@ export function PythonCode({ code, title = "python" }) {
   );
 }
 
-/* ═══════════ tiny article markdown ═══════════ */
+/* ═══════════ tiny article markdown (ChatGPT-style) ═══════════ */
 function inline(text) {
   const parts = [];
-  const re = /(\*\*[^*]+\*\*|`[^`]+`)/g;
+  // **bold**, *italic*, ~~strike~~, `code`, [link](url)
+  const re = /(\*\*[^*]+\*\*|~~[^~]+~~|\*[^*\n]+\*|`[^`]+`|\[[^\]]+\]\([^)]+\))/g;
   let last = 0, m, k = 0;
   while ((m = re.exec(text))) {
     if (m.index > last) parts.push(<span key={k++}>{text.slice(last, m.index)}</span>);
     const t = m[0];
     if (t.startsWith("**")) parts.push(<strong key={k++} className="font-extrabold text-slate-900">{t.slice(2, -2)}</strong>);
+    else if (t.startsWith("~~")) parts.push(<del key={k++} className="text-slate-500">{t.slice(2, -2)}</del>);
+    else if (t.startsWith("*")) parts.push(<em key={k++} className="text-slate-800">{t.slice(1, -1)}</em>);
+    else if (t.startsWith("[")) {
+      const lm = t.match(/\[([^\]]+)\]\(([^)]+)\)/);
+      if (lm) parts.push(<a key={k++} href={lm[2]} target="_blank" rel="noreferrer" className="font-bold text-blue-600 underline decoration-blue-300 underline-offset-2 hover:text-blue-700">{lm[1]}</a>);
+      else parts.push(<span key={k++}>{t}</span>);
+    }
     else parts.push(<code key={k++} dir="ltr" className="rounded-md bg-slate-900 px-1.5 py-0.5 text-[0.85em] text-amber-300" style={{ fontFamily: "'JetBrains Mono',Consolas,monospace" }}>{t.slice(1, -1)}</code>);
     last = m.index + t.length;
   }
@@ -148,8 +156,42 @@ function renderText(text, base) {
       list = []; listType = null;
     }
   };
-  for (const raw of lines) {
-    const line = raw.trim();
+  // table: | a | b | \n |---|---|
+  const isTableRow = (l) => /^\|.*\|$/.test(l.trim());
+  const isTableSep = (l) => /^\|[\s:|-]+\|$/.test(l.trim());
+  let ti = 0;
+  while (ti < lines.length) {
+    const raw = lines[ti], line = raw.trim();
+    if (isTableRow(line) && ti + 1 < lines.length && isTableSep(lines[ti + 1])) {
+      flushPara(); flushList();
+      const headers = line.split("|").slice(1, -1).map((c) => c.trim());
+      ti += 2;
+      const rows = [];
+      while (ti < lines.length && isTableRow(lines[ti].trim())) {
+        rows.push(lines[ti].trim().split("|").slice(1, -1).map((c) => c.trim()));
+        ti++;
+      }
+      nodes.push(
+        <div key={`${base}t${k++}`} className="my-5 overflow-x-auto rounded-2xl ring-1 ring-slate-200">
+          <table className="w-full min-w-[420px] border-collapse bg-white text-[13.5px] sm:text-sm">
+            <thead>
+              <tr style={{ background: `linear-gradient(135deg,${"#3776AB"},${"#255a85"})` }}>
+                {headers.map((h, i) => <th key={i} className="border-b border-white/20 px-4 py-3 text-right font-extrabold text-white">{inline(h)}</th>)}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r, ri) => (
+                <tr key={ri} className={ri % 2 ? "bg-slate-50/70" : "bg-white"}>
+                  {r.map((c, ci) => <td key={ci} className="border-b border-slate-100 px-4 py-2.5 text-slate-700">{inline(c)}</td>)}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      );
+      continue;
+    }
+    ti++;
     if (!line) { flushPara(); flushList(); continue; }
     if (line.startsWith("### ")) { flushPara(); flushList(); nodes.push(<h4 key={`${base}h${k++}`} className="mb-2 mt-7 font-head text-lg font-extrabold text-slate-900 sm:text-xl">{inline(line.slice(4))}</h4>); continue; }
     if (line.startsWith("## ")) { flushPara(); flushList(); nodes.push(<h3 key={`${base}h${k++}`} className="mb-2 mt-8 flex items-center gap-2 font-head text-xl font-extrabold text-slate-900 sm:text-2xl"><span className="h-6 w-1.5 rounded-full bg-gradient-to-b from-emerald-500 to-teal-600" />{inline(line.slice(3))}</h3>); continue; }
