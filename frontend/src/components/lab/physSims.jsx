@@ -1055,121 +1055,6 @@ export function PendulumLab() {
   );
 }
 
-/* ============ FEATURE 7 · orbits & gravity ============ */
-export function OrbitLab() {
-  const { recordExperiment, award } = usePhys();
-  const [speed, setSpeed] = useState(26);
-  const [outcome, setOutcome] = useState("جاهز للإطلاق");
-  const awardedRef = useRef(false);
-  const rm = usePrefersReducedMotion();
-  const P = useRef({});
-  P.current = { speed, rm };
-  const [canvasRef, world] = useSimCanvas(
-    () => ({ x: 0, y: 0, vx: 0, vy: 0, flying: false, trail: [], stable: 0, tt: 0 }),
-    (ctx, w, h, dt, W) => {
-      const p = P.current;
-      W.tt += dt;
-      const space = ctx.createRadialGradient(w / 2, h / 2, 30, w / 2, h / 2, Math.max(w, h) * 0.75);
-      space.addColorStop(0, "#1b1140"); space.addColorStop(0.6, "#0d0724"); space.addColorStop(1, "#05030f");
-      ctx.fillStyle = space; ctx.fillRect(0, 0, w, h);
-      for (let i = 0; i < 90; i++) {
-        const sx = (i * 173.3) % w, sy = (i * 311.7) % h;
-        const tw = p.rm ? 0.55 : 0.35 + 0.4 * (0.5 + 0.5 * Math.sin(W.tt * (1 + (i % 4) * 0.4) + i * 1.7));
-        ctx.fillStyle = i % 9 === 0 ? `rgba(165,243,252,${tw})` : `rgba(255,255,255,${tw})`;
-        const ss = i % 11 === 0 ? 2.3 : 1.4;
-        ctx.fillRect(sx, sy, ss, ss);
-      }
-      const cx = w / 2, cy = h / 2, MU = 62000, RP = 30, R0 = 118;
-      if (W.flying) {
-        const step = dt * 2.2;
-        const dx = W.x - cx, dy = W.y - cy;
-        const r = Math.max(9, Math.hypot(dx, dy));
-        const a = -MU / (r * r);
-        W.vx += (a * dx / r) * step; W.vy += (a * dy / r) * step;
-        W.x += W.vx * step; W.y += W.vy * step;
-        W.trail.push({ x: W.x, y: W.y });
-        if (W.trail.length > 260) W.trail.shift();
-        if (r < RP + 5) { W.flying = false; setOutcome("💥 تحطم على سطح الكوكب · السرعة قليلة فغلبته الجاذبية"); }
-        else if (r > Math.max(w, h) * 0.75) { W.flying = false; setOutcome("🚀 هرب من الجاذبية · تجاوز سرعة الهروب وصار مسافراً بين الكواكب"); }
-        else {
-          W.stable += dt;
-          if (W.stable > 7 && !awardedRef.current) {
-            awardedRef.current = true;
-            setOutcome("🛰️ مدار مستقر! القمر الصناعي يدور بثبات");
-            award("orbit-stable", 25, "وضعت قمراً في مدار مستقر", "orbit");
-          } else if (W.stable <= 7) setOutcome("🛰️ يدور الآن · راقب إن أكمل 7 ثوانٍ بثبات");
-        }
-      }
-      // orbit guide
-      ctx.strokeStyle = "rgba(148,163,184,0.35)"; ctx.lineWidth = 1.4; ctx.setLineDash([4, 6]);
-      ctx.beginPath(); ctx.arc(cx, cy, R0, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
-      // fading comet-like trail · brighter and thicker near the satellite
-      W.trail.forEach((pt, i) => {
-        const f = i / Math.max(1, W.trail.length);
-        ctx.fillStyle = `rgba(103,232,249,${0.04 + f * 0.7})`;
-        ctx.beginPath(); ctx.arc(pt.x, pt.y, 0.7 + f * 2.3, 0, Math.PI * 2); ctx.fill();
-      });
-      // planet with radial shading and a thin atmosphere halo
-      const halo = ctx.createRadialGradient(cx, cy, RP, cx, cy, RP + 13);
-      halo.addColorStop(0, "rgba(56,189,248,0.30)"); halo.addColorStop(1, "rgba(56,189,248,0)");
-      ctx.fillStyle = halo; ctx.beginPath(); ctx.arc(cx, cy, RP + 13, 0, Math.PI * 2); ctx.fill();
-      const pg = ctx.createRadialGradient(cx - 9, cy - 9, 3, cx, cy, RP + 8);
-      pg.addColorStop(0, "#e0f2fe"); pg.addColorStop(0.35, "#7dd3fc"); pg.addColorStop(0.75, "#0284c7"); pg.addColorStop(1, "#1e3a8a");
-      ctx.fillStyle = pg; ctx.beginPath(); ctx.arc(cx, cy, RP, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = "rgba(255,255,255,0.35)";
-      ctx.beginPath(); ctx.arc(cx - 9, cy - 6, 7, 0, Math.PI * 2); ctx.fill();
-      ctx.beginPath(); ctx.arc(cx + 11, cy + 9, 5, 0, Math.PI * 2); ctx.fill();
-      // launch pad point + satellite
-      const sx = W.flying || W.trail.length ? W.x : cx + R0, sy = W.flying || W.trail.length ? W.y : cy;
-      // velocity vector of the satellite
-      if (W.flying) {
-        const vm = Math.hypot(W.vx, W.vy) || 1;
-        arrow(ctx, sx, sy, sx + (W.vx / vm) * 30, sy + (W.vy / vm) * 30, "#4ade80", 2.6);
-        ctx.fillStyle = "#86efac"; ctx.font = "900 9px sans-serif"; ctx.textAlign = "center";
-        ctx.fillText("v", sx + (W.vx / vm) * 38, sy + (W.vy / vm) * 38 + 3);
-      }
-      ctx.fillStyle = "#fbbf24";
-      ctx.save(); ctx.translate(sx, sy);
-      ctx.shadowColor = "rgba(251,191,36,0.8)"; ctx.shadowBlur = 9;
-      ctx.fillRect(-6, -3, 12, 6);
-      ctx.shadowBlur = 0;
-      ctx.fillStyle = "#e0f2fe"; ctx.fillRect(-11, -1.4, 5, 2.8); ctx.fillRect(6, -1.4, 5, 2.8);
-      ctx.restore();
-      ctx.fillStyle = "#e0e7ff"; ctx.font = "900 10px sans-serif"; ctx.textAlign = "center";
-      ctx.fillText("نقطة الإطلاق", cx + R0, cy + 22);
-    }
-  );
-  const launch = () => {
-    const W = world.current;
-    const cv = canvasRef.current;
-    W.x = (cv ? cv.clientWidth : 600) / 2 + 118; W.y = (cv ? cv.clientHeight : 300) / 2;
-    W.vx = 0; W.vy = -speed; W.flying = true; W.trail = []; W.stable = 0;
-    awardedRef.current = false;
-    setOutcome("انطلق · راقب مصيره");
-    recordExperiment("orbit");
-  };
-  const vc = Math.sqrt(62000 / 118);
-  const ve = vc * Math.SQRT2;
-  return (
-    <div className={cardCls} data-testid="phys-orbit">
-      {head3("🛰️", "مدارات وجاذبية", "أطلق قمراً صناعياً · أبطأ يتحطم · أسرع يهرب · وبينهما مدار ذهبي")}
-      <div className="relative rounded-3xl overflow-hidden ring-1 ring-indigo-900/40 ft-shadow">
-        <div className="h-1.5 bg-gradient-to-l from-cyan-400 via-sky-400 to-violet-500" />
-        <canvas ref={canvasRef} className="w-full h-[260px] sm:h-[310px] block" />
-      </div>
-      <Slider label="سرعة الإطلاق العرضية" value={speed} set={setSpeed} min={10} max={55} unit="وحدة/ثا" />
-      <div className="flex flex-wrap items-center gap-2 mt-2">
-        <button onClick={launch} className={gradBtn}><Rocket className="w-4 h-4" /> إطلاق القمر</button>
-        <span className="text-[11.5px] text-slate-400 font-bold">المدار الدائري عند <span dir="ltr">{fmt(vc, 1)}</span> · والهروب فوق <span dir="ltr">{fmt(ve, 1)}</span></span>
-      </div>
-      <AnimatePresence mode="wait">
-        <motion.p key={outcome} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="text-[13px] font-black text-slate-700 mt-3 rounded-2xl bg-indigo-50/80 ring-1 ring-indigo-100 px-3.5 py-2.5">{outcome}</motion.p>
-      </AnimatePresence>
-      <p className="text-[12px] text-slate-400 font-semibold leading-relaxed mt-2">قوانين كبلر: الكواكب تدور بإهليج الشمس في بؤرته، وتسرع قربها وتبطئ بعيداً عنها · محطة الفضاء الدولية تدور حول الأرض كل 90 دقيقة بسرعة 28 ألف كم/ساعة · سرعة الهروب أكبر من الدائرية بمعامل جذر 2 دائماً · تنبيه: المسافات والأحجام في هذا النموذج ليست بالمقياس الحقيقي، فقد ضغطناها لتدخل في الشاشة.</p>
-    </div>
-  );
-}
-
 /* ============ FEATURE 8 · springs & Hooke ============ */
 export function SpringLab() {
   const { recordExperiment } = usePhys();
@@ -1289,92 +1174,158 @@ export function RampLab() {
     () => ({ s: 0, v: 0 }),
     (ctx, w, h, dt, W) => {
       const p = P.current;
+      // ===== sky =====
       const sky = ctx.createLinearGradient(0, 0, 0, h);
-      sky.addColorStop(0, "#eef2ff"); sky.addColorStop(1, "#f5f3ff");
+      sky.addColorStop(0, "#bfdbfe"); sky.addColorStop(0.55, "#e0e7ff"); sky.addColorStop(1, "#f5f3ff");
       ctx.fillStyle = sky; ctx.fillRect(0, 0, w, h);
-      ctx.fillStyle = "rgba(99,102,241,0.10)";
-      for (let gx = 0; gx < w; gx += 22) for (let gy = 8; gy < h; gy += 22) ctx.fillRect(gx, gy, 1.6, 1.6);
+      // sun
+      const sunX = w - 52, sunY = 48;
+      const glow = ctx.createRadialGradient(sunX, sunY, 6, sunX, sunY, 46);
+      glow.addColorStop(0, "rgba(253,224,71,0.85)"); glow.addColorStop(1, "rgba(253,224,71,0)");
+      ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(sunX, sunY, 46, 0, 7); ctx.fill();
+      ctx.fillStyle = "#facc15"; ctx.beginPath(); ctx.arc(sunX, sunY, 18, 0, 7); ctx.fill();
+      // clouds
+      ctx.fillStyle = "rgba(255,255,255,0.9)";
+      const cloud = (cx, cy, s) => {
+        ctx.beginPath();
+        ctx.arc(cx, cy, 13 * s, 0, 7); ctx.arc(cx + 15 * s, cy - 6 * s, 10 * s, 0, 7); ctx.arc(cx + 30 * s, cy, 12 * s, 0, 7);
+        ctx.fill();
+      };
+      cloud(w * 0.2, 40, 1); cloud(w * 0.52, 66, 0.65); cloud(w * 0.78, 34, 0.8);
+      // distant hills
+      ctx.fillStyle = "rgba(167,243,208,0.5)";
+      ctx.beginPath(); ctx.moveTo(0, h - 60);
+      ctx.quadraticCurveTo(w * 0.3, h - 110, w * 0.6, h - 62);
+      ctx.quadraticCurveTo(w * 0.85, h - 30, w, h - 70);
+      ctx.lineTo(w, h); ctx.lineTo(0, h); ctx.closePath(); ctx.fill();
+
       const rad = (p.deg * Math.PI) / 180;
-      const baseY = h - 34, xL = 26, xR = w - 26;
-      const topY = baseY - Math.tan(rad) * (xR - xL) * 0.82;
-      const rx = xR - (xR - xL) * 0.06;
-      const topClamped = Math.max(26, topY);
-      // slope body in the surface material, textured like the real thing
-      const slopeGrad = ctx.createLinearGradient(xL, baseY, rx, topClamped);
-      if (p.mat === "ice") { slopeGrad.addColorStop(0, "#e0f2fe"); slopeGrad.addColorStop(1, "#7dd3fc"); }
-      else if (p.mat === "rubber") { slopeGrad.addColorStop(0, "#64748b"); slopeGrad.addColorStop(1, "#334155"); }
-      else if (p.mat === "woodwood") { slopeGrad.addColorStop(0, "#fbbf24"); slopeGrad.addColorStop(1, "#b45309"); }
-      else if (p.mat === "wood") { slopeGrad.addColorStop(0, "#fde68a"); slopeGrad.addColorStop(1, "#d97706"); }
-      else { slopeGrad.addColorStop(0, "#ddd6fe"); slopeGrad.addColorStop(1, "#c4b5fd"); }
-      ctx.fillStyle = slopeGrad;
-      ctx.beginPath(); ctx.moveTo(xL, baseY); ctx.lineTo(rx, topClamped); ctx.lineTo(rx, baseY); ctx.closePath(); ctx.fill();
+      const baseY = h - 28, xL = 22, xR = w - 22;
+      // ===== ramp: HIGH on the left, descending to the right =====
+      const sx0 = xL + (xR - xL) * 0.03;
+      const run = (xR - sx0);
+      const topY = Math.max(34, baseY - Math.tan(rad) * run * 0.92);
+      const slopeY = (x) => topY + Math.tan(rad) * (x - sx0);
+      // wedge body
+      const wedge = ctx.createLinearGradient(sx0, topY, xR, baseY);
+      if (p.mat === "ice") { wedge.addColorStop(0, "#e0f2fe"); wedge.addColorStop(1, "#7dd3fc"); }
+      else if (p.mat === "rubber") { wedge.addColorStop(0, "#64748b"); wedge.addColorStop(1, "#334155"); }
+      else if (p.mat === "woodwood") { wedge.addColorStop(0, "#fbbf24"); wedge.addColorStop(1, "#b45309"); }
+      else if (p.mat === "wood") { wedge.addColorStop(0, "#fde68a"); wedge.addColorStop(1, "#d97706"); }
+      else { wedge.addColorStop(0, "#ddd6fe"); wedge.addColorStop(1, "#a78bfa"); }
+      ctx.fillStyle = wedge;
+      ctx.beginPath(); ctx.moveTo(sx0, topY); ctx.lineTo(xR, baseY); ctx.lineTo(sx0, baseY); ctx.closePath(); ctx.fill();
+      // texture clipped to wedge
       ctx.save();
-      ctx.beginPath(); ctx.moveTo(xL, baseY); ctx.lineTo(rx, topClamped); ctx.lineTo(rx, baseY); ctx.closePath(); ctx.clip();
+      ctx.beginPath(); ctx.moveTo(sx0, topY); ctx.lineTo(xR, baseY); ctx.lineTo(sx0, baseY); ctx.closePath(); ctx.clip();
       if (p.mat === "ice") {
-        ctx.strokeStyle = "rgba(255,255,255,0.75)"; ctx.lineWidth = 2;
+        ctx.strokeStyle = "rgba(255,255,255,0.8)"; ctx.lineWidth = 2;
         for (let i = 0; i < 5; i++) {
-          const yy = topClamped + 14 + i * ((baseY - topClamped) / 5);
-          ctx.beginPath(); ctx.moveTo(xL + 10, yy); ctx.lineTo(rx - 16, yy - Math.tan(rad) * (rx - xL) * 0.1); ctx.stroke();
+          const xx = sx0 + 14 + i * (run / 5);
+          ctx.beginPath(); ctx.moveTo(xx, slopeY(xx) + 8); ctx.lineTo(xx + 26, slopeY(xx + 26) + 8); ctx.stroke();
         }
       } else if (p.mat === "rubber") {
-        ctx.fillStyle = "rgba(255,255,255,0.28)";
+        ctx.fillStyle = "rgba(255,255,255,0.25)";
         for (let i = 0; i < 60; i++) {
-          ctx.fillRect(xL + ((i * 53) % (rx - xL)), topClamped + ((i * 29) % Math.max(10, baseY - topClamped)), 2, 2);
+          const xx = sx0 + ((i * 53) % run);
+          ctx.fillRect(xx, slopeY(xx) + 6 + ((i * 29) % Math.max(8, baseY - slopeY(xx) - 10)), 2.4, 2.4);
         }
-      } else if (p.mat === "wood" || p.mat === "woodwood") {
-        ctx.strokeStyle = p.mat === "wood" ? "rgba(146,64,14,0.5)" : "rgba(69,26,3,0.55)"; ctx.lineWidth = 1.6;
-        const rows = 5;
-        for (let i = 1; i <= rows; i++) {
-          const off = (i * Math.max(12, baseY - topClamped)) / (rows + 1);
-          ctx.beginPath(); ctx.moveTo(xL, baseY + off); ctx.lineTo(rx, topClamped + off); ctx.stroke();
+      } else {
+        ctx.strokeStyle = p.mat === "woodwood" ? "rgba(69,26,3,0.5)" : "rgba(146,64,14,0.45)"; ctx.lineWidth = 1.6;
+        for (let i = 1; i <= 5; i++) {
+          const off = (i * 14);
+          ctx.beginPath(); ctx.moveTo(sx0 + 6, topY + off); ctx.lineTo(xR - 4, baseY + off - 6); ctx.stroke();
         }
       }
       ctx.restore();
-      ctx.strokeStyle = p.mat === "ice" ? "#38bdf8" : p.mat === "rubber" ? "#1e293b" : "#8b5cf6"; ctx.lineWidth = 3;
-      ctx.beginPath(); ctx.moveTo(xL, baseY); ctx.lineTo(rx, topClamped); ctx.stroke();
-      ctx.fillStyle = "#c7d2fe"; ctx.fillRect(0, baseY, w, h - baseY);
-      // angle arc
+      // crisp slope edge
+      ctx.strokeStyle = p.mat === "ice" ? "#38bdf8" : p.mat === "rubber" ? "#1e293b" : "#92400e";
+      ctx.lineWidth = 3.5; ctx.lineCap = "round";
+      ctx.beginPath(); ctx.moveTo(sx0, topY); ctx.lineTo(xR, baseY); ctx.stroke();
+      // ground
+      const gnd = ctx.createLinearGradient(0, baseY, 0, h);
+      gnd.addColorStop(0, "#86efac"); gnd.addColorStop(1, "#4d7c0f");
+      ctx.fillStyle = gnd; ctx.fillRect(0, baseY, w, h - baseY);
+      ctx.fillStyle = "rgba(255,255,255,0.35)";
+      for (let gx = 8; gx < w; gx += 26) ctx.fillRect(gx, baseY + 6, 3, 8);
+      // angle arc at bottom-right
       ctx.strokeStyle = "#0891b2"; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.arc(xL, baseY, 46, -rad, 0); ctx.stroke();
-      ctx.fillStyle = "#0e7490"; ctx.font = "900 11px sans-serif"; ctx.textAlign = "left";
-      ctx.fillText(fmt(p.deg, 0) + "°", xL + 52, baseY - 8);
-      // block motion
+      ctx.beginPath(); ctx.arc(xR, baseY, 44, Math.PI - rad, Math.PI); ctx.stroke();
+      ctx.fillStyle = "#0e7490"; ctx.font = "900 11px sans-serif"; ctx.textAlign = "right";
+      ctx.fillText(fmt(p.deg, 0) + "°", xR - 50, baseY - 10);
+
+      // ===== block physics: starts top-left, slides DOWN to the right =====
       const sliding = Math.tan(rad) > p.mu;
-      const acc = sliding ? 3.2 * (Math.sin(rad) - p.mu * Math.cos(rad)) * 4 : 0;
+      const acc = sliding ? 9.81 * (Math.sin(rad) - p.mu * Math.cos(rad)) : 0;
       if (sliding) {
-        W.v += acc * dt; W.s += W.v * dt;
-        if (W.s > 0.86) { W.s = 0; W.v = 0; }
+        W.v += acc * dt; W.s += W.v * dt * 0.14;
+        if (W.s > 0.88) { W.s = 0; W.v = 0; }
+        // dust particles
+        W.dust = W.dust || [];
+        if (Math.random() < 0.5) W.dust.push({ x: 0, y: 0, life: 1 });
       } else { W.s = 0; W.v = 0; }
-      const sx = xL + (rx - xL) * (0.14 + W.s * 0.7);
-      const sy = baseY - Math.tan(rad) * (sx - xL) - 16;
-      ctx.save(); ctx.translate(sx, sy); ctx.rotate(-rad);
-      const grad = ctx.createLinearGradient(0, -15, 0, 15);
-      grad.addColorStop(0, "#a78bfa"); grad.addColorStop(1, "#6d28d9");
-      ctx.fillStyle = grad; roundRect(ctx, -22, -15, 44, 30, 7); ctx.fill();
+      const bx = sx0 + run * (0.10 + W.s * 0.74);
+      const by = slopeY(bx) - 15;
+      // dust
+      if (W.dust) {
+        W.dust = W.dust.filter(d => d.life > 0);
+        for (const d of W.dust) {
+          d.life -= dt * 1.6; d.x -= dt * 30; d.y -= dt * 22;
+          ctx.fillStyle = `rgba(180,140,90,${Math.max(0, d.life * 0.5)})`;
+          ctx.beginPath(); ctx.arc(bx - 18 + d.x, by + 12 + d.y, 5 * (1 - d.life) + 2, 0, 7); ctx.fill();
+        }
+      }
+      // shadow
+      ctx.fillStyle = "rgba(0,0,0,0.18)";
+      ctx.beginPath(); ctx.ellipse(bx + 4, slopeY(bx) + 2, 24, 6, rad, 0, 7); ctx.fill();
+      // wooden crate
+      ctx.save(); ctx.translate(bx, by); ctx.rotate(rad);
+      const cw = 46, ch = 32;
+      const crate = ctx.createLinearGradient(0, -ch / 2, 0, ch / 2);
+      crate.addColorStop(0, "#fbbf24"); crate.addColorStop(0.5, "#d97706"); crate.addColorStop(1, "#92400e");
+      ctx.fillStyle = crate;
+      if (ctx.roundRect) { ctx.beginPath(); ctx.roundRect(-cw / 2, -ch / 2, cw, ch, 6); ctx.fill(); }
+      else ctx.fillRect(-cw / 2, -ch / 2, cw, ch);
+      ctx.strokeStyle = "#78350f"; ctx.lineWidth = 2;
+      if (ctx.roundRect) { ctx.beginPath(); ctx.roundRect(-cw / 2, -ch / 2, cw, ch, 6); ctx.stroke(); }
+      else ctx.strokeRect(-cw / 2, -ch / 2, cw, ch);
+      ctx.strokeStyle = "rgba(120,53,15,0.7)"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(-cw / 2, -ch / 2); ctx.lineTo(cw / 2, ch / 2); ctx.moveTo(cw / 2, -ch / 2); ctx.lineTo(-cw / 2, ch / 2); ctx.stroke();
+      ctx.strokeStyle = "rgba(120,53,15,0.9)"; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(-cw / 2, 0); ctx.lineTo(cw / 2, 0); ctx.stroke();
       ctx.fillStyle = "#fff"; ctx.font = "900 10px sans-serif"; ctx.textAlign = "center";
-      ctx.fillText("2 kg", 0, 3.5);
+      ctx.fillText("2 kg", 0, -ch / 2 - 6);
       ctx.restore();
-      // forces drawn to one scale · 2 px per newton for a 2 kg block
-      const cxp = sx, cyp = sy - 4;
+
+      // ===== force arrows (2 px per newton, 2 kg block) =====
+      const cxp = bx, cyp = by - 6;
       const SCL = 2.0, WT = 19.6, NN = WT * Math.cos(rad), COMP = WT * Math.sin(rad);
       const fricMag = sliding ? p.mu * NN : Math.min(COMP, p.mu * NN);
       arrow(ctx, cxp, cyp, cxp, cyp + WT * SCL, "#dc2626", 3);
       ctx.fillStyle = "#dc2626"; ctx.font = "900 10px sans-serif"; ctx.textAlign = "left";
       ctx.fillText("الوزن mg", cxp + 6, cyp + WT * SCL - 2);
-      const nx = Math.sin(rad), ny = -Math.cos(rad);
+      // normal: up-left perpendicular
+      const nx = -Math.sin(rad), ny = -Math.cos(rad);
       arrow(ctx, cxp, cyp, cxp + nx * NN * SCL, cyp + ny * NN * SCL, "#0891b2", 3);
-      ctx.fillStyle = "#0891b2"; ctx.fillText("العمودية N", cxp + nx * (NN * SCL + 6), cyp + ny * (NN * SCL + 6));
-      const ux = Math.cos(rad), uy = -Math.sin(rad);
-      ctx.strokeStyle = "rgba(220,38,38,0.55)"; ctx.lineWidth = 2; ctx.setLineDash([4, 4]);
-      ctx.beginPath(); ctx.moveTo(cxp, cyp); ctx.lineTo(cxp - ux * COMP * SCL, cyp - uy * COMP * SCL); ctx.stroke(); ctx.setLineDash([]);
-      arrow(ctx, cxp, cyp, cxp - ux * COMP * SCL, cyp - uy * COMP * SCL, "rgba(220,38,38,0.55)", 2);
+      ctx.fillStyle = "#0891b2";
+      ctx.fillText("العمودية N", cxp + nx * (NN * SCL + 8), cyp + ny * (NN * SCL + 8));
+      // downslope component of weight (dashed, down-right)
+      const dx = Math.cos(rad), dy = Math.sin(rad);
+      ctx.strokeStyle = "rgba(220,38,38,0.5)"; ctx.lineWidth = 2; ctx.setLineDash([4, 4]);
+      ctx.beginPath(); ctx.moveTo(cxp, cyp); ctx.lineTo(cxp + dx * COMP * SCL, cyp + dy * COMP * SCL); ctx.stroke(); ctx.setLineDash([]);
+      // friction opposes motion: up-left along slope
       if (fricMag > 0.3) {
-        arrow(ctx, cxp, cyp, cxp + ux * fricMag * SCL, cyp + uy * fricMag * SCL, "#d97706", 3);
-        ctx.fillStyle = "#d97706"; ctx.textAlign = "left";
-        ctx.fillText("الاحتكاك", cxp + ux * (fricMag * SCL + 6), cyp + uy * (fricMag * SCL + 6));
+        arrow(ctx, cxp, cyp, cxp - dx * fricMag * SCL, cyp - dy * fricMag * SCL, "#d97706", 3);
+        ctx.fillStyle = "#d97706"; ctx.textAlign = "right";
+        ctx.fillText("الاحتكاك", cxp - dx * (fricMag * SCL + 6), cyp - dy * (fricMag * SCL + 6));
       }
+      // status + speed readout
       ctx.fillStyle = sliding ? "#059669" : "#dc2626"; ctx.font = "900 12px sans-serif"; ctx.textAlign = "right";
-      ctx.fillText(sliding ? "⚡ ينزلق للأسفل" : "🔒 ثابت · الاحتكاك الساكن يكفي", w - 16, 24);
+      ctx.fillText(sliding ? "⚡ ينزلق للأسفل" : "🔒 ثابت · الاحتكاك الساكن يكفي", w - 14, 24);
+      if (sliding && W.v > 0.1) {
+        ctx.fillStyle = "#0369a1"; ctx.textAlign = "left";
+        ctx.fillText("v = " + fmt(W.v, 1) + " m/s", 14, 24);
+      }
     }
   );
   const m = 2, th = (deg * Math.PI) / 180;
@@ -1406,119 +1357,3 @@ export function RampLab() {
     </div>
   );
 }
-
-/* ============ FEATURE 10 · free-body force diagram ============ */
-let FORCE_ID = 0;
-export function ForcesLab() {
-  const { recordExperiment } = usePhys();
-  const [mass, setMass] = useState(4);
-  const [mu, setMu] = useState(0.25);
-  const [forces, setForces] = useState([
-    { id: ++FORCE_ID, name: "دفع", mag: 20, dir: 0 },
-  ]);
-  const DIRS = [[0, "يمين →"], [90, "أعلى ↑"], [180, "يسار ←"], [270, "أسفل ↓"], [45, "قطري 45°"]];
-  const addForce = (name, dir) => { setForces((f) => [...f, { id: ++FORCE_ID, name, mag: 15, dir }]); recordExperiment("forces"); };
-  const removeForce = (id) => setForces((f) => f.filter((x) => x.id !== id));
-  const setForce = (id, patch) => setForces((f) => f.map((x) => (x.id === id ? { ...x, ...patch } : x)));
-  const calc = useMemo(() => {
-    let fx = 0, fy = 0;
-    forces.forEach((fr) => {
-      const r = (fr.dir * Math.PI) / 180;
-      fx += fr.mag * Math.cos(r); fy += fr.mag * Math.sin(r);
-    });
-    const weight = mass * 9.81;
-    const normal = Math.max(0, weight - fy);
-    let fric = 0;
-    if (Math.abs(fx) > 0.01) fric = -Math.sign(fx) * Math.min(mu * normal, Math.abs(fx));
-    const netX = fx + fric, netY = fy + normal - weight;
-    const net = Math.hypot(netX, netY);
-    return { fx, fy, weight, normal, fric, netX, netY, net, a: net / mass };
-  }, [forces, mass, mu]);
-  const CX = 340, CY = 176, SC = 2.1;
-  const arrowSvg = (x1, y1, x2, y2, col, key, dash) => {
-    const ang = Math.atan2(y2 - y1, x2 - x1);
-    return (
-      <g key={key}>
-        <line x1={x1} y1={y1} x2={x2} y2={y2} stroke={col} strokeWidth="3.4" strokeLinecap="round" strokeDasharray={dash ? "5 4" : ""} />
-        <path d={`M ${x2} ${y2} L ${x2 - 10 * Math.cos(ang - 0.4)} ${y2 - 10 * Math.sin(ang - 0.4)} L ${x2 - 10 * Math.cos(ang + 0.4)} ${y2 - 10 * Math.sin(ang + 0.4)} Z`} fill={col} />
-      </g>
-    );
-  };
-  return (
-    <div className={cardCls} data-testid="phys-forces">
-      {head3("🎯", "مخطط القوى الحر", "أضف قوى بسِّهمها · وشاهد المحصلة تقرر مصير الصندوق")}
-      <div className="relative rounded-3xl overflow-hidden ring-1 ring-indigo-100 ft-shadow bg-gradient-to-b from-indigo-50/80 to-white">
-        <div className="h-1.5 bg-gradient-to-l from-violet-500 via-indigo-400 to-cyan-400" />
-        <svg viewBox="0 0 680 300" className="w-full block" dir="ltr" role="img" aria-label="مخطط قوى حر">
-          <line x1={10} y1={CY + 44} x2={670} y2={CY + 44} stroke="#a5b4fc" strokeWidth="4" strokeLinecap="round" />
-          {Array.from({ length: 30 }).map((_, i) => (
-            <line key={i} x1={20 + i * 22} y1={CY + 48} x2={14 + i * 22} y2={CY + 58} stroke="#c7d2fe" strokeWidth="2" />
-          ))}
-          <ellipse cx={CX} cy={CY + 50} rx={48} ry={6} fill="rgba(30,27,75,0.16)" />
-          <rect x={CX - 34} y={CY - 44} width={68} height={88} rx={12} fill="url(#fgrad)" stroke="#6d28d9" strokeWidth={2} />
-          <defs>
-            <linearGradient id="fgrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#ddd6fe" /><stop offset="45%" stopColor="#a78bfa" /><stop offset="100%" stopColor="#6d28d9" />
-            </linearGradient>
-          </defs>
-          <text x={CX} y={CY + 5} fill="#fff" fontSize="14" fontWeight="900" textAnchor="middle">{fmt(mass, 0)} kg</text>
-          {forces.map((fr) => {
-            const r = (fr.dir * Math.PI) / 180;
-            const ux = Math.cos(r), uy = -Math.sin(r);
-            const tx = CX + ux * fr.mag * SC, ty = CY + uy * fr.mag * SC;
-            const edgeOff = Math.min(42, fr.mag * SC * 0.85);
-            const ex = CX + ux * edgeOff, ey = CY + uy * edgeOff * 1.08;
-            return (
-              <g key={"rope" + fr.id}>
-                <line x1={ex} y1={ey} x2={tx} y2={ty} stroke="#92400e" strokeWidth="4.5" strokeLinecap="round" opacity="0.8" />
-                <circle cx={ex} cy={ey} r="4.2" fill="#78350f" />
-                <circle cx={tx} cy={ty} r="3.4" fill="#b45309" />
-                {arrowSvg(CX, CY, tx, ty, "#f59e0b", "f" + fr.id)}
-              </g>
-            );
-          })}
-          {arrowSvg(CX, CY, CX, CY + calc.weight * SC * 0.55, "#dc2626", "w")}
-          {calc.normal > 0.5 && arrowSvg(CX, CY, CX, CY - calc.normal * SC * 0.55, "#0891b2", "n")}
-          {Math.abs(calc.fric) > 0.3 && arrowSvg(CX, CY, CX + calc.fric * SC, CY, "#d97706", "fr")}
-          {calc.net > 0.5 && arrowSvg(CX, CY, CX + calc.netX * SC * 1.25, CY - calc.netY * SC * 1.25, "#059669", "net", true)}
-          <text x={CX + 10} y={CY + 64} fill="#dc2626" fontSize="11" fontWeight="900">الوزن</text>
-          <text x={CX + 10} y={CY - 52} fill="#0891b2" fontSize="11" fontWeight="900">العمودية</text>
-          {calc.net > 0.5 && <text x={CX + calc.netX * SC * 1.25 - 8} y={CY - calc.netY * SC * 1.25 - 12} fill="#059669" fontSize="12" fontWeight="900">المحصلة</text>}
-        </svg>
-      </div>
-      <div className="grid sm:grid-cols-2 gap-3 mt-3">
-        <Slider label="كتلة الصندوق" value={mass} set={setMass} min={1} max={20} unit="kg" />
-        <Slider label="معامل الاحتكاك μ" value={mu} set={setMu} min={0} max={0.9} step={0.02} tone="accent-amber-500" />
-      </div>
-      <div className="flex flex-wrap gap-1.5 mt-2">
-        <button onClick={() => addForce("دفع", 0)} className={chips(false)}>+ دفع يمين</button>
-        <button onClick={() => addForce("سحب", 45)} className={chips(false)}>+ سحب قطري</button>
-        <button onClick={() => addForce("رفع", 90)} className={chips(false)}>+ رفع أعلى</button>
-        <button onClick={() => addForce("دفع", 180)} className={chips(false)}>+ دفع يسار</button>
-      </div>
-      <div className="space-y-2 mt-3">
-        {forces.map((fr) => (
-          <div key={fr.id} className="flex flex-wrap items-center gap-2 rounded-2xl bg-white ring-1 ring-slate-100 px-3 py-2">
-            <span className="text-[12px] font-black text-slate-700">{fr.name}</span>
-            <span className="flex-1 min-w-[130px]">
-              <input type="range" min={0} max={60} value={fr.mag} onChange={(e) => setForce(fr.id, { mag: +e.target.value })} className="w-full accent-amber-500 h-8 cursor-pointer" aria-label="مقدار القوة" />
-            </span>
-            <span className="text-[12px] font-black text-amber-600" dir="ltr">{fr.mag} N</span>
-            <select value={fr.dir} onChange={(e) => setForce(fr.id, { dir: +e.target.value })} className="px-2 py-2 rounded-xl bg-slate-50 ring-1 ring-slate-200 text-[12px] font-black min-h-[40px]">
-              {DIRS.map(([v, ar]) => <option key={v} value={v}>{ar}</option>)}
-            </select>
-            <button onClick={() => removeForce(fr.id)} className="pressable w-10 h-10 grid place-items-center rounded-xl bg-rose-50 ring-1 ring-rose-100 text-rose-500 active:scale-90" aria-label="حذف القوة"><X className="w-4 h-4" /></button>
-          </div>
-        ))}
-      </div>
-      <div className="grid grid-cols-3 gap-2 mt-3">
-        <Stat label="القوة العمودية N" value={fmt(calc.normal, 1)} unit="N" tone="from-cyan-50 ring-cyan-100" />
-        <Stat label="الاحتكاك" value={fmt(Math.abs(calc.fric), 1)} unit="N" tone="from-amber-50 ring-amber-100" />
-        <Stat label="التسارع a = F/m" value={fmt(calc.a)} unit="m/s²" tone="from-emerald-50 ring-emerald-100" />
-      </div>
-      <p className="text-[12px] text-slate-400 font-semibold leading-relaxed mt-3">إذا تساوت القوى فالمحصلة صفر ويبقى الصندوق ساكناً أو متحركاً بسرعة ثابتة (قانون نيوتن الأول) · ارفع الصندوق جزئياً بقوة لأعلى ولاحظ أن العمودية والاحتكاك ينقصان · القيم تقريبية بنموذج احتكاك بسيط.</p>
-    </div>
-  );
-}
-
-/* ============ FEATURE 11 · EM spectrum explorer ============ */
