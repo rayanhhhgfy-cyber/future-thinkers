@@ -3,6 +3,7 @@ import api, { apiErr } from "@/lib/api";
 import { ReportErrorButton } from "@/components/ErrorState";
 import { PythonEditor, PyErrorText, Terminal, TermLines } from "@/components/PythonCode";
 import { useAuth } from "@/context/AuthContext";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -11,7 +12,7 @@ import { toast } from "sonner";
 import { PageLoader, EmptyState } from "@/components/Layout";
 import {
   Code2, Play, CheckCircle2, Lightbulb, ThumbsUp, Scale, Plus, ArrowRight, Loader2,
-  FlaskConical, Search, Zap, XCircle, Trophy, Sparkles, Target, Copy, Check, RotateCcw, Braces,
+  FlaskConical, Search, Zap, XCircle, Trophy, Sparkles, Target, Copy, Check, RotateCcw, Braces, ChevronLeft,
 } from "lucide-react";
 
 /* ============ نادي البرمجة · Coding challenges ============ */
@@ -68,7 +69,23 @@ export function CodingPanel() {
         </div>
       </div>
 
-      {/* toolbar */}
+            {/* python journey banner */}
+      <Link to="/python" className="group relative mb-5 flex items-center gap-4 overflow-hidden rounded-[1.8rem] p-5 text-white transition active:scale-[0.99] sm:p-6" style={{ background: "linear-gradient(135deg,#0a1628 0%,#12325e 60%,#3776AB 130%)" }}>
+        <div className="pointer-events-none absolute -left-10 -top-16 h-48 w-48 rounded-full bg-[#FFD43B]/20 blur-3xl transition group-hover:bg-[#FFD43B]/30" />
+        <span className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl text-3xl shadow-lg" style={{ background: "linear-gradient(135deg,#3776AB,#4B8BBE)" }}>🐍</span>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <span className="font-head text-[15px] font-extrabold sm:text-lg">رحلة تعلّم بايثون</span>
+            <span className="rounded-lg bg-[#FFD43B]/20 px-2 py-0.5 text-[10.5px] font-extrabold text-[#FFD43B]">جديد</span>
+          </div>
+          <p className="mt-1 truncate text-[12.5px] text-slate-300 sm:text-[13px]">مقالات تفاعلية بكود ملوّن + امتحان لكل مرحلة — من الصفر حتى الاحتراف</p>
+        </div>
+        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-white/10 transition group-hover:bg-[#FFD43B] group-hover:text-[#0a1628]">
+          <ChevronLeft className="h-5 w-5" />
+        </span>
+      </Link>
+
+{/* toolbar */}
       <div className="flex flex-col sm:flex-row gap-3 mb-5">
         <div className="relative flex-1">
           <Search className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
