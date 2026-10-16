@@ -10,7 +10,29 @@ import { PageLoader } from "@/components/Layout";
 import { Counter } from "@/components/Counter";
 import { Stagger, Item, FadeUp } from "@/components/anim";
 import { toast } from "sonner";
-import { Plus, PenLine, Trash2, Users, BookOpen, Trophy, Code2, Palette, MessageSquare, Lightbulb, Rocket, Star, X, Sparkles, Crown } from "lucide-react";
+import { Plus, PenLine, Trash2, Users, BookOpen, Trophy, Code2, Palette, MessageSquare, Lightbulb, Rocket, Star, X, Sparkles, Crown, Eye, EyeOff } from "lucide-react";
+
+/* معاينة حية للمعرّف — نفس منطق التوليد في الخادم (عربي ← لاتيني مقروء) */
+const AR_SLUG_MAP = {
+  "ا": "a", "أ": "a", "إ": "i", "آ": "aa", "ء": "", "ئ": "i", "ؤ": "u",
+  "ب": "b", "ت": "t", "ث": "th", "ج": "j", "ح": "h", "خ": "kh",
+  "د": "d", "ذ": "dh", "ر": "r", "ز": "z", "س": "s", "ش": "sh",
+  "ص": "s", "ض": "d", "ط": "t", "ظ": "z", "ع": "a", "غ": "gh",
+  "ف": "f", "ق": "q", "ك": "k", "ل": "l", "م": "m", "ن": "n",
+  "ه": "h", "ة": "a", "و": "u", "ي": "i", "ى": "a", "ـ": "",
+  "٠": "0", "١": "1", "٢": "2", "٣": "3", "٤": "4", "٥": "5", "٦": "6", "٧": "7", "٨": "8", "٩": "9",
+};
+function slugPreview(name) {
+  const s = (name || "").replace(/[ً-ٰٟ]/g, "");
+  let out = "";
+  for (const ch of s) {
+    if (ch in AR_SLUG_MAP) out += AR_SLUG_MAP[ch];
+    else if (/^[a-z0-9]$/i.test(ch)) out += ch.toLowerCase();
+    else out += "-";
+  }
+  out = out.replace(/-{2,}/g, "-").replace(/^[-]+|[-]+$/g, "").replace(/[^a-z0-9-]/g, "");
+  return out.slice(0, 60) || "nadi";
+}
 
 /* الأندية · إعادة تصميم ClubsPanel
    نفس النقاط والصلاحيات: GET /clubs · POST /clubs · PATCH /clubs/{slug} · DELETE /clubs/{slug}
@@ -27,7 +49,7 @@ export default function AdminClubs() {
   const canDelete = hasPerm("club.delete");
   const [clubs, setClubs] = useState(null);
   const [dialog, setDialog] = useState(null); // {mode:"create"} | {mode:"edit", club}
-  const [form, setForm] = useState({ name: "", slug: "", description: "", icon: "Users", color: "#2563EB" });
+  const [form, setForm] = useState({ name: "", slug: "", description: "", icon: "Users", color: "#2563EB", is_hidden: false });
   const [saving, setSaving] = useState(false);
 
   const load = async () => {
@@ -37,11 +59,11 @@ export default function AdminClubs() {
   useEffect(() => { load(); }, []);
 
   const openCreate = () => {
-    setForm({ name: "", slug: "", description: "", icon: "Users", color: "#2563EB" });
+    setForm({ name: "", slug: "", description: "", icon: "Users", color: "#2563EB", is_hidden: false });
     setDialog({ mode: "create" });
   };
   const openEdit = (c) => {
-    setForm({ name: c.name || "", slug: c.slug || "", description: c.description || "", icon: c.icon || "Users", color: c.color || "#2563EB" });
+    setForm({ name: c.name || "", slug: c.slug || "", description: c.description || "", icon: c.icon || "Users", color: c.color || "#2563EB", is_hidden: !!c.is_hidden });
     setDialog({ mode: "edit", club: c });
   };
 
@@ -50,13 +72,13 @@ export default function AdminClubs() {
     setSaving(true);
     try {
       if (dialog.mode === "create") {
-        const payload = { name: form.name.trim(), description: form.description, icon: form.icon, color: form.color };
+        const payload = { name: form.name.trim(), description: form.description, icon: form.icon, color: form.color, is_hidden: !!form.is_hidden };
         if (form.slug.trim()) payload.slug = form.slug.trim().toLowerCase();
         await api.post("/clubs", payload);
         toast.success("تم إنشاء النادي 🎉");
       } else {
         await api.patch(`/clubs/${dialog.club.slug}`, {
-          name: form.name.trim(), description: form.description, icon: form.icon, color: form.color,
+          name: form.name.trim(), description: form.description, icon: form.icon, color: form.color, is_hidden: !!form.is_hidden,
         });
         toast.success("تم حفظ التعديلات ✅");
       }
@@ -68,6 +90,15 @@ export default function AdminClubs() {
     if (!window.confirm(`حذف نادي "${c.name}" نهائياً؟ سيتم إزالة عضويات الأعضاء المرتبطين به.`)) return;
     try { await api.delete(`/clubs/${c.slug}`); toast.success("تم حذف النادي"); load(); }
     catch (e) { toast.error(apiErr(e)); }
+  };
+
+  const toggleHide = async (c) => {
+    const next = !c.is_hidden;
+    try {
+      await api.patch(`/clubs/${c.slug}`, { is_hidden: next });
+      toast.success(next ? "تم إخفاء النادي عن الأعضاء 🙈" : "أصبح النادي ظاهراً للجميع ✅");
+      load();
+    } catch (e) { toast.error(apiErr(e)); }
   };
 
   const totalMembers = useMemo(() => (clubs || []).reduce((s, c) => s + (c.members_count || 0), 0), [clubs]);
@@ -119,7 +150,16 @@ export default function AdminClubs() {
                 <div className="relative h-20 overflow-hidden" style={{ background: `linear-gradient(135deg, ${color}, ${color}99)` }}>
                   <span className="absolute -top-4 -left-4 w-20 h-20 rounded-full bg-white/15 blur-md" />
                   <span className="absolute bottom-3 right-4 inline-flex items-center gap-1.5 text-[11px] font-bold text-white bg-black/25 backdrop-blur px-2.5 py-1 rounded-full"><Users className="w-3.5 h-3.5" />{c.members_count || 0} عضو</span>
+                  {c.is_hidden && (
+                    <span className="absolute bottom-3 left-4 inline-flex items-center gap-1 text-[11px] font-bold text-white bg-slate-900/60 backdrop-blur px-2.5 py-1 rounded-full"><EyeOff className="w-3.5 h-3.5" /> مخفي</span>
+                  )}
                   <span className="absolute top-3 left-3 flex gap-1.5">
+                    {canEdit && (
+                      <button onClick={() => toggleHide(c)} title={c.is_hidden ? "إظهار النادي" : "إخفاء النادي"}
+                        className={`pressable w-9 h-9 rounded-xl grid place-items-center shadow ${c.is_hidden ? "bg-slate-900/85 text-amber-300 hover:bg-slate-900" : "bg-white/90 text-slate-700 hover:bg-white"}`}>
+                        {c.is_hidden ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    )}
                     {canEdit && (
                       <button onClick={() => openEdit(c)} title="تعديل" className="pressable w-9 h-9 rounded-xl bg-white/90 text-slate-700 grid place-items-center shadow hover:bg-white"><PenLine className="w-4 h-4" /></button>
                     )}
@@ -145,16 +185,27 @@ export default function AdminClubs() {
       )}
 
       <Dialog open={!!dialog} onOpenChange={(o) => !o && setDialog(null)}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{dialog?.mode === "create" ? "إنشاء نادٍ جديد" : `تعديل: ${dialog?.club?.name}`}</DialogTitle>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto overscroll-contain
+          max-sm:top-auto max-sm:bottom-0 max-sm:left-0 max-sm:right-0 max-sm:translate-x-0 max-sm:translate-y-0
+          max-sm:w-full max-sm:max-w-none max-sm:rounded-b-none max-sm:rounded-t-[1.75rem]
+          max-sm:p-4 max-sm:pt-3 max-sm:gap-3 max-sm:max-h-[94dvh]
+          max-sm:data-[state=open]:slide-in-from-left-0 max-sm:data-[state=open]:slide-in-from-top-0 max-sm:data-[state=open]:slide-in-from-bottom-8">
+          <div className="sm:hidden mx-auto h-1.5 w-12 shrink-0 rounded-full bg-slate-200" aria-hidden />
+          <DialogHeader className="max-sm:text-right">
+            <DialogTitle className="max-sm:text-lg max-sm:pr-10">{dialog?.mode === "create" ? "إنشاء نادٍ جديد" : `تعديل: ${dialog?.club?.name}`}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
-            <div><Label>اسم النادي *</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="مثال: نادي القراءة" className="rounded-xl mt-1" /></div>
+          <div className="space-y-4 max-sm:space-y-3.5">
+            <div>
+              <Label>اسم النادي *</Label>
+              <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="مثال: نادي القراءة" className="rounded-xl mt-1 h-11" />
+              {dialog?.mode === "create" && form.name.trim().length >= 2 && (
+                <p className="mt-1.5 text-[11px] text-slate-400">المعرّف المقترح: <span className="font-mono font-bold text-emerald-700" dir="ltr">/{form.slug.trim() ? form.slug.trim().toLowerCase().replace(/[^a-z0-9-]/g, "") : slugPreview(form.name)}</span></p>
+              )}
+            </div>
             {dialog?.mode === "create" ? (
               <div>
-                <Label>المعرّف (slug) <span className="text-slate-400 font-normal">· اختياري، يُولّد تلقائياً</span></Label>
-                <Input value={form.slug} onChange={(e) => setForm({ ...form, slug: e.target.value })} placeholder="reading-club" className="rounded-xl mt-1" dir="ltr" />
+                <Label>المعرّف (slug) <span className="text-slate-400 font-normal">· اختياري، يُولّد تلقائياً من الاسم بشكل مقروء</span></Label>
+                <Input value={form.slug} onChange={(e) => setForm({ ...form, slug: e.target.value })} placeholder="nadi-alqraa" className="rounded-xl mt-1 h-11" dir="ltr" />
               </div>
             ) : (
               <div>
@@ -165,12 +216,12 @@ export default function AdminClubs() {
             <div><Label>الوصف</Label><Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="نبذة عن النادي وأنشطته..." className="rounded-xl mt-1" rows={3} /></div>
             <div>
               <Label>الأيقونة</Label>
-              <div className="grid grid-cols-9 gap-1.5 mt-2">
+              <div className="grid grid-cols-6 min-[420px]:grid-cols-9 gap-1.5 sm:gap-2 mt-2">
                 {ICON_CHOICES.map((n) => {
                   const I = ICON_MAP[n];
                   return (
                     <button key={n} type="button" onClick={() => setForm({ ...form, icon: n })}
-                      className={`aspect-square rounded-xl grid place-items-center border transition-all ${form.icon === n ? "border-emerald-500 bg-emerald-50 text-emerald-700 scale-105" : "border-slate-200 text-slate-500 hover:border-slate-300"}`}>
+                      className={`aspect-square min-h-[2.75rem] rounded-xl grid place-items-center border transition-all ${form.icon === n ? "border-emerald-500 bg-emerald-50 text-emerald-700 scale-105" : "border-slate-200 text-slate-500 hover:border-slate-300 active:scale-95"}`}>
                       <I className="w-5 h-5" />
                     </button>
                   );
@@ -187,6 +238,22 @@ export default function AdminClubs() {
                 ))}
               </div>
             </div>
+            {/* إخفاء / إظهار */}
+            <button type="button" onClick={() => setForm({ ...form, is_hidden: !form.is_hidden })}
+              className={`w-full flex items-center justify-between gap-3 rounded-2xl border p-3 sm:p-3.5 text-right transition active:scale-[0.99] ${form.is_hidden ? "border-slate-700 bg-slate-900 text-white" : "border-slate-200 bg-white hover:border-slate-300"}`}>
+              <span className="flex items-center gap-3 min-w-0">
+                <span className={`w-10 h-10 rounded-xl grid place-items-center shrink-0 ${form.is_hidden ? "bg-white/10 text-amber-300" : "bg-slate-100 text-slate-500"}`}>
+                  {form.is_hidden ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-sm font-bold">{form.is_hidden ? "النادي مخفي 🙈" : "إخفاء النادي"}</span>
+                  <span className={`block text-[11px] mt-0.5 leading-relaxed ${form.is_hidden ? "text-slate-300" : "text-slate-400"}`}>لن يظهر في صفحة الأندية · يبقى ظاهراً للمشرفين فقط</span>
+                </span>
+              </span>
+              <span className={`relative w-11 h-6 shrink-0 rounded-full transition-colors ${form.is_hidden ? "bg-emerald-500" : "bg-slate-200"}`} aria-hidden>
+                <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${form.is_hidden ? "right-0.5" : "left-0.5"}`} />
+              </span>
+            </button>
             {/* معاينة حية */}
             <div className="rounded-2xl overflow-hidden border border-slate-100">
               <div className="h-12" style={{ background: `linear-gradient(135deg, ${form.color}, ${form.color}99)` }} />
@@ -201,11 +268,11 @@ export default function AdminClubs() {
               </div>
             </div>
           </div>
-          <DialogFooter className="gap-2 mt-2">
-            <Button variant="outline" onClick={() => setDialog(null)} className="rounded-xl">
+          <DialogFooter className="gap-2 mt-2 max-sm:flex-col-reverse max-sm:items-stretch">
+            <Button variant="outline" onClick={() => setDialog(null)} className="rounded-xl max-sm:w-full max-sm:h-12">
               <X className="w-4 h-4 ml-1" /> إلغاء
             </Button>
-            <Button onClick={save} disabled={saving} className="rounded-xl bg-emerald-600 hover:bg-emerald-700">
+            <Button onClick={save} disabled={saving} className="rounded-xl bg-emerald-600 hover:bg-emerald-700 max-sm:w-full max-sm:h-12">
               {saving ? "جارٍ الحفظ..." : dialog?.mode === "create" ? "إنشاء النادي" : "حفظ التعديلات"}
             </Button>
           </DialogFooter>
