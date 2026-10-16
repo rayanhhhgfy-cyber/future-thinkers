@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { Layout, PageLoader } from "@/components/Layout";
 import api from "@/lib/api";
 import * as Icons from "lucide-react";
-import { Users, ArrowLeft, Check, Compass, Crown } from "lucide-react";
+import { Users, ArrowLeft, Check, Compass, Crown, EyeOff } from "lucide-react";
 
 export default function Clubs() {
   const [clubs, setClubs] = useState(null);
@@ -65,7 +65,10 @@ export default function Clubs() {
                 </div>
                 <div className="relative p-5 sm:p-6 pt-0">
                   <div className="relative z-10 -mt-10 mb-4 w-16 h-16 sm:w-[4.5rem] sm:h-[4.5rem] rounded-[1.35rem] grid place-items-center text-white shrink-0 ring-4 ring-white transition-all duration-300 group-hover:scale-110 group-hover:-rotate-6" style={{ background: `linear-gradient(135deg, ${c.color}, ${c.color}B3)`, boxShadow: `0 14px 28px -10px ${c.color}90` }}><Icon className="w-8 h-8 sm:w-9 sm:h-9 drop-shadow" /></div>
-                  <h3 className="relative font-head font-extrabold text-lg sm:text-xl text-slate-900 transition-colors duration-300 group-hover:text-slate-950">{c.name}</h3>
+                  <div className="relative flex items-center gap-2 flex-wrap">
+                    <h3 className="font-head font-extrabold text-lg sm:text-xl text-slate-900 transition-colors duration-300 group-hover:text-slate-950">{c.name}</h3>
+                    {c.is_hidden && <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-slate-900 text-white px-2.5 py-1 rounded-full shadow"><EyeOff className="w-3 h-3" /> مخفي</span>}
+                  </div>
                   <p className="relative mt-2 text-sm text-slate-500 line-clamp-2 leading-relaxed min-h-[2.75rem]">{c.description}</p>
                   <div className="relative mt-5 pt-4 border-t border-slate-100 flex items-center justify-between gap-2">
                     <span className="text-xs font-semibold text-slate-500 inline-flex items-center gap-1.5 bg-slate-50 group-hover:bg-white px-2.5 py-1.5 rounded-full transition-colors"><Users className="w-3.5 h-3.5" style={{ color: c.color }} />{c.members_count} عضو</span>
