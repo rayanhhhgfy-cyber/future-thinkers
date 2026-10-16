@@ -199,13 +199,13 @@ export default function AdminClubs() {
           <div className="sm:hidden mx-auto h-1 w-10 shrink-0 rounded-full bg-slate-200" aria-hidden />
           <DialogHeader className="max-sm:text-right">
             <div className="pr-9">
+              <DialogTitle className="sr-only">{dialog?.mode === "create" ? "إنشاء نادٍ جديد" : (dialog?.club?.name || "تعديل النادي")}</DialogTitle>
               <div className="inline-flex items-center gap-2.5 rounded-2xl border border-emerald-200/80 bg-gradient-to-l from-emerald-50 via-teal-50/60 to-emerald-50 pl-4 pr-2.5 py-1.5 shadow-[0_8px_20px_-10px_rgba(16,185,129,0.5)]">
                 <span className="grid place-items-center w-8 h-8 rounded-xl text-white shadow-md shrink-0" style={{ background: "linear-gradient(135deg,#10b981,#0d9488)" }}>
                   <Sparkles className="w-4 h-4" />
                 </span>
-                <span className="text-[13px] sm:text-sm font-black text-emerald-900 whitespace-nowrap">إدارة النادي · {dialog?.mode === "create" ? "إنشاء جديد" : "تعديل"}</span>
+                <span className="text-sm font-black text-emerald-900 whitespace-nowrap">إدارة النادي · {dialog?.mode === "create" ? "إنشاء جديد" : "تعديل"}</span>
               </div>
-              <DialogTitle className="text-[1.45rem] sm:text-[1.8rem] font-black text-slate-900 leading-[1.4] line-clamp-2 mt-2.5">{dialog?.mode === "create" ? "إنشاء نادٍ جديد" : (dialog?.club?.name || "تعديل النادي")}</DialogTitle>
             </div>
           </DialogHeader>
 
@@ -235,10 +235,10 @@ export default function AdminClubs() {
               <p className="relative px-3.5 pb-3.5 -mt-1 text-[12px] leading-relaxed text-white/90 line-clamp-2">{form.description.trim()}</p>
             )}
           </div>
-          <div className="space-y-4 max-sm:space-y-2.5">
+          <div className="rounded-[1.6rem] bg-slate-50/70 border border-slate-100 p-3 sm:p-4 space-y-3.5 max-sm:space-y-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]">
             <div>
               <div className="flex items-center gap-1.5 mb-1.5 text-[12px] font-bold text-slate-500"><Type className="w-3.5 h-3.5 text-emerald-600" /> اسم النادي *</div>
-              <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="مثال: نادي القراءة" className="rounded-xl h-11 max-sm:h-10 max-sm:text-sm bg-slate-50/70 border-slate-200 focus-visible:ring-emerald-300" />
+              <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="مثال: نادي القراءة" className="rounded-xl h-11 max-sm:h-10 max-sm:text-sm bg-white border-slate-200 focus-visible:ring-emerald-300" />
               {dialog?.mode === "create" && form.name.trim().length >= 2 && (
                 <p className="mt-1.5 text-[11px] text-slate-400">المعرّف المقترح: <span className="font-mono font-bold text-emerald-700 break-all" dir="ltr">/{heroSlug}</span></p>
               )}
@@ -246,7 +246,7 @@ export default function AdminClubs() {
             {dialog?.mode === "create" ? (
               <div>
                 <div className="flex items-center gap-1.5 mb-1.5 text-[12px] font-bold text-slate-500"><Link2 className="w-3.5 h-3.5 text-emerald-600" /> المعرّف (slug) <span className="text-slate-400 font-normal">· اختياري، يُولّد تلقائياً</span></div>
-                <Input value={form.slug} onChange={(e) => setForm({ ...form, slug: e.target.value })} placeholder="nadi-alqraa" className="rounded-xl h-11 max-sm:h-10 max-sm:text-sm bg-slate-50/70 border-slate-200 focus-visible:ring-emerald-300" dir="ltr" />
+                <Input value={form.slug} onChange={(e) => setForm({ ...form, slug: e.target.value })} placeholder="nadi-alqraa" className="rounded-xl h-11 max-sm:h-10 max-sm:text-sm bg-white border-slate-200 focus-visible:ring-emerald-300" dir="ltr" />
               </div>
             ) : (
               <div>
@@ -256,7 +256,7 @@ export default function AdminClubs() {
             )}
             <div>
               <div className="flex items-center gap-1.5 mb-1.5 text-[12px] font-bold text-slate-500"><AlignRight className="w-3.5 h-3.5 text-emerald-600" /> الوصف</div>
-              <Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="نبذة عن النادي وأنشطته..." className="rounded-xl max-sm:text-sm max-sm:min-h-[52px] bg-slate-50/70 border-slate-200 focus-visible:ring-emerald-300" rows={2} />
+              <Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="نبذة عن النادي وأنشطته..." className="rounded-xl max-sm:text-sm max-sm:min-h-[52px] bg-white border-slate-200 focus-visible:ring-emerald-300" rows={2} />
             </div>
             <div>
               <div className="flex items-center gap-1.5 mb-1.5 text-[12px] font-bold text-slate-500"><Shapes className="w-3.5 h-3.5 text-emerald-600" /> الأيقونة</div>
