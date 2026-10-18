@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useRef } from "react";
+import React, { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useSiteConfig, sectionOfPath } from "@/lib/siteConfig";
@@ -11,7 +11,6 @@ import {
   Swords, Compass, GitBranch,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { EASE } from "@/components/anim";
 import { useAuth } from "@/context/AuthContext";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
@@ -50,7 +49,6 @@ const DISCOVER_LINKS = [
   { to: "/wrapped", label: "ملخص رحلتي", icon: Wand2, tint: "bg-amber-100 text-amber-600" },
 ];
 
-const PRIMARY_LINKS = DISCOVER_LINKS.slice(0, 6);
 const MORE_GROUPS = [
   { title: "التنافس والنقاط", items: [
     { to: "/leaderboard", label: "المتصدرون", icon: Crown, tint: "bg-yellow-100 text-yellow-600" },
@@ -90,20 +88,22 @@ const MORE_GROUPS = [
 
 function useNavLinks() {
   const { toggles } = useSiteConfig();
-  const navVisible = (l) => {
-    const sec = sectionOfPath(l.to);
-    return !sec || toggles[sec] !== false;
-  };
-  const discover = DISCOVER_LINKS.filter(navVisible);
-  const groups = MORE_GROUPS
-    .map((g) => ({ ...g, items: g.items.filter(navVisible) }))
-    .filter((g) => g.items.length > 0);
-  return { discover, primary: discover.slice(0, 6), groups };
+  return useMemo(() => {
+    const navVisible = (l) => {
+      const sec = sectionOfPath(l.to);
+      return !sec || toggles[sec] !== false;
+    };
+    const discover = DISCOVER_LINKS.filter(navVisible);
+    const groups = MORE_GROUPS
+      .map((g) => ({ ...g, items: g.items.filter(navVisible) }))
+      .filter((g) => g.items.length > 0);
+    return { discover, primary: discover.slice(0, 6), groups };
+  }, [toggles]);
 }
 
 export function Navbar() {
   const { user, logout, isStaff } = useAuth();
-  const { discover: NAV_DISCOVER, primary: NAV_PRIMARY, groups: NAV_GROUPS } = useNavLinks();
+  const { primary: NAV_PRIMARY, groups: NAV_GROUPS } = useNavLinks();
   const nav = useNavigate();
   const loc = useLocation();
   const [open, setOpen] = useState(false);
@@ -236,72 +236,114 @@ export function Navbar() {
         ))}
       </AnimatePresence>
     </div>
+
+    {/* ============ premium glass header ============ */}
     <header className="sticky top-0 z-50 px-3 sm:px-5 lg:px-8 pt-[max(0.6rem,env(safe-area-inset-top))]">
-      <div className={`max-w-[1440px] mx-auto glass rounded-[22px] border border-white/60 ring-1 ring-slate-900/5 px-3.5 sm:px-5 lg:px-6 h-16 lg:h-[68px] flex items-center justify-between gap-3 transition-shadow duration-300 ${scrolled ? "shadow-[0_20px_48px_-16px_rgba(15,23,42,0.38)]" : "shadow-[0_10px_30px_-14px_rgba(15,23,42,0.22)]"}`}>
-        <div className="flex items-center gap-8 min-w-0">
-          <Link to="/" data-testid="nav-home-link" className="shrink-0"><Logo /></Link>
-          <nav className="hidden xl:flex items-center gap-1.5 flex-1 min-w-0">
-            <div ref={navScrollRef} className="nav-scroll flex items-center gap-1.5 overflow-x-auto min-w-0 py-1 px-0.5">
-            {NAV_PRIMARY.map((l) => {
-              const active = loc.pathname.startsWith(l.to);
-              const Icon = l.icon;
-              return (
-                <Link key={l.to} to={l.to} data-testid={`nav-${l.to.slice(1)}`}
-                  className={`group flex items-center gap-2 px-3.5 py-2.5 rounded-full text-sm font-bold transition-all ${active ? "ft-bg-soft ft-text-accent shadow-inner" : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"}`}>
-                  <span className={`w-6 h-6 rounded-lg grid place-items-center transition-transform group-hover:scale-110 ${active ? "ft-icon-tile text-white" : l.tint}`}>
-                    <Icon className="w-3.5 h-3.5" />
-                  </span>
-                  {l.label}
-                </Link>
-              );
-            })}
+      <div className={`max-w-[1440px] mx-auto rounded-[20px] border backdrop-blur-2xl transition-all duration-300 px-3.5 sm:px-5 h-16 lg:h-[70px] flex items-center justify-between gap-3 ${
+        scrolled
+          ? "bg-white/85 border-white/70 shadow-[0_20px_55px_-18px_rgba(6,78,59,0.38)]"
+          : "bg-white/65 border-white/50 shadow-[0_10px_34px_-14px_rgba(15,23,42,0.25)]"
+      }`}>
+        <div className="flex items-center gap-6 xl:gap-8 min-w-0">
+          <Link to="/" data-testid="nav-home-link" className="shrink-0 transition-transform duration-200 hover:scale-[1.04] active:scale-95"><Logo /></Link>
+
+          {/* ---- desktop nav (xl+) · CSS-only micro-interactions ---- */}
+          <nav className="hidden xl:flex items-center gap-1 min-w-0" aria-label="التنقل الرئيسي">
+            <div ref={navScrollRef} className="nav-scroll flex items-center gap-1 overflow-x-auto min-w-0 py-1">
+              {NAV_PRIMARY.map((l) => {
+                const active = loc.pathname.startsWith(l.to);
+                const Icon = l.icon;
+                return (
+                  <Link key={l.to} to={l.to} data-testid={`nav-${l.to.slice(1)}`}
+                    className={`group relative flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-extrabold whitespace-nowrap transition-all duration-200 active:scale-95 ${
+                      active
+                        ? "text-white shadow-[0_12px_26px_-10px_rgba(16,185,129,0.75)]"
+                        : "text-slate-500 hover:text-slate-900 hover:bg-slate-900/[0.05]"
+                    }`}>
+                    {active && <span className="absolute inset-0 rounded-full bg-gradient-to-l from-emerald-700 via-emerald-600 to-teal-500" aria-hidden />}
+                    {active && <span className="absolute inset-0 rounded-full ring-1 ring-inset ring-white/25" aria-hidden />}
+                    <span className={`relative w-7 h-7 rounded-full grid place-items-center shrink-0 transition-transform duration-200 group-hover:scale-110 group-hover:-rotate-6 ${
+                      active ? "bg-white/20 text-white" : l.tint
+                    }`}>
+                      <Icon className="w-4 h-4" />
+                    </span>
+                    <span className="relative">{l.label}</span>
+                  </Link>
+                );
+              })}
             </div>
+
+            {/* ---- استكشف · mega menu ---- */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button data-testid="nav-more-btn"
-                  className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-full text-sm font-bold text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 transition-colors">
+                  className="group flex items-center gap-1.5 px-4 py-2.5 rounded-full text-sm font-extrabold text-slate-500 hover:text-slate-900 hover:bg-slate-900/[0.05] transition-all duration-200 active:scale-95 data-[state=open]:text-slate-900 data-[state=open]:bg-slate-900/[0.06]">
+                  <span className="w-7 h-7 rounded-full grid place-items-center bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white shadow-md transition-transform duration-200 group-hover:scale-110 group-hover:rotate-12">
+                    <Sparkles className="w-4 h-4" />
+                  </span>
                   استكشف
-                  <ChevronDown className="w-4 h-4" />
+                  <ChevronDown className="w-4 h-4 transition-transform duration-200 group-data-[state=open]:rotate-180" />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-[36rem] max-w-[94vw] p-4 rounded-3xl shadow-2xl">
-                <div className="grid grid-cols-3 gap-4">
+              <DropdownMenuContent align="end" sideOffset={14}
+                className="w-[46rem] max-w-[94vw] p-5 rounded-[26px] bg-white/95 backdrop-blur-2xl border border-white/70 shadow-[0_36px_90px_-24px_rgba(15,23,42,0.4)]">
+                <div className="grid grid-cols-3 gap-5">
                   {NAV_GROUPS.map((g) => (
-                    <div key={g.title}>
-                      <div className="text-[11px] font-extrabold text-slate-400 px-2 mb-1.5">{g.title}</div>
-                      {g.items.map((l) => {
-                        const Icon = l.icon;
-                        return (
-                          <DropdownMenuItem key={l.to} data-testid={`nav-more-${l.to.slice(1).replace(/\//g, "-")}`}
-                            onClick={() => nav(l.to)}
-                            className="flex items-center gap-2.5 rounded-2xl px-2 py-2 cursor-pointer">
-                            <span className={`w-9 h-9 rounded-xl grid place-items-center shrink-0 ${l.tint}`}><Icon className="w-4 h-4" /></span>
-                            <span className="text-sm font-bold text-slate-700">{l.label}</span>
-                          </DropdownMenuItem>
-                        );
-                      })}
+                    <div key={g.title} className="min-w-0">
+                      <div className="flex items-center gap-2 px-2.5 mb-2">
+                        <span className="w-1.5 h-1.5 rounded-full bg-gradient-to-br from-emerald-500 to-teal-400" />
+                        <div className="text-[11px] font-black tracking-wide text-slate-400">{g.title}</div>
+                      </div>
+                      <div className="space-y-0.5">
+                        {g.items.map((l) => {
+                          const Icon = l.icon;
+                          const itemActive = loc.pathname === l.to || loc.pathname.startsWith(l.to + "/");
+                          return (
+                            <DropdownMenuItem key={l.to} data-testid={`nav-more-${l.to.slice(1).replace(/\//g, "-")}`}
+                              onClick={() => nav(l.to)}
+                              className={`group/item flex items-center gap-3 rounded-2xl px-2.5 py-2.5 cursor-pointer transition-colors duration-150 ${
+                                itemActive ? "bg-emerald-50" : "hover:bg-slate-50 focus:bg-slate-50"
+                              }`}>
+                              <span className={`w-10 h-10 rounded-2xl grid place-items-center shrink-0 ${l.tint} transition-transform duration-200 group-hover/item:scale-110 group-hover/item:-rotate-6 ${itemActive ? "ring-2 ring-emerald-300" : ""}`}>
+                                <Icon className="w-5 h-5" />
+                              </span>
+                              <span className={`text-sm font-extrabold ${itemActive ? "text-emerald-700" : "text-slate-600 group-hover/item:text-slate-900"}`}>{l.label}</span>
+                            </DropdownMenuItem>
+                          );
+                        })}
+                      </div>
                     </div>
                   ))}
+                </div>
+                <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between px-2.5">
+                  <p className="text-xs font-bold text-slate-400">كل أقسام المنصة في مكان واحد</p>
+                  <button onClick={() => nav("/dashboard")}
+                    className="text-xs font-black text-emerald-700 hover:text-emerald-800 transition-colors flex items-center gap-1">
+                    لوحتي <ChevronLeft className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               </DropdownMenuContent>
             </DropdownMenu>
           </nav>
         </div>
 
+        {/* ---- actions ---- */}
         <div className="flex items-center gap-2">
+          {/* search pill (desktop) */}
           <button data-testid="open-search-pill" onClick={() => setSearchOpen(true)} aria-label="بحث سريع"
-            className="group hidden h-11 w-64 items-center gap-2.5 rounded-full border border-slate-200/80 bg-white/85 ps-2 pe-2 text-slate-400 shadow-[0_2px_12px_-6px_rgba(10,25,47,0.25)] backdrop-blur transition-all duration-300 hover:w-72 hover:border-emerald-200 hover:text-slate-500 hover:shadow-[0_10px_28px_-12px_rgba(4,120,87,0.4)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 xl:flex 2xl:w-72">
-            <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100 transition group-hover:bg-emerald-100">
-              <Search className="w-3.5 h-3.5" />
+            className="group hidden h-11 w-60 items-center gap-2.5 rounded-full bg-slate-900/[0.04] border border-slate-900/[0.07] ps-2 pe-2.5 text-slate-400 backdrop-blur transition-all duration-300 hover:w-72 hover:bg-white hover:border-emerald-200 hover:text-slate-500 hover:shadow-[0_14px_34px_-14px_rgba(16,185,129,0.5)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 xl:flex 2xl:w-72">
+            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-gradient-to-br from-emerald-600 to-teal-500 text-white shadow-[0_6px_14px_-4px_rgba(16,185,129,0.7)] transition-transform duration-300 group-hover:scale-110 group-hover:rotate-12">
+              <Search className="w-4 h-4" />
             </span>
-            <span className="flex-1 text-right text-sm font-semibold">ابحث في المنصة…</span>
-            <kbd className="hidden shrink-0 items-center rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-bold text-slate-400 2xl:inline-flex">
+            <span className="flex-1 text-right text-sm font-bold">ابحث في المنصة…</span>
+            <kbd className="hidden shrink-0 items-center rounded-lg border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] font-black text-slate-400 shadow-sm 2xl:inline-flex">
               Ctrl K
             </kbd>
           </button>
+          {/* search button (mobile/tablet) */}
           <span className="xl:hidden">
             <Button aria-label="بحث" variant="ghost" size="icon" data-testid="open-search-btn" onClick={() => setSearchOpen(true)}
-              className="h-10 w-10 rounded-full border border-slate-200/80 bg-white/85 text-slate-600 shadow-[0_2px_12px_-6px_rgba(10,25,47,0.25)] backdrop-blur transition hover:border-emerald-200 hover:text-emerald-600 active:scale-95">
+              className="h-10 w-10 rounded-full bg-slate-900/[0.04] border border-slate-900/[0.07] text-slate-600 backdrop-blur transition hover:bg-white hover:text-emerald-700 hover:border-emerald-200 active:scale-90">
               <Search className="w-5 h-5" />
             </Button>
           </span>
@@ -309,50 +351,84 @@ export function Navbar() {
 
           {user ? (
             <>
+              {/* notifications */}
               <div className="relative">
-                <Button variant="ghost" size="icon" data-testid="notifications-btn" aria-label="الإشعارات" onClick={() => setNotifOpen((v) => !v)} className="rounded-xl relative">
+                <Button variant="ghost" size="icon" data-testid="notifications-btn" aria-label="الإشعارات" onClick={() => setNotifOpen((v) => !v)}
+                  className="relative h-11 w-11 rounded-full bg-slate-900/[0.04] border border-slate-900/[0.07] text-slate-600 backdrop-blur transition-all hover:bg-white hover:text-slate-900 hover:border-slate-200 hover:shadow-[0_10px_24px_-10px_rgba(15,23,42,0.35)] active:scale-90">
                   <Bell className="w-5 h-5" />
-                  {unread > 0 && <span className="absolute -top-0.5 -left-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-rose-600 text-white text-[10px] grid place-items-center">{unread}</span>}
+                  {unread > 0 && (
+                    <span className="absolute -top-0.5 -left-0.5 min-w-[20px] h-5 px-1.5 rounded-full bg-gradient-to-br from-rose-500 to-rose-600 text-white text-[10px] font-black grid place-items-center ring-2 ring-white shadow-md">
+                      {unread > 99 ? "99+" : unread}
+                    </span>
+                  )}
                 </Button>
                 {notifOpen && <NotificationsPanel onClose={() => { setNotifOpen(false); loadUnread(); }} />}
               </div>
 
+              {/* user chip */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button data-testid="user-menu-btn" className="flex items-center gap-2.5 pr-1 pl-1.5 xl:pl-3 py-1 rounded-full hover:bg-slate-100 transition-colors">
-                    <Avatar className="w-9 h-9 ring-2 ring-white shadow-md"><AvatarFallback className="ft-icon-tile text-white text-xs font-bold">{user.name?.[0] || "؟"}</AvatarFallback></Avatar>
+                  <button data-testid="user-menu-btn"
+                    className="group flex items-center gap-2.5 rounded-full bg-slate-900/[0.04] border border-slate-900/[0.07] py-1 pe-1.5 ps-1.5 xl:pe-3 transition-all duration-200 hover:bg-white hover:border-slate-200 hover:shadow-[0_12px_30px_-12px_rgba(15,23,42,0.35)] active:scale-[0.97]">
+                    <Avatar className="w-9 h-9 ring-2 ring-emerald-400/70 ring-offset-2 ring-offset-white shadow-md transition-transform duration-200 group-hover:scale-105">
+                      <AvatarFallback className="ft-icon-tile text-white text-xs font-black">{user.name?.[0] || "؟"}</AvatarFallback>
+                    </Avatar>
                     <span className="hidden xl:block text-right leading-tight">
                       <span className="block text-[13px] font-extrabold text-slate-800 max-w-[120px] truncate">{user.name}</span>
                       <span className="flex items-center gap-1 text-[11px] text-slate-400 font-bold">
-                        {user.level_title} · مستوى {user.level}
+                        <span className="text-emerald-700">{user.level_title}</span> · مستوى {user.level}
                         {(gam?.streak || 0) > 0 && <span className="inline-flex items-center gap-0.5 text-orange-500"><Flame className="w-3 h-3" />{gam.streak}</span>}
                       </span>
                     </span>
+                    <ChevronDown className="hidden xl:block w-4 h-4 text-slate-400 transition-transform duration-200 group-hover:translate-y-0.5" />
                   </button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuLabel>
-                    <div className="font-semibold">{user.name}</div>
-                    <div className="text-xs text-slate-500">{user.level_title} · مستوى {user.level}</div>
+                <DropdownMenuContent align="end" sideOffset={12} className="w-64 p-2 rounded-[20px] bg-white/95 backdrop-blur-2xl border border-white/70 shadow-[0_28px_70px_-20px_rgba(15,23,42,0.35)]">
+                  <DropdownMenuLabel className="px-3 py-2.5">
+                    <div className="font-extrabold text-slate-800">{user.name}</div>
+                    <div className="text-xs text-slate-500 font-bold mt-0.5">
+                      <span className="text-emerald-700">{user.level_title}</span> · مستوى {user.level}
+                    </div>
                   </DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem data-testid="menu-dashboard" onClick={() => nav("/dashboard")}><LayoutDashboard className="w-4 h-4 ml-2" />لوحتي</DropdownMenuItem>
-                  <DropdownMenuItem data-testid="menu-profile" onClick={() => nav(`/profile/${user.id}`)}><User className="w-4 h-4 ml-2" />ملفي الشخصي</DropdownMenuItem>
-                  <DropdownMenuItem data-testid="menu-settings" onClick={() => nav("/settings")}><Settings className="w-4 h-4 ml-2" />إعدادات الحساب</DropdownMenuItem>
-                  <DropdownMenuItem data-testid="menu-saved" onClick={() => nav("/saved")}><Bookmark className="w-4 h-4 ml-2" />محفوظتي</DropdownMenuItem>
-                  {isStaff && <DropdownMenuItem data-testid="menu-admin" onClick={() => nav("/admin")}><Shield className="w-4 h-4 ml-2" />لوحة الإدارة</DropdownMenuItem>}
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem data-testid="menu-logout" onClick={async () => { await logout(); nav("/"); }} className="text-rose-600"><LogOut className="w-4 h-4 ml-2" />تسجيل الخروج</DropdownMenuItem>
+                  <DropdownMenuSeparator className="bg-slate-100" />
+                  <DropdownMenuItem data-testid="menu-dashboard" onClick={() => nav("/dashboard")}
+                    className="rounded-xl px-3 py-2.5 font-bold text-slate-600 hover:bg-emerald-50 hover:text-emerald-800 cursor-pointer transition-colors">
+                    <LayoutDashboard className="w-4 h-4 ml-2 text-emerald-600" />لوحتي
+                  </DropdownMenuItem>
+                  <DropdownMenuItem data-testid="menu-profile" onClick={() => nav(`/profile/${user.id}`)}
+                    className="rounded-xl px-3 py-2.5 font-bold text-slate-600 hover:bg-emerald-50 hover:text-emerald-800 cursor-pointer transition-colors">
+                    <User className="w-4 h-4 ml-2 text-blue-600" />ملفي الشخصي
+                  </DropdownMenuItem>
+                  <DropdownMenuItem data-testid="menu-settings" onClick={() => nav("/settings")}
+                    className="rounded-xl px-3 py-2.5 font-bold text-slate-600 hover:bg-emerald-50 hover:text-emerald-800 cursor-pointer transition-colors">
+                    <Settings className="w-4 h-4 ml-2 text-slate-500" />إعدادات الحساب
+                  </DropdownMenuItem>
+                  <DropdownMenuItem data-testid="menu-saved" onClick={() => nav("/saved")}
+                    className="rounded-xl px-3 py-2.5 font-bold text-slate-600 hover:bg-emerald-50 hover:text-emerald-800 cursor-pointer transition-colors">
+                    <Bookmark className="w-4 h-4 ml-2 text-amber-500" />محفوظتي
+                  </DropdownMenuItem>
+                  {isStaff && <DropdownMenuItem data-testid="menu-admin" onClick={() => nav("/admin")}
+                    className="rounded-xl px-3 py-2.5 font-bold text-violet-700 hover:bg-violet-50 cursor-pointer transition-colors">
+                    <Shield className="w-4 h-4 ml-2 text-violet-600" />لوحة الإدارة
+                  </DropdownMenuItem>}
+                  <DropdownMenuSeparator className="bg-slate-100" />
+                  <DropdownMenuItem data-testid="menu-logout" onClick={async () => { await logout(); nav("/"); }}
+                    className="rounded-xl px-3 py-2.5 font-bold text-rose-600 hover:bg-rose-50 cursor-pointer transition-colors">
+                    <LogOut className="w-4 h-4 ml-2" />تسجيل الخروج
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </>
           ) : (
             <div className="hidden sm:flex items-center gap-2">
-              <Button variant="ghost" data-testid="nav-login-btn" onClick={() => nav("/login")} className="rounded-full font-bold px-5 h-11">دخول</Button>
-              <Button data-testid="nav-register-btn" onClick={() => nav("/register")} className="rounded-full ft-btn-primary text-white font-extrabold px-6 h-11 shadow-lg">انضم الآن</Button>
+              <Button variant="ghost" data-testid="nav-login-btn" onClick={() => nav("/login")}
+                className="rounded-full font-extrabold px-5 h-11 text-slate-600 hover:text-slate-900 hover:bg-slate-900/[0.05] transition-all active:scale-95">دخول</Button>
+              <Button data-testid="nav-register-btn" onClick={() => nav("/register")}
+                className="rounded-full ft-btn-primary text-white font-extrabold px-6 h-11 shadow-[0_14px_30px_-10px_rgba(16,185,129,0.75)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_18px_38px_-10px_rgba(16,185,129,0.85)] active:translate-y-0 active:scale-95">انضم الآن</Button>
             </div>
           )}
-          <Button aria-label="القائمة" variant="ghost" size="icon" className="xl:hidden rounded-xl" data-testid="mobile-menu-btn" onClick={() => setOpen((v) => !v)}>
+          <Button aria-label="القائمة" variant="ghost" size="icon" data-testid="mobile-menu-btn" onClick={() => setOpen((v) => !v)}
+            className="xl:hidden h-10 w-10 rounded-full bg-slate-900/[0.04] border border-slate-900/[0.07] text-slate-700 active:scale-90 transition">
             {open ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </Button>
         </div>
@@ -378,7 +454,8 @@ export function Navbar() {
 
 /* ------------------------------------------------------------------ */
 /* MobileTabBar · app-style bottom navigation for phones: every major  */
-/* section one thumb away, with a live private-message badge.         */
+/* section one thumb away, with a live private-message badge.          */
+/* (unchanged — kept as-is per spec)                                   */
 /* ------------------------------------------------------------------ */
 function MobileTabBar({ user, pathname, dmUnread, onExplore }) {
   if (/^\/ventures\/.+/.test(pathname)) return null;
@@ -417,11 +494,31 @@ function MobileTabBar({ user, pathname, dmUnread, onExplore }) {
 }
 
 /* ------------------------------------------------------------------ */
-/* MobileDrawer · reimagined hamburger: full-screen slide-in command    */
-/* center with user card, quick actions, grouped nav and animations.   */
+/* MobileDrawer · lag-free command center.                             */
+/* Zero framer-motion: pure CSS transitions only. The drawer itself    */
+/* slides via translate-x (160ms), the overlay fades (150ms). Every    */
+/* list item renders instantly — no stagger animations, no springs,    */
+/* no exit animation blocking React Router navigation.                */
 /* ------------------------------------------------------------------ */
 function MobileDrawer({ open, onClose, user, gam, isStaff, pathname, nav, logout }) {
   const { discover: NAV_DISCOVER, groups: NAV_GROUPS } = useNavLinks();
+  // mount/unmount choreography without AnimatePresence:
+  //  - open: mount, then rAF → transition in
+  //  - close: transition out (160ms), then unmount. Navigation never waits.
+  const [render, setRender] = useState(false);
+  const [shown, setShown] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setRender(true);
+      const raf = requestAnimationFrame(() => requestAnimationFrame(() => setShown(true)));
+      return () => cancelAnimationFrame(raf);
+    }
+    setShown(false);
+    const t = setTimeout(() => setRender(false), 170);
+    return () => clearTimeout(t);
+  }, [open]);
+
   const quick = [
     { to: "/dashboard", label: "لوحتي", icon: LayoutDashboard, grad: "from-emerald-500 to-teal-600" },
     { to: user ? `/profile/${user.id}` : "/login", label: "ملفي", icon: User, grad: "from-blue-500 to-indigo-600" },
@@ -429,209 +526,180 @@ function MobileDrawer({ open, onClose, user, gam, isStaff, pathname, nav, logout
     { to: "/settings", label: "الإعدادات", icon: Settings, grad: "from-slate-500 to-slate-700" },
   ];
 
+  if (!render) return null;
+
   return createPortal(
-    <AnimatePresence>
-      {open && (
-        <motion.div key="mnav" className="xl:hidden" initial={false}>
-          <motion.div
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            transition={{ duration: 0.25 }}
-            onClick={onClose}
-            className="fixed inset-0 z-[90] bg-slate-950/55 backdrop-blur-sm"
-          />
-          <motion.aside
-            initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }}
-            transition={{ type: "spring", stiffness: 320, damping: 33 }}
-            className="fixed top-0 bottom-0 right-0 z-[95] w-[88vw] max-w-[380px] bg-white rounded-l-[28px] shadow-2xl flex flex-col overflow-hidden"
-            data-testid="mobile-drawer"
-          >
-            {/* header */}
-            <div className="flex items-center justify-between px-5 pt-5 pb-3 shrink-0">
-              <Logo />
-              <div className="flex items-center gap-2">
-                <ShareButton testId="share-page-drawer-btn" className="bg-slate-100 rounded-2xl" />
-                <button onClick={onClose} aria-label="إغلاق"
-                  className="w-10 h-10 rounded-2xl bg-slate-100 grid place-items-center text-slate-600 active:scale-90 transition-transform">
-                  <X className="w-5 h-5" />
-                </button>
+    <div className="xl:hidden">
+      {/* overlay · pure CSS fade */}
+      <div
+        onClick={onClose}
+        aria-hidden
+        className={`fixed inset-0 z-[90] bg-slate-950/55 backdrop-blur-sm transition-opacity duration-150 ${shown ? "opacity-100" : "opacity-0"}`}
+      />
+      {/* panel · pure CSS slide (no spring physics) */}
+      <aside
+        data-testid="mobile-drawer"
+        className={`fixed top-0 bottom-0 right-0 z-[95] w-[88vw] max-w-[380px] bg-white rounded-l-[28px] shadow-2xl flex flex-col overflow-hidden transition-transform duration-[160ms] ease-out will-change-transform ${shown ? "translate-x-0" : "translate-x-full"}`}
+      >
+        {/* header */}
+        <div className="flex items-center justify-between px-5 pt-5 pb-3 shrink-0">
+          <Logo />
+          <div className="flex items-center gap-2">
+            <ShareButton testId="share-page-drawer-btn" className="bg-slate-100 rounded-2xl" />
+            <button onClick={onClose} aria-label="إغلاق"
+              className="w-10 h-10 rounded-2xl bg-slate-100 grid place-items-center text-slate-600 active:scale-90 transition-transform">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-5 pb-6 space-y-6">
+          {user ? (
+            /* user card · instant render, XP bar via CSS width transition */
+            <div className="rounded-3xl p-5 text-white ft-hero-gradient relative overflow-hidden">
+              <div className="absolute -top-10 -left-10 w-36 h-36 rounded-full bg-white/10" />
+              <div className="absolute -bottom-12 -right-6 w-44 h-44 rounded-full bg-white/10" />
+              <div className="relative flex items-center gap-3">
+                <Avatar className="w-14 h-14 border-2 border-white/40 shrink-0">
+                  <AvatarFallback className="bg-white/20 text-white text-xl font-bold">{user.name?.[0] || "؟"}</AvatarFallback>
+                </Avatar>
+                <div className="min-w-0">
+                  <div className="font-extrabold truncate">{user.name}</div>
+                  <div className="text-xs text-white/80">{gam?.level_title || user.level_title} · مستوى {gam?.level || user.level}</div>
+                </div>
+                {(gam?.streak || 0) > 0 && (
+                  <span className="mr-auto flex items-center gap-1 bg-white/15 rounded-full px-2.5 py-1 text-xs font-bold shrink-0">
+                    <Flame className="w-3.5 h-3.5 text-orange-300" />{gam.streak}
+                  </span>
+                )}
+              </div>
+              <div className="relative mt-4">
+                <div className="flex justify-between text-[11px] text-white/85 mb-1.5">
+                  <span>{(gam?.xp ?? 0).toLocaleString("en-US")} نقطة خبرة</span>
+                  <span>باقٍ {(gam?.xp_to_next ?? 0).toLocaleString("en-US")} للمستوى التالي</span>
+                </div>
+                <div className="h-2.5 rounded-full bg-white/20 overflow-hidden">
+                  <div
+                    style={{ width: shown ? `${gam?.level_progress ?? 0}%` : "0%" }}
+                    className="h-full rounded-full bg-gradient-to-l from-amber-300 to-yellow-400 transition-[width] duration-700 ease-out"
+                  />
+                </div>
               </div>
             </div>
-
-            <div className="flex-1 overflow-y-auto px-5 pb-6 space-y-6">
-              {user ? (
-                /* user card */
-                <motion.div
-                  initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.06, duration: 0.35, ease: EASE }}
-                  className="rounded-3xl p-5 text-white ft-hero-gradient relative overflow-hidden"
-                >
-                  <div className="absolute -top-10 -left-10 w-36 h-36 rounded-full bg-white/10" />
-                  <div className="absolute -bottom-12 -right-6 w-44 h-44 rounded-full bg-white/10" />
-                  <div className="relative flex items-center gap-3">
-                    <Avatar className="w-14 h-14 border-2 border-white/40 shrink-0">
-                      <AvatarFallback className="bg-white/20 text-white text-xl font-bold">{user.name?.[0] || "؟"}</AvatarFallback>
-                    </Avatar>
-                    <div className="min-w-0">
-                      <div className="font-extrabold truncate">{user.name}</div>
-                      <div className="text-xs text-white/80">{gam?.level_title || user.level_title} · مستوى {gam?.level || user.level}</div>
-                    </div>
-                    {(gam?.streak || 0) > 0 && (
-                      <span className="mr-auto flex items-center gap-1 bg-white/15 rounded-full px-2.5 py-1 text-xs font-bold shrink-0">
-                        <Flame className="w-3.5 h-3.5 text-orange-300" />{gam.streak}
-                      </span>
-                    )}
-                  </div>
-                  <div className="relative mt-4">
-                    <div className="flex justify-between text-[11px] text-white/85 mb-1.5">
-                      <span>{(gam?.xp ?? 0).toLocaleString("en-US")} نقطة خبرة</span>
-                      <span>باقٍ {(gam?.xp_to_next ?? 0).toLocaleString("en-US")} للمستوى التالي</span>
-                    </div>
-                    <div className="h-2.5 rounded-full bg-white/20 overflow-hidden">
-                      <motion.div
-                        initial={{ width: 0 }} animate={{ width: `${gam?.level_progress ?? 0}%` }}
-                        transition={{ delay: 0.3, duration: 0.9, ease: EASE }}
-                        className="h-full rounded-full bg-gradient-to-l from-amber-300 to-yellow-400"
-                      />
-                    </div>
-                  </div>
-                </motion.div>
-              ) : (
-                /* guest card */
-                <motion.div
-                  initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.06, duration: 0.35, ease: EASE }}
-                  className="rounded-3xl p-5 text-white bg-gradient-to-bl from-slate-900 via-slate-800 to-slate-700 relative overflow-hidden"
-                >
-                  <div className="absolute -top-10 -left-10 w-36 h-36 rounded-full bg-white/10" />
-                  <div className="relative font-extrabold text-lg">أهلاً بك في مفكري المستقبل 👋</div>
-                  <p className="relative text-sm text-slate-300 mt-1">انضم لآلاف الطلاب: اقرأ، العب، ابنِ مشاريع واصعد الصدارة.</p>
-                  <div className="relative flex gap-2 mt-4">
-                    <Button className="flex-1 rounded-2xl ft-btn-solid" onClick={() => nav("/register")}>انضم الآن</Button>
-                    <Button variant="outline" className="flex-1 rounded-2xl bg-white/10 border-white/20 text-white hover:bg-white/20" onClick={() => nav("/login")}>دخول</Button>
-                  </div>
-                </motion.div>
-              )}
-
-              {/* quick actions */}
-              <div>
-                <div className="text-xs font-bold text-slate-400 mb-2 px-1">وصول سريع</div>
-                <div className="grid grid-cols-2 gap-2.5">
-                  {quick.map((q, i) => (
-                    <motion.button
-                      key={q.label}
-                      initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: 0.1 + i * 0.05, duration: 0.3, ease: EASE }}
-                      onClick={() => nav(q.to)}
-                      className="flex items-center gap-2.5 p-3 rounded-2xl bg-slate-50 border border-slate-100 active:scale-95 transition-transform text-right"
-                    >
-                      <span className={`w-9 h-9 rounded-xl grid place-items-center text-white bg-gradient-to-br ${q.grad} shrink-0`}>
-                        <q.icon className="w-4 h-4" />
-                      </span>
-                      <span className="text-sm font-bold text-slate-700">{q.label}</span>
-                    </motion.button>
-                  ))}
-                </div>
+          ) : (
+            /* guest card · instant render */
+            <div className="rounded-3xl p-5 text-white bg-gradient-to-bl from-slate-900 via-slate-800 to-slate-700 relative overflow-hidden">
+              <div className="absolute -top-10 -left-10 w-36 h-36 rounded-full bg-white/10" />
+              <div className="relative font-extrabold text-lg">أهلاً بك في مفكري المستقبل 👋</div>
+              <p className="relative text-sm text-slate-300 mt-1">انضم لآلاف الطلاب: اقرأ، العب، ابنِ مشاريع واصعد الصدارة.</p>
+              <div className="relative flex gap-2 mt-4">
+                <Button className="flex-1 rounded-2xl ft-btn-solid" onClick={() => nav("/register")}>انضم الآن</Button>
+                <Button variant="outline" className="flex-1 rounded-2xl bg-white/10 border-white/20 text-white hover:bg-white/20" onClick={() => nav("/login")}>دخول</Button>
               </div>
-
-              {/* discover */}
-              <div>
-                <div className="text-xs font-bold text-slate-400 mb-2 px-1">اكتشف</div>
-                <div className="space-y-1">
-                  {NAV_DISCOVER.map((l, i) => {
-                    const active = pathname === l.to || pathname.startsWith(l.to + "/");
-                    return (
-                      <motion.div
-                        key={l.to}
-                        initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: 0.14 + i * 0.04, duration: 0.3, ease: EASE }}
-                      >
-                        <Link
-                          to={l.to}
-                          className={`flex items-center gap-3 px-3 py-2.5 rounded-2xl transition active:scale-[0.98] ${active ? "ft-bg-soft" : "hover:bg-slate-50"}`}
-                        >
-                          <span className={`w-10 h-10 rounded-2xl grid place-items-center ${l.tint} shrink-0`}><l.icon className="w-5 h-5" /></span>
-                          <span className={`font-bold text-[15px] ${active ? "ft-text-accent" : "text-slate-700"}`}>{l.label}</span>
-                          <ChevronLeft className="w-4 h-4 text-slate-300 mr-auto" />
-                        </Link>
-                      </motion.div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* every section · grouped (mirrors the desktop explore menu) */}
-              {NAV_GROUPS.map((g, gi) => (
-                <div key={g.title}>
-                  <div className="text-xs font-bold text-slate-400 mb-2 px-1">{g.title}</div>
-                  <div className="grid grid-cols-2 gap-2">
-                    {g.items.map((l, i) => {
-                      const active = pathname === l.to || pathname.startsWith(l.to + "/");
-                      return (
-                        <motion.div
-                          key={l.to}
-                          initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: 0.15 + gi * 0.06 + i * 0.04, duration: 0.3, ease: EASE }}
-                        >
-                          <Link
-                            to={l.to}
-                            className={`flex flex-col gap-2 p-3.5 rounded-3xl border active:scale-[0.97] transition ${active ? "ft-bg-soft ft-border-accent" : "bg-slate-50 border-slate-100 hover:bg-slate-100/70"}`}
-                          >
-                            <span className={`w-10 h-10 rounded-2xl grid place-items-center ${l.tint} shrink-0`}><l.icon className="w-5 h-5" /></span>
-                            <span className={`font-bold text-[13px] leading-tight ${active ? "ft-text-accent" : "text-slate-700"}`}>{l.label}</span>
-                          </Link>
-                        </motion.div>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
-
-              {/* play */}
-              <div>
-                <div className="text-xs font-bold text-slate-400 mb-2 px-1">العب</div>
-                <motion.div
-                  initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.4, duration: 0.3, ease: EASE }}
-                >
-                  <Link
-                    to="/dashboard"
-                    className="flex items-center gap-3 px-3 py-3 rounded-2xl bg-gradient-to-l from-slate-900 to-slate-800 text-white active:scale-[0.98] transition"
-                  >
-                    <span className="w-10 h-10 rounded-2xl grid place-items-center bg-white/10 shrink-0"><Gamepad2 className="w-5 h-5 text-amber-400" /></span>
-                    <span>
-                      <span className="font-bold text-[15px] block">ساحة الشطرنج</span>
-                      <span className="text-[11px] text-slate-400">العب مباريات وحسّن تصنيفك</span>
-                    </span>
-                    <ChevronLeft className="w-4 h-4 text-slate-500 mr-auto" />
-                  </Link>
-                </motion.div>
-              </div>
-
-              {isStaff && (
-                <Link
-                  to="/admin"
-                  className="flex items-center gap-3 px-4 py-3 rounded-2xl border-2 border-dashed border-slate-200 text-slate-600 active:scale-[0.98] transition"
-                >
-                  <Shield className="w-5 h-5 text-violet-600" />
-                  <span className="font-bold text-sm">لوحة الإدارة</span>
-                </Link>
-              )}
             </div>
+          )}
 
-            {user && (
-              <div className="p-5 pt-3 border-t border-slate-100 shrink-0 bg-white">
+          {/* quick actions · instant grid */}
+          <div>
+            <div className="text-xs font-bold text-slate-400 mb-2 px-1">وصول سريع</div>
+            <div className="grid grid-cols-2 gap-2.5">
+              {quick.map((q) => (
                 <button
-                  onClick={async () => { await logout(); nav("/"); }}
-                  className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-rose-50 text-rose-600 font-bold active:scale-[0.98] transition"
+                  key={q.label}
+                  onClick={() => nav(q.to)}
+                  className="flex items-center gap-2.5 p-3 rounded-2xl bg-slate-50 border border-slate-100 active:scale-95 transition-transform text-right"
                 >
-                  <LogOut className="w-4 h-4" /> تسجيل الخروج
+                  <span className={`w-9 h-9 rounded-xl grid place-items-center text-white bg-gradient-to-br ${q.grad} shrink-0`}>
+                    <q.icon className="w-4 h-4" />
+                  </span>
+                  <span className="text-sm font-bold text-slate-700">{q.label}</span>
                 </button>
+              ))}
+            </div>
+          </div>
+
+          {/* discover · instant list (no stagger) */}
+          <div>
+            <div className="text-xs font-bold text-slate-400 mb-2 px-1">اكتشف</div>
+            <div className="space-y-1">
+              {NAV_DISCOVER.map((l) => {
+                const active = pathname === l.to || pathname.startsWith(l.to + "/");
+                return (
+                  <Link
+                    key={l.to}
+                    to={l.to}
+                    className={`flex items-center gap-3 px-3 py-2.5 rounded-2xl transition active:scale-[0.98] ${active ? "ft-bg-soft" : "hover:bg-slate-50"}`}
+                  >
+                    <span className={`w-10 h-10 rounded-2xl grid place-items-center ${l.tint} shrink-0`}><l.icon className="w-5 h-5" /></span>
+                    <span className={`font-bold text-[15px] ${active ? "ft-text-accent" : "text-slate-700"}`}>{l.label}</span>
+                    <ChevronLeft className="w-4 h-4 text-slate-300 mr-auto" />
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* every section · grouped (mirrors the desktop explore menu) · instant grid */}
+          {NAV_GROUPS.map((g) => (
+            <div key={g.title}>
+              <div className="text-xs font-bold text-slate-400 mb-2 px-1">{g.title}</div>
+              <div className="grid grid-cols-2 gap-2">
+                {g.items.map((l) => {
+                  const active = pathname === l.to || pathname.startsWith(l.to + "/");
+                  return (
+                    <Link
+                      key={l.to}
+                      to={l.to}
+                      className={`flex flex-col gap-2 p-3.5 rounded-3xl border active:scale-[0.97] transition ${active ? "ft-bg-soft ft-border-accent" : "bg-slate-50 border-slate-100 hover:bg-slate-100/70"}`}
+                    >
+                      <span className={`w-10 h-10 rounded-2xl grid place-items-center ${l.tint} shrink-0`}><l.icon className="w-5 h-5" /></span>
+                      <span className={`font-bold text-[13px] leading-tight ${active ? "ft-text-accent" : "text-slate-700"}`}>{l.label}</span>
+                    </Link>
+                  );
+                })}
               </div>
-            )}
-          </motion.aside>
-        </motion.div>
-      )}
-    </AnimatePresence>,
+            </div>
+          ))}
+
+          {/* play */}
+          <div>
+            <div className="text-xs font-bold text-slate-400 mb-2 px-1">العب</div>
+            <Link
+              to="/dashboard"
+              className="flex items-center gap-3 px-3 py-3 rounded-2xl bg-gradient-to-l from-slate-900 to-slate-800 text-white active:scale-[0.98] transition"
+            >
+              <span className="w-10 h-10 rounded-2xl grid place-items-center bg-white/10 shrink-0"><Gamepad2 className="w-5 h-5 text-amber-400" /></span>
+              <span>
+                <span className="font-bold text-[15px] block">ساحة الشطرنج</span>
+                <span className="text-[11px] text-slate-400">العب مباريات وحسّن تصنيفك</span>
+              </span>
+              <ChevronLeft className="w-4 h-4 text-slate-500 mr-auto" />
+            </Link>
+          </div>
+
+          {isStaff && (
+            <Link
+              to="/admin"
+              className="flex items-center gap-3 px-4 py-3 rounded-2xl border-2 border-dashed border-slate-200 text-slate-600 active:scale-[0.98] transition"
+            >
+              <Shield className="w-5 h-5 text-violet-600" />
+              <span className="font-bold text-sm">لوحة الإدارة</span>
+            </Link>
+          )}
+        </div>
+
+        {user && (
+          <div className="p-5 pt-3 border-t border-slate-100 shrink-0 bg-white">
+            <button
+              onClick={async () => { await logout(); nav("/"); }}
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-rose-50 text-rose-600 font-bold active:scale-[0.98] transition"
+            >
+              <LogOut className="w-4 h-4" /> تسجيل الخروج
+            </button>
+          </div>
+        )}
+      </aside>
+    </div>,
     document.body
   );
 }
