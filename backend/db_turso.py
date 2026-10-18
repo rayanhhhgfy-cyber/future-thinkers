@@ -9,7 +9,8 @@ Storage model: one SQLite table per collection:
 _doc holds the full document as JSON with $oid/$date/$binary markers so
 ObjectId, datetime and bson.Binary round-trip with fidelity.
 
-All libsql calls are synchronous -> every DB operation is wrapped in
+Transport: pure-Python HTTP via Turso's Hrana pipeline API (urllib only,
+no native extensions) -> every DB operation is wrapped in
 asyncio.to_thread to preserve the async interface.
 """
 
@@ -18,11 +19,13 @@ import base64
 import json
 import os
 import re
+import urllib.request
+import urllib.error
 from datetime import datetime, timezone
 
 from bson import Binary, ObjectId
 
-_client = None  # libsql connection (sync, used via to_thread)
+_client = None  # _TursoHttp connection (sync, used via to_thread)
 _tables = set()  # tables already ensured
 
 
@@ -40,14 +43,145 @@ def _required_env(name: str) -> str:
     return value
 
 
+# ---------------------------------------------------------------------------
+# Pure-Python Turso HTTP client (Hrana pipeline API, urllib only)
+# ---------------------------------------------------------------------------
+
+class _HttpCursor:
+    """Mimics the DB-API cursor subset used by this adapter."""
+    def __init__(self, rows, rowcount=-1):
+        self._rows = rows
+        self.rowcount = rowcount
+
+    def fetchall(self):
+        return self._rows
+
+    def fetchone(self):
+        return self._rows[0] if self._rows else None
+
+
+class _TursoHttp:
+    """Minimal sync Turso client over the /v2/pipeline HTTP API.
+
+    Implements the small surface the adapter needs: execute(sql, params)
+    -> _HttpCursor, commit() (no-op, HTTP is auto-commit), close().
+    """
+
+    def __init__(self, host: str, token: str):
+        self._url = f"https://{host}/v2/pipeline"
+        self._token = token
+
+    def _hrana_args(self, params):
+        args = []
+        for p in params or ():
+            if p is None:
+                args.append({"type": "null"})
+            elif isinstance(p, bool):
+                args.append({"type": "integer", "value": "1" if p else "0"})
+            elif isinstance(p, int):
+                args.append({"type": "integer", "value": str(p)})
+            elif isinstance(p, float):
+                args.append({"type": "float", "value": p})
+            elif isinstance(p, bytes):
+                args.append({"type": "blob", "value": base64.b64encode(p).decode()})
+            else:
+                args.append({"type": "text", "value": str(p)})
+        return args
+
+    @staticmethod
+    def _hrana_val(v):
+        t = v.get("type")
+        val = v.get("value")
+        if t == "null":
+            return None
+        if t == "integer":
+            try:
+                return int(val)
+            except (TypeError, ValueError):
+                return val
+        if t == "float":
+            try:
+                return float(val)
+            except (TypeError, ValueError):
+                return val
+        if t == "blob":
+            try:
+                return base64.b64decode(val) if val else b""
+            except Exception:
+                return val
+        return val
+
+    def execute(self, sql, params=None):
+        payload = {
+            "requests": [
+                {"type": "execute",
+                 "stmt": {"sql": sql, "args": self._hrana_args(params)}},
+                {"type": "close"},
+            ]
+        }
+        req = urllib.request.Request(
+            self._url,
+            data=json.dumps(payload).encode("utf-8"),
+            headers={
+                "Authorization": f"Bearer {self._token}",
+                "Content-Type": "application/json",
+            },
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=25) as resp:
+                body = json.load(resp)
+        except urllib.error.HTTPError as e:
+            try:
+                detail = e.read().decode("utf-8", "replace")[:300]
+            except Exception:
+                detail = ""
+            raise RuntimeError(f"Turso HTTP {e.code}: {detail}")
+        results = body.get("results", [])
+        if not results:
+            raise RuntimeError(f"Turso: empty response: {str(body)[:200]}")
+        first = results[0]
+        if first.get("type") == "error":
+            err = first.get("error", {})
+            raise RuntimeError(f"Turso SQL error: {err.get('message', err)}")
+        result = first.get("response", {}).get("result", {})
+        rows = [
+            tuple(self._hrana_val(v) for v in row)
+            for row in result.get("rows", [])
+        ]
+        # affected_row_count is present for writes
+        rc = result.get("affected_row_count", -1)
+        try:
+            rc = int(rc)
+        except (TypeError, ValueError):
+            rc = -1
+        return _HttpCursor(rows, rc)
+
+    def commit(self):
+        pass  # HTTP pipeline is auto-commit
+
+    def close(self):
+        pass
+
+
 def _connect():
-    import libsql_experimental as libsql
     url = _required_env("TURSO_DATABASE_URL")
     token = _required_env("TURSO_AUTH_TOKEN")
-    # libsql://... URLs need the auth token; plain file: URLs work without it.
-    if url.startswith("libsql://") or url.startswith("https://"):
-        return libsql.connect(url, auth_token=token)
-    return libsql.connect(url)
+    # libsql://host or https://host -> pure-Python Hrana HTTP client.
+    # file:... URLs (local dev) -> sqlite3 stdlib.
+    if url.startswith("libsql://"):
+        host = url[len("libsql://"):].split("/")[0]
+        return _TursoHttp(host, token)
+    if url.startswith("https://"):
+        host = url[len("https://"):].split("/")[0]
+        return _TursoHttp(host, token)
+    if url.startswith("file:"):
+        import sqlite3
+        path = url[len("file:"):]
+        conn = sqlite3.connect(path, check_same_thread=False)
+        conn.execute("PRAGMA journal_mode=WAL")
+        return conn
+    raise RuntimeError(f"Unsupported TURSO_DATABASE_URL scheme: {url[:20]}...")
 
 
 def init_db():
@@ -812,6 +946,26 @@ class _Database:
 
     def __getitem__(self, name):
         return _Collection(self._conn, name)
+
+    @property
+    def client(self):
+        """Mongo-compat: db.client.admin.command('ping') for health checks."""
+        return _ClientCompat(self._conn)
+
+
+class _ClientCompat:
+    def __init__(self, conn):
+        self._conn = conn
+        self.admin = self
+
+    async def command(self, *args, **kwargs):
+        # Only 'ping' is used (health check). Run a trivial query via thread.
+        import asyncio
+        def _ping():
+            cur = self._conn.execute("SELECT 1")
+            cur.fetchone()
+            return {"ok": 1}
+        return await asyncio.to_thread(_ping)
 
 
 class _Collection:
