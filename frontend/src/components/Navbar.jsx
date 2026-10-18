@@ -365,11 +365,17 @@ export function Navbar() {
                 {notifOpen && <NotificationsPanel onClose={() => { setNotifOpen(false); loadUnread(); }} />}
               </div>
 
-              {/* user chip */}
+              {/* user chip — on mobile: direct to profile (Radix dropdown hangs when scrolled down) */}
+              <button data-testid="user-menu-btn" onClick={() => nav(`/profile/${user.id}`)}
+                className="xl:hidden group flex items-center gap-2.5 rounded-full bg-slate-900/[0.04] border border-slate-900/[0.07] py-1 pe-1.5 ps-1.5 transition-all duration-200 hover:bg-white hover:border-slate-200 active:scale-[0.97]">
+                <Avatar className="w-9 h-9 ring-2 ring-emerald-400/70 ring-offset-2 ring-offset-white shadow-md">
+                  <AvatarFallback className="ft-icon-tile text-white text-xs font-black">{user.name?.[0] || "؟"}</AvatarFallback>
+                </Avatar>
+              </button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button data-testid="user-menu-btn"
-                    className="group flex items-center gap-2.5 rounded-full bg-slate-900/[0.04] border border-slate-900/[0.07] py-1 pe-1.5 ps-1.5 xl:pe-3 transition-all duration-200 hover:bg-white hover:border-slate-200 hover:shadow-[0_12px_30px_-12px_rgba(15,23,42,0.35)] active:scale-[0.97]">
+                  <button data-testid="user-menu-btn-desktop"
+                    className="hidden xl:flex group items-center gap-2.5 rounded-full bg-slate-900/[0.04] border border-slate-900/[0.07] py-1 pe-3 ps-1.5 transition-all duration-200 hover:bg-white hover:border-slate-200 hover:shadow-[0_12px_30px_-12px_rgba(15,23,42,0.35)] active:scale-[0.97]">
                     <Avatar className="w-9 h-9 ring-2 ring-emerald-400/70 ring-offset-2 ring-offset-white shadow-md transition-transform duration-200 group-hover:scale-105">
                       <AvatarFallback className="ft-icon-tile text-white text-xs font-black">{user.name?.[0] || "؟"}</AvatarFallback>
                     </Avatar>
