@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Layout } from "@/components/Layout";
 import { Counter } from "@/components/Counter";
-import { Stagger, Item, FadeUp, Float } from "@/components/anim";
+import { Reveal } from "@/components/Reveal";
 import { Button } from "@/components/ui/button";
 import api from "@/lib/api";
 import BookCover from "@/components/BookCover";
@@ -37,7 +37,7 @@ const AR_NUMS = ["٠١", "٠٢", "٠٣", "٠٤", "٠٥", "٠٦", "٠٧", "٠٨",
 // Editorial section header · visible on every screen size
 function SectionHead({ num, kicker, title, sub, center = false, dark = false }) {
   return (
-    <FadeUp className={`${center ? "text-center" : ""} mb-10 lg:mb-14`}>
+    <Reveal className={`${center ? "text-center" : ""} mb-10 lg:mb-14`}>
       <div className={`inline-flex items-center gap-2.5 ${center ? "justify-center" : ""}`}>
         <span className="font-head text-sm font-black text-transparent bg-clip-text bg-gradient-to-l from-emerald-500 to-teal-600">{num}</span>
         <span className="h-[3px] w-10 rounded-full bg-gradient-to-l from-emerald-500/70 to-transparent" />
@@ -45,7 +45,7 @@ function SectionHead({ num, kicker, title, sub, center = false, dark = false }) 
       </div>
       <h2 className={`mt-4 font-head text-[1.75rem] sm:text-4xl lg:text-[2.75rem] font-black leading-[1.3] ${dark ? "text-white" : "text-slate-900"}`}>{title}</h2>
       {sub && <p className={`mt-3 text-[15px] leading-relaxed max-w-2xl ${dark ? "text-slate-400" : "text-slate-500"} ${center ? "mx-auto" : ""}`}>{sub}</p>}
-    </FadeUp>
+    </Reveal>
   );
 }
 
@@ -125,26 +125,26 @@ export default function Landing() {
     <Layout>
       {/* ══════════ HERO · emerald light ══════════ */}
       <section className="relative overflow-hidden" style={{ background: "linear-gradient(180deg,#ecfdf5 0%,#ffffff 55%,#f0fdfa 100%)" }}>
-        <div className="pointer-events-none absolute -top-32 right-[5%] w-[30rem] h-[30rem] rounded-full blur-3xl opacity-60" style={{ background: "radial-gradient(circle, rgba(110,231,183,0.55), transparent 65%)" }} />
+        <div className="pointer-events-none absolute -top-32 right-[5%] w-[30rem] h-[30rem] rounded-full blur-3xl opacity-60 animate-float" style={{ background: "radial-gradient(circle, rgba(110,231,183,0.55), transparent 65%)" }} />
         <div className="pointer-events-none absolute top-40 -left-32 w-[26rem] h-[26rem] rounded-full blur-3xl opacity-50" style={{ background: "radial-gradient(circle, rgba(153,246,228,0.5), transparent 65%)" }} />
         <div className="pointer-events-none absolute bottom-0 right-[30%] w-[24rem] h-[24rem] rounded-full blur-3xl opacity-40" style={{ background: "radial-gradient(circle, rgba(253,224,71,0.35), transparent 65%)" }} />
         <div className="pointer-events-none absolute inset-0 opacity-100" style={{ backgroundImage: "linear-gradient(rgba(16,185,129,0.055) 1px, transparent 1px), linear-gradient(90deg, rgba(16,185,129,0.055) 1px, transparent 1px)", backgroundSize: "56px 56px", maskImage: "radial-gradient(ellipse 85% 65% at 50% 38%, black, transparent)", WebkitMaskImage: "radial-gradient(ellipse 85% 65% at 50% 38%, black, transparent)" }} />
 
         <div className="relative max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-10 pt-14 sm:pt-20 lg:pt-24 pb-10 lg:pb-14">
-          <div className="text-center max-w-4xl mx-auto">
-            <div className="animate-fade-up inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white/85 backdrop-blur px-4 py-2 text-[12px] sm:text-[13px] font-extrabold text-emerald-800 shadow-[0_10px_30px_-14px_rgba(16,185,129,0.5)]">
+          <div className="anim-stagger text-center max-w-4xl mx-auto">
+            <div style={{ "--i": 0 }} className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white/85 backdrop-blur px-4 py-2 text-[12px] sm:text-[13px] font-extrabold text-emerald-800 shadow-[0_10px_30px_-14px_rgba(16,185,129,0.5)]">
               <Sparkles className="w-4 h-4 text-emerald-600" /> {cms?.hero_badge || "المنصة المعرفية الوطنية لطلاب الأردن"}
             </div>
-            <h1 className="animate-fade-up d-1 mt-6 font-head font-black text-slate-900 text-[2.35rem] leading-[1.16] sm:text-6xl lg:text-[4.4rem] sm:leading-[1.14]">
+            <h1 style={{ "--i": 1 }} className="mt-6 font-head font-black text-slate-900 text-[2.35rem] leading-[1.16] sm:text-6xl lg:text-[4.4rem] sm:leading-[1.14]">
               {cms?.hero_title || "نقرأ أكثر، نفكّر أعمق،"}<br />
               <span className="text-transparent bg-clip-text" style={{ backgroundImage: "linear-gradient(120deg,#059669,#0d9488 55%,#d97706)" }}>{cms?.hero_highlight || "ونصنع المستقبل."}</span>
             </h1>
-            <p className="animate-fade-up d-2 mt-6 text-[15px] sm:text-lg text-slate-600 leading-relaxed sm:leading-loose max-w-2xl mx-auto">
+            <p style={{ "--i": 2 }} className="mt-6 text-[15px] sm:text-lg text-slate-600 leading-relaxed sm:leading-loose max-w-2xl mx-auto">
               {cms?.hero_subtitle || "بيئة معرفية وثقافية وعلمية تجمع طلاب المملكة الأردنية الهاشمية حول القراءة والحوار والشطرنج والبرمجة والابتكار والمنافسات في مجتمع طلابي واحد."}
             </p>
-            <div className="animate-fade-up d-3 mt-8 flex flex-wrap items-center justify-center gap-3">
+            <div style={{ "--i": 3 }} className="mt-8 flex flex-wrap items-center justify-center gap-3">
               <Button data-testid="hero-join-btn" onClick={() => nav(user ? "/dashboard" : "/register")} size="lg"
-                className="pressable rounded-2xl h-12 sm:h-[52px] px-7 sm:px-8 text-[15px] sm:text-base font-extrabold text-white border-0 shadow-[0_18px_45px_-12px_rgba(16,185,129,0.65)]"
+                className="pressable hover-glow rounded-2xl h-12 sm:h-[52px] px-7 sm:px-8 text-[15px] sm:text-base font-extrabold text-white border-0 shadow-[0_18px_45px_-12px_rgba(16,185,129,0.65)]"
                 style={{ background: "linear-gradient(135deg,#10b981,#0d9488)" }}>
                 {user ? "اذهب إلى لوحتي" : "انضم إلى مفكري المستقبل"} <ArrowLeft className="w-5 h-5 mr-1" />
               </Button>
@@ -175,15 +175,15 @@ export default function Landing() {
           </div>
 
           {/* stats · light cards */}
-          <Stagger className="mt-8 sm:mt-10 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 sm:gap-4">
-            {statItems.map((s) => (
-              <Item key={s.label} className="rounded-2xl sm:rounded-3xl border border-slate-100 bg-white px-3 py-4 sm:p-5 text-center shadow-[0_20px_45px_-26px_rgba(15,23,42,0.3)]">
+          <div className="anim-stagger mt-8 sm:mt-10 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 sm:gap-4">
+            {statItems.map((s, si) => (
+              <div key={s.label} style={{ "--i": si }} className="rounded-2xl sm:rounded-3xl border border-slate-100 bg-white px-3 py-4 sm:p-5 text-center shadow-[0_20px_45px_-26px_rgba(15,23,42,0.3)]">
                 <span className="mx-auto mb-2 grid place-items-center w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-emerald-50 text-emerald-600"><s.icon className="w-5 h-5 sm:w-6 sm:h-6" /></span>
                 <div className="font-head font-black text-slate-900 text-xl sm:text-2xl lg:text-[1.7rem]"><Counter value={s.value} /></div>
                 <div className="mt-1 text-[11px] sm:text-xs text-slate-500 font-bold">{s.label}</div>
-              </Item>
+              </div>
             ))}
-          </Stagger>
+          </div>
 
           <div className="mt-8 flex justify-center" aria-hidden="true">
             <span className="flex flex-col items-center gap-1.5 text-slate-400">
@@ -201,7 +201,7 @@ export default function Landing() {
       {featured && (
         <section className="relative overflow-hidden bg-white">
           <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-10 pt-12 sm:pt-16 lg:pt-20">
-            <FadeUp>
+            <Reveal>
               <div data-testid="landing-featured-book" className="relative overflow-hidden rounded-[1.75rem] sm:rounded-[2.25rem] text-white p-6 sm:p-9 lg:p-12 shadow-[0_35px_70px_-28px_rgba(3,30,24,0.6)]" style={{ background: "linear-gradient(140deg,#04241c 0%,#064e3b 55%,#065f46 100%)" }}>
                 <div className="pointer-events-none absolute -top-24 right-[12%] w-96 h-96 rounded-full blur-3xl opacity-40" style={{ background: "radial-gradient(circle, rgba(52,211,153,0.55), transparent 65%)" }} />
                 <div className="pointer-events-none absolute -bottom-28 -left-16 w-80 h-80 rounded-full blur-3xl opacity-30" style={{ background: "radial-gradient(circle, rgba(251,191,36,0.4), transparent 65%)" }} />
@@ -228,7 +228,7 @@ export default function Landing() {
                   </Link>
                 </div>
               </div>
-            </FadeUp>
+            </Reveal>
           </div>
         </section>
       )}
@@ -239,7 +239,7 @@ export default function Landing() {
         <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-10 py-16 sm:py-20 lg:py-28 relative">
           <SectionHead num="٠١" kicker="من نحن" title="نخبةٌ تصنع الفرق" sub="تعرّف على الحكاية التي تجمعنا" />
           <div className="grid lg:grid-cols-12 gap-6 lg:gap-10 items-stretch">
-            <FadeUp className="lg:col-span-5">
+            <Reveal className="lg:col-span-5">
               <div className="relative h-full overflow-hidden rounded-[1.75rem] sm:rounded-[2rem] text-white p-7 sm:p-9 lg:p-10" style={{ background: "linear-gradient(150deg,#052e26 0%,#065f46 60%,#047857 100%)" }}>
                 <div className="pointer-events-none absolute -top-16 -right-16 w-64 h-64 rounded-full bg-emerald-400/25 blur-3xl" />
                 <div className="pointer-events-none absolute inset-0 opacity-[0.07]" style={{ backgroundImage: "radial-gradient(rgba(255,255,255,0.9) 1px, transparent 1px)", backgroundSize: "18px 18px" }} />
@@ -255,8 +255,8 @@ export default function Landing() {
                   </div>
                 </div>
               </div>
-            </FadeUp>
-            <FadeUp delay={0.08} className="lg:col-span-7">
+            </Reveal>
+            <Reveal delay={0.08} className="lg:col-span-7">
               <div className="h-full rounded-[1.75rem] sm:rounded-[2rem] border border-slate-100 bg-gradient-to-bl from-slate-50/80 to-white p-7 sm:p-9 lg:p-11 shadow-[0_20px_50px_-30px_rgba(15,23,42,0.25)]">
                 <div className="flex items-center gap-3 mb-5">
                   <span className="w-12 h-12 rounded-2xl grid place-items-center text-white shadow-lg shrink-0" style={{ background: "linear-gradient(135deg,#10b981,#0d9488)" }}>
@@ -272,7 +272,7 @@ export default function Landing() {
                   </ReadMore>
                 </div>
               </div>
-            </FadeUp>
+            </Reveal>
           </div>
         </div>
       </section>
@@ -283,7 +283,7 @@ export default function Landing() {
         <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-10 py-16 sm:py-20 lg:py-28 relative">
           <SectionHead num="٠٢" kicker="رؤيتنا ورسالتنا" title="إلى أين نتجه، ولماذا؟" />
           <div className="grid md:grid-cols-2 gap-5 lg:gap-8">
-            <FadeUp>
+            <Reveal>
               <div className="group h-full relative overflow-hidden rounded-[1.75rem] sm:rounded-[2rem] bg-white border border-slate-100 p-7 sm:p-9 shadow-[0_24px_55px_-30px_rgba(15,23,42,0.28)] transition-transform duration-500 hover:-translate-y-1.5">
                 <div className="absolute inset-x-0 top-0 h-1.5" style={{ background: "linear-gradient(90deg,#10b981,#0d9488,#0ea5e9)" }} />
                 <div className="flex items-center gap-4">
@@ -299,8 +299,8 @@ export default function Landing() {
                   <ReadMore lines={3}><p>{visionText}</p></ReadMore>
                 </div>
               </div>
-            </FadeUp>
-            <FadeUp delay={0.08}>
+            </Reveal>
+            <Reveal delay={0.08}>
               <div className="group h-full relative overflow-hidden rounded-[1.75rem] sm:rounded-[2rem] bg-white border border-slate-100 p-7 sm:p-9 shadow-[0_24px_55px_-30px_rgba(15,23,42,0.28)] transition-transform duration-500 hover:-translate-y-1.5">
                 <div className="absolute inset-x-0 top-0 h-1.5" style={{ background: "linear-gradient(90deg,#0ea5e9,#6366f1,#8b5cf6)" }} />
                 <div className="flex items-center gap-4">
@@ -316,29 +316,29 @@ export default function Landing() {
                   <ReadMore lines={3}><p>{missionText}</p></ReadMore>
                 </div>
               </div>
-            </FadeUp>
+            </Reveal>
           </div>
 
           {/* الأهداف · bento */}
           <div className="mt-14 lg:mt-20">
-            <FadeUp className="flex items-end justify-between gap-4 mb-6 lg:mb-8">
+            <Reveal className="flex items-end justify-between gap-4 mb-6 lg:mb-8">
               <div>
                 <h3 className="font-head text-2xl sm:text-3xl font-black text-slate-900">أهدافنا</h3>
                 <p className="mt-1.5 text-sm text-slate-400 font-bold">{goalsList.length} أهداف نعمل عليها كل يوم</p>
               </div>
               <span className="hidden sm:inline-flex items-center gap-1.5 text-xs font-extrabold text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-full px-3.5 py-1.5"><Target className="w-3.5 h-3.5" /> خارطة الطريق</span>
-            </FadeUp>
-            <Stagger className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-5">
+            </Reveal>
+            <div className="anim-stagger grid sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-5">
               {(goalsExpanded ? goalsList : goalsList.slice(0, 3)).map((g, i) => (
-                <Item key={i} className="group relative overflow-hidden rounded-[1.5rem] bg-white border border-slate-100 p-5 sm:p-6 shadow-[0_16px_40px_-24px_rgba(15,23,42,0.25)] transition-all duration-500 hover:-translate-y-1.5 hover:shadow-[0_28px_55px_-24px_rgba(16,185,129,0.35)]">
+                <div key={i} style={{ "--i": i }} className="group relative overflow-hidden rounded-[1.5rem] bg-white border border-slate-100 p-5 sm:p-6 shadow-[0_16px_40px_-24px_rgba(15,23,42,0.25)] transition-all duration-500 hover:-translate-y-1.5 hover:shadow-[0_28px_55px_-24px_rgba(16,185,129,0.35)]">
                   <div className="pointer-events-none absolute -top-8 -left-8 w-28 h-28 rounded-full bg-emerald-50 blur-2xl opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
                   <div className="relative flex items-start gap-4">
                     <span className="font-head font-black text-[1.65rem] leading-none text-transparent bg-clip-text shrink-0" style={{ backgroundImage: "linear-gradient(135deg,#10b981,#0d9488)" }}>{AR_NUMS[i] || i + 1}</span>
                     <p className="text-slate-700 text-sm sm:text-[15px] leading-[1.9] pt-0.5">{g}</p>
                   </div>
-                </Item>
+                </div>
               ))}
-            </Stagger>
+            </div>
             {goalsList.length > 3 && (
               <div className="text-center mt-7">
                 <button
@@ -361,13 +361,13 @@ export default function Landing() {
           <SectionHead num="٠٣" kicker="كيف تبدأ رحلتك؟" title="ثلاث خطوات ويبدأ مشوارك" sub="من إنشاء الحساب إلى صدارة القوائم الوطنية في رحلة واحدة واضحة" center />
           <div className="relative max-w-4xl mx-auto">
             <div className="absolute top-10 bottom-10 right-[2.45rem] sm:right-auto sm:top-10 sm:right-[16.6%] sm:left-[16.6%] sm:bottom-auto sm:border-t-2 border-r-2 sm:border-r-0 border-dashed" style={{ borderColor: "rgba(16,185,129,0.4)" }} aria-hidden="true" />
-            <Stagger className="grid sm:grid-cols-3 gap-8 sm:gap-6 relative">
+            <div className="anim-stagger grid sm:grid-cols-3 gap-8 sm:gap-6 relative">
               {[
                 { icon: UserPlus, title: "أنشئ حسابك وانضم", desc: "سجّل خلال دقيقة واحدة وفعّل حسابك لتصلك كل فعاليات النادي ومسابقاته.", tone: "#10b981" },
                 { icon: Route, title: "اختر أنديتك ومساراتك", desc: "انضم إلى أندية القراءة والحوار والشطرنج والبرمجة، وابدأ مسار تعلم يناسب اهتماماتك.", tone: "#0ea5e9" },
                 { icon: Trophy, title: "اقرأ ونافس وتصدّر", desc: "اجمع نقاط الخبرة من القراءة والفعاليات والبطولات، واصعد قوائم الصدارة الوطنية.", tone: "#f59e0b" },
               ].map((s, i) => (
-                <Item key={s.title} className="relative flex sm:flex-col sm:text-center sm:items-center gap-5 sm:gap-0">
+                <div key={s.title} style={{ "--i": i }} className="relative flex sm:flex-col sm:text-center sm:items-center gap-5 sm:gap-0">
                   <div className="relative shrink-0">
                     <div className="w-20 h-20 rounded-[1.6rem] bg-white grid place-items-center border border-slate-100 shadow-[0_18px_40px_-18px_rgba(15,23,42,0.35)] relative z-10">
                       <s.icon className="w-8 h-8" style={{ color: s.tone }} />
@@ -378,9 +378,9 @@ export default function Landing() {
                     <h3 className="font-head text-lg sm:text-xl font-black text-slate-900">{s.title}</h3>
                     <p className="mt-2 text-sm text-slate-500 leading-relaxed sm:max-w-[16rem] sm:mx-auto">{s.desc}</p>
                   </div>
-                </Item>
+                </div>
               ))}
-            </Stagger>
+            </div>
           </div>
         </div>
       </section>
@@ -397,7 +397,7 @@ export default function Landing() {
                 const featuredA = index === 0;
                 const wide = index === 1;
                 return (
-                  <FadeUp key={index} delay={Math.min(index, 5) * 0.05} className={featuredA ? "sm:col-span-2 sm:row-span-2" : wide ? "sm:col-span-2 lg:col-span-2" : ""}>
+                  <Reveal key={index} delay={Math.min(index, 5) * 0.05} className={featuredA ? "sm:col-span-2 sm:row-span-2" : wide ? "sm:col-span-2 lg:col-span-2" : ""}>
                     <div className={`group relative h-full overflow-hidden rounded-[1.6rem] bg-white border border-slate-100 p-6 sm:p-7 shadow-[0_20px_45px_-28px_rgba(15,23,42,0.3)] transition-all duration-500 hover:-translate-y-1.5 hover:shadow-[0_32px_60px_-28px_rgba(16,185,129,0.4)] ${featuredA ? "lg:p-10" : ""}`}>
                       <div className="pointer-events-none absolute -top-10 -left-10 w-36 h-36 rounded-full blur-3xl opacity-25 transition-opacity duration-500 group-hover:opacity-50" style={{ background: activity.color }} />
                       <span className="absolute top-5 left-5 w-8 h-8 rounded-full bg-slate-50 border border-slate-100 grid place-items-center text-[11px] font-black text-slate-400 font-head" aria-hidden="true">{AR_NUMS[index] || index + 1}</span>
@@ -407,7 +407,7 @@ export default function Landing() {
                       <h3 className={`relative font-head font-black text-slate-900 mb-2.5 ${featuredA ? "text-xl lg:text-2xl" : "text-lg"}`}>{activity.title}</h3>
                       <p className={`relative text-slate-500 leading-[1.9] ${featuredA ? "text-[15px] lg:text-base" : "text-sm"}`}>{activity.description}</p>
                     </div>
-                  </FadeUp>
+                  </Reveal>
                 );
               })}
             </div>
@@ -420,11 +420,11 @@ export default function Landing() {
         <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-10 py-16 sm:py-20 lg:py-28">
           <SectionHead num="٠٥" kicker="أنديتنا الطلابية" title="اكتشف الأندية" sub="مساحات تفاعلية حقيقية للقراءة، الحوار، الشطرنج، البرمجة، العلوم، الابتكار والمزيد." center />
           <div className="-mx-4 sm:mx-0 px-4 sm:px-0">
-            <Stagger className="flex gap-4 sm:gap-5 overflow-x-auto snap-x snap-mandatory pb-4 [scrollbar-width:thin] lg:grid lg:grid-cols-3 xl:grid-cols-4 lg:overflow-visible">
-              {clubs.map((c) => {
+            <div className="anim-stagger flex gap-4 sm:gap-5 overflow-x-auto snap-x snap-mandatory pb-4 [scrollbar-width:thin] lg:grid lg:grid-cols-3 xl:grid-cols-4 lg:overflow-visible">
+              {clubs.map((c, ci) => {
                 const Icon = CLUB_ICON(c.icon);
                 return (
-                  <Item key={c.id} className="snap-start shrink-0 w-[272px] sm:w-[300px] lg:w-auto">
+                  <div key={c.id} style={{ "--i": ci }} className="snap-start shrink-0 w-[272px] sm:w-[300px] lg:w-auto">
                     <Link to={`/clubs/${c.slug}`} data-testid={`club-card-${c.slug}`}
                       className="group relative flex flex-col h-full overflow-hidden rounded-[1.75rem] bg-white border border-slate-100 shadow-[0_22px_50px_-28px_rgba(15,23,42,0.35)] transition-all duration-500 hover:-translate-y-2 hover:shadow-[0_36px_65px_-28px_rgba(15,23,42,0.45)]">
                       <div className="relative h-28 sm:h-32 overflow-hidden shrink-0" style={{ background: `linear-gradient(130deg, ${c.color}, ${c.color}99)` }}>
@@ -448,16 +448,16 @@ export default function Landing() {
                         </div>
                       </div>
                     </Link>
-                  </Item>
+                  </div>
                 );
               })}
-            </Stagger>
+            </div>
           </div>
-          <FadeUp className="text-center mt-8">
+          <Reveal className="text-center mt-8">
             <Link to="/clubs" className="pressable inline-flex items-center gap-2 rounded-2xl border-2 border-slate-200 bg-white px-7 py-3.5 text-sm font-black text-slate-800 transition-all hover:border-emerald-400 hover:text-emerald-700 hover:-translate-y-0.5">
               عرض جميع الأندية <ArrowLeft className="w-4 h-4" />
             </Link>
-          </FadeUp>
+          </Reveal>
         </div>
       </section>
 
@@ -467,17 +467,17 @@ export default function Landing() {
         <div className="pointer-events-none absolute -bottom-40 right-[5%] w-[28rem] h-[28rem] rounded-full blur-3xl opacity-30" style={{ background: "radial-gradient(circle, rgba(253,224,71,0.4), transparent 65%)" }} />
         <div className="pointer-events-none absolute inset-0 opacity-[0.1]" style={{ backgroundImage: "radial-gradient(rgba(255,255,255,0.9) 1px, transparent 1px)", backgroundSize: "22px 22px" }} />
         <div className="relative max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-10 py-16 sm:py-24 lg:py-28 text-center text-white">
-          <FadeUp>
-            <Float className="inline-block">
+          <Reveal>
+            <span className="inline-block animate-float">
               <span className="mx-auto mb-6 grid place-items-center w-16 h-16 sm:w-20 sm:h-20 rounded-[1.75rem] bg-white text-emerald-700 shadow-[0_25px_50px_-15px_rgba(0,0,0,0.4)]">
                 <Trophy className="w-8 h-8 sm:w-10 sm:h-10" />
               </span>
-            </Float>
+            </span>
             <h2 className="font-head font-black text-[1.9rem] sm:text-4xl lg:text-[3.2rem] leading-[1.25]">جاهز لتكون من <span className="text-amber-200">مفكري المستقبل؟</span></h2>
             <p className="mt-4 text-emerald-50/95 max-w-xl lg:max-w-2xl mx-auto text-[15px] sm:text-base lg:text-lg leading-relaxed font-medium">انضم إلى طلاب من مختلف مدارس المملكة في رحلة معرفية تنافسية، واجمع نقاط الخبرة، وتصدّر قوائم الصدارة الوطنية.</p>
             <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
               <Button data-testid="cta-join-btn" onClick={() => nav(user ? "/dashboard" : "/register")} size="lg"
-                className="pressable rounded-2xl h-[52px] sm:h-14 px-8 sm:px-10 text-base sm:text-lg font-black text-emerald-900 bg-white border-0 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.45)] hover:bg-emerald-50">
+                className="pressable hover-glow rounded-2xl h-[52px] sm:h-14 px-8 sm:px-10 text-base sm:text-lg font-black text-emerald-900 bg-white border-0 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.45)] hover:bg-emerald-50">
                 <Rocket className="w-5 h-5 ml-2" /> {user ? "لوحتي" : "ابدأ الآن مجاناً"}
               </Button>
               <Button onClick={() => nav("/clubs")} size="lg" variant="outline"
@@ -490,7 +490,7 @@ export default function Landing() {
               <span className="inline-flex items-center gap-1.5"><BookOpen className="w-4 h-4" /> مكتبة رقمية غنية</span>
               <span className="inline-flex items-center gap-1.5"><Trophy className="w-4 h-4" /> منافسات وجوائز</span>
             </div>
-          </FadeUp>
+          </Reveal>
         </div>
       </section>
     </Layout>

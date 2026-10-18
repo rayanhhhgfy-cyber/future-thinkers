@@ -5,8 +5,7 @@ import CookieNotice from "@/components/CookieNotice";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { Loader2, X } from "lucide-react";
-import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
-import { EASE } from "@/components/anim";
+import { motion, AnimatePresence } from "framer-motion";
 import api from "@/lib/api";
 
 const DISMISSED_KEY = "ft-banners-dismissed";
@@ -55,7 +54,6 @@ function AnnouncementBar() {
 
 export function Layout({ children, noFooter }) {
   const { pathname } = useLocation();
-  const reduce = useReducedMotion();
   return (
     <div className={`min-h-screen flex flex-col ${pathname.startsWith("/admin") ? "" : "pb-[86px] xl:pb-0"}`}>
       <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:right-3 focus:z-[100] focus:rounded-xl focus:bg-white focus:px-4 focus:py-2.5 focus:text-sm focus:font-bold focus:text-slate-900 focus:shadow-2xl focus:ring-2 focus:ring-teal-600">
@@ -64,16 +62,10 @@ export function Layout({ children, noFooter }) {
       <AnnouncementBar />
       <Navbar />
       <main id="main-content" tabIndex={-1} className="flex-1 outline-none">
-        {reduce ? children : (
-          <motion.div
-            key={pathname}
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.38, ease: EASE }}
-          >
-            {children}
-          </motion.div>
-        )}
+        {/* CSS-only route transition (fade-in, keyed by pathname so it replays) */}
+        <div key={pathname} className="anim-fade-in">
+          {children}
+        </div>
       </main>
       {!noFooter && <Footer />}
       <CookieNotice />

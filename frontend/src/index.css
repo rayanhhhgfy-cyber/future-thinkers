@@ -152,6 +152,30 @@ h1, h2, h3, h4, .font-head { font-family: var(--ft-font-head, 'Readex Pro', sans
 .d-1 { animation-delay: .06s; } .d-2 { animation-delay: .12s; } .d-3 { animation-delay: .18s; }
 .d-4 { animation-delay: .24s; } .d-5 { animation-delay: .3s; } .d-6 { animation-delay: .36s; }
 
+/* ══════════ anim-* utilities · CSS-only, GPU compositor thread (transform/opacity) ══════════ */
+@keyframes ft-slide-up { from { opacity: 0; transform: translateY(48px); } to { opacity: 1; transform: none; } }
+
+@media (prefers-reduced-motion: no-preference) {
+  .anim-fade-up { animation: ft-fade-up .55s cubic-bezier(.22,1,.36,1) both; }
+  .anim-fade-in { animation: ft-fade-in .4s ease both; }
+  .anim-scale-in { animation: ft-scale-in .35s cubic-bezier(.22,1,.36,1) both; }
+  .anim-slide-up { animation: ft-slide-up .45s cubic-bezier(.22,1,.36,1) both; }
+
+  /* CSS-only stagger — set style={{ "--i": index }} on each direct child (caps at 8) */
+  .anim-stagger > * { animation: ft-fade-up .55s cubic-bezier(.22,1,.36,1) both; animation-delay: calc(min(var(--i, 0), 7) * 60ms); }
+
+  /* scroll reveal — paired with the useReveal hook (.is-visible toggles in) */
+  .reveal { opacity: 0; transform: translateY(22px); transition: opacity .55s ease, transform .55s cubic-bezier(.22,1,.36,1); transition-delay: calc(min(var(--i, 0), 7) * 60ms); }
+  .reveal.is-visible { opacity: 1; transform: none; }
+
+  /* CTA glow on hover (transition on :hover is fine — keyframes never touch shadow) */
+  .hover-glow { transition: transform .25s ease, box-shadow .25s ease; }
+  .hover-glow:hover { transform: translateY(-2px); box-shadow: 0 0 0 1px rgba(16,185,129,.35), 0 16px 42px -12px rgba(16,185,129,.6); }
+
+  /* skeleton loading shimmer */
+  .anim-skeleton { border-radius: .75rem; background: linear-gradient(110deg, #e2e8f0 8%, #f1f5f9 18%, #e2e8f0 33%); background-size: 200% 100%; animation: ft-shimmer 1.6s linear infinite; }
+}
+
 /* respect users who prefer reduced motion */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
