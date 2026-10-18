@@ -107,6 +107,7 @@ export function Navbar() {
   const nav = useNavigate();
   const loc = useLocation();
   const [open, setOpen] = useState(false);
+  const [userSheet, setUserSheet] = useState(false);
   const [dmUnread, setDmUnread] = useState(0);
   const [unread, setUnread] = useState(0);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -365,13 +366,45 @@ export function Navbar() {
                 {notifOpen && <NotificationsPanel onClose={() => { setNotifOpen(false); loadUnread(); }} />}
               </div>
 
-              {/* user chip — on mobile: direct to profile (Radix dropdown hangs when scrolled down) */}
-              <button data-testid="user-menu-btn" onClick={() => nav(`/profile/${user.id}`)}
+              {/* user chip — mobile: lightweight custom bottom-sheet menu (no Radix, no hang) */}
+              <button data-testid="user-menu-btn" onClick={() => setUserSheet(true)}
                 className="xl:hidden group flex items-center gap-2.5 rounded-full bg-slate-900/[0.04] border border-slate-900/[0.07] py-1 pe-1.5 ps-1.5 transition-all duration-200 hover:bg-white hover:border-slate-200 active:scale-[0.97]">
                 <Avatar className="w-9 h-9 ring-2 ring-emerald-400/70 ring-offset-2 ring-offset-white shadow-md">
                   <AvatarFallback className="ft-icon-tile text-white text-xs font-black">{user.name?.[0] || "؟"}</AvatarFallback>
                 </Avatar>
               </button>
+              {userSheet && createPortal(
+                <div className="xl:hidden fixed inset-0 z-[100]">
+                  <div className="absolute inset-0 bg-slate-950/50" onClick={() => setUserSheet(false)} />
+                  <div className="absolute bottom-0 inset-x-0 bg-white rounded-t-[28px] shadow-2xl p-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] animate-[sheetUp_0.22s_ease-out]">
+                    <div className="w-10 h-1 rounded-full bg-slate-200 mx-auto mb-3" />
+                    <div className="flex items-center gap-3 px-2 pb-3 border-b border-slate-100">
+                      <Avatar className="w-12 h-12"><AvatarFallback className="ft-icon-tile text-white font-black">{user.name?.[0] || "؟"}</AvatarFallback></Avatar>
+                      <div className="min-w-0">
+                        <div className="font-extrabold text-slate-800 truncate">{user.name}</div>
+                        <div className="text-xs text-slate-500 font-bold"><span className="text-emerald-700">{user.level_title}</span> · مستوى {user.level}</div>
+                      </div>
+                    </div>
+                    {[
+                      { label: "لوحتي", icon: LayoutDashboard, tint: "text-emerald-600", to: "/dashboard" },
+                      { label: "ملفي الشخصي", icon: User, tint: "text-blue-600", to: `/profile/${user.id}` },
+                      { label: "إعدادات الحساب", icon: Settings, tint: "text-slate-500", to: "/settings" },
+                      { label: "محفوظتي", icon: Bookmark, tint: "text-amber-500", to: "/saved" },
+                      ...(isStaff ? [{ label: "لوحة الإدارة", icon: Shield, tint: "text-violet-600", to: "/admin" }] : []),
+                    ].map((it) => (
+                      <button key={it.to} onClick={() => { setUserSheet(false); nav(it.to); }}
+                        className="w-full flex items-center gap-3 px-3 py-3 rounded-2xl font-bold text-slate-700 active:bg-slate-100">
+                        <it.icon className={`w-5 h-5 ${it.tint}`} />{it.label}
+                      </button>
+                    ))}
+                    <button onClick={async () => { setUserSheet(false); await logout(); nav("/"); }}
+                      className="w-full flex items-center gap-3 px-3 py-3 rounded-2xl font-bold text-rose-600 active:bg-rose-50">
+                      <LogOut className="w-5 h-5" />تسجيل الخروج
+                    </button>
+                  </div>
+                </div>,
+                document.body
+              )}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button data-testid="user-menu-btn-desktop"

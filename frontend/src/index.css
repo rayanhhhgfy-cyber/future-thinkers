@@ -142,6 +142,7 @@ h1, h2, h3, h4, .font-head { font-family: var(--ft-font-head, 'Readex Pro', sans
 
 /* gradient text shimmer for hero accents */
 @keyframes ft-gradient-pan { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+@keyframes sheetUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
 .animate-gradient-text {
   background-size: 200% auto;
   animation: ft-gradient-pan 5s ease infinite;
