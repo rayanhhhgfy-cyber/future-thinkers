@@ -130,6 +130,55 @@ def send_pdf_to_telegram(pdf_bytes: bytes, filename: str, tag: str | None = None
     }
 
 
+def send_photo_to_telegram(photo_bytes: bytes, filename: str) -> dict:
+    """Send a single photo (e.g. profile avatar, cover) to the storage channel.
+
+    Uses the Bot API sendPhoto method (multipart upload, no chunking needed —
+    photos are capped at 5MB by the caller).
+    Returns {"file_id": ..., "message_id": ...}.
+    """
+    if not telegram_configured():
+        raise RuntimeError("Telegram storage is not configured")
+    token = _token()
+    chat_id = _chat_id()
+    boundary = uuid.uuid4().hex
+    body = b"".join([
+        f"--{boundary}\r\nContent-Disposition: form-data; name=\"chat_id\"\r\n\r\n{chat_id}\r\n".encode(),
+        f"--{boundary}\r\nContent-Disposition: form-data; name=\"caption\"\r\n\r\n🖼️ {filename or 'photo'}\r\n".encode(),
+        (f"--{boundary}\r\nContent-Disposition: form-data; name=\"photo\"; "
+         f"filename=\"{filename or 'photo.jpg'}\"\r\nContent-Type: image/jpeg\r\n\r\n").encode(),
+        photo_bytes,
+        b"\r\n",
+        f"--{boundary}--\r\n".encode(),
+    ])
+    req = urllib.request.Request(
+        f"https://api.telegram.org/bot{token}/sendPhoto",
+        data=body,
+        headers={"Content-Type": f"multipart/form-data; boundary={boundary}"},
+    )
+
+    def _do():
+        try:
+            with urllib.request.urlopen(req, timeout=120) as resp:
+                out = json.load(resp)
+        except Exception as exc:
+            raise RuntimeError(f"Telegram sendPhoto failed: {exc}") from exc
+        if not out.get("ok"):
+            raise RuntimeError(f"Telegram sendPhoto error: {out}")
+        # result.photo is an array of sizes; the last is the largest.
+        sizes = out["result"].get("photo") or []
+        if not sizes:
+            raise RuntimeError("Telegram sendPhoto returned no photo sizes")
+        return {"file_id": sizes[-1]["file_id"], "message_id": out["result"]["message_id"]}
+
+    return _with_retries(_do, label="Telegram sendPhoto")
+
+
+def fetch_photo_from_telegram(file_id: str) -> bytes:
+    """Download a single photo by file_id (reuses the same getFile+download path as PDFs)."""
+    return _fetch_part(file_id)
+
+
 def _fetch_part(file_id: str) -> bytes:
     return _with_retries(lambda: _fetch_part_once(file_id), label="Telegram file download")
 

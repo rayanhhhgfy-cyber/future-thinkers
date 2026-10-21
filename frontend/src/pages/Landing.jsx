@@ -23,7 +23,7 @@ function ReadMore({ children, lines = 3 }) {
       <div className={expanded ? "" : (CLAMP_CLASSES[lines] || "line-clamp-3")}>{children}</div>
       <button
         onClick={() => setExpanded((v) => !v)}
-        className="mt-3 inline-flex items-center gap-1.5 text-emerald-600 hover:text-emerald-700 text-sm font-bold transition-colors"
+        className="mt-3 inline-flex items-center gap-1.5 text-[var(--ft-accent)] hover:text-[var(--ft-accent)] text-sm font-bold transition-colors"
       >
         {expanded ? "عرض أقل" : "اقرأ المزيد"}
         <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${expanded ? "rotate-180" : ""}`} />
@@ -39,8 +39,8 @@ function SectionHead({ num, kicker, title, sub, center = false, dark = false }) 
   return (
     <Reveal className={`${center ? "text-center" : ""} mb-10 lg:mb-14`}>
       <div className={`inline-flex items-center gap-2.5 ${center ? "justify-center" : ""}`}>
-        <span className="font-head text-sm font-black text-transparent bg-clip-text bg-gradient-to-l from-emerald-500 to-teal-600">{num}</span>
-        <span className="h-[3px] w-10 rounded-full bg-gradient-to-l from-emerald-500/70 to-transparent" />
+        <span className="font-head text-sm font-black text-transparent bg-clip-text bg-gradient-to-l from-[var(--ft-accent)] to-[var(--ft-grad-b)]">{num}</span>
+        <span className="h-[3px] w-10 rounded-full bg-gradient-to-l from-[var(--ft-accent)] to-transparent" />
         <span className={`text-xs font-extrabold tracking-wide ${dark ? "text-slate-400" : "text-slate-400"}`}>{kicker}</span>
       </div>
       <h2 className={`mt-4 font-head text-[1.75rem] sm:text-4xl lg:text-[2.75rem] font-black leading-[1.3] ${dark ? "text-white" : "text-slate-900"}`}>{title}</h2>
@@ -54,17 +54,17 @@ const VALUES = ["القراءة", "الحوار", "الشطرنج", "البرم�
 function Marquee() {
   const row = [...VALUES, ...VALUES];
   return (
-    <div className="relative overflow-hidden bg-emerald-950 py-3.5 sm:py-4" dir="ltr" aria-hidden="true">
+    <div className="relative overflow-hidden bg-[var(--ft-grad-c)] py-3.5 sm:py-4" dir="ltr" aria-hidden="true">
       <style>{`@keyframes ft-marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }`}</style>
       <div className="flex w-max" style={{ animation: "ft-marquee 30s linear infinite" }}>
         {row.map((v, i) => (
-          <span key={i} dir="rtl" className="flex items-center gap-3 px-5 sm:px-7 text-sm sm:text-[15px] font-extrabold text-emerald-50/85 whitespace-nowrap">
+          <span key={i} dir="rtl" className="flex items-center gap-3 px-5 sm:px-7 text-sm sm:text-[15px] font-extrabold text-white/85 whitespace-nowrap">
             <span className="text-amber-300 text-base leading-none">✦</span>{v}
           </span>
         ))}
       </div>
-      <div className="pointer-events-none absolute inset-y-0 left-0 w-20 bg-gradient-to-r from-emerald-950 to-transparent" />
-      <div className="pointer-events-none absolute inset-y-0 right-0 w-20 bg-gradient-to-l from-emerald-950 to-transparent" />
+      <div className="pointer-events-none absolute inset-y-0 left-0 w-20 bg-gradient-to-r from-[var(--ft-grad-c)] to-transparent" />
+      <div className="pointer-events-none absolute inset-y-0 right-0 w-20 bg-gradient-to-l from-[var(--ft-grad-c)] to-transparent" />
     </div>
   );
 }
@@ -124,32 +124,32 @@ export default function Landing() {
   return (
     <Layout>
       {/* ══════════ HERO · emerald light ══════════ */}
-      <section className="relative overflow-hidden" style={{ background: "linear-gradient(180deg,#ecfdf5 0%,#ffffff 55%,#f0fdfa 100%)" }}>
-        <div className="pointer-events-none absolute -top-32 right-[5%] w-[30rem] h-[30rem] rounded-full blur-3xl opacity-60 animate-float" style={{ background: "radial-gradient(circle, rgba(110,231,183,0.55), transparent 65%)" }} />
-        <div className="pointer-events-none absolute top-40 -left-32 w-[26rem] h-[26rem] rounded-full blur-3xl opacity-50" style={{ background: "radial-gradient(circle, rgba(153,246,228,0.5), transparent 65%)" }} />
+      <section className="relative overflow-hidden" style={{ background: "linear-gradient(180deg,color-mix(in_srgb,var(--ft-accent)_8%,white) 0%,#ffffff 55%,color-mix(in_srgb,var(--ft-accent)_6%,white) 100%)" }}>
+        <div className="pointer-events-none absolute -top-32 right-[5%] w-[30rem] h-[30rem] rounded-full blur-3xl opacity-60 animate-float" style={{ background: "radial-gradient(circle, color-mix(in_srgb,var(--ft-accent) 55%,transparent), transparent 65%)" }} />
+        <div className="pointer-events-none absolute top-40 -left-32 w-[26rem] h-[26rem] rounded-full blur-3xl opacity-50" style={{ background: "radial-gradient(circle, color-mix(in_srgb,var(--ft-accent) 50%,transparent), transparent 65%)" }} />
         <div className="pointer-events-none absolute bottom-0 right-[30%] w-[24rem] h-[24rem] rounded-full blur-3xl opacity-40" style={{ background: "radial-gradient(circle, rgba(253,224,71,0.35), transparent 65%)" }} />
-        <div className="pointer-events-none absolute inset-0 opacity-100" style={{ backgroundImage: "linear-gradient(rgba(16,185,129,0.055) 1px, transparent 1px), linear-gradient(90deg, rgba(16,185,129,0.055) 1px, transparent 1px)", backgroundSize: "56px 56px", maskImage: "radial-gradient(ellipse 85% 65% at 50% 38%, black, transparent)", WebkitMaskImage: "radial-gradient(ellipse 85% 65% at 50% 38%, black, transparent)" }} />
+        <div className="pointer-events-none absolute inset-0 opacity-100" style={{ backgroundImage: "linear-gradient(color-mix(in_srgb,var(--ft-accent) 6%,transparent) 1px, transparent 1px), linear-gradient(90deg, color-mix(in_srgb,var(--ft-accent) 6%,transparent) 1px, transparent 1px)", backgroundSize: "56px 56px", maskImage: "radial-gradient(ellipse 85% 65% at 50% 38%, black, transparent)", WebkitMaskImage: "radial-gradient(ellipse 85% 65% at 50% 38%, black, transparent)" }} />
 
         <div className="relative max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-10 pt-14 sm:pt-20 lg:pt-24 pb-10 lg:pb-14">
           <div className="anim-stagger text-center max-w-4xl mx-auto">
-            <div style={{ "--i": 0 }} className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white/85 backdrop-blur px-4 py-2 text-[12px] sm:text-[13px] font-extrabold text-emerald-800 shadow-[0_10px_30px_-14px_rgba(16,185,129,0.5)]">
-              <Sparkles className="w-4 h-4 text-emerald-600" /> {cms?.hero_badge || "المنصة المعرفية الوطنية لطلاب الأردن"}
+            <div style={{ "--i": 0 }} className="inline-flex items-center gap-2 rounded-full border border-[color-mix(in_srgb,var(--ft-accent)_30%,white)] bg-white/85 backdrop-blur px-4 py-2 text-[12px] sm:text-[13px] font-extrabold text-[var(--ft-accent)] shadow-[0_10px_30px_-14px_color-mix(in_srgb,var(--ft-accent) 50%,transparent)]">
+              <Sparkles className="w-4 h-4 text-[var(--ft-accent)]" /> {cms?.hero_badge || "المنصة المعرفية الوطنية لطلاب الأردن"}
             </div>
             <h1 style={{ "--i": 1 }} className="mt-6 font-head font-black text-slate-900 text-[2.35rem] leading-[1.16] sm:text-6xl lg:text-[4.4rem] sm:leading-[1.14]">
               {cms?.hero_title || "نقرأ أكثر، نفكّر أعمق،"}<br />
-              <span className="text-transparent bg-clip-text" style={{ backgroundImage: "linear-gradient(120deg,#059669,#0d9488 55%,#d97706)" }}>{cms?.hero_highlight || "ونصنع المستقبل."}</span>
+              <span className="text-transparent bg-clip-text" style={{ backgroundImage: "linear-gradient(120deg,var(--ft-accent),var(--ft-grad-b) 55%,var(--ft-accent))" }}>{cms?.hero_highlight || "ونصنع المستقبل."}</span>
             </h1>
             <p style={{ "--i": 2 }} className="mt-6 text-[15px] sm:text-lg text-slate-600 leading-relaxed sm:leading-loose max-w-2xl mx-auto">
               {cms?.hero_subtitle || "بيئة معرفية وثقافية وعلمية تجمع طلاب المملكة الأردنية الهاشمية حول القراءة والحوار والشطرنج والبرمجة والابتكار والمنافسات في مجتمع طلابي واحد."}
             </p>
             <div style={{ "--i": 3 }} className="mt-8 flex flex-wrap items-center justify-center gap-3">
               <Button data-testid="hero-join-btn" onClick={() => nav(user ? "/dashboard" : "/register")} size="lg"
-                className="pressable hover-glow rounded-2xl h-12 sm:h-[52px] px-7 sm:px-8 text-[15px] sm:text-base font-extrabold text-white border-0 shadow-[0_18px_45px_-12px_rgba(16,185,129,0.65)]"
-                style={{ background: "linear-gradient(135deg,#10b981,#0d9488)" }}>
+                className="pressable hover-glow rounded-2xl h-12 sm:h-[52px] px-7 sm:px-8 text-[15px] sm:text-base font-extrabold text-white border-0 shadow-[0_18px_45px_-12px_color-mix(in_srgb,var(--ft-accent) 65%,transparent)]"
+                style={{ background: "linear-gradient(135deg,var(--ft-accent),var(--ft-grad-b))" }}>
                 {user ? "اذهب إلى لوحتي" : "انضم إلى مفكري المستقبل"} <ArrowLeft className="w-5 h-5 mr-1" />
               </Button>
               <Button data-testid="hero-library-btn" onClick={() => nav("/library")} size="lg" variant="outline"
-                className="pressable rounded-2xl h-12 sm:h-[52px] px-7 sm:px-8 text-[15px] sm:text-base font-extrabold bg-white border-slate-200 text-slate-800 hover:border-emerald-300 hover:text-emerald-700 shadow-[0_14px_35px_-18px_rgba(15,23,42,0.4)]">
+                className="pressable rounded-2xl h-12 sm:h-[52px] px-7 sm:px-8 text-[15px] sm:text-base font-extrabold bg-white border-slate-200 text-slate-800 hover:border-[color-mix(in_srgb,var(--ft-accent)_45%,white)] hover:text-[var(--ft-accent)] shadow-[0_14px_35px_-18px_rgba(15,23,42,0.4)]">
                 تصفّح المكتبة
               </Button>
             </div>
@@ -178,7 +178,7 @@ export default function Landing() {
           <div className="anim-stagger mt-8 sm:mt-10 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 sm:gap-4">
             {statItems.map((s, si) => (
               <div key={s.label} style={{ "--i": si }} className="rounded-2xl sm:rounded-3xl border border-slate-100 bg-white px-3 py-4 sm:p-5 text-center shadow-[0_20px_45px_-26px_rgba(15,23,42,0.3)]">
-                <span className="mx-auto mb-2 grid place-items-center w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-emerald-50 text-emerald-600"><s.icon className="w-5 h-5 sm:w-6 sm:h-6" /></span>
+                <span className="mx-auto mb-2 grid place-items-center w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-[color-mix(in_srgb,var(--ft-accent)_12%,white)] text-[var(--ft-accent)]"><s.icon className="w-5 h-5 sm:w-6 sm:h-6" /></span>
                 <div className="font-head font-black text-slate-900 text-xl sm:text-2xl lg:text-[1.7rem]"><Counter value={s.value} /></div>
                 <div className="mt-1 text-[11px] sm:text-xs text-slate-500 font-bold">{s.label}</div>
               </div>
@@ -202,8 +202,8 @@ export default function Landing() {
         <section className="relative overflow-hidden bg-white">
           <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-10 pt-12 sm:pt-16 lg:pt-20">
             <Reveal>
-              <div data-testid="landing-featured-book" className="relative overflow-hidden rounded-[1.75rem] sm:rounded-[2.25rem] text-white p-6 sm:p-9 lg:p-12 shadow-[0_35px_70px_-28px_rgba(3,30,24,0.6)]" style={{ background: "linear-gradient(140deg,#04241c 0%,#064e3b 55%,#065f46 100%)" }}>
-                <div className="pointer-events-none absolute -top-24 right-[12%] w-96 h-96 rounded-full blur-3xl opacity-40" style={{ background: "radial-gradient(circle, rgba(52,211,153,0.55), transparent 65%)" }} />
+              <div data-testid="landing-featured-book" className="relative overflow-hidden rounded-[1.75rem] sm:rounded-[2.25rem] text-white p-6 sm:p-9 lg:p-12 shadow-[0_35px_70px_-28px_rgba(3,30,24,0.6)]" style={{ background: "linear-gradient(140deg,var(--ft-grad-c) 0%,var(--ft-grad-a) 55%,var(--ft-grad-b) 100%)" }}>
+                <div className="pointer-events-none absolute -top-24 right-[12%] w-96 h-96 rounded-full blur-3xl opacity-40" style={{ background: "radial-gradient(circle, color-mix(in_srgb,var(--ft-accent) 55%,transparent), transparent 65%)" }} />
                 <div className="pointer-events-none absolute -bottom-28 -left-16 w-80 h-80 rounded-full blur-3xl opacity-30" style={{ background: "radial-gradient(circle, rgba(251,191,36,0.4), transparent 65%)" }} />
                 <div className="pointer-events-none absolute inset-0 opacity-[0.06]" style={{ backgroundImage: "radial-gradient(rgba(255,255,255,0.9) 1px, transparent 1px)", backgroundSize: "20px 20px" }} />
                 <div className="relative flex flex-col md:flex-row items-center gap-6 lg:gap-10">
@@ -215,7 +215,7 @@ export default function Landing() {
                       <Sparkles className="w-3.5 h-3.5" /> كتاب الأسبوع في النادي
                     </span>
                     <h2 className="mt-4 font-head text-[1.65rem] lg:text-4xl font-black leading-snug">{featured.title}</h2>
-                    <p className="mt-1.5 text-sm lg:text-base font-bold text-emerald-100/80">{featured.author}</p>
+                    <p className="mt-1.5 text-sm lg:text-base font-bold text-white/70">{featured.author}</p>
                     {featured.description && <p className="mt-3 text-sm lg:text-[15px] leading-relaxed text-slate-300 line-clamp-3 max-w-2xl mx-auto md:mx-0">{featured.description}</p>}
                     <div className="mt-4 flex flex-wrap items-center justify-center md:justify-start gap-2">
                       {featured.pages > 0 && <span className="rounded-full bg-white/10 border border-white/15 px-3 py-1 text-[11px] font-bold">{featured.pages} صفحة</span>}
@@ -235,23 +235,23 @@ export default function Landing() {
 
       {/* ══════════ من نحن ══════════ */}
       <section className="relative overflow-hidden bg-white">
-        <div className="pointer-events-none absolute top-10 -left-24 w-72 h-72 rounded-full bg-emerald-100/60 blur-3xl" />
+        <div className="pointer-events-none absolute top-10 -left-24 w-72 h-72 rounded-full bg-[color-mix(in_srgb,var(--ft-accent)_15%,transparent)] blur-3xl" />
         <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-10 py-16 sm:py-20 lg:py-28 relative">
           <SectionHead num="٠١" kicker="من نحن" title="نخبةٌ تصنع الفرق" sub="تعرّف على الحكاية التي تجمعنا" />
           <div className="grid lg:grid-cols-12 gap-6 lg:gap-10 items-stretch">
             <Reveal className="lg:col-span-5">
-              <div className="relative h-full overflow-hidden rounded-[1.75rem] sm:rounded-[2rem] text-white p-7 sm:p-9 lg:p-10" style={{ background: "linear-gradient(150deg,#052e26 0%,#065f46 60%,#047857 100%)" }}>
-                <div className="pointer-events-none absolute -top-16 -right-16 w-64 h-64 rounded-full bg-emerald-400/25 blur-3xl" />
+              <div className="relative h-full overflow-hidden rounded-[1.75rem] sm:rounded-[2rem] text-white p-7 sm:p-9 lg:p-10" style={{ background: "linear-gradient(150deg,var(--ft-grad-c) 0%,var(--ft-grad-a) 60%,var(--ft-grad-b) 100%)" }}>
+                <div className="pointer-events-none absolute -top-16 -right-16 w-64 h-64 rounded-full bg-[color-mix(in_srgb,var(--ft-accent)_25%,transparent)] blur-3xl" />
                 <div className="pointer-events-none absolute inset-0 opacity-[0.07]" style={{ backgroundImage: "radial-gradient(rgba(255,255,255,0.9) 1px, transparent 1px)", backgroundSize: "18px 18px" }} />
-                <Quote className="relative w-9 h-9 text-emerald-300 mb-4" />
-                <blockquote className="relative font-head text-lg sm:text-xl lg:text-[1.35rem] leading-[1.9] font-bold text-emerald-50">
+                <Quote className="relative w-9 h-9 text-[var(--ft-accent)] mb-4" />
+                <blockquote className="relative font-head text-lg sm:text-xl lg:text-[1.35rem] leading-[1.9] font-bold text-white/90">
                   {aboutText.split("\n\n")[0].slice(0, 160)}…
                 </blockquote>
                 <div className="relative mt-6 flex items-center gap-3">
                   <span className="w-11 h-11 rounded-2xl bg-white/15 border border-white/20 grid place-items-center font-head font-black text-lg">م</span>
                   <div>
                     <div className="text-sm font-extrabold">مفكرو المستقبل</div>
-                    <div className="text-[11px] text-emerald-100/70 font-bold">من كلمة النادي</div>
+                    <div className="text-[11px] text-white/60 font-bold">من كلمة النادي</div>
                   </div>
                 </div>
               </div>
@@ -259,7 +259,7 @@ export default function Landing() {
             <Reveal delay={0.08} className="lg:col-span-7">
               <div className="h-full rounded-[1.75rem] sm:rounded-[2rem] border border-slate-100 bg-gradient-to-bl from-slate-50/80 to-white p-7 sm:p-9 lg:p-11 shadow-[0_20px_50px_-30px_rgba(15,23,42,0.25)]">
                 <div className="flex items-center gap-3 mb-5">
-                  <span className="w-12 h-12 rounded-2xl grid place-items-center text-white shadow-lg shrink-0" style={{ background: "linear-gradient(135deg,#10b981,#0d9488)" }}>
+                  <span className="w-12 h-12 rounded-2xl grid place-items-center text-white shadow-lg shrink-0" style={{ background: "linear-gradient(135deg,var(--ft-accent),var(--ft-grad-b))" }}>
                     <Users2 className="w-6 h-6" />
                   </span>
                   <h3 className="font-head text-xl sm:text-2xl font-black text-slate-900">من نحن؟</h3>
@@ -285,9 +285,9 @@ export default function Landing() {
           <div className="grid md:grid-cols-2 gap-5 lg:gap-8">
             <Reveal>
               <div className="group h-full relative overflow-hidden rounded-[1.75rem] sm:rounded-[2rem] bg-white border border-slate-100 p-7 sm:p-9 shadow-[0_24px_55px_-30px_rgba(15,23,42,0.28)] transition-transform duration-500 hover:-translate-y-1.5">
-                <div className="absolute inset-x-0 top-0 h-1.5" style={{ background: "linear-gradient(90deg,#10b981,#0d9488,#0ea5e9)" }} />
+                <div className="absolute inset-x-0 top-0 h-1.5" style={{ background: "linear-gradient(90deg,var(--ft-accent),var(--ft-grad-b),var(--ft-accent))" }} />
                 <div className="flex items-center gap-4">
-                  <span className="w-14 h-14 sm:w-16 sm:h-16 rounded-[1.25rem] grid place-items-center text-white shadow-xl shrink-0 transition-transform duration-500 group-hover:scale-110 group-hover:-rotate-6" style={{ background: "linear-gradient(135deg,#10b981,#047857)", boxShadow: "0 16px 32px -12px rgba(16,185,129,0.6)" }}>
+                  <span className="w-14 h-14 sm:w-16 sm:h-16 rounded-[1.25rem] grid place-items-center text-white shadow-xl shrink-0 transition-transform duration-500 group-hover:scale-110 group-hover:-rotate-6" style={{ background: "linear-gradient(135deg,var(--ft-accent),var(--ft-grad-b))", boxShadow: "0 16px 32px -12px color-mix(in_srgb,var(--ft-accent) 60%,transparent)" }}>
                     <Flag className="w-7 h-7 sm:w-8 sm:h-8" />
                   </span>
                   <div>
@@ -326,14 +326,14 @@ export default function Landing() {
                 <h3 className="font-head text-2xl sm:text-3xl font-black text-slate-900">أهدافنا</h3>
                 <p className="mt-1.5 text-sm text-slate-400 font-bold">{goalsList.length} أهداف نعمل عليها كل يوم</p>
               </div>
-              <span className="hidden sm:inline-flex items-center gap-1.5 text-xs font-extrabold text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-full px-3.5 py-1.5"><Target className="w-3.5 h-3.5" /> خارطة الطريق</span>
+              <span className="hidden sm:inline-flex items-center gap-1.5 text-xs font-extrabold text-[var(--ft-accent)] bg-[color-mix(in_srgb,var(--ft-accent)_12%,white)] border border-[color-mix(in_srgb,var(--ft-accent)_20%,white)] rounded-full px-3.5 py-1.5"><Target className="w-3.5 h-3.5" /> خارطة الطريق</span>
             </Reveal>
             <div className="anim-stagger grid sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-5">
               {(goalsExpanded ? goalsList : goalsList.slice(0, 3)).map((g, i) => (
-                <div key={i} style={{ "--i": i }} className="group relative overflow-hidden rounded-[1.5rem] bg-white border border-slate-100 p-5 sm:p-6 shadow-[0_16px_40px_-24px_rgba(15,23,42,0.25)] transition-all duration-500 hover:-translate-y-1.5 hover:shadow-[0_28px_55px_-24px_rgba(16,185,129,0.35)]">
-                  <div className="pointer-events-none absolute -top-8 -left-8 w-28 h-28 rounded-full bg-emerald-50 blur-2xl opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
+                <div key={i} style={{ "--i": i }} className="group relative overflow-hidden rounded-[1.5rem] bg-white border border-slate-100 p-5 sm:p-6 shadow-[0_16px_40px_-24px_rgba(15,23,42,0.25)] transition-all duration-500 hover:-translate-y-1.5 hover:shadow-[0_28px_55px_-24px_color-mix(in_srgb,var(--ft-accent) 35%,transparent)]">
+                  <div className="pointer-events-none absolute -top-8 -left-8 w-28 h-28 rounded-full bg-[color-mix(in_srgb,var(--ft-accent)_12%,white)] blur-2xl opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
                   <div className="relative flex items-start gap-4">
-                    <span className="font-head font-black text-[1.65rem] leading-none text-transparent bg-clip-text shrink-0" style={{ backgroundImage: "linear-gradient(135deg,#10b981,#0d9488)" }}>{AR_NUMS[i] || i + 1}</span>
+                    <span className="font-head font-black text-[1.65rem] leading-none text-transparent bg-clip-text shrink-0" style={{ backgroundImage: "linear-gradient(135deg,var(--ft-accent),var(--ft-grad-b))" }}>{AR_NUMS[i] || i + 1}</span>
                     <p className="text-slate-700 text-sm sm:text-[15px] leading-[1.9] pt-0.5">{g}</p>
                   </div>
                 </div>
@@ -343,8 +343,8 @@ export default function Landing() {
               <div className="text-center mt-7">
                 <button
                   onClick={() => setGoalsExpanded((v) => !v)}
-                  className="pressable inline-flex items-center gap-2 text-sm font-extrabold text-white rounded-2xl px-6 py-3 shadow-[0_16px_35px_-12px_rgba(16,185,129,0.6)] border-0"
-                  style={{ background: "linear-gradient(135deg,#10b981,#0d9488)" }}
+                  className="pressable inline-flex items-center gap-2 text-sm font-extrabold text-white rounded-2xl px-6 py-3 shadow-[0_16px_35px_-12px_color-mix(in_srgb,var(--ft-accent) 60%,transparent)] border-0"
+                  style={{ background: "linear-gradient(135deg,var(--ft-accent),var(--ft-grad-b))" }}
                 >
                   {goalsExpanded ? "عرض أقل" : `عرض جميع الأهداف (${goalsList.length})`}
                   <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${goalsExpanded ? "rotate-180" : ""}`} />
@@ -360,7 +360,7 @@ export default function Landing() {
         <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-10 py-16 sm:py-20 lg:py-28">
           <SectionHead num="٠٣" kicker="كيف تبدأ رحلتك؟" title="ثلاث خطوات ويبدأ مشوارك" sub="من إنشاء الحساب إلى صدارة القوائم الوطنية في رحلة واحدة واضحة" center />
           <div className="relative max-w-4xl mx-auto">
-            <div className="absolute top-10 bottom-10 right-[2.45rem] sm:right-auto sm:top-10 sm:right-[16.6%] sm:left-[16.6%] sm:bottom-auto sm:border-t-2 border-r-2 sm:border-r-0 border-dashed" style={{ borderColor: "rgba(16,185,129,0.4)" }} aria-hidden="true" />
+            <div className="absolute top-10 bottom-10 right-[2.45rem] sm:right-auto sm:top-10 sm:right-[16.6%] sm:left-[16.6%] sm:bottom-auto sm:border-t-2 border-r-2 sm:border-r-0 border-dashed" style={{ borderColor: "color-mix(in_srgb,var(--ft-accent) 40%,transparent)" }} aria-hidden="true" />
             <div className="anim-stagger grid sm:grid-cols-3 gap-8 sm:gap-6 relative">
               {[
                 { icon: UserPlus, title: "أنشئ حسابك وانضم", desc: "سجّل خلال دقيقة واحدة وفعّل حسابك لتصلك كل فعاليات النادي ومسابقاته.", tone: "#10b981" },
@@ -388,7 +388,7 @@ export default function Landing() {
       {/* ══════════ النشاطات ══════════ */}
       {cms?.activities && cms.activities.length > 0 && (
         <section className="relative overflow-hidden bg-slate-50/70 border-y border-slate-100">
-          <div className="pointer-events-none absolute -bottom-24 -right-24 w-96 h-96 rounded-full bg-emerald-100/60 blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-24 -right-24 w-96 h-96 rounded-full bg-[color-mix(in_srgb,var(--ft-accent)_15%,transparent)] blur-3xl" />
           <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-10 py-16 sm:py-20 lg:py-28 relative">
             <SectionHead num="٠٤" kicker="نشاطاتنا ومشاريعنا" title="نشاطاتنا وفعالياتنا ومشاريعنا" sub="مبادرات نوعية تستهدف بناء الطالب المبدع والمفكر الناقد والريادي الواعي" center />
             <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-5">
@@ -398,7 +398,7 @@ export default function Landing() {
                 const wide = index === 1;
                 return (
                   <Reveal key={index} delay={Math.min(index, 5) * 0.05} className={featuredA ? "sm:col-span-2 sm:row-span-2" : wide ? "sm:col-span-2 lg:col-span-2" : ""}>
-                    <div className={`group relative h-full overflow-hidden rounded-[1.6rem] bg-white border border-slate-100 p-6 sm:p-7 shadow-[0_20px_45px_-28px_rgba(15,23,42,0.3)] transition-all duration-500 hover:-translate-y-1.5 hover:shadow-[0_32px_60px_-28px_rgba(16,185,129,0.4)] ${featuredA ? "lg:p-10" : ""}`}>
+                    <div className={`group relative h-full overflow-hidden rounded-[1.6rem] bg-white border border-slate-100 p-6 sm:p-7 shadow-[0_20px_45px_-28px_rgba(15,23,42,0.3)] transition-all duration-500 hover:-translate-y-1.5 hover:shadow-[0_32px_60px_-28px_color-mix(in_srgb,var(--ft-accent) 40%,transparent)] ${featuredA ? "lg:p-10" : ""}`}>
                       <div className="pointer-events-none absolute -top-10 -left-10 w-36 h-36 rounded-full blur-3xl opacity-25 transition-opacity duration-500 group-hover:opacity-50" style={{ background: activity.color }} />
                       <span className="absolute top-5 left-5 w-8 h-8 rounded-full bg-slate-50 border border-slate-100 grid place-items-center text-[11px] font-black text-slate-400 font-head" aria-hidden="true">{AR_NUMS[index] || index + 1}</span>
                       <div className={`relative w-14 h-14 rounded-2xl grid place-items-center mb-5 text-white shadow-xl transition-transform duration-500 group-hover:scale-110 group-hover:-rotate-6 ${featuredA ? "lg:w-[4.5rem] lg:h-[4.5rem]" : ""}`} style={{ background: activity.color, boxShadow: `0 16px 32px -12px ${activity.color}90` }}>
@@ -454,7 +454,7 @@ export default function Landing() {
             </div>
           </div>
           <Reveal className="text-center mt-8">
-            <Link to="/clubs" className="pressable inline-flex items-center gap-2 rounded-2xl border-2 border-slate-200 bg-white px-7 py-3.5 text-sm font-black text-slate-800 transition-all hover:border-emerald-400 hover:text-emerald-700 hover:-translate-y-0.5">
+            <Link to="/clubs" className="pressable inline-flex items-center gap-2 rounded-2xl border-2 border-slate-200 bg-white px-7 py-3.5 text-sm font-black text-slate-800 transition-all hover:border-[color-mix(in_srgb,var(--ft-accent)_60%,white)] hover:text-[var(--ft-accent)] hover:-translate-y-0.5">
               عرض جميع الأندية <ArrowLeft className="w-4 h-4" />
             </Link>
           </Reveal>
@@ -462,22 +462,22 @@ export default function Landing() {
       </section>
 
       {/* ══════════ CTA ══════════ */}
-      <section className="relative overflow-hidden" style={{ background: "linear-gradient(135deg,#059669 0%,#0d9488 55%,#0e7490 100%)" }}>
+      <section className="relative overflow-hidden" style={{ background: "linear-gradient(135deg,var(--ft-accent) 0%,var(--ft-grad-b) 55%,var(--ft-grad-a) 100%)" }}>
         <div className="pointer-events-none absolute -top-32 left-[10%] w-[30rem] h-[30rem] rounded-full blur-3xl opacity-40" style={{ background: "radial-gradient(circle, rgba(255,255,255,0.35), transparent 65%)" }} />
         <div className="pointer-events-none absolute -bottom-40 right-[5%] w-[28rem] h-[28rem] rounded-full blur-3xl opacity-30" style={{ background: "radial-gradient(circle, rgba(253,224,71,0.4), transparent 65%)" }} />
         <div className="pointer-events-none absolute inset-0 opacity-[0.1]" style={{ backgroundImage: "radial-gradient(rgba(255,255,255,0.9) 1px, transparent 1px)", backgroundSize: "22px 22px" }} />
         <div className="relative max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-10 py-16 sm:py-24 lg:py-28 text-center text-white">
           <Reveal>
             <span className="inline-block animate-float">
-              <span className="mx-auto mb-6 grid place-items-center w-16 h-16 sm:w-20 sm:h-20 rounded-[1.75rem] bg-white text-emerald-700 shadow-[0_25px_50px_-15px_rgba(0,0,0,0.4)]">
+              <span className="mx-auto mb-6 grid place-items-center w-16 h-16 sm:w-20 sm:h-20 rounded-[1.75rem] bg-white text-[var(--ft-accent)] shadow-[0_25px_50px_-15px_rgba(0,0,0,0.4)]">
                 <Trophy className="w-8 h-8 sm:w-10 sm:h-10" />
               </span>
             </span>
             <h2 className="font-head font-black text-[1.9rem] sm:text-4xl lg:text-[3.2rem] leading-[1.25]">جاهز لتكون من <span className="text-amber-200">مفكري المستقبل؟</span></h2>
-            <p className="mt-4 text-emerald-50/95 max-w-xl lg:max-w-2xl mx-auto text-[15px] sm:text-base lg:text-lg leading-relaxed font-medium">انضم إلى طلاب من مختلف مدارس المملكة في رحلة معرفية تنافسية، واجمع نقاط الخبرة، وتصدّر قوائم الصدارة الوطنية.</p>
+            <p className="mt-4 text-white/95 max-w-xl lg:max-w-2xl mx-auto text-[15px] sm:text-base lg:text-lg leading-relaxed font-medium">انضم إلى طلاب من مختلف مدارس المملكة في رحلة معرفية تنافسية، واجمع نقاط الخبرة، وتصدّر قوائم الصدارة الوطنية.</p>
             <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
               <Button data-testid="cta-join-btn" onClick={() => nav(user ? "/dashboard" : "/register")} size="lg"
-                className="pressable hover-glow rounded-2xl h-[52px] sm:h-14 px-8 sm:px-10 text-base sm:text-lg font-black text-emerald-900 bg-white border-0 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.45)] hover:bg-emerald-50">
+                className="pressable hover-glow rounded-2xl h-[52px] sm:h-14 px-8 sm:px-10 text-base sm:text-lg font-black text-[var(--ft-grad-a)] bg-white border-0 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.45)] hover:bg-[color-mix(in_srgb,var(--ft-accent)_12%,white)]">
                 <Rocket className="w-5 h-5 ml-2" /> {user ? "لوحتي" : "ابدأ الآن مجاناً"}
               </Button>
               <Button onClick={() => nav("/clubs")} size="lg" variant="outline"
@@ -485,7 +485,7 @@ export default function Landing() {
                 استكشف الأندية
               </Button>
             </div>
-            <div className="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs sm:text-[13px] font-bold text-emerald-50/90">
+            <div className="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs sm:text-[13px] font-bold text-white/90">
               <span className="inline-flex items-center gap-1.5"><Users className="w-4 h-4" /> مجتمع طلابي وطني</span>
               <span className="inline-flex items-center gap-1.5"><BookOpen className="w-4 h-4" /> مكتبة رقمية غنية</span>
               <span className="inline-flex items-center gap-1.5"><Trophy className="w-4 h-4" /> منافسات وجوائز</span>
