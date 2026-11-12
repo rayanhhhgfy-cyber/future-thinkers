@@ -88,12 +88,20 @@ export function Footer() {
               <Heart className="w-3.5 h-3.5 text-rose-400 fill-rose-400" />
             </span>
             <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-2.5">
-              {["ريان الجمل", "أوس التميمي", "طه عبابنه", "يمان عبابنة"].map((n) => (
-                <span key={n} className="inline-flex items-center gap-2 rounded-full bg-white/[0.07] border border-white/15 px-4 py-1.5 sm:py-2 text-[13px] sm:text-sm font-bold text-white backdrop-blur transition-all duration-300 hover:bg-white/[0.14] hover:border-white/30 hover:-translate-y-0.5 hover:shadow-lg">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[color:var(--ft-accent)] shadow-[0_0_8px_2px_color-mix(in_srgb,var(--ft-accent)_60%,transparent)]" />
-                  {n}
-                </span>
-              ))}
+              {["ريان الجمل", "أوس التميمي", "طه عبابنه", "يمان عبابنة"].map((n) => {
+                const chipClass = "inline-flex items-center gap-2 rounded-full bg-white/[0.07] border border-white/15 px-4 py-1.5 sm:py-2 text-[13px] sm:text-sm font-bold text-white backdrop-blur transition-all duration-300 hover:bg-white/[0.14] hover:border-white/30 hover:-translate-y-0.5 hover:shadow-lg";
+                const chipInner = (
+                  <>
+                    <span className="w-1.5 h-1.5 rounded-full bg-[color:var(--ft-accent)] shadow-[0_0_8px_2px_color-mix(in_srgb,var(--ft-accent)_60%,transparent)]" />
+                    {n}
+                  </>
+                );
+                return n === "ريان الجمل" ? (
+                  <a key={n} href="https://rayyans-showroom.vercel.app/projects/future-thinkers" className={chipClass}>{chipInner}</a>
+                ) : (
+                  <span key={n} className={chipClass}>{chipInner}</span>
+                );
+              })}
             </div>
           </div>
           <p className="text-xs sm:text-[13px] text-slate-400">صُنعت بشغف لطلاب الأردن <span className="ft-text-accent-bright font-bold">· مفكرو المستقبل</span></p>
